@@ -258,7 +258,7 @@ class NeuroFuzzyMaster:
             self.progress_label.config(text="Ошибка анализа")
         finally:
             self.btn_analyze.config(state=tk.NORMAL)
-            self.btn_export_predictions.config(state=tk.NORMAL)
+
 
     def update_plot_options(self):
         if self.task_var.get() == "Регрессия":
