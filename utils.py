@@ -145,8 +145,8 @@ def visualize_results(app):
         app.metrics_label.config(text=f"RMSE: {rmse:.4f}   MAE: {mae:.4f}   R²: {r2:.3f}")
 
         if code == "scatter":
-            ax.scatter(range(len(app.y_test)), app.y_test, color='blue', alpha=alpha, label="Реальные", s=40)
-            ax.scatter(range(len(app.y_pred)), app.y_pred, color='orange', alpha=alpha, label="Предсказанные", marker='x', s=40)
+            ax.scatter(range(len(app.y_test)), app.y_test, color='green', alpha=alpha, label="Реальные", s=40)
+            ax.scatter(range(len(app.y_pred)), app.y_pred, color='red', alpha=alpha, label="Предсказанные", marker='x', s=40)
             ax.set_xlabel('Индекс')
             ax.set_ylabel('Значение')
             ax.set_title('Scatter: Реальные и предсказанные по индексу')
@@ -157,8 +157,8 @@ def visualize_results(app):
             y_t = app.y_test[mask]
             y_p = app.y_pred[mask]
             m = (y_t.max() - y_t.min()) * 0.05
-            ax.scatter(y_t, y_p, s=40, alpha=alpha, color='orange', label="Пары")
-            ax.scatter(y_t, y_t, s=40, alpha=alpha*0.5, color='blue', label="y = x")
+            ax.scatter(y_t, y_p, s=40, alpha=alpha, color='red', label="Пары")
+            ax.scatter(y_t, y_t, s=40, alpha=alpha * 0.5, color='green', label="y = x")
             ax.plot([y_t.min()-m, y_t.max()+m], [y_t.min()-m, y_t.max()+m], 'k--', lw=1.5)
             ax.set_xlabel('Реальные')
             ax.set_ylabel('Предсказанные')
@@ -177,8 +177,8 @@ def visualize_results(app):
             ax.set_ylabel('Предсказанные')
             ax.set_title('Hexbin: реальные vs предсказанные')
         elif code == "dist":
-            ax.hist(app.y_test, bins=30, alpha=0.5, color='blue', label="Реальные")
-            ax.hist(app.y_pred, bins=30, alpha=0.7, color='orange', label="Предсказанные")
+            ax.hist(app.y_test, bins=30, alpha=0.5, color='green', label="Реальные")
+            ax.hist(app.y_pred, bins=30, alpha=0.7, color='red', label="Предсказанные")
             ax.set_xlabel('Значения')
             ax.set_title('Гистограмма распределений')
             ax.legend()
@@ -219,15 +219,15 @@ def visualize_results(app):
         elif code == "dist":
             uniq, cnts = np.unique(app.y_pred, return_counts=True)
             uniq_t, cnts_t = np.unique(app.y_test, return_counts=True)
-            ax.bar(uniq-0.2, cnts_t, width=0.4, alpha=0.6, color='blue', label="Реальные")
-            ax.bar(uniq+0.2, cnts, width=0.4, alpha=0.8, color='orange', label="Предсказанные")
+            ax.bar(uniq - 0.2, cnts_t, width=0.4, alpha=0.6, color='green', label="Реальные")
+            ax.bar(uniq + 0.2, cnts, width=0.4, alpha=0.8, color='red', label="Предсказанные")
             ax.set_xlabel('Класс')
             ax.set_ylabel('Частота')
             ax.set_title('Распределение классов')
             ax.legend()
         elif code == "scatter":
-            ax.scatter(range(len(app.y_test)), app.y_test, color='blue', alpha=alpha, label="Реальные")
-            ax.scatter(range(len(app.y_pred)), app.y_pred, color='orange', alpha=alpha, marker='x', label="Предсказанные")
+            ax.scatter(range(len(app.y_test)), app.y_test, color='green', alpha=alpha, label="Реальные")
+            ax.scatter(range(len(app.y_pred)), app.y_pred, color='red', alpha=alpha, marker='x', label="Предсказанные")
             ax.set_xlabel('Индекс')
             ax.set_ylabel('Класс')
             ax.set_title('Scatter по классам')
