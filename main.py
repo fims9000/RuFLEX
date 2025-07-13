@@ -65,6 +65,9 @@ class NeuroFuzzyMaster:
         self.btn_predict.pack(side=tk.LEFT, padx=5)
         self.btn_export_preds = ttk.Button(top2, text="Выгрузить предсказания", command=self.export_predictions, state=tk.DISABLED)
         self.btn_export_preds.pack(side=tk.LEFT, padx=5)
+        self.btn_xai = ttk.Button(top1, text="XAI анализ", command=self.run_xai, state=tk.NORMAL)
+        self.btn_xai.pack(side=tk.LEFT, padx=5)
+
 
         # Model parameters
         params = ttk.LabelFrame(root, text="Параметры нейронечёткой системы", padding=8)
@@ -354,6 +357,20 @@ class NeuroFuzzyMaster:
         self.progress_label.config(text="Анализ завершён")
         self.status.config(text="Анализ завершён (загруженная модель)")
         self.btn_export_preds.config(state=tk.NORMAL)
+    
+    def run_xai(self):
+        if self.model is None or self.dataset is None:
+            messagebox.showwarning("Нет модели/данных", "Сначала обучите модель и загрузите данные")
+            return
+        from xai_utils import explain_shap
+        X = self.dataset.iloc[:, :-1].copy()
+        if 'Unnamed: 0' in X.columns:
+            X = X.drop(columns=['Unnamed: 0'])
+        X = X.select_dtypes(include=[np.number])
+        feature_names = X.columns.tolist()
+        explain_shap(self.model, self.scaler, X, sample_size=100, feature_names=feature_names)
+
+
 
     def on_close(self):
         self.root.destroy()
