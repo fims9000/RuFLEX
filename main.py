@@ -171,9 +171,17 @@ class NeuroFuzzyMaster:
             messagebox.showwarning("Нет данных", "Сначала выполните анализ или загрузите модель и данные")
             return
         df = self.dataset.copy()
-        df["Предсказания"] = self.y_pred
-        fp = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel","*.xlsx"),("CSV","*.csv"),("All","*.*")])
-        if not fp: return
+
+        df["Predictions"] = self.y_pred
+
+        fp = filedialog.asksaveasfilename(
+            defaultextension=".csv",
+            filetypes=[("CSV files", "*.csv"), ("Excel files", "*.xlsx"), ("All files", "*.*")]
+        )
+
+        if not fp:
+            return
+
         try:
             if fp.endswith('.csv'):
                 df.to_csv(fp, index=False)
