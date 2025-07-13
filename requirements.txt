@@ -6,4 +6,5 @@ xanfis>=1.1
 joblib>=1.1
 openpyxl>=3.0
 tabulate>=0.8
-shap
+Shap
+IPython
