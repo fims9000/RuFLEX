@@ -357,20 +357,22 @@ class NeuroFuzzyMaster:
         self.progress_label.config(text="Анализ завершён")
         self.status.config(text="Анализ завершён (загруженная модель)")
         self.btn_export_preds.config(state=tk.NORMAL)
-    
+
     def run_xai(self):
+        from xai_utils import show_xai_window, explain_shap
         if self.model is None or self.dataset is None:
             messagebox.showwarning("Нет модели/данных", "Сначала обучите модель и загрузите данные")
             return
-        from xai_utils import explain_shap
+        # Подготовка данных
         X = self.dataset.iloc[:, :-1].copy()
         if 'Unnamed: 0' in X.columns:
             X = X.drop(columns=['Unnamed: 0'])
         X = X.select_dtypes(include=[np.number])
         feature_names = X.columns.tolist()
-        explain_shap(self.model, self.scaler, X, sample_size=100, feature_names=feature_names)
-
-
+        # Получаем графики и текстовые выводы
+        shap_plots, shap_text = explain_shap(self.model, self.scaler, X, sample_size=100, feature_names=feature_names)
+        # Открываем красивое XAI-окно
+        show_xai_window(self.root, shap_plots, shap_text)
 
     def on_close(self):
         self.root.destroy()
