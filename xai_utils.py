@@ -28,7 +28,7 @@ def explain_shap(model, scaler, X, sample_size=100, feature_names=None):
     plt.tight_layout()
     shap_plots["Summary Plot"] = fig1
 
-    # Подробный текст про твой датасет и признаки
+    # Подробный текст про датасет и признаки
     mean_abs = np.abs(shap_values).mean(axis=0)
     top_idx = np.argsort(mean_abs)[::-1][:5]
     summary_features = [feature_names[i] for i in top_idx]
@@ -37,9 +37,9 @@ def explain_shap(model, scaler, X, sample_size=100, feature_names=None):
         f"- {fname}: средний вклад {val:.3f}" for fname, val in zip(summary_features, summary_vals)
     )
     shap_texts["Summary Plot"] = (
-        "🌸 **Summary Plot** — вклад каждого признака по всем примерам.\n"
+        "Summary Plot — вклад каждого признака по всем примерам.\n"
         "Яркие точки — сильное влияние, бледные — слабое. Цвет — значение признака.\n"
-        f"**Топ-5 признаков для твоего датасета:**\n{summary_details}\n"
+        f"Топ-5 признаков для датасета:\n{summary_details}\n"
         "Это именно те признаки, которые сильнее всего влияют на предсказания модели!"
     )
 
@@ -50,9 +50,9 @@ def explain_shap(model, scaler, X, sample_size=100, feature_names=None):
     shap_plots["Bar Plot"] = fig2
 
     shap_texts["Bar Plot"] = (
-        "🌸 **Bar Plot** — суммарная важность признаков по модулю.\n"
-        "Верхние признаки — самые важные для твоей модели.\n"
-        "В твоём датасете абсолютные лидеры по важности:\n"
+        "Bar Plot — суммарная важность признаков по модулю.\n"
+        "Верхние признаки — самые важные для модели.\n"
+        "В датасете абсолютные лидеры по важности:\n"
         + "\n".join(f"- {feature_names[i]}: {mean_abs[i]:.3f}" for i in top_idx)
     )
 
@@ -73,11 +73,11 @@ def explain_shap(model, scaler, X, sample_size=100, feature_names=None):
     force_contribs = sorted(
         zip(feature_names, shap_values[0], X_sample[0]), key=lambda x: abs(x[1]), reverse=True
     )
-    force_text = "🌸 **Force Plot** для первого примера:\n"
+    force_text = "Force Plot для первого примера:\n"
     for fname, val, fval in force_contribs[:7]:
         direction = "⬆️ увеличивает" if val > 0 else "⬇️ уменьшает"
         force_text += f"- {fname} = {fval:.3f}: {direction} прогноз на {abs(val):.3f}\n"
-    force_text += "\nЭто индивидуальное объяснение для конкретного примера из твоего датасета!"
+    force_text += "\nЭто индивидуальное объяснение для конкретного примера из датасета!"
     shap_texts["Force Plot"] = force_text
 
     # 4. Waterfall Plot (первый пример)
@@ -100,7 +100,7 @@ def explain_shap(model, scaler, X, sample_size=100, feature_names=None):
         waterfall_contribs = sorted(
             zip(feature_names, shap_values[0], X_sample[0]), key=lambda x: abs(x[1]), reverse=True
         )
-        waterfall_text = "🌸 **Waterfall Plot** (первый пример):\n"
+        waterfall_text = "Waterfall Plot (первый пример):\n"
         for fname, val, fval in waterfall_contribs[:7]:
             direction = "⬆️ увеличивает" if val > 0 else "⬇️ уменьшает"
             waterfall_text += f"- {fname} = {fval:.3f}: {direction} итоговое предсказание на {abs(val):.3f}\n"
@@ -120,22 +120,21 @@ def explain_shap(model, scaler, X, sample_size=100, feature_names=None):
         # Анализ для твоего датасета
         dec_top = summary_features
         dec_text = (
-            "🌸 **Decision Plot** — как модель принимает решения по мере добавления признаков.\n"
+            "Decision Plot — как модель принимает решения по мере добавления признаков.\n"
             "Видно, что для большинства наблюдений ключевыми были:\n"
             + "\n".join(f"- {f}" for f in dec_top) +
-            "\n\nКаждая линия — отдельный пример из твоего датасета."
+            "\n\nКаждая линия — отдельный пример из датасета."
         )
         shap_texts["Decision Plot"] = dec_text
     except Exception as e:
         shap_texts["Decision Plot"] = f"⛔ Decision Plot не удалось отобразить: {e}"
 
     # --- Общий человекочитаемый вывод ---
-    summary_text = "🔍 **Главные влияющие признаки по SHAP для твоего датасета:**\n"
+    summary_text = "Главные влияющие признаки по SHAP для датасета:\n"
     for idx in top_idx:
         fname = feature_names[idx]
         sign = "увеличивает" if mean_abs[idx] > 0 else "уменьшает"
         summary_text += f"- {fname}: если больше — {sign} прогноз (средний вклад {mean_abs[idx]:.3f})\n"
-    summary_text += "\n💡 Самые важные признаки выделены на графиках!\n"
     shap_texts["Summary"] = summary_text
 
     return shap_plots, shap_texts
