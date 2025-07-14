@@ -144,7 +144,7 @@ class NeuroFuzzyMaster:
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 
     def load_data(self):
-        fp = filedialog.askopenfilename(filetypes=[("CSV","*.csv"),("Excel","*.xlsx;*.xls"),("All","*.*")])
+        fp = filedialog.askopenfilename(filetypes=[("CSV","*.csv"),("Excel","*.xlsx *.xls"),("All","*.*")])
         if not fp: return
         self.reset_progress()
         self.progress_label.config(text="Загрузка данных...")
