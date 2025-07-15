@@ -129,15 +129,18 @@ def explain_shap(rules,model, scaler, X, sample_size=100, feature_names=None):
         shap_texts["Decision Plot"] = f"⛔ Decision Plot не удалось отобразить: {e}"
 
     # --- Общий человекочитаемый вывод ---
+    import re
+
     def shorten_rules_clean(rules_text):
-        import re
-        # Удаляем лишний заголовок
+        """
+        Очищает текст правил ANFIS: убирает дублирующиеся заголовки,
+        удаляет технические строки и оставляет только условия и выводы.
+        """
         rules_text = re.sub(
             r'(Человекочитаемые правила нейронечёткой системы:\n)+',
             'Правила нейронечёткой системы:\n',
             rules_text
         )
-        # Разбиваем текст на блоки по правилам
         blocks = re.split(r'(Правило \d+)', rules_text)
         header = blocks[0].strip()
         rules_blocks = blocks[1:]
@@ -146,7 +149,6 @@ def explain_shap(rules,model, scaler, X, sample_size=100, feature_names=None):
         for i in range(0, len(rules_blocks), 2):
             rule_title = rules_blocks[i].strip()
             rule_text = rules_blocks[i + 1].strip()
-            # Оставляем только интерпретацию (без коэффициентов и служебных строк)
             lines = [
                 line for line in rule_text.splitlines()
                 if not (line.strip() == "Коэффициенты:" or
@@ -154,30 +156,59 @@ def explain_shap(rules,model, scaler, X, sample_size=100, feature_names=None):
                         line.strip() == "")
             ]
             filtered_lines = [line for line in lines if line.startswith("Если")
-                                                or line.startswith("и маленькое") or line.startswith("то выход")]
-            #filtered_lines = [line for line in lines if "Человекочитаемая интерпретация" in line or
-        #                  line.startswith("Если") or line.startswith("и маленькое") or line.startswith("то выход")]
+                              or line.startswith("и маленькое")
+                              or line.startswith("то выход")]
             result.append(f"{rule_title}\n" + "\n".join(filtered_lines))
         return "\n\n".join(result)
 
-    # формирования итогового вывода:
-    short_rules = shorten_rules_clean(rules)
-    summary_text = "Главные влияющие признаки по SHAP для датасета:\n"
-    for idx in top_idx:
-        fname = feature_names[idx]
-        sign = "увеличивает" if mean_abs[idx] > 0 else "уменьшает"
-        summary_text += f"- {fname}: если больше — {sign} прогноз (средний вклад {mean_abs[idx]:.3f})\n"
-    summary_text += (
-        f"\n{short_rules}\n"
-        "\nСовместная интерпретация:\n"
-        "- Оба метода выделяют одинаковые ключевые признаки.\n"
-        "- SHAP показывает их глобальную важность и направление влияния.\n"
-        "- ANFIS формулирует простые условия, при которых результат особенно сильно увеличивается.\n"
-        "- Такой комбинированный вывод обеспечивает максимальную объяснимость работы модели."
-    )
-    shap_texts["Summary"] = summary_text
+    def extract_anfis_features(rules_text, feature_names):
+        """
+        Извлекает уникальные признаки, которые встречаются в человекочитаемых правилах ANFIS.
+        """
+        features_in_rules = set()
+        for feat in feature_names:
+            pattern = re.compile(r"\b" + re.escape(feat) + r"\b", re.IGNORECASE)
+            if pattern.search(rules_text):
+                features_in_rules.add(feat)
+        return features_in_rules
 
+    def pretty_shap_anfis_summary(feature_names, mean_abs, top_idx, rules_text):
+        """
+        Формирует структурированный текстовый вывод о важнейших признаках по SHAP, правилах ANFIS
+        и совпадающих признаках для заданного датасета.
+        """
+        # Очищенные правила
+        short_rules = shorten_rules_clean(rules_text)
+        # Признаки, встречающиеся в правилах
+        anfis_features = extract_anfis_features(rules_text, feature_names)
+        # Топовые признаки по значению SHAP
+        top_features = [feature_names[idx] for idx in top_idx]
+        # Совпадающие признаки
+        both = [f for f in top_features if f in anfis_features]
+
+        summary_text = "Основные признаки, влияющие на прогноз по SHAP\n\n"
+        for idx in top_idx:
+            fname = feature_names[idx]
+            sign = "повышает" if mean_abs[idx] > 0 else "снижает"
+            summary_text += f"- {fname}: увеличение значения {sign} прогноз (средний вклад {mean_abs[idx]:.3f})\n"
+
+        summary_text += f"\nПравила нейронечёткой системы (ANFIS)\n\n{short_rules}\n"
+
+        summary_text += "\nСовместный анализ результатов SHAP и ANFIS\n\n"
+        if both:
+            summary_text += "Признаки, выделенные обоими методами как значимые:\n\n"
+            for f in both:
+                summary_text += f"- {f}\n"
+        else:
+            summary_text += "Совпадающих признаков среди топовых по SHAP и правил ANFIS не обнаружено.\n"
+
+
+        return summary_text
+
+    summary_text = pretty_shap_anfis_summary(feature_names, mean_abs, top_idx, rules)
+    shap_texts["Summary"] = summary_text
     return shap_plots, shap_texts
+
 
 def show_xai_window(root, shap_plots, shap_texts, on_close=None):
     # Создаём отдельное окно
