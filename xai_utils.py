@@ -1,8 +1,7 @@
 import shap
 import matplotlib.pyplot as plt
 import numpy as np
-import tkinter as tk
-from tkinter import ttk
+import customtkinter as ctk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 def explain_shap(rules,model, scaler, X, sample_size=100, feature_names=None):
@@ -179,28 +178,35 @@ def explain_shap(rules,model, scaler, X, sample_size=100, feature_names=None):
     return shap_plots, shap_texts
 
 def show_xai_window(root, shap_plots, shap_texts):
-    win = tk.Toplevel(root)
+    # Создаём отдельное окно
+    win = ctk.CTkToplevel(root)
     win.title("XAI Анализ")
+    win.geometry("1200x700")
 
-    tab_control = ttk.Notebook(win)
-    tab_control.pack(expand=1, fill='both')
+    # Вкладки для графиков + текстов
+    tab_control = ctk.CTkTabview(win)
+    tab_control.pack(expand=1, fill='both', padx=10, pady=10)
 
-    # Вкладки для графиков + подробные тексты
     for plot_name, fig in shap_plots.items():
-        tab = ttk.Frame(tab_control)
-        tab_control.add(tab, text=plot_name)
-        canvas = FigureCanvasTkAgg(fig, master=tab)
-        canvas.get_tk_widget().pack(fill='both', expand=True)
-        canvas.draw()
-        # Текстовое поле под графиком
-        text_box = tk.Text(tab, height=10, font=("Consolas", 13))
-        text_box.pack(fill='x', expand=False)
-        text_box.insert(tk.END, shap_texts.get(plot_name, ""))
+        tab_control.add(plot_name)
+        tab_frame = tab_control.tab(plot_name)
 
-    # Общий человекочитаемый вывод (отдельная вкладка)
-    summary_tab = ttk.Frame(tab_control)
-    tab_control.add(summary_tab, text="💡 Итог")
-    text_box = tk.Text(summary_tab, height=20, font=("Consolas", 15))
-    text_box.pack(fill='both', expand=True)
-    text_box.insert(tk.END, shap_texts.get("Summary", ""))
+        # Место для графика
+        canvas = FigureCanvasTkAgg(fig, master=tab_frame)
+        canvas.get_tk_widget().pack(fill='both', expand=True, pady=(0, 6))
+        canvas.draw()
+
+        # Место для текстовой подписи
+        text_box = ctk.CTkTextbox(tab_frame, height=200, font=("Consolas", 17), wrap="word")
+        text_box.pack(fill='x', expand=False, pady=(0, 16))
+        text_box.insert("end", shap_texts.get(plot_name, ""))
+        text_box.configure(state="disabled")
+
+    # Итоговая вкладка
+    tab_control.add("💡 Итог")
+    final_tab = tab_control.tab("💡 Итог")
+    summary_box = ctk.CTkTextbox(final_tab, font=("Consolas", 18), wrap="word")
+    summary_box.pack(fill="both", expand=True, pady=10, padx=6)
+    summary_box.insert("end", shap_texts.get("Summary", ""))
+    summary_box.configure(state="disabled")
 

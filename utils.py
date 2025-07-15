@@ -1,7 +1,8 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from tkinter import messagebox, Toplevel
+from tkinter import messagebox
+from customtkinter import CTkToplevel
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from sklearn.metrics import (
     confusion_matrix,
@@ -83,7 +84,7 @@ def show_corr_matrix(df: pd.DataFrame, root):
     ax.set_title('Корреляционная матрица')
     plt.tight_layout()
 
-    win = Toplevel(root)
+    win = CTkToplevel(root)
     win.title("Корреляционная матрица")
     canvas = FigureCanvasTkAgg(fig, master=win)
     canvas.get_tk_widget().pack(fill='both', expand=True)
@@ -126,7 +127,7 @@ def visualize_results(app):
     ax = app.fig.add_subplot(111)
 
     if app.y_pred is None or app.y_test is None:
-        app.metrics_label.config(text="Нет данных для визуализации")
+        app.metrics_label.configure(text="Нет данных для визуализации")
         app.canvas.draw()
         return
 
@@ -142,7 +143,7 @@ def visualize_results(app):
         rmse = np.sqrt(mean_squared_error(app.y_test, app.y_pred))
         mae  = mean_absolute_error(app.y_test, app.y_pred)
         r2   = r2_score(app.y_test, app.y_pred)
-        app.metrics_label.config(text=f"RMSE: {rmse:.4f}   MAE: {mae:.4f}   R²: {r2:.3f}")
+        app.metrics_label.configure(text=f"RMSE: {rmse:.4f}   MAE: {mae:.4f}   R²: {r2:.3f}")
 
         if code == "scatter":
             ax.scatter(range(len(app.y_test)), app.y_test, color='green', alpha=alpha, label="Реальные", s=40)
@@ -231,7 +232,7 @@ def visualize_results(app):
         prec = precision_score(app.y_test, app.y_pred, average='weighted', zero_division=0)
         rec  = recall_score(app.y_test, app.y_pred, average='weighted', zero_division=0)
         f1   = f1_score(app.y_test, app.y_pred, average='weighted', zero_division=0)
-        app.metrics_label.config(text=f"Accuracy: {acc:.3f}   Precision: {prec:.3f}   Recall: {rec:.3f}   F1: {f1:.3f}")
+        app.metrics_label.configure(text=f"Accuracy: {acc:.3f}   Precision: {prec:.3f}   Recall: {rec:.3f}   F1: {f1:.3f}")
 
         if code == "heatmap":
             cm = confusion_matrix(app.y_test, app.y_pred)
