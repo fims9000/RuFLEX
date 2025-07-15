@@ -153,8 +153,10 @@ def explain_shap(rules,model, scaler, X, sample_size=100, feature_names=None):
                         (line.startswith("- ") and any(c.isdigit() for c in line)) or
                         line.strip() == "")
             ]
-            filtered_lines = [line for line in lines if "Человекочитаемая интерпретация" in line or
-                              line.startswith("Если") or line.startswith("и маленькое") or line.startswith("то выход")]
+            filtered_lines = [line for line in lines if line.startswith("Если")
+                                                or line.startswith("и маленькое") or line.startswith("то выход")]
+            #filtered_lines = [line for line in lines if "Человекочитаемая интерпретация" in line or
+        #                  line.startswith("Если") or line.startswith("и маленькое") or line.startswith("то выход")]
             result.append(f"{rule_title}\n" + "\n".join(filtered_lines))
         return "\n\n".join(result)
 
