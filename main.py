@@ -23,8 +23,8 @@ class NeuroFuzzyMaster:
     def __init__(self, root):
         self.root = root
         self.root.title("НейроНечёткий Мастер")
-        self.root.geometry("1280x900")
-        self.root.minsize(1100, 700)
+        self.root.geometry("1280x720")
+        self.root.minsize(1200, 800)
 
         # State
         self.dataset = None
@@ -35,129 +35,120 @@ class NeuroFuzzyMaster:
         self.analysis_thread = None
         self.is_training = False
 
-        # Верхние панели
-        top1 = ctk.CTkFrame(root)
-        top1.pack(fill="x", padx=10, pady=(5, 0))
-        top2 = ctk.CTkFrame(root)
-        top2.pack(fill="x", padx=10, pady=(0, 5))
+        # --- Верхний блок с кнопками на всю ширину ---
+        topbar = ctk.CTkFrame(root)
+        topbar.pack(fill="x", padx=12, pady=(8, 4))
 
-        self.btn_load = ctk.CTkButton(top1, text="Загрузить данные", command=self.load_data)
-        self.btn_load.pack(side="left", padx=5)
-        self.btn_analyze = ctk.CTkButton(top1, text="Выполнить анализ", command=self.run_analysis, state="disabled")
-        self.btn_analyze.pack(side="left", padx=5)
-        self.btn_corr = ctk.CTkButton(top1, text="Корреляционная матрица", command=self.show_corr_matrix)
-        self.btn_corr.pack(side="left", padx=5)
-        self.btn_export = ctk.CTkButton(top1, text="Экспорт правил", command=self.export_rules, state="disabled")
-        self.btn_export.pack(side="left", padx=5)
-        self.progress_label = ctk.CTkLabel(top1, text="Ожидание действия", font=("Arial", 13, "bold"))
-        self.progress_label.pack(side="right", padx=10)
+        self.btn_load = ctk.CTkButton(topbar, text="Загрузить данные", command=self.load_data)
+        self.btn_analyze = ctk.CTkButton(topbar, text="Анализировать", command=self.run_analysis, state="disabled")
+        self.btn_corr = ctk.CTkButton(topbar, text="Корреляции", command=self.show_corr_matrix)
+        self.btn_xai = ctk.CTkButton(topbar, text="XAI анализ", command=self.run_xai)
+        self.btn_export = ctk.CTkButton(topbar, text="Экспорт правил", command=self.export_rules, state="disabled")
+        self.btn_save_model = ctk.CTkButton(topbar, text="Сохранить модель", command=self.save_model, state="disabled")
+        self.btn_load_model = ctk.CTkButton(topbar, text="Загрузить модель", command=self.load_model)
+        self.btn_predict = ctk.CTkButton(topbar, text="Анализировать с моделью", command=self.analyze_with_loaded_model, state="disabled")
+        self.btn_export_preds = ctk.CTkButton(topbar, text="Экспорт предсказаний", command=self.export_predictions, state="disabled")
 
-        self.progress = ctk.CTkProgressBar(top1, width=200)
-        self.progress.pack(side="right", padx=5)
+        for btn in (self.btn_load, self.btn_analyze, self.btn_corr,
+                    self.btn_xai, self.btn_export, self.btn_save_model,
+                    self.btn_load_model, self.btn_predict, self.btn_export_preds):
+            btn.pack(side="left", padx=8)
+
+        self.progress_label = ctk.CTkLabel(topbar, text="Ожидание действия", font=("Arial", 14, "bold"))
+        self.progress_label.pack(side="right", padx=18)
+        self.progress = ctk.CTkProgressBar(topbar, width=260, height=15)
+        self.progress.pack(side="right", padx=10)
         self.progress.set(0)
 
-        self.btn_save_model = ctk.CTkButton(top2, text="Сохранить модель", command=self.save_model, state="disabled")
-        self.btn_save_model.pack(side="left", padx=5)
-        self.btn_load_model = ctk.CTkButton(top2, text="Загрузить модель", command=self.load_model)
-        self.btn_load_model.pack(side="left", padx=5)
-        self.btn_predict = ctk.CTkButton(top2, text="Анализировать с моделью", command=self.analyze_with_loaded_model,
-                                         state="disabled")
-        self.btn_predict.pack(side="left", padx=5)
-        self.btn_export_preds = ctk.CTkButton(top2, text="Выгрузить предсказания", command=self.export_predictions,
-                                              state="disabled")
-        self.btn_export_preds.pack(side="left", padx=5)
-        self.btn_xai = ctk.CTkButton(top1, text="XAI анализ", command=self.run_xai)
-        self.btn_xai.pack(side="left", padx=5)
-
-        # Параметры модели
-        params = ctk.CTkFrame(root)
-        params.pack(fill="x", padx=10, pady=5)
-
-        ctk.CTkLabel(params, text="Тип задачи:").grid(row=0, column=0, sticky="e", padx=5)
-        self.task_var = ctk.StringVar(value="Регрессия")
-        self.task_combo = ctk.CTkComboBox(params, variable=self.task_var, values=["Регрессия", "Классификация"],
-                                          width=114)
-        self.task_combo.grid(row=0, column=1, padx=5)
-
-        ctk.CTkLabel(params, text="Правил:").grid(row=0, column=2, sticky="e", padx=5)
-        self.num_rules = ctk.CTkEntry(params, width=50)
-        self.num_rules.insert(0, "10")
-        self.num_rules.grid(row=0, column=3, padx=5)
-
-        ctk.CTkLabel(params, text="Функция принадлежности:").grid(row=0, column=4, sticky="e", padx=5)
-        self.mf_var = ctk.StringVar(value="Gaussian")
-        self.mf_combo = ctk.CTkComboBox(params, variable=self.mf_var, values=["Gaussian", "Sigmoid"], width=85)
-        self.mf_combo.grid(row=0, column=5, padx=5)
-
-        ctk.CTkLabel(params, text="Эпохи:").grid(row=0, column=6, sticky="e", padx=5)
-        self.epochs = ctk.CTkEntry(params, width=50)
-        self.epochs.insert(0, "100")
-        self.epochs.grid(row=0, column=7, padx=5)
-
-        ctk.CTkLabel(params, text="Батч:").grid(row=0, column=8, sticky="e", padx=5)
-        self.batch_size = ctk.CTkEntry(params, width=50)
-        self.batch_size.insert(0, "32")
-        self.batch_size.grid(row=0, column=9, padx=5)
-
-        ctk.CTkLabel(params, text="Learning rate:").grid(row=0, column=10, sticky="e", padx=5)
-        self.lr = ctk.CTkEntry(params, width=70)
-        self.lr.insert(0, "0.01")
-        self.lr.grid(row=0, column=11, padx=5)
-
-        # Центр: панель с двумя колонками
+        # --- Центральная зона: параметр-панель + график + текст ---
         center = ctk.CTkFrame(root)
-        center.pack(fill="both", expand=True, padx=10, pady=(0, 10))
+        center.pack(fill="both", expand=True, padx=14, pady=(0, 10))
 
-        # Левая панель
-        left = ctk.CTkFrame(center, width=900)
-        left.pack(side="left", fill="both", expand=True, padx=(0, 6), pady=0)
-        # Область для статистики
-        stats_frame = ctk.CTkFrame(left)
-        stats_frame.pack(fill="x", pady=(0, 10))
-        ctk.CTkLabel(stats_frame, text="Статистика и структура данных", font=("Arial", 13, "bold")).pack(anchor="w",
-                                                                                                         padx=8,
-                                                                                                         pady=(4, 0))
-        self.text_stats = ctk.CTkTextbox(stats_frame, height=200, font=("Consolas", 12), wrap="word")
-        self.text_stats.pack(fill="both", expand=True, padx=8, pady=(2, 6))
+        # БОКОВАЯ ПАНЕЛЬ С ПАРАМЕТРАМИ (слева)
+        configbar = ctk.CTkFrame(center, width=140)
+        configbar.pack(side="left", fill="y", padx=(0, 5), pady=0)
+        configbar.pack_propagate(False)
 
-        # Область для правил
-        rules_frame = ctk.CTkFrame(left)
-        rules_frame.pack(fill="both", expand=True)
-        ctk.CTkLabel(rules_frame, text="Человекочитаемые правила", font=("Arial", 13, "bold")).pack(anchor="w", padx=8,
-                                                                                                    pady=(4, 0))
-        self.text_rules = ctk.CTkTextbox(rules_frame, height=140, font=("Consolas", 12), wrap="word")
-        self.text_rules.pack(fill="both", expand=True, padx=8, pady=(2, 8))
+        ctk.CTkLabel(configbar, text="Параметры модели", font=("Arial", 13, "bold")).pack(padx=8, pady=(8,0), anchor="w")
+        # Параметры — вертикально c отступами
+        row_pad = 7
+        ctk.CTkLabel(configbar, text="Тип задачи:").pack(anchor="w", padx=8, pady=(16,2))
+        self.task_var = ctk.StringVar(value="Регрессия")
+        self.task_combo = ctk.CTkComboBox(configbar, variable=self.task_var, values=["Регрессия", "Классификация"], width=180)
+        self.task_combo.pack(padx=10, pady=(0, row_pad))
 
-        # Правая панель
-        right = ctk.CTkFrame(center, width=400)
-        right.pack(side="right", fill="both", expand=True, padx=(6, 0), pady=0)
-        viz_frame = ctk.CTkFrame(right)
-        viz_frame.pack(fill="both", expand=True)
-        ctk.CTkLabel(viz_frame, text="Визуализация", font=("Arial", 13, "bold")).pack(anchor="w", padx=8)
-        self.fig = plt.Figure(figsize=(5, 3), dpi=100)
-        self.canvas = FigureCanvasTkAgg(self.fig, master=viz_frame)
-        self.canvas.get_tk_widget().pack(fill="both", expand=True, pady=(6, 4))
+        ctk.CTkLabel(configbar, text="Число правил:").pack(anchor="w", padx=8)
+        self.num_rules = ctk.CTkEntry(configbar, width=70)
+        self.num_rules.insert(0, "10")
+        self.num_rules.pack(padx=10, pady=(0, row_pad))
 
-        ctrl = ctk.CTkFrame(viz_frame)
-        ctrl.pack(fill="x", pady=(6, 0))
+        ctk.CTkLabel(configbar, text="Тип MF:").pack(anchor="w", padx=8)
+        self.mf_var = ctk.StringVar(value="Gaussian")
+        self.mf_combo = ctk.CTkComboBox(configbar, variable=self.mf_var, values=["Gaussian", "Sigmoid"], width=110)
+        self.mf_combo.pack(padx=10, pady=(0, row_pad))
+
+        ctk.CTkLabel(configbar, text="Эпохи:").pack(anchor="w", padx=8)
+        self.epochs = ctk.CTkEntry(configbar, width=70)
+        self.epochs.insert(0, "100")
+        self.epochs.pack(padx=10, pady=(0, row_pad))
+
+        ctk.CTkLabel(configbar, text="Batch size:").pack(anchor="w", padx=8)
+        self.batch_size = ctk.CTkEntry(configbar, width=70)
+        self.batch_size.insert(0, "32")
+        self.batch_size.pack(padx=10, pady=(0, row_pad))
+
+        ctk.CTkLabel(configbar, text="Learning rate:").pack(anchor="w", padx=8)
+        self.lr = ctk.CTkEntry(configbar, width=90)
+        self.lr.insert(0, "0.01")
+        self.lr.pack(padx=10, pady=(0, 10))
+
+        # --- ЦЕНТР: график --- (теперь больше места!)
+        graph_col = ctk.CTkFrame(center, width=600)
+        graph_col.pack(side="left", fill="both", expand=True, padx=(0, 16))
+        graph_col.pack_propagate(False)
+        ctk.CTkLabel(graph_col, text="Визуализация результата", font=("Arial", 14, "bold")).pack(anchor="w", padx=12, pady=(10, 0))
+
+        # matplotlib canvas (80% ширины)
+        self.fig = plt.Figure(figsize=(8.5, 5.4), dpi=100)
+        self.canvas = FigureCanvasTkAgg(self.fig, master=graph_col)
+        self.canvas.get_tk_widget().pack(fill="both", expand=True, padx=10, pady=(14,8))
+
+        # --- Управляющая панель для графика ---
+        ctrl = ctk.CTkFrame(graph_col)
+        ctrl.pack(fill="x", pady=(0, 0))
         self.plot_var = ctk.StringVar(value="xy")
-        self.plot_combo = ctk.CTkComboBox(ctrl, variable=self.plot_var, values=[], width=250,command=lambda value: self.visualize_results() )   # ← колбэк)
+        self.plot_combo = ctk.CTkComboBox(
+            ctrl, variable=self.plot_var, values=[], width=320,
+            command=lambda val: self.visualize_results()
+        )
         self.plot_combo.pack(side="left", padx=8)
-        ctk.CTkLabel(ctrl, text="Прозрачность:").pack(side="left", padx=7)
-        # Slider через CTkSlider
-        self.alpha_slider = ctk.CTkSlider(ctrl, from_=0.1, to=1.0, number_of_steps=18, width=120,
-                                          command=self.change_alpha)
+        ctk.CTkLabel(ctrl, text="Прозрачность:").pack(side="left", padx=11)
+        self.alpha_slider = ctk.CTkSlider(ctrl, from_=0.1, to=1.0, number_of_steps=18, width=145, command=self.change_alpha)
         self.alpha_slider.set(1.0)
-        self.alpha_slider.pack(side="left", padx=7)
+        self.alpha_slider.pack(side="left", padx=12)
+        self.metrics_label = ctk.CTkLabel(graph_col, text="", font=("Arial", 14, "bold"), text_color="#25D356")
+        self.metrics_label.pack(anchor="w", fill="x", pady=(7,2), padx=10)
 
-        self.metrics_label = ctk.CTkLabel(viz_frame, text="", font=("Arial", 15, "bold"), text_color="#49E426")
-        self.metrics_label.pack(fill="x", pady=(10, 0))
+        # --- ПРАВАЯ колонка: большие текстовые блоки ---
+        text_col = ctk.CTkFrame(center, width=550)
+        text_col.pack(side="left", fill="both", expand=False, padx=(0, 0))
+        text_col.pack_propagate(False)
 
-        # Нижняя статус-строка
+        # Сначала статистика
+        ctk.CTkLabel(text_col, text="Статистика", font=("Arial", 13, "bold")).pack(anchor="nw", padx=12, pady=(12,0))
+        self.text_stats = ctk.CTkTextbox(text_col, font=("Consolas", 12), wrap="word", height=170)
+        self.text_stats.pack(fill="both", expand=False, padx=12, pady=(2, 16))
+
+        # Затем правила
+        ctk.CTkLabel(text_col, text="Человекочитаемые правила ANFIS", font=("Arial", 13, "bold")).pack(anchor="nw", padx=12, pady=(0,0))
+        self.text_rules = ctk.CTkTextbox(text_col, font=("Consolas", 13), wrap="word", height=190)
+        self.text_rules.pack(fill="both", expand=True, padx=12, pady=(2, 18))
+
+        # --- Нижний статус-бар ---
         bottom = ctk.CTkFrame(root)
-        bottom.pack(fill="x", pady=(4, 4))
+        bottom.pack(fill="x", pady=(2,6))
         self.status = ctk.CTkLabel(bottom, text="Готов к работе", anchor="w")
-        self.status.pack(fill="x", expand=True, padx=4, pady=4)
+        self.status.pack(fill="x", expand=True, padx=10, pady=6)
 
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 
