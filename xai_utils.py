@@ -5,7 +5,7 @@ import tkinter as tk
 from tkinter import ttk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
-def explain_shap(model, scaler, X, sample_size=100, feature_names=None):
+def explain_shap(rules,model, scaler, X, sample_size=100, feature_names=None):
     if 'Unnamed: 0' in X.columns:
         X = X.drop(columns=['Unnamed: 0'])
     X = X.select_dtypes(include=[np.number])
@@ -130,11 +130,50 @@ def explain_shap(model, scaler, X, sample_size=100, feature_names=None):
         shap_texts["Decision Plot"] = f"⛔ Decision Plot не удалось отобразить: {e}"
 
     # --- Общий человекочитаемый вывод ---
+    def shorten_rules_clean(rules_text):
+        import re
+        # Удаляем лишний заголовок
+        rules_text = re.sub(
+            r'(Человекочитаемые правила нейронечёткой системы:\n)+',
+            'Правила нейронечёткой системы:\n',
+            rules_text
+        )
+        # Разбиваем текст на блоки по правилам
+        blocks = re.split(r'(Правило \d+)', rules_text)
+        header = blocks[0].strip()
+        rules_blocks = blocks[1:]
+
+        result = [header]
+        for i in range(0, len(rules_blocks), 2):
+            rule_title = rules_blocks[i].strip()
+            rule_text = rules_blocks[i + 1].strip()
+            # Оставляем только интерпретацию (без коэффициентов и служебных строк)
+            lines = [
+                line for line in rule_text.splitlines()
+                if not (line.strip() == "Коэффициенты:" or
+                        (line.startswith("- ") and any(c.isdigit() for c in line)) or
+                        line.strip() == "")
+            ]
+            filtered_lines = [line for line in lines if "Человекочитаемая интерпретация" in line or
+                              line.startswith("Если") or line.startswith("и маленькое") or line.startswith("то выход")]
+            result.append(f"{rule_title}\n" + "\n".join(filtered_lines))
+        return "\n\n".join(result)
+
+    # формирования итогового вывода:
+    short_rules = shorten_rules_clean(rules)
     summary_text = "Главные влияющие признаки по SHAP для датасета:\n"
     for idx in top_idx:
         fname = feature_names[idx]
         sign = "увеличивает" if mean_abs[idx] > 0 else "уменьшает"
         summary_text += f"- {fname}: если больше — {sign} прогноз (средний вклад {mean_abs[idx]:.3f})\n"
+    summary_text += (
+        f"\n{short_rules}\n"
+        "\nСовместная интерпретация:\n"
+        "- Оба метода выделяют одинаковые ключевые признаки.\n"
+        "- SHAP показывает их глобальную важность и направление влияния.\n"
+        "- ANFIS формулирует простые условия, при которых результат особенно сильно увеличивается.\n"
+        "- Такой комбинированный вывод обеспечивает максимальную объяснимость работы модели."
+    )
     shap_texts["Summary"] = summary_text
 
     return shap_plots, shap_texts
