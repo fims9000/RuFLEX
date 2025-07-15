@@ -153,42 +153,9 @@ def visualize_results(app):
             ax.set_title('Scatter: Реальные и предсказанные по индексу')
             ax.legend()
         elif code == "xy":
-            mask = (~np.isnan(app.y_test) & ~np.isnan(app.y_pred) &
-                    ~np.isinf(app.y_test) & ~np.isinf(app.y_pred))
-            y_t = app.y_test[mask]
-            y_p = app.y_pred[mask]
-            from scipy.stats import gaussian_kde
-            # y_t и y_p — твои реальные и предсказанные значения
-            xy = np.vstack([y_t, y_p])
-            kde = gaussian_kde(xy)
-
-            # Добавляем запас к диапазону
-            x_min, x_max = y_t.min(), y_t.max()
-            y_min, y_max = y_p.min(), y_p.max()
-            x_pad = (x_max - x_min) * 0.1
-            y_pad = (y_max - y_min) * 0.25
-
-            xi, yi = np.mgrid[
-                     x_min - x_pad: x_max + x_pad: 200j,
-                     y_min - y_pad: y_max + y_pad: 200j
-                     ]
-            zi = kde(np.vstack([xi.flatten(), yi.flatten()]))
-
-            # Тепловая карта
-            heatmap = ax.imshow(
-                zi.reshape(xi.shape),
-                origin='lower',
-                aspect='auto',
-                extent=[x_min - x_pad, x_max + x_pad, y_min - y_pad, y_max + y_pad],
-                cmap='YlOrRd',
-                alpha=alpha,
-                zorder=0
-            )
-
-            # --- Поверх — scatter ---
-            ax.scatter(y_t, y_p, s=40, alpha=0.8, color='deepskyblue', label="Пары", zorder=1)
-            ax.scatter(y_t, y_t, s=40, alpha=0.3, color='limegreen', label="y = x", zorder=2)
-            ax.plot([y_t.min(), y_t.max()], [y_t.min(), y_t.max()], 'k--', lw=1.5)
+            ax.scatter(app.y_test, app.y_pred, s=40, alpha=0.8, color='deepskyblue', label="Пары", zorder=1)
+            ax.scatter(app.y_test, app.y_test, s=40, alpha=0.3, color='limegreen', label="y = x", zorder=2)
+            ax.plot([app.y_test.min(), app.y_test.max()], [app.y_test.min(), app.y_test.max()], 'k--', lw=1.5)
             ax.set_xlabel('Реальные')
             ax.set_ylabel('Предсказанные')
             ax.set_title('Scatter + плавная тепловая карта')

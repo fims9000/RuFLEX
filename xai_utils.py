@@ -179,7 +179,7 @@ def explain_shap(rules,model, scaler, X, sample_size=100, feature_names=None):
 
     return shap_plots, shap_texts
 
-def show_xai_window(root, shap_plots, shap_texts):
+def show_xai_window(root, shap_plots, shap_texts, on_close=None):
     # Создаём отдельное окно
     win = ctk.CTkToplevel(root)
     win.title("XAI Анализ")
@@ -212,3 +212,9 @@ def show_xai_window(root, shap_plots, shap_texts):
     summary_box.insert("end", shap_texts.get("Summary", ""))
     summary_box.configure(state="disabled")
 
+    def handle_close():
+        if on_close:
+            on_close()
+        win.destroy()
+
+    win.protocol("WM_DELETE_WINDOW", handle_close)

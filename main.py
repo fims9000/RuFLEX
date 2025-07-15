@@ -16,8 +16,8 @@ from neurofuzzy import (
     save_full_model, load_full_model, predict_with_model
 )
 
-# настройка темы
 ctk.set_appearance_mode("dark")
+ctk.set_default_color_theme("dark-blue")
 
 class NeuroFuzzyMaster:
     def __init__(self, root):
@@ -36,7 +36,7 @@ class NeuroFuzzyMaster:
         self.is_training = False
 
         # --- Верхний блок с кнопками на всю ширину ---
-        topbar = ctk.CTkFrame(root)
+        topbar = ctk.CTkFrame(root, fg_color="#262626")
         topbar.pack(fill="x", padx=12, pady=(8, 4))
 
         self.btn_load = ctk.CTkButton(topbar, text="Загрузить данные", command=self.load_data)
@@ -61,11 +61,11 @@ class NeuroFuzzyMaster:
         self.progress.set(0)
 
         # --- Центральная зона: параметр-панель + график + текст ---
-        center = ctk.CTkFrame(root)
-        center.pack(fill="both", expand=True, padx=14, pady=(0, 10))
+        center = ctk.CTkFrame(root, fg_color="#262626")
+        center.pack(fill="both", expand=True, padx=14, pady=(0, 12))
 
         # БОКОВАЯ ПАНЕЛЬ С ПАРАМЕТРАМИ (слева)
-        configbar = ctk.CTkFrame(center, width=140)
+        configbar = ctk.CTkFrame(center, width=140, fg_color="#262626")
         configbar.pack(side="left", fill="y", padx=(0, 5), pady=0)
         configbar.pack_propagate(False)
 
@@ -130,7 +130,7 @@ class NeuroFuzzyMaster:
         self.metrics_label.pack(anchor="w", fill="x", pady=(7,2), padx=10)
 
         # --- ПРАВАЯ колонка: большие текстовые блоки ---
-        text_col = ctk.CTkFrame(center, width=550)
+        text_col = ctk.CTkFrame(center, width=550, fg_color="#262626")
         text_col.pack(side="left", fill="both", expand=False, padx=(0, 0))
         text_col.pack_propagate(False)
 
@@ -145,7 +145,7 @@ class NeuroFuzzyMaster:
         self.text_rules.pack(fill="both", expand=True, padx=12, pady=(2, 18))
 
         # --- Нижний статус-бар ---
-        bottom = ctk.CTkFrame(root)
+        bottom = ctk.CTkFrame(root, fg_color="#262626")
         bottom.pack(fill="x", pady=(2,6))
         self.status = ctk.CTkLabel(bottom, text="Готов к работе", anchor="w")
         self.status.pack(fill="x", expand=True, padx=10, pady=6)
@@ -373,6 +373,7 @@ class NeuroFuzzyMaster:
         if self.model is None or self.dataset is None:
             messagebox.showwarning("Нет модели/данных", "Сначала обучите модель и загрузите данные")
             return
+        self.xai_opened = True
         # Подготовка данных
         X = self.dataset.iloc[:, :-1].copy()
         if 'Unnamed: 0' in X.columns:
@@ -385,11 +386,36 @@ class NeuroFuzzyMaster:
         rules = extract_human_rules(self.model, self.dataset.iloc[:, :-1], self.y_pred, self.dataset)
         # Получаем графики и текстовые выводы
         shap_plots, shap_text = explain_shap(rules, self.model, self.scaler, X, sample_size=100, feature_names=feature_names)
+
+        def on_xai_closed():
+            self.xai_opened = False
+            # Тут либо просто self.root.focus_force(),
+            # либо (если нужно остановить всё):
+            self.root.quit()  # или self.root.destroy()
+
         # Открываем красивое XAI-окно
-        show_xai_window(self.root, shap_plots, shap_text)
+        show_xai_window(self.root, shap_plots, shap_text, on_close=on_xai_closed)
 
     def on_close(self):
+        self.stop_requested = True  # Установить флаг на останов потоков
+
+        # Корректно прервать анализ, если он активен
+        if self.analysis_thread and self.analysis_thread.is_alive():
+            try:
+                self.analysis_thread.join(timeout=2)
+            except Exception:
+                pass  # На всякий случай игнорируем ошибки
+
+        # Остановить все запланированные after (если есть), чтобы не было ошибок после destroy
+        try:
+            if hasattr(self, "some_after_id"):
+                self.root.after_cancel(self.some_after_id)
+        except Exception:
+            pass
+
+        # Завершить основной цикл и закрыть окно
         self.root.destroy()
+
 
 if __name__ == "__main__":
     root = ctk.CTk()
