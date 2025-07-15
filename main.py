@@ -415,35 +415,29 @@ class NeuroFuzzyMaster:
         # Получаем графики и текстовые выводы
         shap_plots, shap_text = explain_shap(rules, self.model, self.scaler, X, sample_size=100,
                                              feature_names=feature_names)
-
         def on_xai_closed():
             self.xai_opened = False
-            # Тут либо просто self.root.focus_force(),
-            # либо (если нужно остановить всё):
-            self.root.quit()  # или self.root.destroy()
+            self.root.focus_force()
 
         # Открываем красивое XAI-окно
         show_xai_window(self.root, shap_plots, shap_text, on_close=on_xai_closed)
 
     def on_close(self):
         self.stop_requested = True  # Установить флаг на останов потоков
-
         # Корректно прервать анализ, если он активен
         if self.analysis_thread and self.analysis_thread.is_alive():
             try:
                 self.analysis_thread.join(timeout=2)
             except Exception:
                 pass  # На всякий случай игнорируем ошибки
-
         # Остановить все запланированные after (если есть), чтобы не было ошибок после destroy
         try:
             if hasattr(self, "some_after_id"):
                 self.root.after_cancel(self.some_after_id)
         except Exception:
             pass
-
         # Завершить основной цикл и закрыть окно
-        self.root.destroy()
+        self.root.quit()
 
 
 if __name__ == "__main__":
