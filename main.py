@@ -4,6 +4,7 @@ import time
 import threading
 import numpy as np
 import matplotlib
+
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -18,6 +19,7 @@ from neurofuzzy import (
 
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("dark-blue")
+
 
 class NeuroFuzzyMaster:
     def __init__(self, root):
@@ -35,28 +37,46 @@ class NeuroFuzzyMaster:
         self.analysis_thread = None
         self.is_training = False
 
-        # --- Верхний блок с кнопками на всю ширину ---
-        topbar = ctk.CTkFrame(root, fg_color="#262626")
-        topbar.pack(fill="x", padx=12, pady=(8, 4))
+        # --- Верхний блок с кнопками в две строки ---
+        top_controls_frame = ctk.CTkFrame(root, fg_color="transparent")
+        top_controls_frame.pack(fill="x", padx=12, pady=(8, 4))
 
-        self.btn_load = ctk.CTkButton(topbar, text="Загрузить данные", command=self.load_data)
-        self.btn_analyze = ctk.CTkButton(topbar, text="Анализировать", command=self.run_analysis, state="disabled")
-        self.btn_corr = ctk.CTkButton(topbar, text="Корреляции", command=self.show_corr_matrix)
-        self.btn_xai = ctk.CTkButton(topbar, text="XAI анализ", command=self.run_xai)
-        self.btn_export = ctk.CTkButton(topbar, text="Экспорт правил", command=self.export_rules, state="disabled")
-        self.btn_save_model = ctk.CTkButton(topbar, text="Сохранить модель", command=self.save_model, state="disabled")
-        self.btn_load_model = ctk.CTkButton(topbar, text="Загрузить модель", command=self.load_model)
-        self.btn_predict = ctk.CTkButton(topbar, text="Анализировать с моделью", command=self.analyze_with_loaded_model, state="disabled")
-        self.btn_export_preds = ctk.CTkButton(topbar, text="Экспорт предсказаний", command=self.export_predictions, state="disabled")
+        # --- Первая строка кнопок ---
+        top_button_row = ctk.CTkFrame(top_controls_frame, fg_color="#262626")
+        top_button_row.pack(fill="x")
 
-        for btn in (self.btn_load, self.btn_analyze, self.btn_corr,
-                    self.btn_xai, self.btn_export, self.btn_save_model,
-                    self.btn_load_model, self.btn_predict, self.btn_export_preds):
-            btn.pack(side="left", padx=8)
+        self.btn_load = ctk.CTkButton(top_button_row, text="Загрузить данные", command=self.load_data)
+        self.btn_analyze = ctk.CTkButton(top_button_row, text="Анализировать", command=self.run_analysis,
+                                         state="disabled")
+        self.btn_corr = ctk.CTkButton(top_button_row, text="Корреляции", command=self.show_corr_matrix)
+        self.btn_xai = ctk.CTkButton(top_button_row, text="XAI анализ", command=self.run_xai)
+        self.btn_export = ctk.CTkButton(top_button_row, text="Экспорт правил", command=self.export_rules,
+                                        state="disabled")
 
-        self.progress_label = ctk.CTkLabel(topbar, text="Ожидание действия", font=("Arial", 14, "bold"))
+        buttons_row1 = (self.btn_load, self.btn_analyze, self.btn_corr, self.btn_xai, self.btn_export)
+        for btn in buttons_row1:
+            btn.pack(side="left", padx=8, pady=5)
+
+        # --- Вторая строка кнопок и индикатор выполнения ---
+        bottom_button_row = ctk.CTkFrame(top_controls_frame, fg_color="#262626")
+        bottom_button_row.pack(fill="x", pady=(4, 0))
+
+        self.btn_save_model = ctk.CTkButton(bottom_button_row, text="Сохранить модель", command=self.save_model,
+                                            state="disabled")
+        self.btn_load_model = ctk.CTkButton(bottom_button_row, text="Загрузить модель", command=self.load_model)
+        self.btn_predict = ctk.CTkButton(bottom_button_row, text="Анализ с моделью",
+                                         command=self.analyze_with_loaded_model, state="disabled")
+        self.btn_export_preds = ctk.CTkButton(bottom_button_row, text="Экспорт предсказаний",
+                                              command=self.export_predictions, state="disabled")
+
+        buttons_row2 = (self.btn_save_model, self.btn_load_model, self.btn_predict, self.btn_export_preds)
+        for btn in buttons_row2:
+            btn.pack(side="left", padx=8, pady=5)
+
+        # Индикатор выполнения справа во второй строке
+        self.progress_label = ctk.CTkLabel(bottom_button_row, text="Ожидание действия", font=("Arial", 14, "bold"))
         self.progress_label.pack(side="right", padx=18)
-        self.progress = ctk.CTkProgressBar(topbar, width=260, height=15)
+        self.progress = ctk.CTkProgressBar(bottom_button_row, width=260, height=15)
         self.progress.pack(side="right", padx=10)
         self.progress.set(0)
 
@@ -69,12 +89,14 @@ class NeuroFuzzyMaster:
         configbar.pack(side="left", fill="y", padx=(0, 5), pady=0)
         configbar.pack_propagate(False)
 
-        ctk.CTkLabel(configbar, text="Параметры модели", font=("Arial", 13, "bold")).pack(padx=8, pady=(8,0), anchor="w")
+        ctk.CTkLabel(configbar, text="Параметры модели", font=("Arial", 13, "bold")).pack(padx=8, pady=(8, 0),
+                                                                                          anchor="w")
         # Параметры — вертикально c отступами
         row_pad = 7
-        ctk.CTkLabel(configbar, text="Тип задачи:").pack(anchor="w", padx=8, pady=(16,2))
+        ctk.CTkLabel(configbar, text="Тип задачи:").pack(anchor="w", padx=8, pady=(16, 2))
         self.task_var = ctk.StringVar(value="Регрессия")
-        self.task_combo = ctk.CTkComboBox(configbar, variable=self.task_var, values=["Регрессия", "Классификация"], width=180)
+        self.task_combo = ctk.CTkComboBox(configbar, variable=self.task_var, values=["Регрессия", "Классификация"],
+                                          width=180)
         self.task_combo.pack(padx=10, pady=(0, row_pad))
 
         ctk.CTkLabel(configbar, text="Число правил:").pack(anchor="w", padx=8)
@@ -106,12 +128,13 @@ class NeuroFuzzyMaster:
         graph_col = ctk.CTkFrame(center, width=600)
         graph_col.pack(side="left", fill="both", expand=True, padx=(0, 16))
         graph_col.pack_propagate(False)
-        ctk.CTkLabel(graph_col, text="Визуализация результата", font=("Arial", 14, "bold")).pack(anchor="w", padx=12, pady=(10, 0))
+        ctk.CTkLabel(graph_col, text="Визуализация результата", font=("Arial", 14, "bold")).pack(anchor="w", padx=12,
+                                                                                                 pady=(10, 0))
 
         # matplotlib canvas (80% ширины)
         self.fig = plt.Figure(figsize=(8.5, 5.4), dpi=100)
         self.canvas = FigureCanvasTkAgg(self.fig, master=graph_col)
-        self.canvas.get_tk_widget().pack(fill="both", expand=True, padx=10, pady=(14,8))
+        self.canvas.get_tk_widget().pack(fill="both", expand=True, padx=10, pady=(14, 8))
 
         # --- Управляющая панель для графика ---
         ctrl = ctk.CTkFrame(graph_col)
@@ -123,11 +146,12 @@ class NeuroFuzzyMaster:
         )
         self.plot_combo.pack(side="left", padx=8)
         ctk.CTkLabel(ctrl, text="Прозрачность:").pack(side="left", padx=11)
-        self.alpha_slider = ctk.CTkSlider(ctrl, from_=0.1, to=1.0, number_of_steps=18, width=145, command=self.change_alpha)
+        self.alpha_slider = ctk.CTkSlider(ctrl, from_=0.1, to=1.0, number_of_steps=18, width=145,
+                                          command=self.change_alpha)
         self.alpha_slider.set(1.0)
         self.alpha_slider.pack(side="left", padx=12)
         self.metrics_label = ctk.CTkLabel(graph_col, text="", font=("Arial", 14, "bold"), text_color="#25D356")
-        self.metrics_label.pack(anchor="w", fill="x", pady=(7,2), padx=10)
+        self.metrics_label.pack(anchor="w", fill="x", pady=(7, 2), padx=10)
 
         # --- ПРАВАЯ колонка: большие текстовые блоки ---
         text_col = ctk.CTkFrame(center, width=550, fg_color="#262626")
@@ -135,25 +159,29 @@ class NeuroFuzzyMaster:
         text_col.pack_propagate(False)
 
         # Сначала статистика
-        ctk.CTkLabel(text_col, text="Статистика", font=("Arial", 13, "bold")).pack(anchor="nw", padx=12, pady=(12,0))
+        ctk.CTkLabel(text_col, text="Статистика", font=("Arial", 13, "bold")).pack(anchor="nw", padx=12, pady=(12, 0))
         self.text_stats = ctk.CTkTextbox(text_col, font=("Consolas", 12), wrap="word", height=170)
         self.text_stats.pack(fill="both", expand=False, padx=12, pady=(2, 16))
 
         # Затем правила
-        ctk.CTkLabel(text_col, text="Человекочитаемые правила ANFIS", font=("Arial", 13, "bold")).pack(anchor="nw", padx=12, pady=(0,0))
+        ctk.CTkLabel(text_col, text="Человекочитаемые правила ANFIS", font=("Arial", 13, "bold")).pack(anchor="nw",
+                                                                                                       padx=12,
+                                                                                                       pady=(0, 0))
         self.text_rules = ctk.CTkTextbox(text_col, font=("Consolas", 13), wrap="word", height=190)
         self.text_rules.pack(fill="both", expand=True, padx=12, pady=(2, 18))
 
         # --- Нижний статус-бар ---
         bottom = ctk.CTkFrame(root, fg_color="#262626")
-        bottom.pack(fill="x", pady=(2,6))
+        bottom.pack(fill="x", pady=(2, 6))
         self.status = ctk.CTkLabel(bottom, text="Готов к работе", anchor="w")
         self.status.pack(fill="x", expand=True, padx=10, pady=6)
 
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 
+    # ... (остальные методы класса остаются без изменений) ...
+
     def load_data(self):
-        fp = filedialog.askopenfilename(filetypes=[("CSV","*.csv"),("Excel","*.xlsx *.xls"),("All","*.*")])
+        fp = filedialog.askopenfilename(filetypes=[("CSV", "*.csv"), ("Excel", "*.xlsx *.xls"), ("All", "*.*")])
         if not fp: return
         self.reset_progress()
         self.progress_label.configure(text="Загрузка данных...")
@@ -161,7 +189,7 @@ class NeuroFuzzyMaster:
 
         self.dataset = load_dataset(fp)
         stats = get_basic_stats(self.dataset)
-        self.text_stats.delete(1.0,"end")
+        self.text_stats.delete(1.0, "end")
         self.text_stats.insert("end", stats)
         self.btn_analyze.configure(state="normal")
         self.btn_predict.configure(state="normal" if self.model else "disabled")
@@ -250,7 +278,7 @@ class NeuroFuzzyMaster:
                 self.epochs.get(), self.batch_size.get(), self.lr.get()
             )
             rules = extract_human_rules(self.model, result['X_train'], result['y_train'], self.dataset, params)
-            self.text_rules.delete(1.0,"end")
+            self.text_rules.delete(1.0, "end")
             self.text_rules.insert("end", rules)
             self.update_plot_options()
 
@@ -314,7 +342,7 @@ class NeuroFuzzyMaster:
         if not file_path:
             return
         with open(file_path, 'w', encoding='utf-8') as f:
-            rules = self.text_rules.get(1.0,"end")
+            rules = self.text_rules.get(1.0, "end")
             f.write(rules)
         self.status.configure(text=f"Правила экспортированы: {file_path}")
 
@@ -355,7 +383,7 @@ class NeuroFuzzyMaster:
         self.y_pred, self.y_test = y_pred, y_test
 
         rules = extract_human_rules(self.model, self.dataset.iloc[:, :-1], self.y_pred, self.dataset)
-        self.text_rules.delete(1.0,"end")
+        self.text_rules.delete(1.0, "end")
         self.text_rules.insert("end", rules)
         self.update_plot_options()
         values = self.plot_combo.cget("values")
@@ -385,7 +413,8 @@ class NeuroFuzzyMaster:
         self.y_pred, self.y_test = y_pred, y_test
         rules = extract_human_rules(self.model, self.dataset.iloc[:, :-1], self.y_pred, self.dataset)
         # Получаем графики и текстовые выводы
-        shap_plots, shap_text = explain_shap(rules, self.model, self.scaler, X, sample_size=100, feature_names=feature_names)
+        shap_plots, shap_text = explain_shap(rules, self.model, self.scaler, X, sample_size=100,
+                                             feature_names=feature_names)
 
         def on_xai_closed():
             self.xai_opened = False
