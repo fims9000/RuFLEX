@@ -10,14 +10,14 @@ import pickle
 import joblib
 import numpy as np
 import torch
-from xanfis import GdAnfisRegressor
+from xanfis import GdAnfisRegressor,GdAnfisClassifier
 from xanfis.models.base_anfis import BaseAnfis
-from xanfis.models.classic_anfis import AnfisClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
+
 def run_neurofuzzy_analysis(
-    dataset, task_type, num_rules, mf_type, epochs, batch_size, lr
+    dataset, task_type, num_rules, mf_type, epochs, batch_size, lr,n_patience,optim_var
 ):
     # Предобработка данных с заменой пропусков
     X = dataset.iloc[:, :-1].copy()
@@ -43,20 +43,21 @@ def run_neurofuzzy_analysis(
     # Параметры модели
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     params = dict(num_rules=num_rules, mf_class=mf_type,
-                  reg_lambda=0.001, device=device)
+                  reg_lambda=0.0001, device=device, optim=optim_var)
 
     # Обучение
     if task_type == "Классификация":
-        model = AnfisClassifier(**params,
-                                epochs=epochs, batch_size=batch_size,
-                                optim='Adam', early_stopping=True,
-                                n_patience=40, epsilon=1e-4,
-                                valid_rate=0.1, verbose=True)
-        model.fit(X_train_s, y_train)
+        model = TorchAnfisClassifier(**params,
+                                     epochs=epochs, batch_size=batch_size,
+                                     early_stopping=True,
+                                     n_patience=n_patience, epsilon=1e-4,
+                                     valid_rate=0.1, verbose=True)
+        model.fit(X_train_s, y_train, optim_params={'lr': lr})
+
+
     else:
-        model = GdAnfisRegressor(**params,
-                                 optim='Adam', verbose=True,
-                                 early_stopping=True, n_patience=10,
+        model = GdAnfisRegressor(**params, verbose=True,
+                                 early_stopping=True, n_patience=n_patience,
                                  epsilon=1e-3, valid_rate=0.1)
         model.fit(X_train_s, y_train,
                   epochs=epochs, batch_size=batch_size,
@@ -68,7 +69,7 @@ def run_neurofuzzy_analysis(
         "model": model,
         "scaler": scaler,
         "X_train": X_train, "y_train": y_train,
-        "X_test": X_test,   "y_test": y_test,
+        "X_test": X_test, "y_test": y_test,
         "y_pred": y_pred
     }
 

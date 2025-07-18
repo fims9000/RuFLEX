@@ -102,7 +102,7 @@ def get_model_device(model):
     """
     return str(next(model.network.parameters()).device)
 
-def get_model_params_dict(model, task_type, dataset, num_rules, mf_class, epochs, batch_size, lr):
+def get_model_params_dict(model, task_type, dataset, num_rules, mf_class, epochs, batch_size, lr,n_patience,optim_var):
     """
     Возвращает словарь с основными параметрами модели.
     """
@@ -111,9 +111,11 @@ def get_model_params_dict(model, task_type, dataset, num_rules, mf_class, epochs
         "Число входных признаков": dataset.shape[1] - 1,
         "Число правил": int(num_rules),
         "Тип MF": mf_class,
+        "Тип Optim": optim_var,
         "Эпох обучения": int(epochs),
         "Размер батча": int(batch_size),
         "Learning rate": float(lr),
+        "N_patience": int(n_patience),
         "Параметров в модели": get_model_param_count(model),
         "Устройство": get_model_device(model)
     }

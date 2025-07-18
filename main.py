@@ -106,7 +106,7 @@ class NeuroFuzzyMaster:
 
         ctk.CTkLabel(configbar, text="Тип MF:").pack(anchor="w", padx=8)
         self.mf_var = ctk.StringVar(value="Gaussian")
-        self.mf_combo = ctk.CTkComboBox(configbar, variable=self.mf_var, values=["Gaussian", "Sigmoid"], width=110)
+        self.mf_combo = ctk.CTkComboBox(configbar, variable=self.mf_var, values=["Gaussian", "Sigmoid","Trapezoidal","Triangular","GBell","PiShaped","SShaped","ZShaped","Linear"], width=110)
         self.mf_combo.pack(padx=10, pady=(0, row_pad))
 
         ctk.CTkLabel(configbar, text="Эпохи:").pack(anchor="w", padx=8)
@@ -123,6 +123,17 @@ class NeuroFuzzyMaster:
         self.lr = ctk.CTkEntry(configbar, width=90)
         self.lr.insert(0, "0.01")
         self.lr.pack(padx=10, pady=(0, 10))
+
+        # Label и поле для patience
+        ctk.CTkLabel(configbar, text="N_patience:").pack(anchor="w", padx=8)
+        self.n_patience = ctk.CTkEntry(configbar, width=90)
+        self.n_patience.insert(0, "10")
+        self.n_patience.pack(padx=10, pady=(0, 10))
+
+        ctk.CTkLabel(configbar, text="Optim:").pack(anchor="w", padx=8)
+        self.optim_var = ctk.StringVar(value="Adam")
+        self.optim_combo = ctk.CTkComboBox(configbar, variable=self.optim_var, values=["Adam", "SGD", "RMSprop", "Adagrad", "AdamW", "Adadelta","Adamax","NAdam","Rprop",'ASGD'], width=110)
+        self.optim_combo.pack(padx=10, pady=(0, row_pad))
 
         # --- ЦЕНТР: график --- (теперь больше места!)
         graph_col = ctk.CTkFrame(center, width=600)
@@ -266,7 +277,9 @@ class NeuroFuzzyMaster:
                 self.mf_var.get(),
                 int(self.epochs.get()),
                 int(self.batch_size.get()),
-                float(self.lr.get())
+                float(self.lr.get()),
+                int(self.n_patience.get()),
+                self.optim_var.get()
             )
             self.model, self.scaler = result['model'], result['scaler']
             self.y_test, self.y_pred = result['y_test'], result['y_pred']
@@ -275,7 +288,7 @@ class NeuroFuzzyMaster:
             params = get_model_params_dict(
                 self.model, self.task_var.get(), self.dataset,
                 self.num_rules.get(), self.mf_var.get(),
-                self.epochs.get(), self.batch_size.get(), self.lr.get()
+                self.epochs.get(), self.batch_size.get(), self.lr.get(),self.n_patience.get(), self.optim_var.get()
             )
             rules = extract_human_rules(self.model, result['X_train'], result['y_train'], self.dataset, params)
             self.text_rules.delete(1.0, "end")
