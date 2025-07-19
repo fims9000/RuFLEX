@@ -120,7 +120,7 @@ def get_model_params_dict(model, task_type, dataset, num_rules, mf_class, epochs
         "Устройство": get_model_device(model)
     }
 
-def visualize_results(app):
+def visualize_results(app,model):
     """
     Строит выбранный график и отображает метрики на основе app.y_test и app.y_pred.
     Поддерживает как регрессию, так и классификацию.
@@ -160,7 +160,15 @@ def visualize_results(app):
             ax.plot([app.y_test.min(), app.y_test.max()], [app.y_test.min(), app.y_test.max()], 'k--', lw=1.5)
             ax.set_xlabel('Реальные')
             ax.set_ylabel('Предсказанные')
-            ax.set_title('Scatter + плавная тепловая карта')
+            ax.set_title('Scatter')
+            ax.legend()
+
+        elif code == 'loss':
+            loss_history = model.loss_train
+            ax.plot(range(1, len(loss_history) + 1), loss_history, label="Loss")
+            ax.set_xlabel("Epoch")
+            ax.set_ylabel("Loss")
+            ax.set_title("Training Loss Curve")
             ax.legend()
 
         elif code == "heatmap":
@@ -248,6 +256,13 @@ def visualize_results(app):
             ax.set_ylabel('Precision')
             ax.set_title('Precision-Recall Curve')
             ax.legend(loc='lower left')
+        elif code == 'loss':
+            loss_history = model.loss_train
+            ax.plot(range(1, len(loss_history) + 1), loss_history, label="Loss")
+            ax.set_xlabel("Epoch")
+            ax.set_ylabel("Loss")
+            ax.set_title("Training Loss Curve")
+            ax.legend()
 
     app.canvas.draw()
 

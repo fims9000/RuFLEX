@@ -47,7 +47,7 @@ def run_neurofuzzy_analysis(
 
     # Обучение
     if task_type == "Классификация":
-        model = TorchAnfisClassifier(**params,
+        model = GdAnfisClassifier(**params,
                                      epochs=epochs, batch_size=batch_size,
                                      early_stopping=True,
                                      n_patience=n_patience, epsilon=1e-4,

@@ -319,6 +319,7 @@ class NeuroFuzzyMaster:
             self.available_plots = [
                 ("scatter", "Scatter (реальные и предсказанные по индексу)"),
                 ("xy", "Scatter (реальные vs предсказанные)"),
+                ('loss', 'loss_history'),
                 ("heatmap", "Heatmap (hexbin)"),
                 ("dist", "Гистограмма распределений"),
                 ("boxplot", "Boxplot ошибок"),
@@ -327,8 +328,9 @@ class NeuroFuzzyMaster:
         else:
             self.available_plots = [
                 ("heatmap", "Матрица ошибок (confusion matrix)"),
+                ('loss', 'loss_history'),
                 ("dist", "Гистограмма по классам"),
-                ("scatter", "Scatter по классам"),
+                ("scatter", "Scatter по классам")
             ]
             if self.y_test is not None and len(np.unique(self.y_test)) == 2:
                 self.available_plots += [
@@ -339,7 +341,7 @@ class NeuroFuzzyMaster:
         self.plot_combo.configure(values=value_list)
 
     def visualize_results(self):
-        visualize_results(self)
+        visualize_results(self,self.model)
 
     def change_alpha(self, val):
         self.visualize_results()
