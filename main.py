@@ -1,6 +1,5 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, scrolledtext
-import time
 import threading
 import numpy as np
 import matplotlib
