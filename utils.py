@@ -17,6 +17,7 @@ from sklearn.metrics import (
     precision_recall_curve
 )
 from tabulate import tabulate
+from mpl_toolkits.mplot3d import Axes3D
 
 def load_dataset(path: str) -> pd.DataFrame:
     """
@@ -120,7 +121,7 @@ def get_model_params_dict(model, task_type, dataset, num_rules, mf_class, epochs
         "Устройство": get_model_device(model)
     }
 
-def visualize_results(app):
+def visualize_results(app,model,X_test):
     """
     Строит выбранный график и отображает метрики на основе app.y_test и app.y_pred.
     Поддерживает как регрессию, так и классификацию.
@@ -159,43 +160,25 @@ def visualize_results(app):
                     ~np.isinf(app.y_test) & ~np.isinf(app.y_pred))
             y_t = app.y_test[mask]
             y_p = app.y_pred[mask]
-            from scipy.stats import gaussian_kde
-            # y_t и y_p — твои реальные и предсказанные значения
-            xy = np.vstack([y_t, y_p])
-            kde = gaussian_kde(xy)
-
-            # Добавляем запас к диапазону
-            x_min, x_max = y_t.min(), y_t.max()
-            y_min, y_max = y_p.min(), y_p.max()
-            x_pad = (x_max - x_min) * 0.1
-            y_pad = (y_max - y_min) * 0.25
-
-            xi, yi = np.mgrid[
-                     x_min - x_pad: x_max + x_pad: 200j,
-                     y_min - y_pad: y_max + y_pad: 200j
-                     ]
-            zi = kde(np.vstack([xi.flatten(), yi.flatten()]))
-
-            # Тепловая карта
-            heatmap = ax.imshow(
-                zi.reshape(xi.shape),
-                origin='lower',
-                aspect='auto',
-                extent=[x_min - x_pad, x_max + x_pad, y_min - y_pad, y_max + y_pad],
-                cmap='YlOrRd',
-                alpha=alpha,
-                zorder=0
-            )
-
-            # --- Поверх — scatter ---
             ax.scatter(y_t, y_p, s=40, alpha=0.8, color='deepskyblue', label="Пары", zorder=1)
             ax.scatter(y_t, y_t, s=40, alpha=0.3, color='limegreen', label="y = x", zorder=2)
             ax.plot([y_t.min(), y_t.max()], [y_t.min(), y_t.max()], 'k--', lw=1.5)
             ax.set_xlabel('Реальные')
             ax.set_ylabel('Предсказанные')
-            ax.set_title('Scatter + плавная тепловая карта')
+            ax.set_title('Scatter')
             ax.legend()
+        elif code == "step":
+            app.fig.clf()
+            ax = app.fig.add_subplot(111, projection='3d')
+            residuals = np.abs(app.y_pred - app.y_test)  # Для каждой точки разница
+            scale = residuals.std() if residuals.std() > 1e-8 else 1.0
+            mu = np.exp(-residuals / scale)
 
+            ax.scatter(X_test.values[:, 0], X_test.values[:, 1], mu, c=mu, cmap='viridis', s=40)
+            app.fig.colorbar(ax.collections[0], ax=ax, label='Степень принадлежности')
+            ax.set_xlabel(X_test.columns[0])
+            ax.set_ylabel(X_test.columns[1])
+            ax.set_title('Scatter по признакам и степени уверенности')
         elif code == "heatmap":
             mask = (~np.isnan(app.y_test) & ~np.isnan(app.y_pred) &
                     ~np.isinf(app.y_test) & ~np.isinf(app.y_pred))
@@ -227,6 +210,13 @@ def visualize_results(app):
             ax.set_xlabel('Предсказанные')
             ax.set_ylabel('Остатки')
             ax.set_title('Residuals plot')
+        elif code == 'loss':
+            loss_history = model.loss_train
+            ax.plot(range(1, len(loss_history) + 1), loss_history, label="Loss")
+            ax.set_xlabel("Epoch")
+            ax.set_ylabel("Loss")
+            ax.set_title("Training Loss Curve")
+            ax.legend()
 
     # Классификация
     else:
@@ -281,6 +271,26 @@ def visualize_results(app):
             ax.set_ylabel('Precision')
             ax.set_title('Precision-Recall Curve')
             ax.legend(loc='lower left')
+        elif code == 'loss':
+            loss_history = model.loss_train
+            ax.plot(range(1, len(loss_history) + 1), loss_history, label="Loss")
+            ax.set_xlabel("Epoch")
+            ax.set_ylabel("Loss")
+            ax.set_title("Training Loss Curve")
+            ax.legend()
+        elif code == 'step':
+            app.fig.clf()
+            ax = app.fig.add_subplot(111, projection='3d')
+            probas = model.predict_proba(X_test.values)
+            mu = np.max(probas, axis=1)
+            X_np = X_test.values
 
+            # Визуализация scatter по двум признакам + степень принадлежности
+            sc = ax.scatter(X_np[:, 0], X_np[:, 1], mu, c=mu, cmap='viridis', s=40)
+            app.fig.colorbar(sc, ax=ax, label='Степень принадлежности')
+
+            ax.set_xlabel(X_test.columns[0])
+            ax.set_ylabel(X_test.columns[1])
+            ax.set_title('Scatter: c подписями признаков')
     app.canvas.draw()
 
