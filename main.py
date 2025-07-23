@@ -374,6 +374,7 @@ class NeuroFuzzyMaster:
         self.progress_label.config(text="Анализ завершён")
         self.status.config(text="Анализ завершён (загруженная модель)")
         self.btn_export_preds.config(state=tk.NORMAL)
+        self.btn_export.config(state=tk.NORMAL)
 
     def on_close(self):
         self.root.destroy()
