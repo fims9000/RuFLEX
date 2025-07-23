@@ -43,34 +43,29 @@ def run_neurofuzzy_analysis(
     # Параметры модели
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     params = dict(num_rules=num_rules, mf_class=mf_type,
-                  reg_lambda=0.001, device=device, optim=optim_var)
-
+                  reg_lambda=0.001, device=device, optim=optim_var,
+                  epochs=epochs,batch_size=batch_size,early_stopping=True,
+                  n_patience=n_patience,valid_rate=0.1,verbose=True,epsilon=1e-4)
+    probas=None
     # Обучение
     if task_type == "Классификация":
-        model = GdAnfisClassifier(**params,
-                                     epochs=epochs, batch_size=batch_size,
-                                     early_stopping=True,
-                                     n_patience=n_patience, epsilon=1e-4,
-                                     valid_rate=0.1, verbose=True)
+        model = GdAnfisClassifier(**params)
         model.fit(X_train_s, y_train, optim_params={'lr': lr})
 
-
     else:
-        model = GdAnfisRegressor(**params, verbose=True,
-                                 early_stopping=True, n_patience=n_patience,
-                                 epsilon=1e-3, valid_rate=0.1)
+        model = GdAnfisRegressor(**params)
         model.fit(X_train_s, y_train,
-                  epochs=epochs, batch_size=batch_size,
                   optim_params={'lr': lr}, grad_clip=0.9)
 
     # Предсказание
     y_pred = np.asarray(model.predict(X_test_s)).ravel()
+
     return {
         "model": model,
         "scaler": scaler,
         "X_train": X_train, "y_train": y_train,
         "X_test": X_test, "y_test": y_test,
-        "y_pred": y_pred
+        "y_pred": y_pred,
     }
 
 def save_full_model(model, scaler, filepath_base):

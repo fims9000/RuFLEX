@@ -283,7 +283,7 @@ class NeuroFuzzyMaster:
             )
             self.model, self.scaler = result['model'], result['scaler']
             self.y_test, self.y_pred = result['y_test'], result['y_pred']
-
+            self.X_test=result['X_test']
             self.status.configure(text="Извлечение правил...")
             params = get_model_params_dict(
                 self.model, self.task_var.get(), self.dataset,
@@ -319,6 +319,7 @@ class NeuroFuzzyMaster:
             self.available_plots = [
                 ("scatter", "Scatter (реальные и предсказанные по индексу)"),
                 ("xy", "Scatter (реальные vs предсказанные)"),
+                ("step", "Степень уверенности"),
                 ('loss', 'loss_history'),
                 ("heatmap", "Heatmap (hexbin)"),
                 ("dist", "Гистограмма распределений"),
@@ -330,7 +331,8 @@ class NeuroFuzzyMaster:
                 ("heatmap", "Матрица ошибок (confusion matrix)"),
                 ('loss', 'loss_history'),
                 ("dist", "Гистограмма по классам"),
-                ("scatter", "Scatter по классам")
+                ("scatter", "Scatter по классам"),
+                ("step", "Степень уверенности"),
             ]
             if self.y_test is not None and len(np.unique(self.y_test)) == 2:
                 self.available_plots += [
@@ -341,7 +343,7 @@ class NeuroFuzzyMaster:
         self.plot_combo.configure(values=value_list)
 
     def visualize_results(self):
-        visualize_results(self,self.model)
+        visualize_results(self,self.model,self.X_test)
 
     def change_alpha(self, val):
         self.visualize_results()
