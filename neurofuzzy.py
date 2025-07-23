@@ -55,6 +55,9 @@ def run_neurofuzzy_analysis(
         model.fit(X_train_s, y_train,
                   optim_params={'lr': lr}, grad_clip=0.9)
 
+    model.feature_names_in_ = X_train.columns.to_list()
+    scaler.feature_names_in_ = X_train.columns.to_list()
+
     # Предсказание
     y_pred = np.asarray(model.predict(X_test_s)).ravel()
     return {
@@ -92,15 +95,20 @@ def load_full_model(model_path):
     return model, scaler
 
 def predict_with_model(model, scaler, dataset):
-    X = dataset.iloc[:, :-1].copy()
+    X = dataset.copy()
     if 'Unnamed: 0' in X.columns:
         X.drop(columns=['Unnamed: 0'], inplace=True)
-    X = X.select_dtypes(include=[np.number])  # Не .values!
+    if hasattr(scaler, 'feature_names_in_'):
+        X = X[scaler.feature_names_in_]
+    elif hasattr(model, 'feature_names_in_'):
+        X = X[model.feature_names_in_]
+    else:
+        X = X.select_dtypes(include=[np.number])
     X_s = scaler.transform(X)  # Теперь X — DataFrame с именами столбцов
     model.network.eval()
     with torch.no_grad():
         y_pred = np.asarray(model.predict(X_s)).ravel()
-    return y_pred,
+    return y_pred
 
 
 def extract_human_rules(model, X, y, dataset, model_params=None):
