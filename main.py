@@ -95,6 +95,16 @@ class NeuroFuzzyMaster:
         self.lr = ttk.Entry(params, width=7); self.lr.insert(0,"0.01")
         self.lr.grid(row=0,column=11,padx=5)
 
+        # Label и поле для patience
+        ttk.Label(params, text="N_patience:").grid(row=0,column=12,sticky="e",padx=5)
+        self.n_patience = ttk.Entry(params, width=7); self.n_patience.insert(0, "10")
+        self.n_patience.grid(row=0,column=13,padx=5)
+
+        ttk.Label(params, text="Optim:").grid(row=0,column=14,sticky="e",padx=5)
+        self.optim_var = tk.StringVar(value="Adam")
+        self.optim_combo=ttk.Combobox(params, textvariable=self.optim_var, values=["Adam", "SGD", "RMSprop", "Adagrad", "AdamW", "Adadelta", "Adamax",
+                                                   "NAdam", "Rprop", 'ASGD'], state="readonly", width=10)
+        self.optim_combo.grid(row=0, column=15, padx=5)
         # Center panes
         center = ttk.PanedWindow(root, orient=tk.HORIZONTAL)
         center.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0,10))
@@ -228,16 +238,18 @@ class NeuroFuzzyMaster:
                 self.mf_var.get(),
                 int(self.epochs.get()),
                 int(self.batch_size.get()),
-                float(self.lr.get())
+                float(self.lr.get()),
+                int(self.n_patience.get()),
+                self.optim_var.get()
             )
             self.model, self.scaler = result['model'], result['scaler']
             self.y_test, self.y_pred = result['y_test'], result['y_pred']
-
+            self.X_test=result['X_test']
             self.status.config(text="Извлечение правил...")
             params = get_model_params_dict(
                 self.model, self.task_var.get(), self.dataset,
                 self.num_rules.get(), self.mf_var.get(),
-                self.epochs.get(), self.batch_size.get(), self.lr.get()
+                self.epochs.get(), self.batch_size.get(), self.lr.get(),self.n_patience.get(), self.optim_var.get()
             )
             rules = extract_human_rules(self.model, result['X_train'], result['y_train'], self.dataset, params)
             self.text_rules.delete(1.0, tk.END)
