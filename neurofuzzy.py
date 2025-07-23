@@ -100,8 +100,7 @@ def predict_with_model(model, scaler, dataset):
     model.network.eval()
     with torch.no_grad():
         y_pred = np.asarray(model.predict(X_s)).ravel()
-    y_test = dataset.iloc[:, -1].values if dataset.shape[1] > 1 else None
-    return y_pred, y_test
+    return y_pred,
 
 
 def extract_human_rules(model, X, y, dataset, model_params=None):

@@ -28,6 +28,7 @@ class NeuroFuzzyMaster:
         self.scaler = None
         self.y_test = None
         self.y_pred = None
+        self.X_test = None
         self.analysis_thread = None
         self.is_training = False
 
@@ -304,7 +305,7 @@ class NeuroFuzzyMaster:
     def visualize_results(self):
         visualize_results(self,self.model,self.X_test)
 
-    def change_alpha(self, val):
+    def change_alpha(self,val):
         self.visualize_results()
 
     def export_rules(self):
@@ -355,15 +356,14 @@ class NeuroFuzzyMaster:
         self.progress["value"] = 50
         self.root.update_idletasks()
 
-        y_pred, y_test = predict_with_model(self.model, self.scaler, self.dataset)
-        self.y_pred, self.y_test = y_pred, y_test
+        y_pred = predict_with_model(self.model, self.scaler, self.dataset)
+        self.y_pred, = y_pred
 
         rules = extract_human_rules(self.model, self.dataset.iloc[:, :-1], self.y_pred, self.dataset)
         self.text_rules.delete(1.0, tk.END)
         self.text_rules.insert(tk.END, rules)
         self.update_plot_options()
         self.plot_combo.current(0)
-        self.visualize_results()
 
         self.progress["value"] = 100
         self.progress_label.config(text="Анализ завершён")
