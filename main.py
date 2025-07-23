@@ -34,6 +34,7 @@ class NeuroFuzzyMaster:
         self.scaler = None
         self.y_test = None
         self.y_pred = None
+        self.X_test = None
         self.analysis_thread = None
         self.is_training = False
 
