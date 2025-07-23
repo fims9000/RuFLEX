@@ -397,8 +397,8 @@ class NeuroFuzzyMaster:
         self.progress.set(50)
         self.root.update_idletasks()
 
-        y_pred, y_test = predict_with_model(self.model, self.scaler, self.dataset)
-        self.y_pred, self.y_test = y_pred, y_test
+        y_pred = predict_with_model(self.model, self.scaler, self.dataset)
+        self.y_pred = y_pred
 
         rules = extract_human_rules(self.model, self.dataset.iloc[:, :-1], self.y_pred, self.dataset)
         self.text_rules.delete(1.0, "end")
@@ -407,7 +407,6 @@ class NeuroFuzzyMaster:
         values = self.plot_combo.cget("values")
         if values:
             self.plot_combo.set(values[0])
-        self.visualize_results()
 
         self.progress.set(100)
         self.progress_label.configure(text="Анализ завершён")
