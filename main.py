@@ -291,7 +291,7 @@ class NeuroFuzzyMaster:
                 self.num_rules.get(), self.mf_var.get(),
                 self.epochs.get(), self.batch_size.get(), self.lr.get(),self.n_patience.get(), self.optim_var.get()
             )
-            rules = extract_human_rules(self.model, result['X_train'], result['y_train'], self.dataset, params)
+            rules = extract_human_rules(self.model, self.dataset, params)
             self.text_rules.delete(1.0, "end")
             self.text_rules.insert("end", rules)
             self.update_plot_options()
@@ -400,7 +400,12 @@ class NeuroFuzzyMaster:
         y_pred = predict_with_model(self.model, self.scaler, self.dataset)
         self.y_pred = y_pred
 
-        rules = extract_human_rules(self.model, self.dataset.iloc[:, :-1], self.y_pred, self.dataset)
+        params = get_model_params_dict(
+            self.model, self.task_var.get(), self.dataset,
+            self.num_rules.get(), self.mf_var.get(),
+            self.epochs.get(), self.batch_size.get(), self.lr.get(), self.n_patience.get(), self.optim_var.get()
+        )
+        rules = extract_human_rules(self.model, self.dataset, params)
         self.text_rules.delete(1.0, "end")
         self.text_rules.insert("end", rules)
         self.update_plot_options()

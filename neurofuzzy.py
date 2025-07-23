@@ -113,7 +113,7 @@ def predict_with_model(model, scaler, dataset):
     return y_pred
 
 
-def extract_human_rules(model, X, y, dataset, model_params=None):
+def extract_human_rules(model, dataset, model_params=None):
     rules = ""
     if model_params:
         rules += "Параметры модели:\n"
