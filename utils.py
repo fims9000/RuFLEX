@@ -18,6 +18,7 @@ from sklearn.metrics import (
     precision_recall_curve
 )
 from tabulate import tabulate
+from mpl_toolkits.mplot3d import Axes3D
 
 def load_dataset(path: str) -> pd.DataFrame:
     """
@@ -127,7 +128,6 @@ def visualize_results(app,model,X_test):
     """
     app.fig.clear()
     ax = app.fig.add_subplot(111)
-
     if app.y_pred is None or app.y_test is None:
         app.metrics_label.configure(text="Нет данных для визуализации")
         app.canvas.draw()
@@ -163,11 +163,13 @@ def visualize_results(app,model,X_test):
             ax.set_title('Scatter')
             ax.legend()
         elif code == "step":
+            app.fig.clf()
+            ax = app.fig.add_subplot(111, projection='3d')
             residuals = np.abs(app.y_pred - app.y_test)  # Для каждой точки разница
             scale = residuals.std() if residuals.std() > 1e-8 else 1.0
             mu = np.exp(-residuals / scale)
 
-            ax.scatter(X_test.values[:, 0], X_test.values[:, 1], c=mu, cmap='viridis', s=40)
+            ax.scatter(X_test.values[:, 0], X_test.values[:, 1],mu, c=mu, cmap='viridis', s=40)
             app.fig.colorbar(ax.collections[0], ax=ax, label='Степень принадлежности')
             ax.set_xlabel(X_test.columns[0])
             ax.set_ylabel(X_test.columns[1])
@@ -273,12 +275,14 @@ def visualize_results(app,model,X_test):
             ax.set_title("Training Loss Curve")
             ax.legend()
         elif code == 'step':
+            app.fig.clf()
+            ax = app.fig.add_subplot(111, projection='3d')
             probas = model.predict_proba(X_test.values)
             mu = np.max(probas, axis=1)
             X_np = X_test.values
 
             # Визуализация scatter по двум признакам + степень принадлежности
-            sc = ax.scatter(X_np[:, 0], X_np[:, 1], c=mu, cmap='viridis', s=40)
+            sc = ax.scatter(X_np[:, 0], X_np[:, 1], mu,c=mu, cmap='viridis', s=40)
             app.fig.colorbar(sc, ax=ax, label='Степень принадлежности')
 
             ax.set_xlabel(X_test.columns[0])
