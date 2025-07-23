@@ -417,6 +417,7 @@ class NeuroFuzzyMaster:
         self.progress_label.configure(text="Анализ завершён")
         self.status.configure(text="Анализ завершён (загруженная модель)")
         self.btn_export_preds.configure(state="normal")
+        self.btn_export.configure(state="normal")
 
     def run_xai(self):
         from xai_utils import show_xai_window, explain_shap
