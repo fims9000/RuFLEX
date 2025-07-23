@@ -43,7 +43,7 @@ def run_neurofuzzy_analysis(
     # Параметры модели
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     params = dict(num_rules=num_rules, mf_class=mf_type,
-                  reg_lambda=0.0001, device=device, optim=optim_var)
+                  reg_lambda=0.001, device=device, optim=optim_var)
 
     # Обучение
     if task_type == "Классификация":
