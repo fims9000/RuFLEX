@@ -432,9 +432,9 @@ class NeuroFuzzyMaster:
         X = X.select_dtypes(include=[np.number])
         feature_names = X.columns.tolist()
         # Добавляем ANFIS-правила
-        y_pred, y_test = predict_with_model(self.model, self.scaler, self.dataset)
-        self.y_pred, self.y_test = y_pred, y_test
-        rules = extract_human_rules(self.model, self.dataset.iloc[:, :-1], self.y_pred, self.dataset)
+        y_pred = predict_with_model(self.model, self.scaler, self.dataset)
+        self.y_pred = y_pred
+        rules = extract_human_rules(self.model, self.dataset)
         # Получаем графики и текстовые выводы
         shap_plots, shap_text = explain_shap(rules, self.model, self.scaler, X, sample_size=100,
                                              feature_names=feature_names)
