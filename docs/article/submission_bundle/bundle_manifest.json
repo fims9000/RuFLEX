@@ -1,0 +1,38 @@
+{
+  "suite_dir": "/home/lebedeffson/Code/neurofuzzy_analysis/experiments/article_suite/2026_04_12t21_40_59_671052_00_00_article_suite",
+  "docs": [
+    "article_profile.json",
+    "article_profile.template.json",
+    "article_profile_card.md",
+    "conference_template_illustrated_en.docx",
+    "conference_template_ready_en.docx",
+    "conference_template_ready_en.md",
+    "figure_manifest.md",
+    "final_metadata.md",
+    "final_status.md",
+    "manual_finish.md",
+    "paper_draft.docx",
+    "paper_draft.md",
+    "readiness_report.json",
+    "readiness_report.md",
+    "rinc_draft.docx",
+    "rinc_draft.md",
+    "rinc_draft.txt",
+    "shablon_dokladov_illustrated.docx",
+    "shablon_dokladov_ready.docx",
+    "shablon_dokladov_ready.md",
+    "template_mapping.md"
+  ],
+  "tables": [
+    "article_suite_results.csv",
+    "classification_results_table.csv",
+    "regression_results_table.csv"
+  ],
+  "figures": [
+    "figure1_regression_benchmark.png",
+    "figure2_regression_board.png",
+    "figure3_classification_benchmark.png",
+    "figure4_classification_board.png",
+    "figure5_membership_example.png"
+  ]
+}

@@ -1,0 +1,28 @@
+# Article Benchmark Report
+
+- generated_at_utc: 2026-04-12T21:42:49.338536+00:00
+- source_project: california_housing_regression
+- task_type: regression
+- target_name: MedHouseVal
+- benchmark_dir: /home/lebedeffson/Code/neurofuzzy_analysis/experiments/article_benchmark/2026_04_12t21_40_59_674987_00_00_california_housing_regression_article_benchmark
+
+## Variants
+- Flat Baseline (`flat_baseline_benchmark`): Reference flat neuro-fuzzy baseline for the article tables.
+- Flat Interpretable (`interpretable_flat_study`): Compact interpretable flat model for rule-oriented comparison.
+- Deep Article Demo (`deep_article_demo`): Primary deep fuzzy feature learning configuration for the paper.
+- Deep Research (`deep_research_study`): Broader deep fuzzy configuration for extended article comparisons.
+
+## Results
+
+| variant_name | variant_label | article_role | study_pipeline | training_preset | model_kind | test_rmse | test_mae | test_r2 | epochs_ran | export_dir | training_preset_override | training_source | train_mse | train_mae | train_rmse | train_r2 | validation_mse | validation_mae | validation_rmse | validation_r2 | test_mse |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| flat_baseline | Flat Baseline | baseline | flat_baseline_benchmark | balanced | flat_neuro_fuzzy | 0.890950 | 0.678868 | 0.382192 | 30 | /home/lebedeffson/Code/neurofuzzy_analysis/experiments/article_benchmark/2026_04_12t21_40_59_674987_00_00_california_housing_regression_article_benchmark/runs/2026_04_12t21_41_09_363500_00_00_flat_baseline_benchmark |  | bootstrap_plus_finetuning | 0.794382 | 0.679306 | 0.891281 | 0.388136 | 0.870614 | 0.716504 | 0.933067 | 0.357119 | 0.793793 |
+| flat_interpretable | Flat Interpretable | interpretable_baseline | interpretable_flat_study | interpretable | flat_neuro_fuzzy | 1.115952 | 0.880786 | 0.030747 | 36 | /home/lebedeffson/Code/neurofuzzy_analysis/experiments/article_benchmark/2026_04_12t21_40_59_674987_00_00_california_housing_regression_article_benchmark/runs/2026_04_12t21_41_34_745095_00_00_interpretable_flat_study |  | bootstrap_plus_finetuning | 1.254729 | 0.877042 | 1.120147 | 0.033558 | 1.313670 | 0.905266 | 1.146155 | 0.029956 | 1.245348 |
+| deep_article_demo | Deep Article Demo | primary_deep_model | deep_article_demo | article_demo | deep_fuzzy_feature_learning | 0.816314 | 0.610628 | 0.481367 | 28 | /home/lebedeffson/Code/neurofuzzy_analysis/experiments/article_benchmark/2026_04_12t21_40_59_674987_00_00_california_housing_regression_article_benchmark/runs/2026_04_12t21_42_03_711470_00_00_deep_article_demo |  | stagewise_pretraining_plus_finetuning | 0.662763 | 0.615203 | 0.814103 | 0.489513 | 0.715464 | 0.646302 | 0.845851 | 0.471685 | 0.666368 |
+| deep_research | Deep Research | extended_deep_model | deep_research_study | article_demo | deep_fuzzy_feature_learning | 0.795757 | 0.593770 | 0.507159 | 28 | /home/lebedeffson/Code/neurofuzzy_analysis/experiments/article_benchmark/2026_04_12t21_40_59_674987_00_00_california_housing_regression_article_benchmark/runs/2026_04_12t21_42_49_303552_00_00_deep_research_study |  | stagewise_pretraining_plus_finetuning | 0.634032 | 0.600997 | 0.796262 | 0.511643 | 0.656910 | 0.618024 | 0.810500 | 0.514923 | 0.633228 |
+
+## Suggested Winners
+
+- test_rmse: `Deep Research` (0.795757)
+- test_mae: `Deep Research` (0.593770)
+- test_r2: `Deep Research` (0.507159)

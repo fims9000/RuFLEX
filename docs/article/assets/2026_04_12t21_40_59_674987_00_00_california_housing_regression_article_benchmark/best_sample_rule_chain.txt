@@ -1,0 +1,42 @@
+SAMPLE 0
+  inputs: (-1.1386, -0.3032, -0.3765, -0.1059, -0.0367, 0.3988, 0.2253, 0.2485)
+  prediction: (1.126,)
+  bias contribution: (0.7515,)
+  exact final-stage hidden rule contributions:
+    stage_3/stage_3_block_1 [exact]
+      rule: stage_3_block_1_5 | stage_2_block_1_concept_1 IS high AND stage_2_block_1_concept_2 IS low | weight=0.2985 | output=(-0.2819,)
+      rule: stage_3_block_1_2 | stage_2_block_1_concept_2 IS low AND stage_2_block_1_concept_3 IS low | weight=0.4377 | output=(-0.2669,)
+      rule: stage_3_block_1_1 | stage_2_block_1_concept_1 IS high AND stage_2_block_1_concept_3 IS low | weight=0.2505 | output=(-0.2384,)
+    stage_3/stage_3_block_2 [exact]
+      rule: stage_3_block_2_0 | stage_2_block_2_concept_2 IS low AND stage_2_block_2_concept_3 IS low | weight=0.5673 | output=(0.3199,)
+      rule: stage_3_block_2_3 | stage_2_block_2_concept_2 IS low AND stage_2_block_2_concept_3 IS high | weight=0.2377 | output=(0.1303,)
+      rule: stage_3_block_2_4 | stage_2_block_2_concept_2 IS high AND stage_2_block_2_concept_3 IS low | weight=0.1950 | output=(0.0624,)
+    stage_3/stage_3_block_3 [exact]
+      rule: stage_3_block_3_2 | stage_2_block_3_concept_1 IS low AND stage_2_block_3_concept_2 IS low | weight=0.6851 | output=(0.4263,)
+      rule: stage_3_block_3_0 | stage_2_block_3_concept_1 IS low AND stage_2_block_3_concept_3 IS high | weight=0.3131 | output=(0.1955,)
+      rule: stage_3_block_3_5 | stage_2_block_3_concept_1 IS high AND stage_2_block_3_concept_3 IS high | weight=0.0017 | output=(0.0004,)
+  upstream path-based hidden rule contributions:
+    stage_1/stage_1_block_1 [path]
+      rule: stage_1_block_1_3 | MedInc IS term_2 AND AveRooms IS term_1 | weight=0.0000 | output=(0.0,)
+      rule: stage_1_block_1_5 | HouseAge IS term_2 AND AveRooms IS term_1 | weight=0.0000 | output=(0.0,)
+      rule: stage_1_block_1_4 | MedInc IS term_2 AND HouseAge IS term_1 | weight=0.0000 | output=(0.0,)
+    stage_1/stage_1_block_2 [path]
+      rule: stage_1_block_2_3 | AveBedrms IS term_2 AND Population IS term_1 | weight=0.0000 | output=(0.0,)
+      rule: stage_1_block_2_5 | Population IS term_1 AND AveOccup IS term_2 | weight=0.0000 | output=(0.0,)
+      rule: stage_1_block_2_4 | AveBedrms IS term_2 AND AveOccup IS term_1 | weight=0.0000 | output=(0.0,)
+    stage_1/stage_1_block_3 [path]
+      rule: stage_1_block_3_3 | Latitude IS term_2 AND Longitude IS term_3 | weight=0.0000 | output=(0.0,)
+      rule: stage_1_block_3_5 | Latitude IS term_2 | weight=0.9993 | output=(0.0,)
+      rule: stage_1_block_3_4 | Latitude IS term_1 | weight=0.0007 | output=(0.0,)
+    stage_2/stage_2_block_1 [path]
+      rule: stage_2_block_1_3 | stage_1_block_1_concept_1 IS high AND stage_1_block_1_concept_3 IS low | weight=0.0367 | output=(0.0,)
+      rule: stage_2_block_1_5 | stage_1_block_1_concept_1 IS high AND stage_1_block_1_concept_3 IS high | weight=0.0000 | output=(0.0,)
+      rule: stage_2_block_1_4 | stage_1_block_1_concept_1 IS high AND stage_1_block_1_concept_2 IS high | weight=0.0000 | output=(0.0,)
+    stage_2/stage_2_block_2 [path]
+      rule: stage_2_block_2_3 | stage_1_block_2_concept_1 IS low AND stage_1_block_2_concept_3 IS low | weight=0.0000 | output=(0.0,)
+      rule: stage_2_block_2_5 | stage_1_block_2_concept_1 IS high AND stage_1_block_2_concept_3 IS high | weight=0.0000 | output=(0.0,)
+      rule: stage_2_block_2_4 | stage_1_block_2_concept_1 IS low AND stage_1_block_2_concept_2 IS low | weight=0.0000 | output=(0.0,)
+    stage_2/stage_2_block_3 [path]
+      rule: stage_2_block_3_3 | stage_1_block_3_concept_1 IS low AND stage_1_block_3_concept_3 IS low | weight=0.0000 | output=(0.0,)
+      rule: stage_2_block_3_5 | stage_1_block_3_concept_1 IS high AND stage_1_block_3_concept_3 IS high | weight=0.0000 | output=(0.0,)
+      rule: stage_2_block_3_4 | stage_1_block_3_concept_1 IS low AND stage_1_block_3_concept_2 IS low | weight=0.0000 | output=(0.0,)

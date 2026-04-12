@@ -1,0 +1,38 @@
+PROJECT REPORT
+name: california_value_binary_geo-flat_baseline
+task_type: binary_classification
+model_kind: flat_neuro_fuzzy
+dataset_rows: 4096
+dataset_columns: 9
+training_source: bootstrap_plus_finetuning
+train_metrics: {'accuracy': 0.7444037199020386, 'precision': 0.7579564489112222, 'recall': 0.7274919614147904, 'f1': 0.7424118129609434}
+validation_metrics: {'accuracy': 0.7277167439460754, 'precision': 0.7406417112299445, 'recall': 0.687344913151363, 'f1': 0.7129987129982118}
+test_metrics: {'accuracy': 0.7426829268292683, 'precision': 0.739898989898988, 'recall': 0.7306733167082275, 'f1': 0.7352572145540778}
+
+MODEL REPORT
+Input dimension: 8
+
+STAGE 0: flat_stage
+Output dimension: 3
+  BLOCK 0: flat_feature_block
+    Inputs: [0, 1, 2, 3, 4, 5, 6, 7]
+    Outputs: [flat_concept_1, flat_concept_2, flat_concept_3]
+    RULE 0 (flat_feature_block_0): IF Population IS term_1 AND AveOccup IS term_1 THEN flat_concept_1=0.851, flat_concept_2=0.151, flat_concept_3=0.149 [gate=0.841]
+    RULE 1 (flat_feature_block_1): IF MedInc IS term_1 AND Population IS term_1 THEN flat_concept_1=0.135, flat_concept_2=0.136, flat_concept_3=0.865 [gate=0.284]
+    RULE 2 (flat_feature_block_2): IF MedInc IS term_1 AND AveOccup IS term_1 THEN flat_concept_1=0.135, flat_concept_2=0.136, flat_concept_3=0.865 [gate=0.284]
+    RULE 3 (flat_feature_block_3): IF AveRooms IS term_1 AND Population IS term_1 THEN flat_concept_1=0.851, flat_concept_2=0.151, flat_concept_3=0.149 [gate=0.743]
+    RULE 4 (flat_feature_block_4): IF AveRooms IS term_1 AND AveOccup IS term_1 THEN flat_concept_1=0.851, flat_concept_2=0.151, flat_concept_3=0.149 [gate=0.743]
+    RULE 5 (flat_feature_block_5): IF AveBedrms IS term_1 AND Population IS term_1 THEN flat_concept_1=0.151, flat_concept_2=0.852, flat_concept_3=0.148 [gate=0.234]
+    RULE 6 (flat_feature_block_6): IF AveBedrms IS term_1 AND AveOccup IS term_1 THEN flat_concept_1=0.151, flat_concept_2=0.852, flat_concept_3=0.148 [gate=0.234]
+    RULE 7 (flat_feature_block_7): IF HouseAge IS term_1 AND Population IS term_1 THEN flat_concept_1=0.851, flat_concept_2=0.151, flat_concept_3=0.149 [gate=0.632]
+
+DECISION LAYER: flat_decision
+Output dimension: 1
+  RULE 0 (flat_decision_0): IF flat_concept_1 IS high AND flat_concept_3 IS low THEN target = 17.976 - 53.099*flat_concept_1 - 5.216*flat_concept_2 + 78.966*flat_concept_3 [gate=0.814]
+  RULE 1 (flat_decision_1): IF flat_concept_2 IS low AND flat_concept_3 IS low THEN target = 17.984 - 53.094*flat_concept_1 - 5.209*flat_concept_2 + 78.986*flat_concept_3 [gate=0.805]
+  RULE 2 (flat_decision_2): IF flat_concept_1 IS high AND flat_concept_2 IS low THEN target = 17.999 - 53.079*flat_concept_1 - 5.195*flat_concept_2 + 79.001*flat_concept_3 [gate=0.665]
+  RULE 3 (flat_decision_3): IF flat_concept_1 IS low AND flat_concept_3 IS low THEN target = 18.043 - 53.040*flat_concept_1 - 5.152*flat_concept_2 + 79.058*flat_concept_3 [gate=0.279]
+  RULE 4 (flat_decision_4): IF flat_concept_1 IS low AND flat_concept_2 IS low THEN target = 18.166 - 52.923*flat_concept_1 - 5.033*flat_concept_2 + 79.201*flat_concept_3 [gate=0.324]
+  RULE 5 (flat_decision_5): IF flat_concept_1 IS high AND flat_concept_3 IS high THEN target = 18.107 - 52.979*flat_concept_1 - 5.092*flat_concept_2 + 79.136*flat_concept_3 [gate=0.264]
+  RULE 6 (flat_decision_6): IF flat_concept_2 IS low AND flat_concept_3 IS high THEN target = 18.221 - 52.871*flat_concept_1 - 4.980*flat_concept_2 + 79.267*flat_concept_3 [gate=0.296]
+  RULE 7 (flat_decision_7): IF flat_concept_2 IS high AND flat_concept_3 IS low THEN target = 18.000 - 53.074*flat_concept_1 - 5.191*flat_concept_2 + 78.989*flat_concept_3 [gate=0.234]

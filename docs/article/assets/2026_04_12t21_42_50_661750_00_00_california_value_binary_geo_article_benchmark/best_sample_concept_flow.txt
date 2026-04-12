@@ -1,0 +1,20 @@
+SAMPLE 0
+  inputs: (-0.7773, 0.4974, -0.7241, -0.2069, -0.6941, -0.0475, 1.0372, -1.3516)
+  prediction: (-0.7852,)
+  hidden concepts:
+    flat_stage/flat_feature_block/flat_concept_1=0.7017
+      rule: flat_feature_block_0 | Population IS term_1 AND AveOccup IS term_1 | weight=0.4214 | contribution=0.3600
+      rule: flat_feature_block_3 | AveRooms IS term_1 AND Population IS term_1 | weight=0.3679 | contribution=0.3141
+      rule: flat_feature_block_1 | MedInc IS term_1 AND Population IS term_1 | weight=0.1054 | contribution=0.0138
+    flat_stage/flat_feature_block/flat_concept_2=0.2981
+      rule: flat_feature_block_1 | MedInc IS term_1 AND Population IS term_1 | weight=0.1054 | contribution=0.0915
+      rule: flat_feature_block_2 | MedInc IS term_1 AND AveOccup IS term_1 | weight=0.1053 | contribution=0.0915
+      rule: flat_feature_block_0 | Population IS term_1 AND AveOccup IS term_1 | weight=0.4214 | contribution=0.0614
+  bias contribution: (9.097,)
+  decision concept contributions:
+    flat_stage/flat_feature_block/flat_concept_1: value=0.7017, contribution=(-22.0266,)
+    flat_stage/flat_feature_block/flat_concept_2: value=0.2981, contribution=(12.1445,)
+  top decision rules:
+    rule: flat_decision_0 | flat_concept_1 IS high AND flat_concept_2 IS low | weight=0.3906 | contribution=(-0.5034,)
+    rule: flat_decision_2 | flat_concept_1 IS high AND flat_concept_2 IS high | weight=0.1049 | contribution=(-0.1017,)
+    rule: flat_decision_1 | flat_concept_1 IS low AND flat_concept_2 IS low | weight=0.1050 | contribution=(-0.1017,)

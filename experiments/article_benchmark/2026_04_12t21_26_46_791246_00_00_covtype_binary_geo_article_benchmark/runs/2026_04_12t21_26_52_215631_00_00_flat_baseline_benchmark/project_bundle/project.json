@@ -1,0 +1,3492 @@
+{
+  "name": "covtype_binary_geo-flat_baseline",
+  "task_type": "binary_classification",
+  "description": "Binary cartographic classification benchmark derived from the Forest CoverType dataset using the original continuous geo-features and a balanced class-1 vs class-2 subset.",
+  "dataset_config": {
+    "target_column": "CoverTypeBinary",
+    "feature_columns": [
+      "Elevation",
+      "Aspect",
+      "Slope",
+      "Horizontal_Distance_To_Hydrology",
+      "Vertical_Distance_To_Hydrology",
+      "Horizontal_Distance_To_Roadways",
+      "Hillshade_9am",
+      "Hillshade_Noon",
+      "Hillshade_3pm",
+      "Horizontal_Distance_To_Fire_Points"
+    ],
+    "validation_fraction": 0.2,
+    "test_fraction": 0.2,
+    "normalization": "standard",
+    "fill_missing": "median",
+    "random_state": 42
+  },
+  "variables": [
+    {
+      "name": "Elevation",
+      "membership": {
+        "kind": "gaussian",
+        "term_names": [
+          "term_1",
+          "term_2",
+          "term_3"
+        ],
+        "centers": [
+          2184.0,
+          2925.5,
+          3667.0
+        ],
+        "spreads": [
+          741.5,
+          741.5,
+          741.5
+        ],
+        "min_spread": 0.001
+      },
+      "value_range": [
+        2184.0,
+        3667.0
+      ],
+      "data_type": "continuous",
+      "role": "input",
+      "normalization": "standard"
+    },
+    {
+      "name": "Aspect",
+      "membership": {
+        "kind": "gaussian",
+        "term_names": [
+          "term_1",
+          "term_2",
+          "term_3"
+        ],
+        "centers": [
+          0.0,
+          179.5,
+          359.0
+        ],
+        "spreads": [
+          179.5,
+          179.5,
+          179.5
+        ],
+        "min_spread": 0.001
+      },
+      "value_range": [
+        0.0,
+        359.0
+      ],
+      "data_type": "continuous",
+      "role": "input",
+      "normalization": "standard"
+    },
+    {
+      "name": "Slope",
+      "membership": {
+        "kind": "gaussian",
+        "term_names": [
+          "term_1",
+          "term_2",
+          "term_3"
+        ],
+        "centers": [
+          0.0,
+          25.5,
+          51.0
+        ],
+        "spreads": [
+          25.5,
+          25.5,
+          25.5
+        ],
+        "min_spread": 0.001
+      },
+      "value_range": [
+        0.0,
+        51.0
+      ],
+      "data_type": "continuous",
+      "role": "input",
+      "normalization": "standard"
+    },
+    {
+      "name": "Horizontal_Distance_To_Hydrology",
+      "membership": {
+        "kind": "gaussian",
+        "term_names": [
+          "term_1",
+          "term_2",
+          "term_3"
+        ],
+        "centers": [
+          0.0,
+          684.0,
+          1368.0
+        ],
+        "spreads": [
+          684.0,
+          684.0,
+          684.0
+        ],
+        "min_spread": 0.001
+      },
+      "value_range": [
+        0.0,
+        1368.0
+      ],
+      "data_type": "continuous",
+      "role": "input",
+      "normalization": "standard"
+    },
+    {
+      "name": "Vertical_Distance_To_Hydrology",
+      "membership": {
+        "kind": "gaussian",
+        "term_names": [
+          "term_1",
+          "term_2",
+          "term_3"
+        ],
+        "centers": [
+          -153.0,
+          195.0,
+          543.0
+        ],
+        "spreads": [
+          348.0,
+          348.0,
+          348.0
+        ],
+        "min_spread": 0.001
+      },
+      "value_range": [
+        -153.0,
+        543.0
+      ],
+      "data_type": "continuous",
+      "role": "input",
+      "normalization": "standard"
+    },
+    {
+      "name": "Horizontal_Distance_To_Roadways",
+      "membership": {
+        "kind": "gaussian",
+        "term_names": [
+          "term_1",
+          "term_2",
+          "term_3"
+        ],
+        "centers": [
+          30.0,
+          3482.5,
+          6935.0
+        ],
+        "spreads": [
+          3452.5,
+          3452.5,
+          3452.5
+        ],
+        "min_spread": 0.001
+      },
+      "value_range": [
+        30.0,
+        6935.0
+      ],
+      "data_type": "continuous",
+      "role": "input",
+      "normalization": "standard"
+    },
+    {
+      "name": "Hillshade_9am",
+      "membership": {
+        "kind": "gaussian",
+        "term_names": [
+          "term_1",
+          "term_2",
+          "term_3"
+        ],
+        "centers": [
+          56.0,
+          155.0,
+          254.0
+        ],
+        "spreads": [
+          99.0,
+          99.0,
+          99.0
+        ],
+        "min_spread": 0.001
+      },
+      "value_range": [
+        56.0,
+        254.0
+      ],
+      "data_type": "continuous",
+      "role": "input",
+      "normalization": "standard"
+    },
+    {
+      "name": "Hillshade_Noon",
+      "membership": {
+        "kind": "gaussian",
+        "term_names": [
+          "term_1",
+          "term_2",
+          "term_3"
+        ],
+        "centers": [
+          100.0,
+          177.0,
+          254.0
+        ],
+        "spreads": [
+          77.0,
+          77.0,
+          77.0
+        ],
+        "min_spread": 0.001
+      },
+      "value_range": [
+        100.0,
+        254.0
+      ],
+      "data_type": "continuous",
+      "role": "input",
+      "normalization": "standard"
+    },
+    {
+      "name": "Hillshade_3pm",
+      "membership": {
+        "kind": "gaussian",
+        "term_names": [
+          "term_1",
+          "term_2",
+          "term_3"
+        ],
+        "centers": [
+          0.0,
+          123.0,
+          246.0
+        ],
+        "spreads": [
+          123.0,
+          123.0,
+          123.0
+        ],
+        "min_spread": 0.001
+      },
+      "value_range": [
+        0.0,
+        246.0
+      ],
+      "data_type": "continuous",
+      "role": "input",
+      "normalization": "standard"
+    },
+    {
+      "name": "Horizontal_Distance_To_Fire_Points",
+      "membership": {
+        "kind": "gaussian",
+        "term_names": [
+          "term_1",
+          "term_2",
+          "term_3"
+        ],
+        "centers": [
+          30.0,
+          3555.0,
+          7080.0
+        ],
+        "spreads": [
+          3525.0,
+          3525.0,
+          3525.0
+        ],
+        "min_spread": 0.001
+      },
+      "value_range": [
+        30.0,
+        7080.0
+      ],
+      "data_type": "continuous",
+      "role": "input",
+      "normalization": "standard"
+    }
+  ],
+  "model_kind": "flat_neuro_fuzzy",
+  "model_spec": {
+    "kind": "flat_neuro_fuzzy",
+    "input_dim": 10,
+    "feature_block": {
+      "name": "flat_feature_block",
+      "input_indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "variables": [
+        {
+          "name": "Elevation",
+          "membership": {
+            "kind": "gaussian",
+            "term_names": [
+              "term_1",
+              "term_2",
+              "term_3"
+            ],
+            "centers": [
+              2184.0,
+              2925.5,
+              3667.0
+            ],
+            "spreads": [
+              741.5,
+              741.5,
+              741.5
+            ],
+            "min_spread": 0.001
+          },
+          "value_range": [
+            2184.0,
+            3667.0
+          ],
+          "data_type": "continuous",
+          "role": "input",
+          "normalization": "standard"
+        },
+        {
+          "name": "Aspect",
+          "membership": {
+            "kind": "gaussian",
+            "term_names": [
+              "term_1",
+              "term_2",
+              "term_3"
+            ],
+            "centers": [
+              0.0,
+              179.5,
+              359.0
+            ],
+            "spreads": [
+              179.5,
+              179.5,
+              179.5
+            ],
+            "min_spread": 0.001
+          },
+          "value_range": [
+            0.0,
+            359.0
+          ],
+          "data_type": "continuous",
+          "role": "input",
+          "normalization": "standard"
+        },
+        {
+          "name": "Slope",
+          "membership": {
+            "kind": "gaussian",
+            "term_names": [
+              "term_1",
+              "term_2",
+              "term_3"
+            ],
+            "centers": [
+              0.0,
+              25.5,
+              51.0
+            ],
+            "spreads": [
+              25.5,
+              25.5,
+              25.5
+            ],
+            "min_spread": 0.001
+          },
+          "value_range": [
+            0.0,
+            51.0
+          ],
+          "data_type": "continuous",
+          "role": "input",
+          "normalization": "standard"
+        },
+        {
+          "name": "Horizontal_Distance_To_Hydrology",
+          "membership": {
+            "kind": "gaussian",
+            "term_names": [
+              "term_1",
+              "term_2",
+              "term_3"
+            ],
+            "centers": [
+              0.0,
+              684.0,
+              1368.0
+            ],
+            "spreads": [
+              684.0,
+              684.0,
+              684.0
+            ],
+            "min_spread": 0.001
+          },
+          "value_range": [
+            0.0,
+            1368.0
+          ],
+          "data_type": "continuous",
+          "role": "input",
+          "normalization": "standard"
+        },
+        {
+          "name": "Vertical_Distance_To_Hydrology",
+          "membership": {
+            "kind": "gaussian",
+            "term_names": [
+              "term_1",
+              "term_2",
+              "term_3"
+            ],
+            "centers": [
+              -153.0,
+              195.0,
+              543.0
+            ],
+            "spreads": [
+              348.0,
+              348.0,
+              348.0
+            ],
+            "min_spread": 0.001
+          },
+          "value_range": [
+            -153.0,
+            543.0
+          ],
+          "data_type": "continuous",
+          "role": "input",
+          "normalization": "standard"
+        },
+        {
+          "name": "Horizontal_Distance_To_Roadways",
+          "membership": {
+            "kind": "gaussian",
+            "term_names": [
+              "term_1",
+              "term_2",
+              "term_3"
+            ],
+            "centers": [
+              30.0,
+              3482.5,
+              6935.0
+            ],
+            "spreads": [
+              3452.5,
+              3452.5,
+              3452.5
+            ],
+            "min_spread": 0.001
+          },
+          "value_range": [
+            30.0,
+            6935.0
+          ],
+          "data_type": "continuous",
+          "role": "input",
+          "normalization": "standard"
+        },
+        {
+          "name": "Hillshade_9am",
+          "membership": {
+            "kind": "gaussian",
+            "term_names": [
+              "term_1",
+              "term_2",
+              "term_3"
+            ],
+            "centers": [
+              56.0,
+              155.0,
+              254.0
+            ],
+            "spreads": [
+              99.0,
+              99.0,
+              99.0
+            ],
+            "min_spread": 0.001
+          },
+          "value_range": [
+            56.0,
+            254.0
+          ],
+          "data_type": "continuous",
+          "role": "input",
+          "normalization": "standard"
+        },
+        {
+          "name": "Hillshade_Noon",
+          "membership": {
+            "kind": "gaussian",
+            "term_names": [
+              "term_1",
+              "term_2",
+              "term_3"
+            ],
+            "centers": [
+              100.0,
+              177.0,
+              254.0
+            ],
+            "spreads": [
+              77.0,
+              77.0,
+              77.0
+            ],
+            "min_spread": 0.001
+          },
+          "value_range": [
+            100.0,
+            254.0
+          ],
+          "data_type": "continuous",
+          "role": "input",
+          "normalization": "standard"
+        },
+        {
+          "name": "Hillshade_3pm",
+          "membership": {
+            "kind": "gaussian",
+            "term_names": [
+              "term_1",
+              "term_2",
+              "term_3"
+            ],
+            "centers": [
+              0.0,
+              123.0,
+              246.0
+            ],
+            "spreads": [
+              123.0,
+              123.0,
+              123.0
+            ],
+            "min_spread": 0.001
+          },
+          "value_range": [
+            0.0,
+            246.0
+          ],
+          "data_type": "continuous",
+          "role": "input",
+          "normalization": "standard"
+        },
+        {
+          "name": "Horizontal_Distance_To_Fire_Points",
+          "membership": {
+            "kind": "gaussian",
+            "term_names": [
+              "term_1",
+              "term_2",
+              "term_3"
+            ],
+            "centers": [
+              30.0,
+              3555.0,
+              7080.0
+            ],
+            "spreads": [
+              3525.0,
+              3525.0,
+              3525.0
+            ],
+            "min_spread": 0.001
+          },
+          "value_range": [
+            30.0,
+            7080.0
+          ],
+          "data_type": "continuous",
+          "role": "input",
+          "normalization": "standard"
+        }
+      ],
+      "n_concepts": 3,
+      "concept_names": [
+        "flat_concept_1",
+        "flat_concept_2",
+        "flat_concept_3"
+      ],
+      "max_rule_arity": 2,
+      "max_rules": 8,
+      "gate_init": 0.0,
+      "rule_base": null,
+      "rule_generation_mode": "prototype",
+      "prototype_term_limit": 2,
+      "prototype_variable_pool_size": null,
+      "prototype_sample_size": 256
+    },
+    "decision_layer": {
+      "name": "flat_decision",
+      "variables": [
+        {
+          "name": "flat_concept_1",
+          "membership": {
+            "kind": "gaussian",
+            "term_names": [
+              "low",
+              "high"
+            ],
+            "centers": [
+              0.25,
+              0.75
+            ],
+            "spreads": [
+              0.2,
+              0.2
+            ],
+            "min_spread": 0.001
+          },
+          "value_range": [
+            0.0,
+            1.0
+          ],
+          "data_type": "continuous",
+          "role": "hidden_concept",
+          "normalization": "none"
+        },
+        {
+          "name": "flat_concept_2",
+          "membership": {
+            "kind": "gaussian",
+            "term_names": [
+              "low",
+              "high"
+            ],
+            "centers": [
+              0.25,
+              0.75
+            ],
+            "spreads": [
+              0.2,
+              0.2
+            ],
+            "min_spread": 0.001
+          },
+          "value_range": [
+            0.0,
+            1.0
+          ],
+          "data_type": "continuous",
+          "role": "hidden_concept",
+          "normalization": "none"
+        },
+        {
+          "name": "flat_concept_3",
+          "membership": {
+            "kind": "gaussian",
+            "term_names": [
+              "low",
+              "high"
+            ],
+            "centers": [
+              0.25,
+              0.75
+            ],
+            "spreads": [
+              0.2,
+              0.2
+            ],
+            "min_spread": 0.001
+          },
+          "value_range": [
+            0.0,
+            1.0
+          ],
+          "data_type": "continuous",
+          "role": "hidden_concept",
+          "normalization": "none"
+        }
+      ],
+      "output_dim": 1,
+      "output_names": [
+        "target"
+      ],
+      "max_rule_arity": 2,
+      "max_rules": 8,
+      "gate_init": 0.0,
+      "rule_base": null,
+      "rule_generation_mode": "prototype",
+      "prototype_term_limit": 2,
+      "prototype_variable_pool_size": null,
+      "prototype_sample_size": 256
+    },
+    "stage_name": "flat_stage"
+  },
+  "training_config": {
+    "task_type": "binary_classification",
+    "use_bootstrap_initialization": true,
+    "use_stagewise_pretraining": false,
+    "bootstrap": {
+      "hidden_high": 0.85,
+      "hidden_low": 0.15,
+      "gate_floor": 0.25,
+      "gate_ceiling": 0.85,
+      "decision_binary_target_clip": 0.05
+    },
+    "stagewise": {
+      "epochs_per_stage": 20,
+      "decision_epochs": 15,
+      "refinement_rounds": 1,
+      "learning_rate": 0.02,
+      "batch_size": 64,
+      "shuffle": true,
+      "rule_sparsity_weight": 0.0,
+      "concept_orthogonality_weight": 0.0,
+      "concept_binarization_weight": 0.0,
+      "membership_order_weight": 0.0,
+      "membership_min_gap": 0.0,
+      "membership_overlap_weight": 0.0,
+      "membership_max_overlap": 0.35,
+      "membership_coverage_weight": 0.0,
+      "membership_min_coverage": 0.6,
+      "classification_target_clip": 0.05
+    },
+    "fine_tuning": {
+      "max_epochs": 30,
+      "learning_rate": 0.001,
+      "batch_size": 32,
+      "patience": 10,
+      "min_delta": 0.0,
+      "weight_decay": 0.0,
+      "gradient_clip_norm": null,
+      "shuffle": true,
+      "device": null,
+      "classification_threshold": 0.5,
+      "rule_sparsity_weight": 0.0,
+      "rule_length_weight": 0.0,
+      "concept_orthogonality_weight": 0.0,
+      "concept_binarization_weight": 0.0,
+      "membership_order_weight": 0.0,
+      "membership_min_gap": 0.0,
+      "membership_overlap_weight": 0.0,
+      "membership_max_overlap": 0.35,
+      "membership_coverage_weight": 0.0,
+      "membership_min_coverage": 0.6,
+      "prune_after_fit": false,
+      "prune_threshold": 0.1,
+      "prune_temperature": 0.05,
+      "prune_keep_at_least": 1
+    },
+    "refinement": {
+      "cycles": 1,
+      "patience": null,
+      "min_delta": 0.0
+    }
+  },
+  "training_summary": {
+    "source": "bootstrap_plus_finetuning",
+    "epochs_ran": 14,
+    "best_epoch": 4,
+    "monitor_name": "validation_loss",
+    "best_monitor_value": 0.6932544708251953,
+    "train_loss": 0.6930935382843018,
+    "train_metrics": {
+      "accuracy": 0.5052777528762817,
+      "precision": 0.5052777777777776,
+      "recall": 0.9999999999999994,
+      "f1": 0.6713415759360732
+    },
+    "validation_loss": 0.6932544708251953,
+    "validation_metrics": {
+      "accuracy": 0.4958333373069763,
+      "precision": 0.49583333333333296,
+      "recall": 0.9999999999999983,
+      "f1": 0.6629526462391103
+    },
+    "history": [
+      {
+        "epoch": 1,
+        "train_loss": 0.6931547564930386,
+        "train_metrics": {
+          "accuracy": 0.5052777528762817,
+          "precision": 0.5052777777777776,
+          "recall": 0.9999999999999994,
+          "f1": 0.6713415759360732
+        },
+        "validation_loss": 0.6933071613311768,
+        "validation_metrics": {
+          "accuracy": 0.4958333373069763,
+          "precision": 0.49583333333333296,
+          "recall": 0.9999999999999983,
+          "f1": 0.6629526462391103
+        }
+      },
+      {
+        "epoch": 2,
+        "train_loss": 0.693146120177375,
+        "train_metrics": {
+          "accuracy": 0.5052777528762817,
+          "precision": 0.5052777777777776,
+          "recall": 0.9999999999999994,
+          "f1": 0.6713415759360732
+        },
+        "validation_loss": 0.6933074593544006,
+        "validation_metrics": {
+          "accuracy": 0.4958333373069763,
+          "precision": 0.49583333333333296,
+          "recall": 0.9999999999999983,
+          "f1": 0.6629526462391103
+        }
+      },
+      {
+        "epoch": 3,
+        "train_loss": 0.6931844684812758,
+        "train_metrics": {
+          "accuracy": 0.5052777528762817,
+          "precision": 0.5052777777777776,
+          "recall": 0.9999999999999994,
+          "f1": 0.6713415759360732
+        },
+        "validation_loss": 0.6932880282402039,
+        "validation_metrics": {
+          "accuracy": 0.4958333373069763,
+          "precision": 0.49583333333333296,
+          "recall": 0.9999999999999983,
+          "f1": 0.6629526462391103
+        }
+      },
+      {
+        "epoch": 4,
+        "train_loss": 0.6931863358285693,
+        "train_metrics": {
+          "accuracy": 0.5052777528762817,
+          "precision": 0.5052777777777776,
+          "recall": 0.9999999999999994,
+          "f1": 0.6713415759360732
+        },
+        "validation_loss": 0.6932544708251953,
+        "validation_metrics": {
+          "accuracy": 0.4958333373069763,
+          "precision": 0.49583333333333296,
+          "recall": 0.9999999999999983,
+          "f1": 0.6629526462391103
+        }
+      },
+      {
+        "epoch": 5,
+        "train_loss": 0.6931934505038791,
+        "train_metrics": {
+          "accuracy": 0.5052777528762817,
+          "precision": 0.5052777777777776,
+          "recall": 0.9999999999999994,
+          "f1": 0.6713415759360732
+        },
+        "validation_loss": 0.6932663321495056,
+        "validation_metrics": {
+          "accuracy": 0.4958333373069763,
+          "precision": 0.49583333333333296,
+          "recall": 0.9999999999999983,
+          "f1": 0.6629526462391103
+        }
+      },
+      {
+        "epoch": 6,
+        "train_loss": 0.6931959954897563,
+        "train_metrics": {
+          "accuracy": 0.5052777528762817,
+          "precision": 0.5052777777777776,
+          "recall": 0.9999999999999994,
+          "f1": 0.6713415759360732
+        },
+        "validation_loss": 0.6932912468910217,
+        "validation_metrics": {
+          "accuracy": 0.4958333373069763,
+          "precision": 0.49583333333333296,
+          "recall": 0.9999999999999983,
+          "f1": 0.6629526462391103
+        }
+      },
+      {
+        "epoch": 7,
+        "train_loss": 0.6931546052296956,
+        "train_metrics": {
+          "accuracy": 0.5052777528762817,
+          "precision": 0.5052777777777776,
+          "recall": 0.9999999999999994,
+          "f1": 0.6713415759360732
+        },
+        "validation_loss": 0.6932792067527771,
+        "validation_metrics": {
+          "accuracy": 0.4958333373069763,
+          "precision": 0.49583333333333296,
+          "recall": 0.9999999999999983,
+          "f1": 0.6629526462391103
+        }
+      },
+      {
+        "epoch": 8,
+        "train_loss": 0.6931844634479947,
+        "train_metrics": {
+          "accuracy": 0.5052777528762817,
+          "precision": 0.5052777777777776,
+          "recall": 0.9999999999999994,
+          "f1": 0.6713415759360732
+        },
+        "validation_loss": 0.6932627558708191,
+        "validation_metrics": {
+          "accuracy": 0.4958333373069763,
+          "precision": 0.49583333333333296,
+          "recall": 0.9999999999999983,
+          "f1": 0.6629526462391103
+        }
+      },
+      {
+        "epoch": 9,
+        "train_loss": 0.6931871642006768,
+        "train_metrics": {
+          "accuracy": 0.5052777528762817,
+          "precision": 0.5052777777777776,
+          "recall": 0.9999999999999994,
+          "f1": 0.6713415759360732
+        },
+        "validation_loss": 0.693289041519165,
+        "validation_metrics": {
+          "accuracy": 0.4958333373069763,
+          "precision": 0.49583333333333296,
+          "recall": 0.9999999999999983,
+          "f1": 0.6629526462391103
+        }
+      },
+      {
+        "epoch": 10,
+        "train_loss": 0.6931775734159682,
+        "train_metrics": {
+          "accuracy": 0.5052777528762817,
+          "precision": 0.5052777777777776,
+          "recall": 0.9999999999999994,
+          "f1": 0.6713415759360732
+        },
+        "validation_loss": 0.693310558795929,
+        "validation_metrics": {
+          "accuracy": 0.4958333373069763,
+          "precision": 0.49583333333333296,
+          "recall": 0.9999999999999983,
+          "f1": 0.6629526462391103
+        }
+      },
+      {
+        "epoch": 11,
+        "train_loss": 0.6931435659196642,
+        "train_metrics": {
+          "accuracy": 0.5052777528762817,
+          "precision": 0.5052777777777776,
+          "recall": 0.9999999999999994,
+          "f1": 0.6713415759360732
+        },
+        "validation_loss": 0.693282425403595,
+        "validation_metrics": {
+          "accuracy": 0.4958333373069763,
+          "precision": 0.49583333333333296,
+          "recall": 0.9999999999999983,
+          "f1": 0.6629526462391103
+        }
+      },
+      {
+        "epoch": 12,
+        "train_loss": 0.6931345518430074,
+        "train_metrics": {
+          "accuracy": 0.5052777528762817,
+          "precision": 0.5052777777777776,
+          "recall": 0.9999999999999994,
+          "f1": 0.6713415759360732
+        },
+        "validation_loss": 0.6933224201202393,
+        "validation_metrics": {
+          "accuracy": 0.4958333373069763,
+          "precision": 0.49583333333333296,
+          "recall": 0.9999999999999983,
+          "f1": 0.6629526462391103
+        }
+      },
+      {
+        "epoch": 13,
+        "train_loss": 0.6931654175122579,
+        "train_metrics": {
+          "accuracy": 0.5052777528762817,
+          "precision": 0.5052777777777776,
+          "recall": 0.9999999999999994,
+          "f1": 0.6713415759360732
+        },
+        "validation_loss": 0.6933274269104004,
+        "validation_metrics": {
+          "accuracy": 0.4958333373069763,
+          "precision": 0.49583333333333296,
+          "recall": 0.9999999999999983,
+          "f1": 0.6629526462391103
+        }
+      },
+      {
+        "epoch": 14,
+        "train_loss": 0.693165160285102,
+        "train_metrics": {
+          "accuracy": 0.5052777528762817,
+          "precision": 0.5052777777777776,
+          "recall": 0.9999999999999994,
+          "f1": 0.6713415759360732
+        },
+        "validation_loss": 0.6933141946792603,
+        "validation_metrics": {
+          "accuracy": 0.4958333373069763,
+          "precision": 0.49583333333333296,
+          "recall": 0.9999999999999983,
+          "f1": 0.6629526462391103
+        }
+      }
+    ],
+    "refinement_cycles": []
+  },
+  "preprocessing": {
+    "mode": "standard",
+    "feature_columns": [
+      "Elevation",
+      "Aspect",
+      "Slope",
+      "Horizontal_Distance_To_Hydrology",
+      "Vertical_Distance_To_Hydrology",
+      "Horizontal_Distance_To_Roadways",
+      "Hillshade_9am",
+      "Hillshade_Noon",
+      "Hillshade_3pm",
+      "Horizontal_Distance_To_Fire_Points"
+    ],
+    "center": [
+      3023.7683333333334,
+      154.40527777777777,
+      13.355555555555556,
+      274.24888888888887,
+      43.3325,
+      2522.0925,
+      213.3177777777778,
+      224.5225,
+      143.04638888888888,
+      2082.3930555555557
+    ],
+    "scale": [
+      201.0457167398608,
+      111.5660388635387,
+      6.938357332188627,
+      213.88332553803752,
+      56.00335554802835,
+      1536.9149181429714,
+      24.908646770762505,
+      18.19890242035371,
+      35.79094102118717,
+      1325.6145472977175
+    ],
+    "minimum": null,
+    "maximum": null
+  },
+  "test_metrics": {
+    "accuracy": 0.48833333333333334,
+    "precision": 0.48833333333333295,
+    "recall": 0.9999999999999982,
+    "f1": 0.6562150055986625
+  },
+  "dataset_source_path": null,
+  "notes": {
+    "experiment_history": [
+      {
+        "timestamp_utc": "2026-04-12T21:26:52.215596+00:00",
+        "model_kind": "flat_neuro_fuzzy",
+        "training_source": "bootstrap_plus_finetuning",
+        "epochs_ran": 14,
+        "best_epoch": 4,
+        "train_metrics": {
+          "accuracy": 0.5052777528762817,
+          "precision": 0.5052777777777776,
+          "recall": 0.9999999999999994,
+          "f1": 0.6713415759360732
+        },
+        "validation_metrics": {
+          "accuracy": 0.4958333373069763,
+          "precision": 0.49583333333333296,
+          "recall": 0.9999999999999983,
+          "f1": 0.6629526462391103
+        },
+        "test_metrics": {
+          "accuracy": 0.48833333333333334,
+          "precision": 0.48833333333333295,
+          "recall": 0.9999999999999982,
+          "f1": 0.6562150055986625
+        },
+        "manual_rule_targets": 0,
+        "feature_names": [
+          "Elevation",
+          "Aspect",
+          "Slope",
+          "Horizontal_Distance_To_Hydrology",
+          "Vertical_Distance_To_Hydrology",
+          "Horizontal_Distance_To_Roadways",
+          "Hillshade_9am",
+          "Hillshade_Noon",
+          "Hillshade_3pm",
+          "Horizontal_Distance_To_Fire_Points"
+        ]
+      }
+    ],
+    "study_run_history": [
+      {
+        "timestamp_utc": "2026-04-12T21:26:52.215631+00:00",
+        "pipeline_name": "flat_baseline_benchmark",
+        "pipeline_label": "Flat Baseline Benchmark",
+        "workspace_template": "flat_baseline",
+        "training_preset": "balanced",
+        "training_preset_override": null,
+        "training_source": "bootstrap_plus_finetuning",
+        "epochs_ran": 14,
+        "train_metrics": {
+          "accuracy": 0.5052777528762817,
+          "precision": 0.5052777777777776,
+          "recall": 0.9999999999999994,
+          "f1": 0.6713415759360732
+        },
+        "validation_metrics": {
+          "accuracy": 0.4958333373069763,
+          "precision": 0.49583333333333296,
+          "recall": 0.9999999999999983,
+          "f1": 0.6629526462391103
+        },
+        "test_metrics": {
+          "accuracy": 0.48833333333333334,
+          "precision": 0.48833333333333295,
+          "recall": 0.9999999999999982,
+          "f1": 0.6562150055986625
+        },
+        "training_config": {
+          "task_type": "binary_classification",
+          "use_bootstrap_initialization": true,
+          "use_stagewise_pretraining": false,
+          "bootstrap": {
+            "hidden_high": 0.85,
+            "hidden_low": 0.15,
+            "gate_floor": 0.25,
+            "gate_ceiling": 0.85,
+            "decision_binary_target_clip": 0.05
+          },
+          "stagewise": {
+            "epochs_per_stage": 20,
+            "decision_epochs": 15,
+            "refinement_rounds": 1,
+            "learning_rate": 0.02,
+            "batch_size": 64,
+            "shuffle": true,
+            "rule_sparsity_weight": 0.0,
+            "concept_orthogonality_weight": 0.0,
+            "concept_binarization_weight": 0.0,
+            "membership_order_weight": 0.0,
+            "membership_min_gap": 0.0,
+            "membership_overlap_weight": 0.0,
+            "membership_max_overlap": 0.35,
+            "membership_coverage_weight": 0.0,
+            "membership_min_coverage": 0.6,
+            "classification_target_clip": 0.05
+          },
+          "fine_tuning": {
+            "max_epochs": 30,
+            "learning_rate": 0.001,
+            "batch_size": 32,
+            "patience": 10,
+            "min_delta": 0.0,
+            "weight_decay": 0.0,
+            "gradient_clip_norm": null,
+            "shuffle": true,
+            "device": null,
+            "classification_threshold": 0.5,
+            "rule_sparsity_weight": 0.0,
+            "rule_length_weight": 0.0,
+            "concept_orthogonality_weight": 0.0,
+            "concept_binarization_weight": 0.0,
+            "membership_order_weight": 0.0,
+            "membership_min_gap": 0.0,
+            "membership_overlap_weight": 0.0,
+            "membership_max_overlap": 0.35,
+            "membership_coverage_weight": 0.0,
+            "membership_min_coverage": 0.6,
+            "prune_after_fit": false,
+            "prune_threshold": 0.1,
+            "prune_temperature": 0.05,
+            "prune_keep_at_least": 1
+          },
+          "refinement": {
+            "cycles": 1,
+            "patience": null,
+            "min_delta": 0.0
+          }
+        },
+        "project_manifest": {
+          "name": "covtype_binary_geo-flat_baseline",
+          "task_type": "binary_classification",
+          "description": "Binary cartographic classification benchmark derived from the Forest CoverType dataset using the original continuous geo-features and a balanced class-1 vs class-2 subset.",
+          "dataset_config": {
+            "target_column": "CoverTypeBinary",
+            "feature_columns": [
+              "Elevation",
+              "Aspect",
+              "Slope",
+              "Horizontal_Distance_To_Hydrology",
+              "Vertical_Distance_To_Hydrology",
+              "Horizontal_Distance_To_Roadways",
+              "Hillshade_9am",
+              "Hillshade_Noon",
+              "Hillshade_3pm",
+              "Horizontal_Distance_To_Fire_Points"
+            ],
+            "validation_fraction": 0.2,
+            "test_fraction": 0.2,
+            "normalization": "standard",
+            "fill_missing": "median",
+            "random_state": 42
+          },
+          "variables": [
+            {
+              "name": "Elevation",
+              "membership": {
+                "kind": "gaussian",
+                "term_names": [
+                  "term_1",
+                  "term_2",
+                  "term_3"
+                ],
+                "centers": [
+                  2184.0,
+                  2925.5,
+                  3667.0
+                ],
+                "spreads": [
+                  741.5,
+                  741.5,
+                  741.5
+                ],
+                "min_spread": 0.001
+              },
+              "value_range": [
+                2184.0,
+                3667.0
+              ],
+              "data_type": "continuous",
+              "role": "input",
+              "normalization": "standard"
+            },
+            {
+              "name": "Aspect",
+              "membership": {
+                "kind": "gaussian",
+                "term_names": [
+                  "term_1",
+                  "term_2",
+                  "term_3"
+                ],
+                "centers": [
+                  0.0,
+                  179.5,
+                  359.0
+                ],
+                "spreads": [
+                  179.5,
+                  179.5,
+                  179.5
+                ],
+                "min_spread": 0.001
+              },
+              "value_range": [
+                0.0,
+                359.0
+              ],
+              "data_type": "continuous",
+              "role": "input",
+              "normalization": "standard"
+            },
+            {
+              "name": "Slope",
+              "membership": {
+                "kind": "gaussian",
+                "term_names": [
+                  "term_1",
+                  "term_2",
+                  "term_3"
+                ],
+                "centers": [
+                  0.0,
+                  25.5,
+                  51.0
+                ],
+                "spreads": [
+                  25.5,
+                  25.5,
+                  25.5
+                ],
+                "min_spread": 0.001
+              },
+              "value_range": [
+                0.0,
+                51.0
+              ],
+              "data_type": "continuous",
+              "role": "input",
+              "normalization": "standard"
+            },
+            {
+              "name": "Horizontal_Distance_To_Hydrology",
+              "membership": {
+                "kind": "gaussian",
+                "term_names": [
+                  "term_1",
+                  "term_2",
+                  "term_3"
+                ],
+                "centers": [
+                  0.0,
+                  684.0,
+                  1368.0
+                ],
+                "spreads": [
+                  684.0,
+                  684.0,
+                  684.0
+                ],
+                "min_spread": 0.001
+              },
+              "value_range": [
+                0.0,
+                1368.0
+              ],
+              "data_type": "continuous",
+              "role": "input",
+              "normalization": "standard"
+            },
+            {
+              "name": "Vertical_Distance_To_Hydrology",
+              "membership": {
+                "kind": "gaussian",
+                "term_names": [
+                  "term_1",
+                  "term_2",
+                  "term_3"
+                ],
+                "centers": [
+                  -153.0,
+                  195.0,
+                  543.0
+                ],
+                "spreads": [
+                  348.0,
+                  348.0,
+                  348.0
+                ],
+                "min_spread": 0.001
+              },
+              "value_range": [
+                -153.0,
+                543.0
+              ],
+              "data_type": "continuous",
+              "role": "input",
+              "normalization": "standard"
+            },
+            {
+              "name": "Horizontal_Distance_To_Roadways",
+              "membership": {
+                "kind": "gaussian",
+                "term_names": [
+                  "term_1",
+                  "term_2",
+                  "term_3"
+                ],
+                "centers": [
+                  30.0,
+                  3482.5,
+                  6935.0
+                ],
+                "spreads": [
+                  3452.5,
+                  3452.5,
+                  3452.5
+                ],
+                "min_spread": 0.001
+              },
+              "value_range": [
+                30.0,
+                6935.0
+              ],
+              "data_type": "continuous",
+              "role": "input",
+              "normalization": "standard"
+            },
+            {
+              "name": "Hillshade_9am",
+              "membership": {
+                "kind": "gaussian",
+                "term_names": [
+                  "term_1",
+                  "term_2",
+                  "term_3"
+                ],
+                "centers": [
+                  56.0,
+                  155.0,
+                  254.0
+                ],
+                "spreads": [
+                  99.0,
+                  99.0,
+                  99.0
+                ],
+                "min_spread": 0.001
+              },
+              "value_range": [
+                56.0,
+                254.0
+              ],
+              "data_type": "continuous",
+              "role": "input",
+              "normalization": "standard"
+            },
+            {
+              "name": "Hillshade_Noon",
+              "membership": {
+                "kind": "gaussian",
+                "term_names": [
+                  "term_1",
+                  "term_2",
+                  "term_3"
+                ],
+                "centers": [
+                  100.0,
+                  177.0,
+                  254.0
+                ],
+                "spreads": [
+                  77.0,
+                  77.0,
+                  77.0
+                ],
+                "min_spread": 0.001
+              },
+              "value_range": [
+                100.0,
+                254.0
+              ],
+              "data_type": "continuous",
+              "role": "input",
+              "normalization": "standard"
+            },
+            {
+              "name": "Hillshade_3pm",
+              "membership": {
+                "kind": "gaussian",
+                "term_names": [
+                  "term_1",
+                  "term_2",
+                  "term_3"
+                ],
+                "centers": [
+                  0.0,
+                  123.0,
+                  246.0
+                ],
+                "spreads": [
+                  123.0,
+                  123.0,
+                  123.0
+                ],
+                "min_spread": 0.001
+              },
+              "value_range": [
+                0.0,
+                246.0
+              ],
+              "data_type": "continuous",
+              "role": "input",
+              "normalization": "standard"
+            },
+            {
+              "name": "Horizontal_Distance_To_Fire_Points",
+              "membership": {
+                "kind": "gaussian",
+                "term_names": [
+                  "term_1",
+                  "term_2",
+                  "term_3"
+                ],
+                "centers": [
+                  30.0,
+                  3555.0,
+                  7080.0
+                ],
+                "spreads": [
+                  3525.0,
+                  3525.0,
+                  3525.0
+                ],
+                "min_spread": 0.001
+              },
+              "value_range": [
+                30.0,
+                7080.0
+              ],
+              "data_type": "continuous",
+              "role": "input",
+              "normalization": "standard"
+            }
+          ],
+          "model_kind": "flat_neuro_fuzzy",
+          "model_spec": {
+            "kind": "flat_neuro_fuzzy",
+            "input_dim": 10,
+            "feature_block": {
+              "name": "flat_feature_block",
+              "input_indices": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+              ],
+              "variables": [
+                {
+                  "name": "Elevation",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "term_1",
+                      "term_2",
+                      "term_3"
+                    ],
+                    "centers": [
+                      2184.0,
+                      2925.5,
+                      3667.0
+                    ],
+                    "spreads": [
+                      741.5,
+                      741.5,
+                      741.5
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    2184.0,
+                    3667.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "input",
+                  "normalization": "standard"
+                },
+                {
+                  "name": "Aspect",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "term_1",
+                      "term_2",
+                      "term_3"
+                    ],
+                    "centers": [
+                      0.0,
+                      179.5,
+                      359.0
+                    ],
+                    "spreads": [
+                      179.5,
+                      179.5,
+                      179.5
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    359.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "input",
+                  "normalization": "standard"
+                },
+                {
+                  "name": "Slope",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "term_1",
+                      "term_2",
+                      "term_3"
+                    ],
+                    "centers": [
+                      0.0,
+                      25.5,
+                      51.0
+                    ],
+                    "spreads": [
+                      25.5,
+                      25.5,
+                      25.5
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    51.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "input",
+                  "normalization": "standard"
+                },
+                {
+                  "name": "Horizontal_Distance_To_Hydrology",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "term_1",
+                      "term_2",
+                      "term_3"
+                    ],
+                    "centers": [
+                      0.0,
+                      684.0,
+                      1368.0
+                    ],
+                    "spreads": [
+                      684.0,
+                      684.0,
+                      684.0
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    1368.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "input",
+                  "normalization": "standard"
+                },
+                {
+                  "name": "Vertical_Distance_To_Hydrology",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "term_1",
+                      "term_2",
+                      "term_3"
+                    ],
+                    "centers": [
+                      -153.0,
+                      195.0,
+                      543.0
+                    ],
+                    "spreads": [
+                      348.0,
+                      348.0,
+                      348.0
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    -153.0,
+                    543.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "input",
+                  "normalization": "standard"
+                },
+                {
+                  "name": "Horizontal_Distance_To_Roadways",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "term_1",
+                      "term_2",
+                      "term_3"
+                    ],
+                    "centers": [
+                      30.0,
+                      3482.5,
+                      6935.0
+                    ],
+                    "spreads": [
+                      3452.5,
+                      3452.5,
+                      3452.5
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    30.0,
+                    6935.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "input",
+                  "normalization": "standard"
+                },
+                {
+                  "name": "Hillshade_9am",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "term_1",
+                      "term_2",
+                      "term_3"
+                    ],
+                    "centers": [
+                      56.0,
+                      155.0,
+                      254.0
+                    ],
+                    "spreads": [
+                      99.0,
+                      99.0,
+                      99.0
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    56.0,
+                    254.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "input",
+                  "normalization": "standard"
+                },
+                {
+                  "name": "Hillshade_Noon",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "term_1",
+                      "term_2",
+                      "term_3"
+                    ],
+                    "centers": [
+                      100.0,
+                      177.0,
+                      254.0
+                    ],
+                    "spreads": [
+                      77.0,
+                      77.0,
+                      77.0
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    100.0,
+                    254.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "input",
+                  "normalization": "standard"
+                },
+                {
+                  "name": "Hillshade_3pm",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "term_1",
+                      "term_2",
+                      "term_3"
+                    ],
+                    "centers": [
+                      0.0,
+                      123.0,
+                      246.0
+                    ],
+                    "spreads": [
+                      123.0,
+                      123.0,
+                      123.0
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    246.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "input",
+                  "normalization": "standard"
+                },
+                {
+                  "name": "Horizontal_Distance_To_Fire_Points",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "term_1",
+                      "term_2",
+                      "term_3"
+                    ],
+                    "centers": [
+                      30.0,
+                      3555.0,
+                      7080.0
+                    ],
+                    "spreads": [
+                      3525.0,
+                      3525.0,
+                      3525.0
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    30.0,
+                    7080.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "input",
+                  "normalization": "standard"
+                }
+              ],
+              "n_concepts": 3,
+              "concept_names": [
+                "flat_concept_1",
+                "flat_concept_2",
+                "flat_concept_3"
+              ],
+              "max_rule_arity": 2,
+              "max_rules": 8,
+              "gate_init": 0.0,
+              "rule_base": null,
+              "rule_generation_mode": "prototype",
+              "prototype_term_limit": 2,
+              "prototype_variable_pool_size": null,
+              "prototype_sample_size": 256
+            },
+            "decision_layer": {
+              "name": "flat_decision",
+              "variables": [
+                {
+                  "name": "flat_concept_1",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "low",
+                      "high"
+                    ],
+                    "centers": [
+                      0.25,
+                      0.75
+                    ],
+                    "spreads": [
+                      0.2,
+                      0.2
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    1.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "hidden_concept",
+                  "normalization": "none"
+                },
+                {
+                  "name": "flat_concept_2",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "low",
+                      "high"
+                    ],
+                    "centers": [
+                      0.25,
+                      0.75
+                    ],
+                    "spreads": [
+                      0.2,
+                      0.2
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    1.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "hidden_concept",
+                  "normalization": "none"
+                },
+                {
+                  "name": "flat_concept_3",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "low",
+                      "high"
+                    ],
+                    "centers": [
+                      0.25,
+                      0.75
+                    ],
+                    "spreads": [
+                      0.2,
+                      0.2
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    1.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "hidden_concept",
+                  "normalization": "none"
+                }
+              ],
+              "output_dim": 1,
+              "output_names": [
+                "target"
+              ],
+              "max_rule_arity": 2,
+              "max_rules": 8,
+              "gate_init": 0.0,
+              "rule_base": null,
+              "rule_generation_mode": "prototype",
+              "prototype_term_limit": 2,
+              "prototype_variable_pool_size": null,
+              "prototype_sample_size": 256
+            },
+            "stage_name": "flat_stage"
+          },
+          "training_config": {
+            "task_type": "binary_classification",
+            "use_bootstrap_initialization": true,
+            "use_stagewise_pretraining": false,
+            "bootstrap": {
+              "hidden_high": 0.85,
+              "hidden_low": 0.15,
+              "gate_floor": 0.25,
+              "gate_ceiling": 0.85,
+              "decision_binary_target_clip": 0.05
+            },
+            "stagewise": {
+              "epochs_per_stage": 20,
+              "decision_epochs": 15,
+              "refinement_rounds": 1,
+              "learning_rate": 0.02,
+              "batch_size": 64,
+              "shuffle": true,
+              "rule_sparsity_weight": 0.0,
+              "concept_orthogonality_weight": 0.0,
+              "concept_binarization_weight": 0.0,
+              "membership_order_weight": 0.0,
+              "membership_min_gap": 0.0,
+              "membership_overlap_weight": 0.0,
+              "membership_max_overlap": 0.35,
+              "membership_coverage_weight": 0.0,
+              "membership_min_coverage": 0.6,
+              "classification_target_clip": 0.05
+            },
+            "fine_tuning": {
+              "max_epochs": 30,
+              "learning_rate": 0.001,
+              "batch_size": 32,
+              "patience": 10,
+              "min_delta": 0.0,
+              "weight_decay": 0.0,
+              "gradient_clip_norm": null,
+              "shuffle": true,
+              "device": null,
+              "classification_threshold": 0.5,
+              "rule_sparsity_weight": 0.0,
+              "rule_length_weight": 0.0,
+              "concept_orthogonality_weight": 0.0,
+              "concept_binarization_weight": 0.0,
+              "membership_order_weight": 0.0,
+              "membership_min_gap": 0.0,
+              "membership_overlap_weight": 0.0,
+              "membership_max_overlap": 0.35,
+              "membership_coverage_weight": 0.0,
+              "membership_min_coverage": 0.6,
+              "prune_after_fit": false,
+              "prune_threshold": 0.1,
+              "prune_temperature": 0.05,
+              "prune_keep_at_least": 1
+            },
+            "refinement": {
+              "cycles": 1,
+              "patience": null,
+              "min_delta": 0.0
+            }
+          },
+          "training_summary": {
+            "source": "bootstrap_plus_finetuning",
+            "epochs_ran": 14,
+            "best_epoch": 4,
+            "monitor_name": "validation_loss",
+            "best_monitor_value": 0.6932544708251953,
+            "train_loss": 0.6930935382843018,
+            "train_metrics": {
+              "accuracy": 0.5052777528762817,
+              "precision": 0.5052777777777776,
+              "recall": 0.9999999999999994,
+              "f1": 0.6713415759360732
+            },
+            "validation_loss": 0.6932544708251953,
+            "validation_metrics": {
+              "accuracy": 0.4958333373069763,
+              "precision": 0.49583333333333296,
+              "recall": 0.9999999999999983,
+              "f1": 0.6629526462391103
+            },
+            "history": [
+              {
+                "epoch": 1,
+                "train_loss": 0.6931547564930386,
+                "train_metrics": {
+                  "accuracy": 0.5052777528762817,
+                  "precision": 0.5052777777777776,
+                  "recall": 0.9999999999999994,
+                  "f1": 0.6713415759360732
+                },
+                "validation_loss": 0.6933071613311768,
+                "validation_metrics": {
+                  "accuracy": 0.4958333373069763,
+                  "precision": 0.49583333333333296,
+                  "recall": 0.9999999999999983,
+                  "f1": 0.6629526462391103
+                }
+              },
+              {
+                "epoch": 2,
+                "train_loss": 0.693146120177375,
+                "train_metrics": {
+                  "accuracy": 0.5052777528762817,
+                  "precision": 0.5052777777777776,
+                  "recall": 0.9999999999999994,
+                  "f1": 0.6713415759360732
+                },
+                "validation_loss": 0.6933074593544006,
+                "validation_metrics": {
+                  "accuracy": 0.4958333373069763,
+                  "precision": 0.49583333333333296,
+                  "recall": 0.9999999999999983,
+                  "f1": 0.6629526462391103
+                }
+              },
+              {
+                "epoch": 3,
+                "train_loss": 0.6931844684812758,
+                "train_metrics": {
+                  "accuracy": 0.5052777528762817,
+                  "precision": 0.5052777777777776,
+                  "recall": 0.9999999999999994,
+                  "f1": 0.6713415759360732
+                },
+                "validation_loss": 0.6932880282402039,
+                "validation_metrics": {
+                  "accuracy": 0.4958333373069763,
+                  "precision": 0.49583333333333296,
+                  "recall": 0.9999999999999983,
+                  "f1": 0.6629526462391103
+                }
+              },
+              {
+                "epoch": 4,
+                "train_loss": 0.6931863358285693,
+                "train_metrics": {
+                  "accuracy": 0.5052777528762817,
+                  "precision": 0.5052777777777776,
+                  "recall": 0.9999999999999994,
+                  "f1": 0.6713415759360732
+                },
+                "validation_loss": 0.6932544708251953,
+                "validation_metrics": {
+                  "accuracy": 0.4958333373069763,
+                  "precision": 0.49583333333333296,
+                  "recall": 0.9999999999999983,
+                  "f1": 0.6629526462391103
+                }
+              },
+              {
+                "epoch": 5,
+                "train_loss": 0.6931934505038791,
+                "train_metrics": {
+                  "accuracy": 0.5052777528762817,
+                  "precision": 0.5052777777777776,
+                  "recall": 0.9999999999999994,
+                  "f1": 0.6713415759360732
+                },
+                "validation_loss": 0.6932663321495056,
+                "validation_metrics": {
+                  "accuracy": 0.4958333373069763,
+                  "precision": 0.49583333333333296,
+                  "recall": 0.9999999999999983,
+                  "f1": 0.6629526462391103
+                }
+              },
+              {
+                "epoch": 6,
+                "train_loss": 0.6931959954897563,
+                "train_metrics": {
+                  "accuracy": 0.5052777528762817,
+                  "precision": 0.5052777777777776,
+                  "recall": 0.9999999999999994,
+                  "f1": 0.6713415759360732
+                },
+                "validation_loss": 0.6932912468910217,
+                "validation_metrics": {
+                  "accuracy": 0.4958333373069763,
+                  "precision": 0.49583333333333296,
+                  "recall": 0.9999999999999983,
+                  "f1": 0.6629526462391103
+                }
+              },
+              {
+                "epoch": 7,
+                "train_loss": 0.6931546052296956,
+                "train_metrics": {
+                  "accuracy": 0.5052777528762817,
+                  "precision": 0.5052777777777776,
+                  "recall": 0.9999999999999994,
+                  "f1": 0.6713415759360732
+                },
+                "validation_loss": 0.6932792067527771,
+                "validation_metrics": {
+                  "accuracy": 0.4958333373069763,
+                  "precision": 0.49583333333333296,
+                  "recall": 0.9999999999999983,
+                  "f1": 0.6629526462391103
+                }
+              },
+              {
+                "epoch": 8,
+                "train_loss": 0.6931844634479947,
+                "train_metrics": {
+                  "accuracy": 0.5052777528762817,
+                  "precision": 0.5052777777777776,
+                  "recall": 0.9999999999999994,
+                  "f1": 0.6713415759360732
+                },
+                "validation_loss": 0.6932627558708191,
+                "validation_metrics": {
+                  "accuracy": 0.4958333373069763,
+                  "precision": 0.49583333333333296,
+                  "recall": 0.9999999999999983,
+                  "f1": 0.6629526462391103
+                }
+              },
+              {
+                "epoch": 9,
+                "train_loss": 0.6931871642006768,
+                "train_metrics": {
+                  "accuracy": 0.5052777528762817,
+                  "precision": 0.5052777777777776,
+                  "recall": 0.9999999999999994,
+                  "f1": 0.6713415759360732
+                },
+                "validation_loss": 0.693289041519165,
+                "validation_metrics": {
+                  "accuracy": 0.4958333373069763,
+                  "precision": 0.49583333333333296,
+                  "recall": 0.9999999999999983,
+                  "f1": 0.6629526462391103
+                }
+              },
+              {
+                "epoch": 10,
+                "train_loss": 0.6931775734159682,
+                "train_metrics": {
+                  "accuracy": 0.5052777528762817,
+                  "precision": 0.5052777777777776,
+                  "recall": 0.9999999999999994,
+                  "f1": 0.6713415759360732
+                },
+                "validation_loss": 0.693310558795929,
+                "validation_metrics": {
+                  "accuracy": 0.4958333373069763,
+                  "precision": 0.49583333333333296,
+                  "recall": 0.9999999999999983,
+                  "f1": 0.6629526462391103
+                }
+              },
+              {
+                "epoch": 11,
+                "train_loss": 0.6931435659196642,
+                "train_metrics": {
+                  "accuracy": 0.5052777528762817,
+                  "precision": 0.5052777777777776,
+                  "recall": 0.9999999999999994,
+                  "f1": 0.6713415759360732
+                },
+                "validation_loss": 0.693282425403595,
+                "validation_metrics": {
+                  "accuracy": 0.4958333373069763,
+                  "precision": 0.49583333333333296,
+                  "recall": 0.9999999999999983,
+                  "f1": 0.6629526462391103
+                }
+              },
+              {
+                "epoch": 12,
+                "train_loss": 0.6931345518430074,
+                "train_metrics": {
+                  "accuracy": 0.5052777528762817,
+                  "precision": 0.5052777777777776,
+                  "recall": 0.9999999999999994,
+                  "f1": 0.6713415759360732
+                },
+                "validation_loss": 0.6933224201202393,
+                "validation_metrics": {
+                  "accuracy": 0.4958333373069763,
+                  "precision": 0.49583333333333296,
+                  "recall": 0.9999999999999983,
+                  "f1": 0.6629526462391103
+                }
+              },
+              {
+                "epoch": 13,
+                "train_loss": 0.6931654175122579,
+                "train_metrics": {
+                  "accuracy": 0.5052777528762817,
+                  "precision": 0.5052777777777776,
+                  "recall": 0.9999999999999994,
+                  "f1": 0.6713415759360732
+                },
+                "validation_loss": 0.6933274269104004,
+                "validation_metrics": {
+                  "accuracy": 0.4958333373069763,
+                  "precision": 0.49583333333333296,
+                  "recall": 0.9999999999999983,
+                  "f1": 0.6629526462391103
+                }
+              },
+              {
+                "epoch": 14,
+                "train_loss": 0.693165160285102,
+                "train_metrics": {
+                  "accuracy": 0.5052777528762817,
+                  "precision": 0.5052777777777776,
+                  "recall": 0.9999999999999994,
+                  "f1": 0.6713415759360732
+                },
+                "validation_loss": 0.6933141946792603,
+                "validation_metrics": {
+                  "accuracy": 0.4958333373069763,
+                  "precision": 0.49583333333333296,
+                  "recall": 0.9999999999999983,
+                  "f1": 0.6629526462391103
+                }
+              }
+            ],
+            "refinement_cycles": []
+          },
+          "preprocessing": {
+            "mode": "standard",
+            "feature_columns": [
+              "Elevation",
+              "Aspect",
+              "Slope",
+              "Horizontal_Distance_To_Hydrology",
+              "Vertical_Distance_To_Hydrology",
+              "Horizontal_Distance_To_Roadways",
+              "Hillshade_9am",
+              "Hillshade_Noon",
+              "Hillshade_3pm",
+              "Horizontal_Distance_To_Fire_Points"
+            ],
+            "center": [
+              3023.7683333333334,
+              154.40527777777777,
+              13.355555555555556,
+              274.24888888888887,
+              43.3325,
+              2522.0925,
+              213.3177777777778,
+              224.5225,
+              143.04638888888888,
+              2082.3930555555557
+            ],
+            "scale": [
+              201.0457167398608,
+              111.5660388635387,
+              6.938357332188627,
+              213.88332553803752,
+              56.00335554802835,
+              1536.9149181429714,
+              24.908646770762505,
+              18.19890242035371,
+              35.79094102118717,
+              1325.6145472977175
+            ],
+            "minimum": null,
+            "maximum": null
+          },
+          "test_metrics": {
+            "accuracy": 0.48833333333333334,
+            "precision": 0.48833333333333295,
+            "recall": 0.9999999999999982,
+            "f1": 0.6562150055986625
+          },
+          "dataset_source_path": null,
+          "notes": {
+            "experiment_history": [
+              {
+                "timestamp_utc": "2026-04-12T21:26:52.215596+00:00",
+                "model_kind": "flat_neuro_fuzzy",
+                "training_source": "bootstrap_plus_finetuning",
+                "epochs_ran": 14,
+                "best_epoch": 4,
+                "train_metrics": {
+                  "accuracy": 0.5052777528762817,
+                  "precision": 0.5052777777777776,
+                  "recall": 0.9999999999999994,
+                  "f1": 0.6713415759360732
+                },
+                "validation_metrics": {
+                  "accuracy": 0.4958333373069763,
+                  "precision": 0.49583333333333296,
+                  "recall": 0.9999999999999983,
+                  "f1": 0.6629526462391103
+                },
+                "test_metrics": {
+                  "accuracy": 0.48833333333333334,
+                  "precision": 0.48833333333333295,
+                  "recall": 0.9999999999999982,
+                  "f1": 0.6562150055986625
+                },
+                "manual_rule_targets": 0,
+                "feature_names": [
+                  "Elevation",
+                  "Aspect",
+                  "Slope",
+                  "Horizontal_Distance_To_Hydrology",
+                  "Vertical_Distance_To_Hydrology",
+                  "Horizontal_Distance_To_Roadways",
+                  "Hillshade_9am",
+                  "Hillshade_Noon",
+                  "Hillshade_3pm",
+                  "Horizontal_Distance_To_Fire_Points"
+                ]
+              }
+            ]
+          }
+        },
+        "project_summary": {
+          "name": "covtype_binary_geo-flat_baseline",
+          "task_type": "binary_classification",
+          "model_kind": "flat_neuro_fuzzy",
+          "target_name": "CoverTypeBinary",
+          "feature_count": 10,
+          "variable_count": 10,
+          "variable_roles": {
+            "input": 10
+          },
+          "dataset_rows": 6000,
+          "dataset_columns": 11,
+          "has_model": true,
+          "has_training_summary": true,
+          "experiment_count": 1,
+          "study_run_count": 0,
+          "manual_rule_targets": 0,
+          "test_metrics": {
+            "accuracy": 0.48833333333333334,
+            "precision": 0.48833333333333295,
+            "recall": 0.9999999999999982,
+            "f1": 0.6562150055986625
+          }
+        },
+        "dataset_summary": {
+          "rows": 6000,
+          "columns": [
+            "Elevation",
+            "Aspect",
+            "Slope",
+            "Horizontal_Distance_To_Hydrology",
+            "Vertical_Distance_To_Hydrology",
+            "Horizontal_Distance_To_Roadways",
+            "Hillshade_9am",
+            "Hillshade_Noon",
+            "Hillshade_3pm",
+            "Horizontal_Distance_To_Fire_Points",
+            "CoverTypeBinary"
+          ],
+          "numeric_columns": [
+            "Elevation",
+            "Aspect",
+            "Slope",
+            "Horizontal_Distance_To_Hydrology",
+            "Vertical_Distance_To_Hydrology",
+            "Horizontal_Distance_To_Roadways",
+            "Hillshade_9am",
+            "Hillshade_Noon",
+            "Hillshade_3pm",
+            "Horizontal_Distance_To_Fire_Points",
+            "CoverTypeBinary"
+          ],
+          "missing_values": {
+            "Elevation": 0,
+            "Aspect": 0,
+            "Slope": 0,
+            "Horizontal_Distance_To_Hydrology": 0,
+            "Vertical_Distance_To_Hydrology": 0,
+            "Horizontal_Distance_To_Roadways": 0,
+            "Hillshade_9am": 0,
+            "Hillshade_Noon": 0,
+            "Hillshade_3pm": 0,
+            "Horizontal_Distance_To_Fire_Points": 0,
+            "CoverTypeBinary": 0
+          },
+          "target_name": "CoverTypeBinary"
+        },
+        "variable_catalog": {
+          "Elevation": {
+            "name": "Elevation",
+            "membership": {
+              "kind": "gaussian",
+              "term_names": [
+                "term_1",
+                "term_2",
+                "term_3"
+              ],
+              "centers": [
+                2184.0,
+                2925.5,
+                3667.0
+              ],
+              "spreads": [
+                741.5,
+                741.5,
+                741.5
+              ],
+              "min_spread": 0.001
+            },
+            "value_range": [
+              2184.0,
+              3667.0
+            ],
+            "data_type": "continuous",
+            "role": "input",
+            "normalization": "standard"
+          },
+          "Aspect": {
+            "name": "Aspect",
+            "membership": {
+              "kind": "gaussian",
+              "term_names": [
+                "term_1",
+                "term_2",
+                "term_3"
+              ],
+              "centers": [
+                0.0,
+                179.5,
+                359.0
+              ],
+              "spreads": [
+                179.5,
+                179.5,
+                179.5
+              ],
+              "min_spread": 0.001
+            },
+            "value_range": [
+              0.0,
+              359.0
+            ],
+            "data_type": "continuous",
+            "role": "input",
+            "normalization": "standard"
+          },
+          "Slope": {
+            "name": "Slope",
+            "membership": {
+              "kind": "gaussian",
+              "term_names": [
+                "term_1",
+                "term_2",
+                "term_3"
+              ],
+              "centers": [
+                0.0,
+                25.5,
+                51.0
+              ],
+              "spreads": [
+                25.5,
+                25.5,
+                25.5
+              ],
+              "min_spread": 0.001
+            },
+            "value_range": [
+              0.0,
+              51.0
+            ],
+            "data_type": "continuous",
+            "role": "input",
+            "normalization": "standard"
+          },
+          "Horizontal_Distance_To_Hydrology": {
+            "name": "Horizontal_Distance_To_Hydrology",
+            "membership": {
+              "kind": "gaussian",
+              "term_names": [
+                "term_1",
+                "term_2",
+                "term_3"
+              ],
+              "centers": [
+                0.0,
+                684.0,
+                1368.0
+              ],
+              "spreads": [
+                684.0,
+                684.0,
+                684.0
+              ],
+              "min_spread": 0.001
+            },
+            "value_range": [
+              0.0,
+              1368.0
+            ],
+            "data_type": "continuous",
+            "role": "input",
+            "normalization": "standard"
+          },
+          "Vertical_Distance_To_Hydrology": {
+            "name": "Vertical_Distance_To_Hydrology",
+            "membership": {
+              "kind": "gaussian",
+              "term_names": [
+                "term_1",
+                "term_2",
+                "term_3"
+              ],
+              "centers": [
+                -153.0,
+                195.0,
+                543.0
+              ],
+              "spreads": [
+                348.0,
+                348.0,
+                348.0
+              ],
+              "min_spread": 0.001
+            },
+            "value_range": [
+              -153.0,
+              543.0
+            ],
+            "data_type": "continuous",
+            "role": "input",
+            "normalization": "standard"
+          },
+          "Horizontal_Distance_To_Roadways": {
+            "name": "Horizontal_Distance_To_Roadways",
+            "membership": {
+              "kind": "gaussian",
+              "term_names": [
+                "term_1",
+                "term_2",
+                "term_3"
+              ],
+              "centers": [
+                30.0,
+                3482.5,
+                6935.0
+              ],
+              "spreads": [
+                3452.5,
+                3452.5,
+                3452.5
+              ],
+              "min_spread": 0.001
+            },
+            "value_range": [
+              30.0,
+              6935.0
+            ],
+            "data_type": "continuous",
+            "role": "input",
+            "normalization": "standard"
+          },
+          "Hillshade_9am": {
+            "name": "Hillshade_9am",
+            "membership": {
+              "kind": "gaussian",
+              "term_names": [
+                "term_1",
+                "term_2",
+                "term_3"
+              ],
+              "centers": [
+                56.0,
+                155.0,
+                254.0
+              ],
+              "spreads": [
+                99.0,
+                99.0,
+                99.0
+              ],
+              "min_spread": 0.001
+            },
+            "value_range": [
+              56.0,
+              254.0
+            ],
+            "data_type": "continuous",
+            "role": "input",
+            "normalization": "standard"
+          },
+          "Hillshade_Noon": {
+            "name": "Hillshade_Noon",
+            "membership": {
+              "kind": "gaussian",
+              "term_names": [
+                "term_1",
+                "term_2",
+                "term_3"
+              ],
+              "centers": [
+                100.0,
+                177.0,
+                254.0
+              ],
+              "spreads": [
+                77.0,
+                77.0,
+                77.0
+              ],
+              "min_spread": 0.001
+            },
+            "value_range": [
+              100.0,
+              254.0
+            ],
+            "data_type": "continuous",
+            "role": "input",
+            "normalization": "standard"
+          },
+          "Hillshade_3pm": {
+            "name": "Hillshade_3pm",
+            "membership": {
+              "kind": "gaussian",
+              "term_names": [
+                "term_1",
+                "term_2",
+                "term_3"
+              ],
+              "centers": [
+                0.0,
+                123.0,
+                246.0
+              ],
+              "spreads": [
+                123.0,
+                123.0,
+                123.0
+              ],
+              "min_spread": 0.001
+            },
+            "value_range": [
+              0.0,
+              246.0
+            ],
+            "data_type": "continuous",
+            "role": "input",
+            "normalization": "standard"
+          },
+          "Horizontal_Distance_To_Fire_Points": {
+            "name": "Horizontal_Distance_To_Fire_Points",
+            "membership": {
+              "kind": "gaussian",
+              "term_names": [
+                "term_1",
+                "term_2",
+                "term_3"
+              ],
+              "centers": [
+                30.0,
+                3555.0,
+                7080.0
+              ],
+              "spreads": [
+                3525.0,
+                3525.0,
+                3525.0
+              ],
+              "min_spread": 0.001
+            },
+            "value_range": [
+              30.0,
+              7080.0
+            ],
+            "data_type": "continuous",
+            "role": "input",
+            "normalization": "standard"
+          }
+        },
+        "rule_base_catalog": {
+          "flat_stage::flat_feature_block": null,
+          "decision::flat_decision": null
+        },
+        "model_preset": {
+          "name": "covtype_binary_geo-flat_baseline",
+          "description": "Binary cartographic classification benchmark derived from the Forest CoverType dataset using the original continuous geo-features and a balanced class-1 vs class-2 subset.",
+          "task_type": "binary_classification",
+          "feature_names": [
+            "Elevation",
+            "Aspect",
+            "Slope",
+            "Horizontal_Distance_To_Hydrology",
+            "Vertical_Distance_To_Hydrology",
+            "Horizontal_Distance_To_Roadways",
+            "Hillshade_9am",
+            "Hillshade_Noon",
+            "Hillshade_3pm",
+            "Horizontal_Distance_To_Fire_Points"
+          ],
+          "target_name": "CoverTypeBinary",
+          "variables": [
+            {
+              "name": "Elevation",
+              "membership": {
+                "kind": "gaussian",
+                "term_names": [
+                  "term_1",
+                  "term_2",
+                  "term_3"
+                ],
+                "centers": [
+                  2184.0,
+                  2925.5,
+                  3667.0
+                ],
+                "spreads": [
+                  741.5,
+                  741.5,
+                  741.5
+                ],
+                "min_spread": 0.001
+              },
+              "value_range": [
+                2184.0,
+                3667.0
+              ],
+              "data_type": "continuous",
+              "role": "input",
+              "normalization": "standard"
+            },
+            {
+              "name": "Aspect",
+              "membership": {
+                "kind": "gaussian",
+                "term_names": [
+                  "term_1",
+                  "term_2",
+                  "term_3"
+                ],
+                "centers": [
+                  0.0,
+                  179.5,
+                  359.0
+                ],
+                "spreads": [
+                  179.5,
+                  179.5,
+                  179.5
+                ],
+                "min_spread": 0.001
+              },
+              "value_range": [
+                0.0,
+                359.0
+              ],
+              "data_type": "continuous",
+              "role": "input",
+              "normalization": "standard"
+            },
+            {
+              "name": "Slope",
+              "membership": {
+                "kind": "gaussian",
+                "term_names": [
+                  "term_1",
+                  "term_2",
+                  "term_3"
+                ],
+                "centers": [
+                  0.0,
+                  25.5,
+                  51.0
+                ],
+                "spreads": [
+                  25.5,
+                  25.5,
+                  25.5
+                ],
+                "min_spread": 0.001
+              },
+              "value_range": [
+                0.0,
+                51.0
+              ],
+              "data_type": "continuous",
+              "role": "input",
+              "normalization": "standard"
+            },
+            {
+              "name": "Horizontal_Distance_To_Hydrology",
+              "membership": {
+                "kind": "gaussian",
+                "term_names": [
+                  "term_1",
+                  "term_2",
+                  "term_3"
+                ],
+                "centers": [
+                  0.0,
+                  684.0,
+                  1368.0
+                ],
+                "spreads": [
+                  684.0,
+                  684.0,
+                  684.0
+                ],
+                "min_spread": 0.001
+              },
+              "value_range": [
+                0.0,
+                1368.0
+              ],
+              "data_type": "continuous",
+              "role": "input",
+              "normalization": "standard"
+            },
+            {
+              "name": "Vertical_Distance_To_Hydrology",
+              "membership": {
+                "kind": "gaussian",
+                "term_names": [
+                  "term_1",
+                  "term_2",
+                  "term_3"
+                ],
+                "centers": [
+                  -153.0,
+                  195.0,
+                  543.0
+                ],
+                "spreads": [
+                  348.0,
+                  348.0,
+                  348.0
+                ],
+                "min_spread": 0.001
+              },
+              "value_range": [
+                -153.0,
+                543.0
+              ],
+              "data_type": "continuous",
+              "role": "input",
+              "normalization": "standard"
+            },
+            {
+              "name": "Horizontal_Distance_To_Roadways",
+              "membership": {
+                "kind": "gaussian",
+                "term_names": [
+                  "term_1",
+                  "term_2",
+                  "term_3"
+                ],
+                "centers": [
+                  30.0,
+                  3482.5,
+                  6935.0
+                ],
+                "spreads": [
+                  3452.5,
+                  3452.5,
+                  3452.5
+                ],
+                "min_spread": 0.001
+              },
+              "value_range": [
+                30.0,
+                6935.0
+              ],
+              "data_type": "continuous",
+              "role": "input",
+              "normalization": "standard"
+            },
+            {
+              "name": "Hillshade_9am",
+              "membership": {
+                "kind": "gaussian",
+                "term_names": [
+                  "term_1",
+                  "term_2",
+                  "term_3"
+                ],
+                "centers": [
+                  56.0,
+                  155.0,
+                  254.0
+                ],
+                "spreads": [
+                  99.0,
+                  99.0,
+                  99.0
+                ],
+                "min_spread": 0.001
+              },
+              "value_range": [
+                56.0,
+                254.0
+              ],
+              "data_type": "continuous",
+              "role": "input",
+              "normalization": "standard"
+            },
+            {
+              "name": "Hillshade_Noon",
+              "membership": {
+                "kind": "gaussian",
+                "term_names": [
+                  "term_1",
+                  "term_2",
+                  "term_3"
+                ],
+                "centers": [
+                  100.0,
+                  177.0,
+                  254.0
+                ],
+                "spreads": [
+                  77.0,
+                  77.0,
+                  77.0
+                ],
+                "min_spread": 0.001
+              },
+              "value_range": [
+                100.0,
+                254.0
+              ],
+              "data_type": "continuous",
+              "role": "input",
+              "normalization": "standard"
+            },
+            {
+              "name": "Hillshade_3pm",
+              "membership": {
+                "kind": "gaussian",
+                "term_names": [
+                  "term_1",
+                  "term_2",
+                  "term_3"
+                ],
+                "centers": [
+                  0.0,
+                  123.0,
+                  246.0
+                ],
+                "spreads": [
+                  123.0,
+                  123.0,
+                  123.0
+                ],
+                "min_spread": 0.001
+              },
+              "value_range": [
+                0.0,
+                246.0
+              ],
+              "data_type": "continuous",
+              "role": "input",
+              "normalization": "standard"
+            },
+            {
+              "name": "Horizontal_Distance_To_Fire_Points",
+              "membership": {
+                "kind": "gaussian",
+                "term_names": [
+                  "term_1",
+                  "term_2",
+                  "term_3"
+                ],
+                "centers": [
+                  30.0,
+                  3555.0,
+                  7080.0
+                ],
+                "spreads": [
+                  3525.0,
+                  3525.0,
+                  3525.0
+                ],
+                "min_spread": 0.001
+              },
+              "value_range": [
+                30.0,
+                7080.0
+              ],
+              "data_type": "continuous",
+              "role": "input",
+              "normalization": "standard"
+            }
+          ],
+          "model_kind": "flat_neuro_fuzzy",
+          "model_spec": {
+            "kind": "flat_neuro_fuzzy",
+            "input_dim": 10,
+            "feature_block": {
+              "name": "flat_feature_block",
+              "input_indices": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+              ],
+              "variables": [
+                {
+                  "name": "Elevation",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "term_1",
+                      "term_2",
+                      "term_3"
+                    ],
+                    "centers": [
+                      2184.0,
+                      2925.5,
+                      3667.0
+                    ],
+                    "spreads": [
+                      741.5,
+                      741.5,
+                      741.5
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    2184.0,
+                    3667.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "input",
+                  "normalization": "standard"
+                },
+                {
+                  "name": "Aspect",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "term_1",
+                      "term_2",
+                      "term_3"
+                    ],
+                    "centers": [
+                      0.0,
+                      179.5,
+                      359.0
+                    ],
+                    "spreads": [
+                      179.5,
+                      179.5,
+                      179.5
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    359.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "input",
+                  "normalization": "standard"
+                },
+                {
+                  "name": "Slope",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "term_1",
+                      "term_2",
+                      "term_3"
+                    ],
+                    "centers": [
+                      0.0,
+                      25.5,
+                      51.0
+                    ],
+                    "spreads": [
+                      25.5,
+                      25.5,
+                      25.5
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    51.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "input",
+                  "normalization": "standard"
+                },
+                {
+                  "name": "Horizontal_Distance_To_Hydrology",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "term_1",
+                      "term_2",
+                      "term_3"
+                    ],
+                    "centers": [
+                      0.0,
+                      684.0,
+                      1368.0
+                    ],
+                    "spreads": [
+                      684.0,
+                      684.0,
+                      684.0
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    1368.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "input",
+                  "normalization": "standard"
+                },
+                {
+                  "name": "Vertical_Distance_To_Hydrology",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "term_1",
+                      "term_2",
+                      "term_3"
+                    ],
+                    "centers": [
+                      -153.0,
+                      195.0,
+                      543.0
+                    ],
+                    "spreads": [
+                      348.0,
+                      348.0,
+                      348.0
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    -153.0,
+                    543.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "input",
+                  "normalization": "standard"
+                },
+                {
+                  "name": "Horizontal_Distance_To_Roadways",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "term_1",
+                      "term_2",
+                      "term_3"
+                    ],
+                    "centers": [
+                      30.0,
+                      3482.5,
+                      6935.0
+                    ],
+                    "spreads": [
+                      3452.5,
+                      3452.5,
+                      3452.5
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    30.0,
+                    6935.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "input",
+                  "normalization": "standard"
+                },
+                {
+                  "name": "Hillshade_9am",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "term_1",
+                      "term_2",
+                      "term_3"
+                    ],
+                    "centers": [
+                      56.0,
+                      155.0,
+                      254.0
+                    ],
+                    "spreads": [
+                      99.0,
+                      99.0,
+                      99.0
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    56.0,
+                    254.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "input",
+                  "normalization": "standard"
+                },
+                {
+                  "name": "Hillshade_Noon",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "term_1",
+                      "term_2",
+                      "term_3"
+                    ],
+                    "centers": [
+                      100.0,
+                      177.0,
+                      254.0
+                    ],
+                    "spreads": [
+                      77.0,
+                      77.0,
+                      77.0
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    100.0,
+                    254.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "input",
+                  "normalization": "standard"
+                },
+                {
+                  "name": "Hillshade_3pm",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "term_1",
+                      "term_2",
+                      "term_3"
+                    ],
+                    "centers": [
+                      0.0,
+                      123.0,
+                      246.0
+                    ],
+                    "spreads": [
+                      123.0,
+                      123.0,
+                      123.0
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    246.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "input",
+                  "normalization": "standard"
+                },
+                {
+                  "name": "Horizontal_Distance_To_Fire_Points",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "term_1",
+                      "term_2",
+                      "term_3"
+                    ],
+                    "centers": [
+                      30.0,
+                      3555.0,
+                      7080.0
+                    ],
+                    "spreads": [
+                      3525.0,
+                      3525.0,
+                      3525.0
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    30.0,
+                    7080.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "input",
+                  "normalization": "standard"
+                }
+              ],
+              "n_concepts": 3,
+              "concept_names": [
+                "flat_concept_1",
+                "flat_concept_2",
+                "flat_concept_3"
+              ],
+              "max_rule_arity": 2,
+              "max_rules": 8,
+              "gate_init": 0.0,
+              "rule_base": null,
+              "rule_generation_mode": "prototype",
+              "prototype_term_limit": 2,
+              "prototype_variable_pool_size": null,
+              "prototype_sample_size": 256
+            },
+            "decision_layer": {
+              "name": "flat_decision",
+              "variables": [
+                {
+                  "name": "flat_concept_1",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "low",
+                      "high"
+                    ],
+                    "centers": [
+                      0.25,
+                      0.75
+                    ],
+                    "spreads": [
+                      0.2,
+                      0.2
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    1.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "hidden_concept",
+                  "normalization": "none"
+                },
+                {
+                  "name": "flat_concept_2",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "low",
+                      "high"
+                    ],
+                    "centers": [
+                      0.25,
+                      0.75
+                    ],
+                    "spreads": [
+                      0.2,
+                      0.2
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    1.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "hidden_concept",
+                  "normalization": "none"
+                },
+                {
+                  "name": "flat_concept_3",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "low",
+                      "high"
+                    ],
+                    "centers": [
+                      0.25,
+                      0.75
+                    ],
+                    "spreads": [
+                      0.2,
+                      0.2
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    1.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "hidden_concept",
+                  "normalization": "none"
+                }
+              ],
+              "output_dim": 1,
+              "output_names": [
+                "target"
+              ],
+              "max_rule_arity": 2,
+              "max_rules": 8,
+              "gate_init": 0.0,
+              "rule_base": null,
+              "rule_generation_mode": "prototype",
+              "prototype_term_limit": 2,
+              "prototype_variable_pool_size": null,
+              "prototype_sample_size": 256
+            },
+            "stage_name": "flat_stage"
+          }
+        },
+        "project_report": "PROJECT REPORT\nname: covtype_binary_geo-flat_baseline\ntask_type: binary_classification\nmodel_kind: flat_neuro_fuzzy\ndataset_rows: 6000\ndataset_columns: 11\ntraining_source: bootstrap_plus_finetuning\ntrain_metrics: {'accuracy': 0.5052777528762817, 'precision': 0.5052777777777776, 'recall': 0.9999999999999994, 'f1': 0.6713415759360732}\nvalidation_metrics: {'accuracy': 0.4958333373069763, 'precision': 0.49583333333333296, 'recall': 0.9999999999999983, 'f1': 0.6629526462391103}\ntest_metrics: {'accuracy': 0.48833333333333334, 'precision': 0.48833333333333295, 'recall': 0.9999999999999982, 'f1': 0.6562150055986625}\n\nMODEL REPORT\nInput dimension: 10\n\nSTAGE 0: flat_stage\nOutput dimension: 3\n  BLOCK 0: flat_feature_block\n    Inputs: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]\n    Outputs: [flat_concept_1, flat_concept_2, flat_concept_3]\n    RULE 0 (flat_feature_block_0): IF Aspect IS term_1 AND Horizontal_Distance_To_Hydrology IS term_1 THEN flat_concept_1=0.846, flat_concept_2=0.143, flat_concept_3=0.145 [gate=0.849]\n    RULE 1 (flat_feature_block_1): IF Horizontal_Distance_To_Hydrology IS term_1 AND Hillshade_3pm IS term_1 THEN flat_concept_1=0.146, flat_concept_2=0.143, flat_concept_3=0.845 [gate=0.838]\n    RULE 2 (flat_feature_block_2): IF Aspect IS term_1 AND Hillshade_3pm IS term_1 THEN flat_concept_1=0.146, flat_concept_2=0.143, flat_concept_3=0.845 [gate=0.827]\n    RULE 3 (flat_feature_block_3): IF Aspect IS term_1 AND Slope IS term_1 THEN flat_concept_1=0.146, flat_concept_2=0.843, flat_concept_3=0.145 [gate=0.265]\n    RULE 4 (flat_feature_block_4): IF Slope IS term_1 AND Horizontal_Distance_To_Hydrology IS term_1 THEN flat_concept_1=0.146, flat_concept_2=0.843, flat_concept_3=0.145 [gate=0.276]\n    RULE 5 (flat_feature_block_5): IF Slope IS term_1 AND Hillshade_3pm IS term_1 THEN flat_concept_1=0.146, flat_concept_2=0.843, flat_concept_3=0.145 [gate=0.251]\n    RULE 6 (flat_feature_block_6): IF Horizontal_Distance_To_Hydrology IS term_1 AND Horizontal_Distance_To_Fire_Points IS term_1 THEN flat_concept_1=0.846, flat_concept_2=0.143, flat_concept_3=0.145 [gate=0.833]\n    RULE 7 (flat_feature_block_7): IF Horizontal_Distance_To_Hydrology IS term_1 AND Horizontal_Distance_To_Roadways IS term_1 THEN flat_concept_1=0.846, flat_concept_2=0.143, flat_concept_3=0.145 [gate=0.832]\n\nDECISION LAYER: flat_decision\nOutput dimension: 1\n  RULE 0 (flat_decision_0): IF flat_concept_2 IS low AND flat_concept_3 IS low THEN target = 0.015 + 0.004*flat_concept_1 - 0.001*flat_concept_2 + 0.002*flat_concept_3 [gate=0.850]\n  RULE 1 (flat_decision_1): IF flat_concept_1 IS high AND flat_concept_2 IS low THEN target = 0.015 + 0.004*flat_concept_1 - 0.001*flat_concept_2 + 0.002*flat_concept_3 [gate=0.578]\n  RULE 2 (flat_decision_2): IF flat_concept_1 IS low AND flat_concept_2 IS low THEN target = 0.015 + 0.004*flat_concept_1 - 0.001*flat_concept_2 + 0.002*flat_concept_3 [gate=0.551]\n  RULE 3 (flat_decision_3): IF flat_concept_1 IS high AND flat_concept_3 IS low THEN target = 0.015 + 0.004*flat_concept_1 - 0.001*flat_concept_2 + 0.002*flat_concept_3 [gate=0.499]\n  RULE 4 (flat_decision_4): IF flat_concept_1 IS low AND flat_concept_3 IS low THEN target = 0.015 + 0.004*flat_concept_1 - 0.001*flat_concept_2 + 0.002*flat_concept_3 [gate=0.475]\n  RULE 5 (flat_decision_5): IF flat_concept_2 IS low AND flat_concept_3 IS high THEN target = 0.015 + 0.004*flat_concept_1 - 0.001*flat_concept_2 + 0.002*flat_concept_3 [gate=0.339]\n  RULE 6 (flat_decision_6): IF flat_concept_1 IS high AND flat_concept_3 IS high THEN target = 0.015 + 0.004*flat_concept_1 - 0.001*flat_concept_2 + 0.002*flat_concept_3 [gate=0.255]\n  RULE 7 (flat_decision_7): IF flat_concept_1 IS low AND flat_concept_3 IS high THEN target = 0.015 + 0.004*flat_concept_1 - 0.001*flat_concept_2 + 0.002*flat_concept_3 [gate=0.249]",
+        "model_report": "MODEL REPORT\nInput dimension: 10\n\nSTAGE 0: flat_stage\nOutput dimension: 3\n  BLOCK 0: flat_feature_block\n    Inputs: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]\n    Outputs: [flat_concept_1, flat_concept_2, flat_concept_3]\n    RULE 0 (flat_feature_block_0): IF Aspect IS term_1 AND Horizontal_Distance_To_Hydrology IS term_1 THEN flat_concept_1=0.846, flat_concept_2=0.143, flat_concept_3=0.145 [gate=0.849]\n    RULE 1 (flat_feature_block_1): IF Horizontal_Distance_To_Hydrology IS term_1 AND Hillshade_3pm IS term_1 THEN flat_concept_1=0.146, flat_concept_2=0.143, flat_concept_3=0.845 [gate=0.838]\n    RULE 2 (flat_feature_block_2): IF Aspect IS term_1 AND Hillshade_3pm IS term_1 THEN flat_concept_1=0.146, flat_concept_2=0.143, flat_concept_3=0.845 [gate=0.827]\n    RULE 3 (flat_feature_block_3): IF Aspect IS term_1 AND Slope IS term_1 THEN flat_concept_1=0.146, flat_concept_2=0.843, flat_concept_3=0.145 [gate=0.265]\n    RULE 4 (flat_feature_block_4): IF Slope IS term_1 AND Horizontal_Distance_To_Hydrology IS term_1 THEN flat_concept_1=0.146, flat_concept_2=0.843, flat_concept_3=0.145 [gate=0.276]\n    RULE 5 (flat_feature_block_5): IF Slope IS term_1 AND Hillshade_3pm IS term_1 THEN flat_concept_1=0.146, flat_concept_2=0.843, flat_concept_3=0.145 [gate=0.251]\n    RULE 6 (flat_feature_block_6): IF Horizontal_Distance_To_Hydrology IS term_1 AND Horizontal_Distance_To_Fire_Points IS term_1 THEN flat_concept_1=0.846, flat_concept_2=0.143, flat_concept_3=0.145 [gate=0.833]\n    RULE 7 (flat_feature_block_7): IF Horizontal_Distance_To_Hydrology IS term_1 AND Horizontal_Distance_To_Roadways IS term_1 THEN flat_concept_1=0.846, flat_concept_2=0.143, flat_concept_3=0.145 [gate=0.832]\n\nDECISION LAYER: flat_decision\nOutput dimension: 1\n  RULE 0 (flat_decision_0): IF flat_concept_2 IS low AND flat_concept_3 IS low THEN target = 0.015 + 0.004*flat_concept_1 - 0.001*flat_concept_2 + 0.002*flat_concept_3 [gate=0.850]\n  RULE 1 (flat_decision_1): IF flat_concept_1 IS high AND flat_concept_2 IS low THEN target = 0.015 + 0.004*flat_concept_1 - 0.001*flat_concept_2 + 0.002*flat_concept_3 [gate=0.578]\n  RULE 2 (flat_decision_2): IF flat_concept_1 IS low AND flat_concept_2 IS low THEN target = 0.015 + 0.004*flat_concept_1 - 0.001*flat_concept_2 + 0.002*flat_concept_3 [gate=0.551]\n  RULE 3 (flat_decision_3): IF flat_concept_1 IS high AND flat_concept_3 IS low THEN target = 0.015 + 0.004*flat_concept_1 - 0.001*flat_concept_2 + 0.002*flat_concept_3 [gate=0.499]\n  RULE 4 (flat_decision_4): IF flat_concept_1 IS low AND flat_concept_3 IS low THEN target = 0.015 + 0.004*flat_concept_1 - 0.001*flat_concept_2 + 0.002*flat_concept_3 [gate=0.475]\n  RULE 5 (flat_decision_5): IF flat_concept_2 IS low AND flat_concept_3 IS high THEN target = 0.015 + 0.004*flat_concept_1 - 0.001*flat_concept_2 + 0.002*flat_concept_3 [gate=0.339]\n  RULE 6 (flat_decision_6): IF flat_concept_1 IS high AND flat_concept_3 IS high THEN target = 0.015 + 0.004*flat_concept_1 - 0.001*flat_concept_2 + 0.002*flat_concept_3 [gate=0.255]\n  RULE 7 (flat_decision_7): IF flat_concept_1 IS low AND flat_concept_3 IS high THEN target = 0.015 + 0.004*flat_concept_1 - 0.001*flat_concept_2 + 0.002*flat_concept_3 [gate=0.249]"
+      }
+    ]
+  }
+}

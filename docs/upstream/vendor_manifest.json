@@ -1,0 +1,11 @@
+{
+  "upstream_repository": "https://github.com/lebedeffson/deep-neuro-fuzzy.git",
+  "vendored_commit": "ec7afdaf54dd35caddd0491d1bd90a0d07822689",
+  "vendored_paths": [
+    "src/ruanfis",
+    "tests/upstream",
+    "examples/upstream",
+    "docs/upstream/deep_fuzzy_feature_learning.md"
+  ],
+  "copied_license_to_repo_root": true
+}

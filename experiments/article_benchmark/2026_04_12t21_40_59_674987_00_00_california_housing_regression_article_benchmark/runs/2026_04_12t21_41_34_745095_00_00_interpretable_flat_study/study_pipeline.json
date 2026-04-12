@@ -1,0 +1,11 @@
+{
+  "name": "interpretable_flat_study",
+  "label": "Interpretable Flat Study",
+  "description": "Compact flat model with interpretability-oriented regularization.",
+  "workspace_template": "flat_interpretable",
+  "training_preset": "interpretable",
+  "outputs": [
+    "project_report",
+    "model_report"
+  ]
+}

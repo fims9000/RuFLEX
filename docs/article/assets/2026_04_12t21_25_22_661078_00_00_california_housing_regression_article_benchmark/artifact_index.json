@@ -1,0 +1,29 @@
+{
+  "benchmark_dir": "/home/lebedeffson/Code/neurofuzzy_analysis/experiments/article_benchmark/2026_04_12t21_25_22_661078_00_00_california_housing_regression_article_benchmark",
+  "artifacts": [
+    {
+      "variant_name": "flat_baseline",
+      "variant_label": "Flat Baseline",
+      "study_pipeline": "flat_baseline_benchmark",
+      "export_dir": "/home/lebedeffson/Code/neurofuzzy_analysis/experiments/article_benchmark/2026_04_12t21_25_22_661078_00_00_california_housing_regression_article_benchmark/runs/2026_04_12t21_25_30_935093_00_00_flat_baseline_benchmark"
+    },
+    {
+      "variant_name": "flat_interpretable",
+      "variant_label": "Flat Interpretable",
+      "study_pipeline": "interpretable_flat_study",
+      "export_dir": "/home/lebedeffson/Code/neurofuzzy_analysis/experiments/article_benchmark/2026_04_12t21_25_22_661078_00_00_california_housing_regression_article_benchmark/runs/2026_04_12t21_25_52_941803_00_00_interpretable_flat_study"
+    },
+    {
+      "variant_name": "deep_article_demo",
+      "variant_label": "Deep Article Demo",
+      "study_pipeline": "deep_article_demo",
+      "export_dir": "/home/lebedeffson/Code/neurofuzzy_analysis/experiments/article_benchmark/2026_04_12t21_25_22_661078_00_00_california_housing_regression_article_benchmark/runs/2026_04_12t21_26_10_874998_00_00_deep_article_demo"
+    },
+    {
+      "variant_name": "deep_research",
+      "variant_label": "Deep Research",
+      "study_pipeline": "deep_research_study",
+      "export_dir": "/home/lebedeffson/Code/neurofuzzy_analysis/experiments/article_benchmark/2026_04_12t21_25_22_661078_00_00_california_housing_regression_article_benchmark/runs/2026_04_12t21_26_46_582241_00_00_deep_research_study"
+    }
+  ]
+}

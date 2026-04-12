@@ -1,0 +1,30 @@
+PROJECT REPORT
+name: california_housing_regression-flat_interpretable
+task_type: regression
+model_kind: flat_neuro_fuzzy
+dataset_rows: 4096
+dataset_columns: 9
+training_source: bootstrap_plus_finetuning
+train_metrics: {'mse': 1.2547285556793213, 'mae': 0.8770415782928467, 'rmse': 1.1201466670393307, 'r2': 0.03355812977220496}
+validation_metrics: {'mse': 1.31367027759552, 'mae': 0.9052655100822449, 'rmse': 1.1461545609539405, 'r2': 0.029955812930694825}
+test_metrics: {'mse': 1.245348221874744, 'mae': 0.8807859236758628, 'rmse': 1.115951711264759, 'r2': 0.030747353148201317}
+
+MODEL REPORT
+Input dimension: 8
+
+STAGE 0: flat_stage
+Output dimension: 2
+  BLOCK 0: flat_feature_block
+    Inputs: [0, 1, 2, 3, 4, 5, 6, 7]
+    Outputs: [flat_concept_1, flat_concept_2]
+    RULE 0 (flat_feature_block_0): IF AveRooms IS term_1 AND Population IS term_1 THEN flat_concept_1=0.844, flat_concept_2=0.156 [gate=0.829]
+    RULE 1 (flat_feature_block_1): IF MedInc IS term_1 AND Population IS term_1 THEN flat_concept_1=0.903, flat_concept_2=0.096 [gate=0.347]
+    RULE 2 (flat_feature_block_2): IF AveBedrms IS term_1 AND Population IS term_1 THEN flat_concept_1=0.143, flat_concept_2=0.856 [gate=0.796]
+    RULE 3 (flat_feature_block_3): IF HouseAge IS term_1 AND Population IS term_1 THEN flat_concept_1=0.843, flat_concept_2=0.156 [gate=0.752]
+
+DECISION LAYER: flat_decision
+Output dimension: 1
+  RULE 0 (flat_decision_0): IF flat_concept_1 IS high AND flat_concept_2 IS low THEN target = 1.917 - 2.133*flat_concept_1 + 4.046*flat_concept_2 [gate=0.305]
+  RULE 1 (flat_decision_1): IF flat_concept_1 IS low AND flat_concept_2 IS low THEN target = 1.976 - 2.080*flat_concept_1 + 4.115*flat_concept_2 [gate=0.079]
+  RULE 2 (flat_decision_2): IF flat_concept_1 IS high AND flat_concept_2 IS high THEN target = 1.976 - 2.080*flat_concept_1 + 4.115*flat_concept_2 [gate=0.079]
+  RULE 3 (flat_decision_3): IF flat_concept_1 IS low AND flat_concept_2 IS high THEN target = 2.074 - 1.988*flat_concept_1 + 4.224*flat_concept_2 [gate=0.063]

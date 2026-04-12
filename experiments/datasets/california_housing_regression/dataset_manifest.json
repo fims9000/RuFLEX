@@ -1,0 +1,49 @@
+{
+  "name": "california_housing_regression",
+  "label": "California Housing Regression",
+  "task_type": "regression",
+  "description": "Geo-oriented tabular regression benchmark based on California Housing with latitude and longitude preserved as explicit spatial predictors.",
+  "source_dataset": "sklearn.fetch_california_housing",
+  "target_column": "MedHouseVal",
+  "feature_columns": [
+    "MedInc",
+    "HouseAge",
+    "AveRooms",
+    "AveBedrms",
+    "Population",
+    "AveOccup",
+    "Latitude",
+    "Longitude"
+  ],
+  "sample_size": 4096,
+  "random_state": 42,
+  "default_enabled": true,
+  "sampling": {
+    "kind": "random_subsample",
+    "sample_size": 4096,
+    "original_row_count": 20640,
+    "random_state": 42
+  },
+  "task_notes": {
+    "problem_type": "regression",
+    "geo_features": [
+      "Latitude",
+      "Longitude"
+    ]
+  },
+  "output_dir": "/home/lebedeffson/Code/neurofuzzy_analysis/experiments/datasets/california_housing_regression",
+  "csv_path": "/home/lebedeffson/Code/neurofuzzy_analysis/experiments/datasets/california_housing_regression/dataset.csv",
+  "row_count": 4096,
+  "column_count": 9,
+  "columns": [
+    "MedInc",
+    "HouseAge",
+    "AveRooms",
+    "AveBedrms",
+    "Population",
+    "AveOccup",
+    "Latitude",
+    "Longitude",
+    "MedHouseVal"
+  ]
+}
