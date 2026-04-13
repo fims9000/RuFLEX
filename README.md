@@ -2,6 +2,14 @@
 
 RuFLEX is a research-oriented platform for hybrid deep fuzzy learning.
 
+Recommended repository naming:
+
+- canonical project name: `RuFLEX`
+- recommended repo slug: `ruflex-platform`
+- acceptable short repo slug: `ruflex`
+
+If the repository is renamed later, `RuFLEX` should stay the primary public-facing name, while the repo slug can remain implementation-oriented.
+
 This repository now contains:
 
 - a new platform layer under `src/ruflex`;
