@@ -1,6 +1,6 @@
 # RuFLEX Q2 readiness report
 
-- generated_at: `2026-04-13T13:41:43.955203+00:00`
+- generated_at: `2026-04-13T18:23:13.233391+00:00`
 - package_kind: `q2_submission_package`
 - overall_status: `pass`
 - submission_status: `pending`
@@ -15,7 +15,7 @@
 - `PASS` doc:docs/article/article_extended_materials_ru.docx: /home/lebedeffson/Code/neurofuzzy_analysis/docs/article/article_extended_materials_ru.docx
 - `PASS` doc:docs/article/article_extended_materials_ru.pdf: /home/lebedeffson/Code/neurofuzzy_analysis/docs/article/article_extended_materials_ru.pdf
 - `PASS` doc:docs/article/visual_package_ru.md: /home/lebedeffson/Code/neurofuzzy_analysis/docs/article/visual_package_ru.md
-- `PASS` doc:docs/article/benchmark_summary_q2_final_plus.md: /home/lebedeffson/Code/neurofuzzy_analysis/docs/article/benchmark_summary_q2_final_plus.md
+- `PASS` doc:docs/article/benchmark_summary_dual_architectures.md: /home/lebedeffson/Code/neurofuzzy_analysis/docs/article/benchmark_summary_dual_architectures.md
 - `PASS` doc:docs/article/q2_submission_checklist_ru.md: /home/lebedeffson/Code/neurofuzzy_analysis/docs/article/q2_submission_checklist_ru.md
 - `PASS` doc:docs/article/q2_build_report_ru.md: /home/lebedeffson/Code/neurofuzzy_analysis/docs/article/q2_build_report_ru.md
 - `PASS` q2_package_dir: /home/lebedeffson/Code/neurofuzzy_analysis/docs/article/q2_submission_package
@@ -45,20 +45,14 @@
 - `PASS` package_doc:article_final_ru.pdf: /home/lebedeffson/Code/neurofuzzy_analysis/docs/article/q2_submission_package/docs/article_final_ru.pdf
 - `PASS` package_doc:article_extended_materials_ru.pdf: /home/lebedeffson/Code/neurofuzzy_analysis/docs/article/q2_submission_package/docs/article_extended_materials_ru.pdf
 - `PASS` package_doc:visual_package_ru.md: /home/lebedeffson/Code/neurofuzzy_analysis/docs/article/q2_submission_package/docs/visual_package_ru.md
-- `PASS` package_doc:benchmark_summary_q2_final_plus.md: /home/lebedeffson/Code/neurofuzzy_analysis/docs/article/q2_submission_package/docs/benchmark_summary_q2_final_plus.md
+- `PASS` package_doc:benchmark_summary_dual_architectures.md: /home/lebedeffson/Code/neurofuzzy_analysis/docs/article/q2_submission_package/docs/benchmark_summary_dual_architectures.md
 - `PASS` package_doc:q2_submission_checklist_ru.md: /home/lebedeffson/Code/neurofuzzy_analysis/docs/article/q2_submission_package/docs/q2_submission_checklist_ru.md
 - `PASS` package_doc:q2_build_report_ru.md: /home/lebedeffson/Code/neurofuzzy_analysis/docs/article/q2_submission_package/docs/q2_build_report_ru.md
 - `PASS` package_figure:scheme1_ruflex_platform_architecture.png: /home/lebedeffson/Code/neurofuzzy_analysis/docs/article/q2_submission_package/figures/scheme1_ruflex_platform_architecture.png
 - `PASS` package_figure:scheme2_model_contour.png: /home/lebedeffson/Code/neurofuzzy_analysis/docs/article/q2_submission_package/figures/scheme2_model_contour.png
 - `PASS` package_figure:scheme3_explainability_pipeline.png: /home/lebedeffson/Code/neurofuzzy_analysis/docs/article/q2_submission_package/figures/scheme3_explainability_pipeline.png
-- `PASS` package_figure:article_board_regression_q2.png: /home/lebedeffson/Code/neurofuzzy_analysis/docs/article/q2_submission_package/figures/article_board_regression_q2.png
-- `PASS` package_figure:california_housing_regression_results_overview.png: /home/lebedeffson/Code/neurofuzzy_analysis/docs/article/q2_submission_package/figures/california_housing_regression_results_overview.png
 - `PASS` package_table:california_housing_regression_summary.csv: /home/lebedeffson/Code/neurofuzzy_analysis/docs/article/q2_submission_package/tables/california_housing_regression_summary.csv
-- `PASS` package_figure:article_board_classification_q2.png: /home/lebedeffson/Code/neurofuzzy_analysis/docs/article/q2_submission_package/figures/article_board_classification_q2.png
-- `PASS` package_figure:california_value_binary_geo_results_overview.png: /home/lebedeffson/Code/neurofuzzy_analysis/docs/article/q2_submission_package/figures/california_value_binary_geo_results_overview.png
 - `PASS` package_table:california_value_binary_geo_summary.csv: /home/lebedeffson/Code/neurofuzzy_analysis/docs/article/q2_submission_package/tables/california_value_binary_geo_summary.csv
-- `PASS` package_figure:article_board_covtype_q2.png: /home/lebedeffson/Code/neurofuzzy_analysis/docs/article/q2_submission_package/figures/article_board_covtype_q2.png
-- `PASS` package_figure:covtype_binary_geo_results_overview.png: /home/lebedeffson/Code/neurofuzzy_analysis/docs/article/q2_submission_package/figures/covtype_binary_geo_results_overview.png
 - `PASS` package_table:covtype_binary_geo_summary.csv: /home/lebedeffson/Code/neurofuzzy_analysis/docs/article/q2_submission_package/tables/covtype_binary_geo_summary.csv
 - `PASS` author_line_present: Лебедев М.Д. [1], Трофимов Ю.В. [2, 4], Лебедев А.Д. [2], Аверкин А.Н. [2], Ильин А.С. [3], Алексеев А.К. [2]
 - `PASS` author_affiliations_present: 1 НИТУ МИСИС, Москва, Россия; 2 Государственный университет «Дубна», Дубна, Россия; 3 Университет Иннополис, Иннополис, Россия; 4 Объединенный институт ядерных исследований, Дубна, Россия
@@ -67,9 +61,9 @@
 
 ## Best benchmark results
 
-- `california_housing_regression`: RuFLEX -> Deep Depth 1; external -> Gradient Boosting
-- `california_value_binary_geo`: RuFLEX -> Deep Depth 1; external -> Gradient Boosting
-- `covtype_binary_geo`: RuFLEX -> Deep No Regularization; external -> Random Forest
+- `california_housing_regression`: RuFLEX -> Глубокая конфигурация с одним скрытым уровнем; external -> Gradient Boosting
+- `california_value_binary_geo`: RuFLEX -> Контекстная глубокая конфигурация; external -> Gradient Boosting
+- `covtype_binary_geo`: RuFLEX -> Глубокая конфигурация с одним скрытым уровнем; external -> Random Forest
 
 ## Author metadata
 
@@ -80,6 +74,6 @@
 
 ## Manual items
 
-- `pending` Добавить аффилиации, e-mail и ORCID в шапку статьи, если этого требует площадка.
+- `pending` Добавить e-mail авторов в шапку статьи, если этого требует площадка.
 - `pending` Проверить финальную верстку и требования журнала к Word-формулам.
 - `pending` При необходимости дополнить основной текст живыми UI-скриншотами.

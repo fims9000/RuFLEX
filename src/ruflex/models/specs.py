@@ -135,6 +135,7 @@ class HierarchicalModelSpec:
     input_dim: int
     stages: tuple[StageSpec, ...]
     decision_layer: DecisionLayerSpec
+    decision_input_mode: str = "final_only"
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -142,6 +143,7 @@ class HierarchicalModelSpec:
             "input_dim": self.input_dim,
             "stages": [stage.to_dict() for stage in self.stages],
             "decision_layer": self.decision_layer.to_dict(),
+            "decision_input_mode": self.decision_input_mode,
         }
 
     @classmethod
@@ -150,6 +152,7 @@ class HierarchicalModelSpec:
             input_dim=int(payload["input_dim"]),
             stages=tuple(StageSpec.from_dict(item) for item in payload["stages"]),
             decision_layer=DecisionLayerSpec.from_dict(payload["decision_layer"]),
+            decision_input_mode=payload.get("decision_input_mode", "final_only"),
         )
 
 

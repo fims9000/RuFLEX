@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-13T13:41:43.955203+00:00",
+  "generated_at": "2026-04-13T18:23:13.233391+00:00",
   "package_kind": "q2_submission_package",
   "overall_status": "pass",
   "submission_status": "pending",
@@ -46,11 +46,11 @@
     {
       "dataset": "california_housing_regression",
       "best_ruflex": {
-        "model": "Deep Depth 1",
+        "model": "Глубокая конфигурация с одним скрытым уровнем",
         "metrics": {
-          "rmse": "0.780 ± 0.033",
-          "mae": "0.586 ± 0.008",
-          "r2": "0.504 ± 0.046"
+          "rmse": "0.677 ± 0.062",
+          "mae": "0.492 ± 0.036",
+          "r2": "0.625 ± 0.072"
         }
       },
       "best_external": {
@@ -65,12 +65,12 @@
     {
       "dataset": "california_value_binary_geo",
       "best_ruflex": {
-        "model": "Deep Depth 1",
+        "model": "Контекстная глубокая конфигурация",
         "metrics": {
-          "accuracy": "0.751 ± 0.008",
-          "f1": "0.745 ± 0.009",
-          "precision": "0.777 ± 0.018",
-          "recall": "0.716 ± 0.015"
+          "accuracy": "0.825 ± 0.012",
+          "f1": "0.826 ± 0.015",
+          "precision": "0.833 ± 0.008",
+          "recall": "0.820 ± 0.023"
         }
       },
       "best_external": {
@@ -86,12 +86,12 @@
     {
       "dataset": "covtype_binary_geo",
       "best_ruflex": {
-        "model": "Deep No Regularization",
+        "model": "Глубокая конфигурация с одним скрытым уровнем",
         "metrics": {
-          "accuracy": "0.499 ± 0.007",
-          "f1": "0.321 ± 0.272",
-          "precision": "0.358 ± 0.255",
-          "recall": "0.400 ± 0.432"
+          "accuracy": "0.772 ± 0.011",
+          "f1": "0.772 ± 0.015",
+          "precision": "0.786 ± 0.022",
+          "recall": "0.759 ± 0.025"
         }
       },
       "best_external": {
@@ -142,9 +142,9 @@
       "detail": "/home/lebedeffson/Code/neurofuzzy_analysis/docs/article/visual_package_ru.md"
     },
     {
-      "name": "doc:docs/article/benchmark_summary_q2_final_plus.md",
+      "name": "doc:docs/article/benchmark_summary_dual_architectures.md",
       "ok": true,
-      "detail": "/home/lebedeffson/Code/neurofuzzy_analysis/docs/article/benchmark_summary_q2_final_plus.md"
+      "detail": "/home/lebedeffson/Code/neurofuzzy_analysis/docs/article/benchmark_summary_dual_architectures.md"
     },
     {
       "name": "doc:docs/article/q2_submission_checklist_ru.md",
@@ -292,9 +292,9 @@
       "detail": "/home/lebedeffson/Code/neurofuzzy_analysis/docs/article/q2_submission_package/docs/visual_package_ru.md"
     },
     {
-      "name": "package_doc:benchmark_summary_q2_final_plus.md",
+      "name": "package_doc:benchmark_summary_dual_architectures.md",
       "ok": true,
-      "detail": "/home/lebedeffson/Code/neurofuzzy_analysis/docs/article/q2_submission_package/docs/benchmark_summary_q2_final_plus.md"
+      "detail": "/home/lebedeffson/Code/neurofuzzy_analysis/docs/article/q2_submission_package/docs/benchmark_summary_dual_architectures.md"
     },
     {
       "name": "package_doc:q2_submission_checklist_ru.md",
@@ -322,44 +322,14 @@
       "detail": "/home/lebedeffson/Code/neurofuzzy_analysis/docs/article/q2_submission_package/figures/scheme3_explainability_pipeline.png"
     },
     {
-      "name": "package_figure:article_board_regression_q2.png",
-      "ok": true,
-      "detail": "/home/lebedeffson/Code/neurofuzzy_analysis/docs/article/q2_submission_package/figures/article_board_regression_q2.png"
-    },
-    {
-      "name": "package_figure:california_housing_regression_results_overview.png",
-      "ok": true,
-      "detail": "/home/lebedeffson/Code/neurofuzzy_analysis/docs/article/q2_submission_package/figures/california_housing_regression_results_overview.png"
-    },
-    {
       "name": "package_table:california_housing_regression_summary.csv",
       "ok": true,
       "detail": "/home/lebedeffson/Code/neurofuzzy_analysis/docs/article/q2_submission_package/tables/california_housing_regression_summary.csv"
     },
     {
-      "name": "package_figure:article_board_classification_q2.png",
-      "ok": true,
-      "detail": "/home/lebedeffson/Code/neurofuzzy_analysis/docs/article/q2_submission_package/figures/article_board_classification_q2.png"
-    },
-    {
-      "name": "package_figure:california_value_binary_geo_results_overview.png",
-      "ok": true,
-      "detail": "/home/lebedeffson/Code/neurofuzzy_analysis/docs/article/q2_submission_package/figures/california_value_binary_geo_results_overview.png"
-    },
-    {
       "name": "package_table:california_value_binary_geo_summary.csv",
       "ok": true,
       "detail": "/home/lebedeffson/Code/neurofuzzy_analysis/docs/article/q2_submission_package/tables/california_value_binary_geo_summary.csv"
-    },
-    {
-      "name": "package_figure:article_board_covtype_q2.png",
-      "ok": true,
-      "detail": "/home/lebedeffson/Code/neurofuzzy_analysis/docs/article/q2_submission_package/figures/article_board_covtype_q2.png"
-    },
-    {
-      "name": "package_figure:covtype_binary_geo_results_overview.png",
-      "ok": true,
-      "detail": "/home/lebedeffson/Code/neurofuzzy_analysis/docs/article/q2_submission_package/figures/covtype_binary_geo_results_overview.png"
     },
     {
       "name": "package_table:covtype_binary_geo_summary.csv",
@@ -390,7 +360,7 @@
   "manual_items": [
     {
       "status": "pending",
-      "item": "Добавить аффилиации, e-mail и ORCID в шапку статьи, если этого требует площадка."
+      "item": "Добавить e-mail авторов в шапку статьи, если этого требует площадка."
     },
     {
       "status": "pending",

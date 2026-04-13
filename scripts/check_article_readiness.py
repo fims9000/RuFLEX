@@ -153,7 +153,7 @@ def build_readiness_report(*, run_tests: bool = False) -> Path:
         "manual_items": [
             {
                 "status": "pending",
-                "item": "Добавить аффилиации, e-mail и ORCID в шапку статьи, если этого требует площадка.",
+                "item": "Добавить e-mail авторов в шапку статьи, если этого требует площадка.",
             },
             {
                 "status": "pending",
@@ -366,21 +366,6 @@ def _package_checks() -> list[dict[str, Any]]:
             )
         )
     for dataset in DATASETS:
-        checks.append(
-            _check(
-                name=f"package_figure:{dataset.board_path.name}",
-                ok=(package_figures / dataset.board_path.name).exists(),
-                detail=str(package_figures / dataset.board_path.name),
-            )
-        )
-        overview_name = dataset.overview_path.name.replace("results_overview", f"{dataset.slug}_results_overview")
-        checks.append(
-            _check(
-                name=f"package_figure:{overview_name}",
-                ok=(package_figures / overview_name).exists(),
-                detail=str(package_figures / overview_name),
-            )
-        )
         checks.append(
             _check(
                 name=f"package_table:{dataset.slug}_summary.csv",

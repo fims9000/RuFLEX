@@ -125,15 +125,30 @@ class SampleRuleChainFlow:
 
 
 def _concept_sources(model: DeepFuzzyFeatureModel) -> tuple[tuple[str | None, str | None, str], ...]:
-    if not model.stages:
-        return tuple((None, None, variable.name) for variable in model.decision_layer.variables)
+    hidden_sources: dict[str, tuple[str | None, str | None, str]] = {}
+    for stage in model.stages:
+        for connected_block in stage.blocks:
+            for concept_name in connected_block.block.output_names:
+                hidden_sources[concept_name] = (stage.name, connected_block.block.name, concept_name)
 
     sources: list[tuple[str | None, str | None, str]] = []
-    last_stage = model.stages[-1]
-    for connected_block in last_stage.blocks:
-        for concept_name in connected_block.block.output_names:
-            sources.append((last_stage.name, connected_block.block.name, concept_name))
+    for variable in model.decision_layer.variables:
+        sources.append(hidden_sources.get(variable.name, (None, None, variable.name)))
     return tuple(sources)
+
+
+def _final_stage_decision_offset(model: DeepFuzzyFeatureModel) -> int:
+    if not model.stages:
+        return 0
+    if model.decision_input_mode == "final_only":
+        return 0
+    if model.decision_input_mode == "all_stages":
+        return sum(stage.output_dim for stage in model.stages[:-1])
+    if model.input_dim is None:
+        raise ValueError("input_dim must be known when using raw feature decision input modes.")
+    if model.decision_input_mode == "raw_and_final":
+        return int(model.input_dim)
+    return int(model.input_dim) + sum(stage.output_dim for stage in model.stages[:-1])
 
 
 def analyze_concept_flow(
@@ -253,6 +268,7 @@ def analyze_path_concept_flow(
     for sample_index in range(inputs.size(0)):
         sample = inputs[sample_index : sample_index + 1].detach().clone().requires_grad_(True)
         current = sample
+        stage_outputs: list[Tensor] = []
         hidden_nodes: list[tuple[str, str, tuple[str, ...], Tensor]] = []
         for stage in model.stages:
             block_outputs = []
@@ -269,7 +285,9 @@ def analyze_path_concept_flow(
                 )
                 block_outputs.append(block_output)
             current = torch.cat(block_outputs, dim=1)
-        sample_prediction = model.decision_layer(current, top_k_rules=top_k_rules)
+            stage_outputs.append(current)
+        decision_inputs = model._compose_decision_inputs(sample, tuple(stage_outputs))
+        sample_prediction = model.decision_layer(decision_inputs, top_k_rules=top_k_rules)
 
         hidden_paths: list[HiddenConceptPathFlow] = []
         hidden_rule_paths: list[HiddenBlockRulePathFlow] = []
@@ -397,11 +415,15 @@ def analyze_rule_chain_flow(
     if model.stages:
         last_stage = model.stages[-1]
         last_stage_trace = trace.stage_traces[-1]
-        final_stage_blocks = {(last_stage.name, connected_block.block.name): connected_block.block for connected_block in last_stage.blocks}
+        final_stage_blocks = {
+            (last_stage.name, connected_block.block.name): connected_block.block for connected_block in last_stage.blocks
+        }
+        final_stage_offset = _final_stage_decision_offset(model)
     else:
         last_stage = None
         last_stage_trace = None
         final_stage_blocks = {}
+        final_stage_offset = 0
 
     sample_flows: list[SampleRuleChainFlow] = []
     for sample_index in range(inputs.size(0)):
@@ -419,7 +441,7 @@ def analyze_rule_chain_flow(
             concept_offset = 0
             for connected_block, block_trace in zip(last_stage.blocks, last_stage_trace.block_traces, strict=True):
                 block = connected_block.block
-                concept_slice = slice(concept_offset, concept_offset + block.output_dim)
+                concept_slice = slice(final_stage_offset + concept_offset, final_stage_offset + concept_offset + block.output_dim)
                 concept_offset += block.output_dim
 
                 local_rule_contributions = (

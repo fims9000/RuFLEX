@@ -80,6 +80,7 @@ class HierarchicalModelConfig:
     input_dim: int
     stages: tuple[StageConfig, ...]
     decision_layer: DecisionLayerConfig
+    decision_input_mode: str = "final_only"
 
     def generated_rule_count(self) -> int:
         return sum(stage.generated_rule_count() for stage in self.stages) + self.decision_layer.generated_rule_count()
@@ -113,6 +114,31 @@ def _validate_rule_generation_mode(mode: str) -> None:
         raise ValueError(
             f"Unsupported rule_generation_mode={mode!r}. Expected 'enumerate' or 'prototype'."
         )
+
+
+def _validate_decision_input_mode(mode: str) -> None:
+    if mode not in {"final_only", "all_stages", "raw_and_final", "raw_and_all_stages"}:
+        raise ValueError(
+            "Unsupported decision_input_mode="
+            f"{mode!r}. Expected 'final_only', 'all_stages', 'raw_and_final', or 'raw_and_all_stages'."
+        )
+
+
+def compose_decision_inputs(
+    decision_input_mode: str,
+    raw_inputs: Tensor,
+    stage_outputs: Sequence[Tensor],
+) -> Tensor:
+    _validate_decision_input_mode(decision_input_mode)
+    if not stage_outputs:
+        return raw_inputs
+    if decision_input_mode == "final_only":
+        return stage_outputs[-1]
+    if decision_input_mode == "all_stages":
+        return torch.cat(tuple(stage_outputs), dim=1)
+    if decision_input_mode == "raw_and_final":
+        return torch.cat((raw_inputs, stage_outputs[-1]), dim=1)
+    return torch.cat((raw_inputs, *tuple(stage_outputs)), dim=1)
 
 
 def _maybe_subsample_inputs(inputs: Tensor, sample_size: int | None) -> Tensor:
@@ -244,17 +270,28 @@ def build_hierarchical_model(
             )
         sample_inputs = sample_inputs.detach().cpu()
 
+    _validate_decision_input_mode(config.decision_input_mode)
     stages: list[FuzzyStage] = []
     current_samples = sample_inputs
+    stage_outputs: list[Tensor] = []
     for stage_config in config.stages:
         stage = build_stage(stage_config, sample_inputs=current_samples)
         stages.append(stage)
         if current_samples is not None:
             with torch.no_grad():
                 current_samples = stage(current_samples)
+                stage_outputs.append(current_samples)
 
-    decision_layer = build_decision_layer(config.decision_layer, sample_inputs=current_samples)
-    return DeepFuzzyFeatureModel(stages=stages, decision_layer=decision_layer, input_dim=config.input_dim)
+    decision_inputs = None
+    if sample_inputs is not None:
+        decision_inputs = compose_decision_inputs(config.decision_input_mode, sample_inputs, tuple(stage_outputs))
+    decision_layer = build_decision_layer(config.decision_layer, sample_inputs=decision_inputs)
+    return DeepFuzzyFeatureModel(
+        stages=stages,
+        decision_layer=decision_layer,
+        input_dim=config.input_dim,
+        decision_input_mode=config.decision_input_mode,
+    )
 
 
 def build_shallow_fuzzy_model(

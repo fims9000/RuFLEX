@@ -35,7 +35,7 @@ EXT_DOC_DOCX = ARTICLE_DIR / "article_extended_materials_ru.docx"
 EXT_DOC_PDF = ARTICLE_DIR / "article_extended_materials_ru.pdf"
 
 VISUAL_PACKAGE = ARTICLE_DIR / "visual_package_ru.md"
-BENCHMARK_SUMMARY = ARTICLE_DIR / "benchmark_summary_q2_final_plus.md"
+BENCHMARK_SUMMARY = ARTICLE_DIR / "benchmark_summary_dual_architectures.md"
 CHECKLIST_PATH = ARTICLE_DIR / "q2_submission_checklist_ru.md"
 BUILD_REPORT_PATH = ARTICLE_DIR / "q2_build_report_ru.md"
 PACKAGE_ZIP = ARTICLE_DIR / "q2_submission_package.zip"
@@ -163,6 +163,10 @@ FORMULA_MAP = {
     "g_r^(l)( z^(l-1)(x) ) = β_(r0)^(l) + Σ_t β_(rt)^(l) z_t^(l-1)(x).": r"g_r^{(l)}\!\left(z^{(l-1)}(x)\right) = \beta_{r0}^{(l)} + \sum_t \beta_{rt}^{(l)} z_t^{(l-1)}(x)",
     "h^(l)(x) = ( h_1^(l)(x), h_2^(l)(x), ..., h_(Q_l)^(l)(x) )": r"h^{(l)}(x) = \left(h_1^{(l)}(x), h_2^{(l)}(x), \ldots, h_{Q_l}^{(l)}(x)\right)",
     "z^(0)(x) -> h^(1)(x) -> h^(2)(x) -> ... -> h^(L-1)(x).": r"z^{(0)}(x) \rightarrow h^{(1)}(x) \rightarrow h^{(2)}(x) \rightarrow \cdots \rightarrow h^{(L-1)}(x)",
+    "d(x) = h^(L-1)(x),   d(x) = [h^(1)(x), ..., h^(L-1)(x)],": r"d(x)=h^{(L-1)}(x),\quad d(x)=\left[h^{(1)}(x), \ldots, h^{(L-1)}(x)\right]",
+    "d(x) = [z^(0)(x), h^(L-1)(x)]   или   d(x) = [z^(0)(x), h^(1)(x), ..., h^(L-1)(x)].": r"d(x)=\left[z^{(0)}(x),h^{(L-1)}(x)\right]\quad \mathrm{или}\quad d(x)=\left[z^{(0)}(x),h^{(1)}(x),\ldots,h^{(L-1)}(x)\right]",
+    r"\hat{y}(x) = Σ_(r ∈ B^(L)) \bar{w}_r^(L)(x) · g_r^(L)( d(x) ).": r"\hat{y}(x) = \sum_{r \in B^{(L)}} \bar{w}_r^{(L)}(x) \cdot g_r^{(L)}\!\left(d(x)\right)",
+    "s(x) = Σ_(r ∈ B^(L)) \\bar{w}_r^(L)(x) · g_r^(L)( d(x) ),": r"s(x) = \sum_{r \in B^{(L)}} \bar{w}_r^{(L)}(x) \cdot g_r^{(L)}\!\left(d(x)\right)",
     r"\hat{y}(x) = Σ_(r ∈ B^(L)) \bar{w}_r^(L)(x) · g_r^(L)( h^(L-1)(x) ).": r"\hat{y}(x) = \sum_{r \in B^{(L)}} \bar{w}_r^{(L)}(x) \cdot g_r^{(L)}\!\left(h^{(L-1)}(x)\right)",
     "s(x) = Σ_(r ∈ B^(L)) \\bar{w}_r^(L)(x) · g_r^(L)( h^(L-1)(x) ),": r"s(x) = \sum_{r \in B^{(L)}} \bar{w}_r^{(L)}(x) \cdot g_r^{(L)}\!\left(h^{(L-1)}(x)\right)",
     r"\hat{p}(x) = 1 / (1 + exp(-s(x))).": r"\hat{p}(x) = \frac{1}{1 + \exp(-s(x))}",
@@ -448,13 +452,7 @@ def append_section_assets(
     if include_results_assets and ("Результаты" in section or "Как трактовать результаты" in section):
         for dataset in DATASETS:
             add_metric_table(document, dataset)
-            add_figure(document, dataset.board_path, dataset.board_title, width=6.2)
-            if not compact_results:
-                add_figure(document, dataset.overview_path, f"{dataset.title}: сводный график метрик.", width=6.0)
-
-        if include_interpretability_assets:
-            for figure_path, caption in interpretability_figures():
-                add_figure(document, figure_path, caption, width=6.0)
+        return
 
 
 def interpretability_figures() -> tuple[tuple[Path, str], ...]:
@@ -667,17 +665,16 @@ def write_checklist() -> None:
                 "",
                 "## Уже доведено автоматически",
                 "",
-                "1. Пересчитана финальная benchmark-серия `article_benchmark_q2_final_plus` по трем задачам.",
-                "2. Внешняя таблица усилена за счет `Gradient Boosting`.",
-                "3. Собраны финальные boards и обновлен визуальный пакет.",
-                "4. Переписаны основной текст статьи и расширенные материалы под новую clean-series.",
-                "5. Собраны `article_final_ru.docx` и `article_extended_materials_ru.docx` с встроенными рисунками, таблицами и визуально оформленными формулами.",
-                "6. Автоматически собраны `article_final_ru.pdf` и `article_extended_materials_ru.pdf`.",
-                "7. Подготовлен пакет `docs/article/q2_submission_package`.",
+                "1. Синхронизированы итоговые таблицы результатов по трем задачам.",
+                "2. Внешняя сравнительная таблица включает `Gradient Boosting`.",
+                "3. Переписаны основной текст статьи и расширенные материалы под актуальную архитектурную серию.",
+                "4. Собраны `article_final_ru.docx` и `article_extended_materials_ru.docx` с встроенными схемами, таблицами и визуально оформленными формулами.",
+                "5. Автоматически собраны `article_final_ru.pdf` и `article_extended_materials_ru.pdf`.",
+                "6. Подготовлен пакет `docs/article/q2_submission_package`.",
                 "",
                 "## Что остается сделать вручную перед подачей",
                 "",
-                "1. Добавить аффилиации, e-mail и ORCID для утвержденного списка авторов, если эти сведения требуются целевой площадке.",
+                "1. Добавить e-mail авторов в шапку статьи, если эти сведения требуются целевой площадке.",
                 "2. При необходимости снять 1-3 живых скриншота интерфейса RuFLEX и решить, нужны ли они в основной статье или оставить их только в расширенных материалах.",
                 "3. Согласовать требования конкретного журнала: объем, стиль ссылок, размер рисунков, правила по приложениям и supplementary materials.",
                 "4. Если журнал принимает PDF на этапе рецензирования, использовать `article_final_ru.pdf` как основной review-артефакт, а `docx` оставить как редактируемую исходную версию.",
@@ -687,9 +684,9 @@ def write_checklist() -> None:
                 "",
                 "## Что не нужно больше пересобирать вручную",
                 "",
-                "1. Бенчмарки, таблицы и boards уже синхронизированы между собой.",
-                "2. Основные markdown-версии и офисные версии теперь относятся к одной и той же финальной benchmark-серии.",
-                "3. Визуальный манифест и benchmark-сводка уже указывают на правильные каталоги.",
+                "1. Сравнительные таблицы уже синхронизированы с текстом статьи.",
+                "2. Основные markdown-версии и офисные версии теперь относятся к одной и той же финальной архитектурной серии.",
+                "3. Визуальный манифест и benchmark-сводка уже указывают на правильные материалы.",
                 "4. PDF-версии уже включены в submission-пакет и не требуют отдельной ручной конвертации.",
             ]
         ),
@@ -704,7 +701,7 @@ def write_build_report(pdf_statuses: dict[str, str]) -> None:
         "## Основной статус",
         "",
         "1. Основные `docx`-документы собраны из актуальных markdown-источников.",
-        "2. В документы встроены рисунки, boards, краткие таблицы и визуально оформленные формулы.",
+        "2. В документы встроены схемы, краткие таблицы и визуально оформленные формулы.",
         "3. Пакет `q2_submission_package` собран и архивирован.",
         "",
         "## PDF-превью",
@@ -753,10 +750,6 @@ def populate_package(
 
     for figure_path, _caption in SCHEMES:
         shutil.copy2(figure_path, package_figures / figure_path.name)
-    for dataset in DATASETS:
-        shutil.copy2(dataset.board_path, package_figures / dataset.board_path.name)
-        shutil.copy2(dataset.overview_path, package_figures / dataset.overview_path.name.replace("results_overview", f"{dataset.slug}_results_overview"))
-
     readme_path = PACKAGE_DIR / "README.md"
     readme_path.write_text(
         "\n".join(

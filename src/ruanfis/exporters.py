@@ -181,6 +181,7 @@ def export_model_config_report(
         config = config.as_hierarchical_config()
 
     lines = ["MODEL CONFIG REPORT", f"Input dimension: {config.input_dim}"]
+    lines.append(f"Decision input mode: {config.decision_input_mode}")
     if flat_term_counts is not None:
         flat_full_rules = count_rule_candidates(flat_term_counts, max_rule_arity=len(flat_term_counts))
         lines.append(f"Flat full-rule count: {flat_full_rules}")

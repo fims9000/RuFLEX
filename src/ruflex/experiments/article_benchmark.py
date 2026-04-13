@@ -52,10 +52,8 @@ class ArticleBenchmarkVariant:
 
 def article_benchmark_plan(project: Project) -> tuple[dict[str, Any], ...]:
     _require_project_dataset(project)
-    article_template = _workspace_template(project, "deep_article_demo")
-    research_template = _workspace_template(project, "deep_research")
-    article_stage_count = int(article_template["config"]["hidden_stage_count"])
-    research_stage_count = int(research_template["config"]["hidden_stage_count"])
+    shortcut_template = _workspace_template(project, "deep_dual_raw_final")
+    shortcut_stage_count = int(shortcut_template["config"]["hidden_stage_count"])
 
     variants = [
         ArticleBenchmarkVariant(
@@ -78,14 +76,14 @@ def article_benchmark_plan(project: Project) -> tuple[dict[str, Any], ...]:
         ),
     ]
 
-    if article_stage_count > 1:
+    if shortcut_stage_count > 1:
         variants.append(
             ArticleBenchmarkVariant(
                 name="deep_stage1_ablation",
                 label="Deep Depth 1",
                 article_role="depth_ablation",
-                description="Depth ablation with a single hidden concept stage.",
-                workspace_template="deep_article_demo",
+                description="Depth ablation of the shortcut deep architecture with a single hidden concept stage.",
+                workspace_template="deep_dual_raw_final",
                 training_preset="article_demo",
                 workspace_overrides={"config": {"hidden_stage_count": 1}},
             )
@@ -95,48 +93,39 @@ def article_benchmark_plan(project: Project) -> tuple[dict[str, Any], ...]:
         [
             ArticleBenchmarkVariant(
                 name="deep_article_demo",
-                label="Deep Article Demo",
-                article_role="primary_deep_model",
-                description="Reference deep fuzzy feature learning configuration for the paper.",
+                label="Sequential Deep Reference",
+                article_role="sequential_deep_reference",
+                description="Legacy sequential deep fuzzy configuration without shortcut access to raw features.",
                 workspace_template="deep_article_demo",
                 training_preset="article_demo",
                 study_pipeline="deep_article_demo",
             ),
             ArticleBenchmarkVariant(
-                name="deep_research_no_regularization",
-                label="Deep No Regularization",
-                article_role="regularization_ablation",
-                description="Ablation of rule and concept regularization in the richer deep configuration.",
-                workspace_template="deep_research",
+                name="deep_dual_path",
+                label="Deep Dual Path",
+                article_role="all_stage_shortcut_model",
+                description="Overlapping deep fuzzy architecture with direct access to raw features and all hidden stages.",
+                workspace_template="deep_dual_path",
                 training_preset="article_demo",
-                training_overrides={
-                    "fine_tuning": {
-                        "rule_sparsity_weight": 0.0,
-                        "rule_length_weight": 0.0,
-                        "concept_orthogonality_weight": 0.0,
-                        "concept_binarization_weight": 0.0,
-                        "membership_order_weight": 0.0,
-                        "membership_overlap_weight": 0.0,
-                        "membership_coverage_weight": 0.0,
-                    },
-                    "stagewise": {
-                        "rule_sparsity_weight": 0.0,
-                        "concept_orthogonality_weight": 0.0,
-                        "concept_binarization_weight": 0.0,
-                        "membership_order_weight": 0.0,
-                        "membership_overlap_weight": 0.0,
-                        "membership_coverage_weight": 0.0,
-                    },
-                },
+                study_pipeline="deep_dual_path_study",
             ),
             ArticleBenchmarkVariant(
-                name="deep_research",
-                label="Deep Research",
-                article_role="extended_deep_model",
-                description="Broader deep fuzzy configuration for extended article comparisons.",
-                workspace_template="deep_research",
+                name="deep_dual_raw_final",
+                label="Deep Dual Shortcut",
+                article_role="primary_deep_model",
+                description="Shortcut deep fuzzy architecture with raw features and the final hidden stage routed directly to the decision layer.",
+                workspace_template="deep_dual_raw_final",
                 training_preset="article_demo",
-                study_pipeline="deep_research_study",
+                study_pipeline="deep_dual_shortcut_study",
+            ),
+            ArticleBenchmarkVariant(
+                name="deep_dual_path_block3",
+                label="Deep Dual Context",
+                article_role="context_enriched_deep_model",
+                description="Shortcut deep fuzzy architecture with overlapping three-feature blocks for richer local interactions.",
+                workspace_template="deep_dual_path_block3",
+                training_preset="article_demo",
+                study_pipeline="deep_dual_context_study",
             ),
         ]
     )
@@ -1116,9 +1105,10 @@ def _display_model_name(model_name: str) -> str:
         "flat_baseline": "Flat Baseline",
         "flat_interpretable": "Flat Interpretable",
         "deep_stage1_ablation": "Deep Depth 1",
-        "deep_article_demo": "Deep Article Demo",
-        "deep_research_no_regularization": "Deep No Regularization",
-        "deep_research": "Deep Research",
+        "deep_article_demo": "Sequential Deep Reference",
+        "deep_dual_path": "Deep Dual Path",
+        "deep_dual_raw_final": "Deep Dual Shortcut",
+        "deep_dual_path_block3": "Deep Dual Context",
     }
     return mapping.get(model_name, model_name.replace("_", " ").title())
 

@@ -246,6 +246,7 @@ def to_backend_hierarchical_config(backend: Any, spec: HierarchicalModelSpec):
             for stage in spec.stages
         ),
         decision_layer=to_backend_decision_layer_config(backend, spec.decision_layer),
+        decision_input_mode=spec.decision_input_mode,
     )
 
 
@@ -275,6 +276,7 @@ def build_backend_hierarchical_model(
         sample_inputs = sample_inputs.detach().cpu()
     stages = []
     current_samples = sample_inputs
+    stage_outputs = []
     for stage_spec in spec.stages:
         blocks = []
         for block_spec in stage_spec.blocks:
@@ -290,8 +292,18 @@ def build_backend_hierarchical_model(
         if current_samples is not None:
             with torch.no_grad():
                 current_samples = stage(current_samples)
-    decision_layer = build_decision_layer(backend, spec.decision_layer, sample_inputs=current_samples)
-    return backend.DeepFuzzyFeatureModel(stages=stages, decision_layer=decision_layer, input_dim=spec.input_dim)
+                stage_outputs.append(current_samples)
+
+    decision_samples = current_samples
+    if sample_inputs is not None and spec.decision_input_mode == "all_stages" and stage_outputs:
+        decision_samples = torch.cat(tuple(stage_outputs), dim=1)
+    decision_layer = build_decision_layer(backend, spec.decision_layer, sample_inputs=decision_samples)
+    return backend.DeepFuzzyFeatureModel(
+        stages=stages,
+        decision_layer=decision_layer,
+        input_dim=spec.input_dim,
+        decision_input_mode=spec.decision_input_mode,
+    )
 
 
 def build_backend_shallow_model(

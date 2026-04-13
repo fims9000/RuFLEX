@@ -13,6 +13,7 @@ from .builders import (
     ShallowFuzzyModelConfig,
     build_decision_layer,
     build_stage,
+    compose_decision_inputs,
 )
 from .model import DeepFuzzyFeatureModel
 from .regularizers import (
@@ -186,18 +187,20 @@ def _fit_decision_layer_on_features(
     layer.eval()
 
 
-def _compute_stage_reference_inputs(
+def _compute_reference_inputs(
     model: DeepFuzzyFeatureModel,
     raw_inputs: Tensor,
-) -> tuple[Tensor, ...]:
-    reference_inputs: list[Tensor] = []
+) -> tuple[tuple[Tensor, ...], Tensor]:
+    stage_inputs: list[Tensor] = []
+    stage_outputs: list[Tensor] = []
     current = raw_inputs
     for stage in model.stages:
-        reference_inputs.append(current)
+        stage_inputs.append(current)
         with torch.no_grad():
             current = stage(current)
-    reference_inputs.append(current)
-    return tuple(reference_inputs)
+            stage_outputs.append(current)
+    decision_inputs = compose_decision_inputs(model.decision_input_mode, raw_inputs, tuple(stage_outputs))
+    return tuple(stage_inputs), decision_inputs
 
 
 def _validate_reference_model_compatibility(
@@ -216,6 +219,8 @@ def _validate_reference_model_compatibility(
         raise ValueError(
             "reference_model decision layer input dimension does not match the provided config."
         )
+    if reference_model.decision_input_mode != config.decision_input_mode:
+        raise ValueError("reference_model decision_input_mode does not match the provided config.")
 
 
 def _support_to_gate_probabilities(
@@ -368,6 +373,7 @@ def build_bootstrapped_hierarchical_model(
 ) -> DeepFuzzyFeatureModel:
     bootstrap = bootstrap_config or BootstrapConfig()
     current_samples = _to_feature_matrix(sample_inputs, config.input_dim, name="sample_inputs")
+    raw_samples = current_samples
     target_matrix = None
     if sample_targets is not None:
         target_matrix = _to_target_matrix(sample_targets, config.decision_layer.output_dim, name="sample_targets")
@@ -375,6 +381,7 @@ def build_bootstrapped_hierarchical_model(
             raise ValueError("sample_inputs and sample_targets must contain the same number of samples.")
 
     stages: list[FuzzyStage] = []
+    stage_outputs: list[Tensor] = []
     for stage_config in config.stages:
         stage = build_stage(stage_config, sample_inputs=current_samples)
         for connected_block in stage.blocks:
@@ -383,15 +390,22 @@ def build_bootstrapped_hierarchical_model(
         stages.append(stage)
         with torch.no_grad():
             current_samples = stage(current_samples)
+            stage_outputs.append(current_samples)
 
-    decision_layer = build_decision_layer(config.decision_layer, sample_inputs=current_samples)
+    decision_inputs = compose_decision_inputs(config.decision_input_mode, raw_samples, tuple(stage_outputs))
+    decision_layer = build_decision_layer(config.decision_layer, sample_inputs=decision_inputs)
     initialize_decision_layer_from_samples(
         decision_layer,
-        current_samples,
+        decision_inputs,
         sample_targets=target_matrix,
         config=bootstrap,
     )
-    return DeepFuzzyFeatureModel(stages=stages, decision_layer=decision_layer, input_dim=config.input_dim)
+    return DeepFuzzyFeatureModel(
+        stages=stages,
+        decision_layer=decision_layer,
+        input_dim=config.input_dim,
+        decision_input_mode=config.decision_input_mode,
+    )
 
 
 def build_stagewise_pretrained_hierarchical_model(
@@ -448,12 +462,16 @@ def _build_stagewise_from_reference(
     reference_model: DeepFuzzyFeatureModel | None = initial_reference_model
 
     for _ in range(pretrain.refinement_rounds):
-        reference_inputs = None if reference_model is None else _compute_stage_reference_inputs(reference_model, current_samples)
+        reference_stage_inputs = None
+        reference_decision_inputs = None
+        if reference_model is not None:
+            reference_stage_inputs, reference_decision_inputs = _compute_reference_inputs(reference_model, current_samples)
         round_inputs = current_samples
         stages: list[FuzzyStage] = []
+        stage_outputs: list[Tensor] = []
 
         for stage_index, stage_config in enumerate(config.stages):
-            generation_inputs = round_inputs if reference_inputs is None else reference_inputs[stage_index]
+            generation_inputs = round_inputs if reference_stage_inputs is None else reference_stage_inputs[stage_index]
             stage = build_stage(stage_config, sample_inputs=generation_inputs)
             for connected_block in stage.blocks:
                 local_generation_inputs = generation_inputs.index_select(
@@ -469,8 +487,12 @@ def _build_stagewise_from_reference(
             stages.append(stage)
             with torch.no_grad():
                 round_inputs = stage(round_inputs)
+                stage_outputs.append(round_inputs)
 
-        decision_generation_inputs = round_inputs if reference_inputs is None else reference_inputs[-1]
+        decision_training_inputs = compose_decision_inputs(config.decision_input_mode, current_samples, tuple(stage_outputs))
+        decision_generation_inputs = (
+            decision_training_inputs if reference_decision_inputs is None else reference_decision_inputs
+        )
         decision_layer = build_decision_layer(config.decision_layer, sample_inputs=decision_generation_inputs)
         initialize_decision_layer_from_samples(
             decision_layer,
@@ -478,8 +500,13 @@ def _build_stagewise_from_reference(
             sample_targets=target_matrix,
             config=bootstrap,
         )
-        _fit_decision_layer_on_features(decision_layer, round_inputs, training_targets, pretrain)
-        candidate_model = DeepFuzzyFeatureModel(stages=stages, decision_layer=decision_layer, input_dim=config.input_dim)
+        _fit_decision_layer_on_features(decision_layer, decision_training_inputs, training_targets, pretrain)
+        candidate_model = DeepFuzzyFeatureModel(
+            stages=stages,
+            decision_layer=decision_layer,
+            input_dim=config.input_dim,
+            decision_input_mode=config.decision_input_mode,
+        )
 
         with torch.no_grad():
             candidate_score = float(_task_loss_from_predictions(pretrain.task_type, candidate_model(current_samples), training_targets).item())

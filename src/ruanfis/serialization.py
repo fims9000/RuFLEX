@@ -142,6 +142,7 @@ def serialize_model_config(model: DeepFuzzyFeatureModel) -> dict[str, Any]:
     decision = model.decision_layer
     return {
         "input_dim": model.input_dim,
+        "decision_input_mode": model.decision_input_mode,
         "stages": stages,
         "decision_layer": {
             "name": decision.name,
@@ -185,6 +186,7 @@ def deserialize_model_config(config: dict[str, Any]) -> DeepFuzzyFeatureModel:
         stages=stages,
         decision_layer=decision_layer,
         input_dim=config.get("input_dim"),
+        decision_input_mode=config.get("decision_input_mode", "final_only"),
     )
 
 

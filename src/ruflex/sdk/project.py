@@ -651,6 +651,82 @@ class Project:
                 "recommended_training_preset": "article_demo",
             },
             {
+                "name": "deep_hybrid_residual",
+                "label": "Deep Hybrid Residual",
+                "description": "Deep fuzzy stack with overlapping local blocks and a multi-stage decision input.",
+                "mode": "deep_fuzzy_feature_learning",
+                "term_count": 3,
+                "membership_kind": MembershipKind.GAUSSIAN.value,
+                "config": {
+                    "block_size": compact_block_size,
+                    "block_stride": 1,
+                    "hidden_stage_count": deep_article_stages,
+                    "concept_width": 2,
+                    "max_rule_arity": 2,
+                    "max_rules": 4,
+                    "rule_generation_mode": "prototype",
+                    "decision_input_mode": "all_stages",
+                },
+                "recommended_training_preset": "article_demo",
+            },
+            {
+                "name": "deep_dual_path",
+                "label": "Deep Dual Path",
+                "description": "Deep fuzzy stack with overlapping blocks and direct access to raw and hidden features.",
+                "mode": "deep_fuzzy_feature_learning",
+                "term_count": 3,
+                "membership_kind": MembershipKind.GAUSSIAN.value,
+                "config": {
+                    "block_size": compact_block_size,
+                    "block_stride": 1,
+                    "hidden_stage_count": deep_article_stages,
+                    "concept_width": 2,
+                    "max_rule_arity": 2,
+                    "max_rules": 4,
+                    "rule_generation_mode": "prototype",
+                    "decision_input_mode": "raw_and_all_stages",
+                },
+                "recommended_training_preset": "article_demo",
+            },
+            {
+                "name": "deep_dual_raw_final",
+                "label": "Deep Dual Shortcut",
+                "description": "Deep fuzzy stack with overlapping blocks, raw-feature shortcuts, and a compact final-stage decision path.",
+                "mode": "deep_fuzzy_feature_learning",
+                "term_count": 3,
+                "membership_kind": MembershipKind.GAUSSIAN.value,
+                "config": {
+                    "block_size": compact_block_size,
+                    "block_stride": 1,
+                    "hidden_stage_count": deep_article_stages,
+                    "concept_width": 2,
+                    "max_rule_arity": 2,
+                    "max_rules": 4,
+                    "rule_generation_mode": "prototype",
+                    "decision_input_mode": "raw_and_final",
+                },
+                "recommended_training_preset": "article_demo",
+            },
+            {
+                "name": "deep_dual_path_block3",
+                "label": "Deep Dual Context",
+                "description": "Deep fuzzy stack with overlapping three-feature blocks and full raw-plus-stage decision access.",
+                "mode": "deep_fuzzy_feature_learning",
+                "term_count": 3,
+                "membership_kind": MembershipKind.GAUSSIAN.value,
+                "config": {
+                    "block_size": research_block_size,
+                    "block_stride": 1,
+                    "hidden_stage_count": deep_article_stages,
+                    "concept_width": 2,
+                    "max_rule_arity": 2,
+                    "max_rules": 6,
+                    "rule_generation_mode": "prototype",
+                    "decision_input_mode": "raw_and_all_stages",
+                },
+                "recommended_training_preset": "article_demo",
+            },
+            {
                 "name": "deep_research",
                 "label": "Deep Research",
                 "description": "Broader deep fuzzy stack for exploratory studies with richer hidden concepts.",
@@ -836,6 +912,30 @@ class Project:
                 "outputs": ("project_report", "model_report"),
             },
             {
+                "name": "deep_dual_shortcut_study",
+                "label": "Deep Dual Shortcut Study",
+                "description": "Shortcut deep fuzzy run that keeps a direct path from raw features to the decision layer.",
+                "workspace_template": "deep_dual_raw_final",
+                "training_preset": "article_demo",
+                "outputs": ("project_report", "model_report"),
+            },
+            {
+                "name": "deep_dual_path_study",
+                "label": "Deep Dual Path Study",
+                "description": "Shortcut deep fuzzy run that exposes raw features and all hidden stages to the decision layer.",
+                "workspace_template": "deep_dual_path",
+                "training_preset": "article_demo",
+                "outputs": ("project_report", "model_report"),
+            },
+            {
+                "name": "deep_dual_context_study",
+                "label": "Deep Dual Context Study",
+                "description": "Context-enriched deep fuzzy run with overlapping three-feature blocks.",
+                "workspace_template": "deep_dual_path_block3",
+                "training_preset": "article_demo",
+                "outputs": ("project_report", "model_report"),
+            },
+            {
                 "name": "deep_research_study",
                 "label": "Deep Research Study",
                 "description": "Richer deep fuzzy run for exploratory studies with broader hidden concepts.",
@@ -960,25 +1060,38 @@ class Project:
         self,
         *,
         block_size: int = 2,
+        block_stride: int | None = None,
         hidden_stage_count: int = 2,
         concept_width: int = 2,
         max_rule_arity: int = 2,
         max_rules: int = 4,
         rule_generation_mode: str = "prototype",
+        decision_input_mode: str = "final_only",
     ) -> "Project":
         self._require_variables()
         if block_size <= 0:
             raise ValueError("block_size must be positive.")
+        resolved_block_stride = block_size if block_stride is None else int(block_stride)
+        if resolved_block_stride <= 0:
+            raise ValueError("block_stride must be positive when provided.")
         if hidden_stage_count <= 0:
             raise ValueError("hidden_stage_count must be positive.")
+        if decision_input_mode not in {"final_only", "all_stages", "raw_and_final", "raw_and_all_stages"}:
+            raise ValueError(
+                "decision_input_mode must be one of 'final_only', 'all_stages', "
+                "'raw_and_final', or 'raw_and_all_stages'."
+            )
 
         stages = []
         current_variables = list(self.variables)
+        stage_variable_history: list[tuple[VariableSpec, ...]] = []
         for stage_index in range(hidden_stage_count):
             blocks = []
             next_variables = []
-            for block_index, start in enumerate(range(0, len(current_variables), block_size), start=1):
+            for block_index, start in enumerate(range(0, len(current_variables), resolved_block_stride), start=1):
                 local_variables = tuple(current_variables[start : start + block_size])
+                if not local_variables:
+                    continue
                 local_rule_arity = min(max_rule_arity, len(local_variables))
                 concept_names = tuple(
                     f"stage_{stage_index + 1}_block_{block_index}_concept_{concept_index + 1}"
@@ -997,16 +1110,28 @@ class Project:
                     )
                 )
                 next_variables.extend(self._make_concept_variable(name) for name in concept_names)
+            if not blocks:
+                raise RuntimeError("Deep model configuration did not generate any hidden blocks.")
             stages.append(StageSpec(name=f"stage_{stage_index + 1}", blocks=tuple(blocks)))
+            stage_variable_history.append(tuple(next_variables))
             current_variables = next_variables
 
-        decision_rule_arity = min(max_rule_arity, len(current_variables))
+        if decision_input_mode == "final_only":
+            decision_variables = tuple(current_variables)
+        elif decision_input_mode == "all_stages":
+            decision_variables = tuple(variable for stage_variables in stage_variable_history for variable in stage_variables)
+        elif decision_input_mode == "raw_and_final":
+            decision_variables = tuple(self.variables) + tuple(current_variables)
+        else:
+            decision_variables = tuple(self.variables) + tuple(
+                variable for stage_variables in stage_variable_history for variable in stage_variables
+            )
         decision_layer = DecisionLayerSpec(
             name="deep_decision",
-            variables=tuple(current_variables),
+            variables=decision_variables,
             output_dim=1,
             output_names=("target",),
-            max_rule_arity=decision_rule_arity,
+            max_rule_arity=min(max_rule_arity, len(decision_variables)),
             max_rules=max(max_rules, 4),
             rule_generation_mode=rule_generation_mode,
         )
@@ -1014,6 +1139,7 @@ class Project:
             input_dim=len(self.variables),
             stages=tuple(stages),
             decision_layer=decision_layer,
+            decision_input_mode=decision_input_mode,
         )
         self.model_kind = "deep_fuzzy_feature_learning"
         self._invalidate_runtime_state()
