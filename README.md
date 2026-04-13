@@ -51,11 +51,15 @@ Working materials for the paper are collected in:
 - [`docs/article/paper_draft.docx`](docs/article/paper_draft.docx)
 - [`docs/article/article_profile.json`](docs/article/article_profile.json)
 - [`docs/article/article_profile_card.md`](docs/article/article_profile_card.md)
+- [`docs/article/article_references.json`](docs/article/article_references.json)
+- [`docs/article/submission_state.json`](docs/article/submission_state.json)
 - [`docs/article/template_mapping.md`](docs/article/template_mapping.md)
 - [`docs/article/shablon_dokladov_ready.md`](docs/article/shablon_dokladov_ready.md)
 - [`docs/article/conference_template_ready_en.md`](docs/article/conference_template_ready_en.md)
 - [`docs/article/shablon_dokladov_illustrated.docx`](docs/article/shablon_dokladov_illustrated.docx)
 - [`docs/article/conference_template_illustrated_en.docx`](docs/article/conference_template_illustrated_en.docx)
+- [`docs/article/shablon_dokladov_illustrated.pdf`](docs/article/shablon_dokladov_illustrated.pdf)
+- [`docs/article/conference_template_illustrated_en.pdf`](docs/article/conference_template_illustrated_en.pdf)
 - [`docs/article/figure_manifest.md`](docs/article/figure_manifest.md)
 - [`docs/article/manual_finish.md`](docs/article/manual_finish.md)
 - [`docs/article/readiness_report.md`](docs/article/readiness_report.md)
@@ -75,17 +79,51 @@ Article-oriented benchmark helpers are also available:
 Recommended pre-submission flow:
 
 ```bash
+.venv/bin/python scripts/manage_article_profile.py --show
+.venv/bin/python scripts/manage_article_references.py --show
+.venv/bin/python scripts/manage_submission_state.py --show
 .venv/bin/python scripts/render_article_profile_docs.py
 .venv/bin/python scripts/build_article_final_package.py --skip-suite
 .venv/bin/python scripts/check_article_readiness.py --run-tests
+.venv/bin/python scripts/check_article_readiness.py --run-tests --strict-submission
 ```
 
-The first command syncs author/title/keyword/funding data from
+The first command syncs author/title/keyword/ORCID/funding data from
 `docs/article/article_profile.json` into the generated article docs. The
 second command rebuilds the article boards, docx drafts, and
 `submission_bundle(.zip)`. The third command writes a compact
 `docs/article/readiness_report.md` summary and rechecks the article-related
-pytest suite.
+pytest suite. The profile sync also updates the template-ready markdown
+documents and the RINC draft, so author changes should be made in one place
+only. Manual submission completion is tracked separately in
+`docs/article/submission_state.json`. The readiness report now also exposes
+`profile_status`, so placeholder author data is surfaced explicitly even when
+the technical article bundle is otherwise green.
+For a real final gate, use `--strict-submission`: it exits with non-zero status
+until the profile is real and all submission flags are marked done.
+
+For profile edits from the terminal, use:
+
+```bash
+.venv/bin/python scripts/manage_article_profile.py --show
+.venv/bin/python scripts/manage_article_profile.py \
+  --author-set "1:name_ru=Иван Иванов" \
+  --author-set "1:name_en=Ivan Ivanov" \
+  --author-set "1:email=ivan.ivanov@example.org" \
+  --author-set "1:orcid=0000-0001-2345-6789"
+
+.venv/bin/python scripts/manage_article_profile.py \
+  --author-add "name_ru=Петр Петров|name_en=Petr Petrov|email=petr.petrov@example.org|orcid=0000-0002-3456-7890|affiliation_ru=Институт, Санкт-Петербург, Россия|affiliation_en=Institute, Saint Petersburg, Russia"
+
+.venv/bin/python scripts/manage_article_profile.py --author-remove 3
+
+.venv/bin/python scripts/manage_article_references.py --show
+.venv/bin/python scripts/manage_article_references.py \
+  --add "key=new_reference|ru=Новая русская ссылка.|en=New English reference."
+.venv/bin/python scripts/manage_article_references.py \
+  --set "new_reference:en=Updated English reference."
+.venv/bin/python scripts/manage_article_references.py --remove new_reference
+```
 
 ## Toolbox-Style Functions
 

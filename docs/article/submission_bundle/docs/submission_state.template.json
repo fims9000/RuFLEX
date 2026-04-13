@@ -1,0 +1,8 @@
+{
+  "profile_confirmed": false,
+  "references_checked": false,
+  "figures_finalized": false,
+  "antiplagiat_screenshot_added": false,
+  "layout_reviewed": false,
+  "notes": "Switch flags to true only after the corresponding manual submission step has been completed."
+}

@@ -13,8 +13,10 @@ from article_profile import (
     format_author_names,
     format_emails,
     format_keywords,
+    format_orcids,
     load_article_profile,
 )
+from article_references import format_reference_lines
 from render_article_profile_docs import render_article_profile_docs
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -69,6 +71,7 @@ def _build_russian_manuscript(
             format_author_names(profile, language="ru"),
             *format_affiliations(profile, language="ru"),
             f"E-mail: {format_emails(profile)}",
+            f"ORCID: {format_orcids(profile)}",
         ],
     )
 
@@ -254,6 +257,7 @@ def _build_english_manuscript(
             format_author_names(profile, language="en"),
             *format_affiliations(profile, language="en"),
             format_emails(profile),
+            f"ORCID: {format_orcids(profile)}",
         ],
     )
 
@@ -495,27 +499,11 @@ def _fmt(value: str) -> str:
 
 
 def _references_ru() -> list[str]:
-    return [
-        "Jang J.-S. R. ANFIS: Adaptive-Network-Based Fuzzy Inference System // IEEE Transactions on Systems, Man, and Cybernetics. 1993. Vol. 23, no. 3. P. 665-685.",
-        "Paszke A., Gross S., Massa F. et al. PyTorch: An Imperative Style, High-Performance Deep Learning Library // Advances in Neural Information Processing Systems. 2019. Vol. 32.",
-        "Pedregosa F., Varoquaux G., Gramfort A. et al. Scikit-learn: Machine Learning in Python // Journal of Machine Learning Research. 2011. Vol. 12. P. 2825-2830.",
-        "Pace R. K., Barry R. Sparse Spatial Autoregressions // Statistics & Probability Letters. 1997. Vol. 33, no. 3. P. 291-297.",
-        "Rudin C. Stop Explaining Black Box Machine Learning Models for High Stakes Decisions and Use Interpretable Models Instead // Nature Machine Intelligence. 2019. Vol. 1. P. 206-215.",
-        "Ma X., Chen L., Deng Z. et al. Deep Image Feature Learning With Fuzzy Rules // IEEE Transactions on Emerging Topics in Computational Intelligence. 2024. Vol. 8. P. 724-737.",
-        "Lebedeffson. deep-neuro-fuzzy [Электронный ресурс]. URL: https://github.com/lebedeffson/deep-neuro-fuzzy (дата обращения: 13.04.2026).",
-    ]
+    return format_reference_lines("ru")
 
 
 def _references_en() -> list[str]:
-    return [
-        "J.-S. R. Jang, “ANFIS: Adaptive-Network-Based Fuzzy Inference System,” IEEE Transactions on Systems, Man, and Cybernetics, vol. 23, no. 3, pp. 665-685, 1993.",
-        "A. Paszke, S. Gross, F. Massa et al., “PyTorch: An Imperative Style, High-Performance Deep Learning Library,” in Advances in Neural Information Processing Systems, vol. 32, 2019.",
-        "F. Pedregosa, G. Varoquaux, A. Gramfort et al., “Scikit-learn: Machine Learning in Python,” Journal of Machine Learning Research, vol. 12, pp. 2825-2830, 2011.",
-        "R. K. Pace and R. Barry, “Sparse Spatial Autoregressions,” Statistics & Probability Letters, vol. 33, no. 3, pp. 291-297, 1997.",
-        "C. Rudin, “Stop Explaining Black Box Machine Learning Models for High Stakes Decisions and Use Interpretable Models Instead,” Nature Machine Intelligence, vol. 1, pp. 206-215, 2019.",
-        "X. Ma, L. Chen, Z. Deng et al., “Deep Image Feature Learning With Fuzzy Rules,” IEEE Transactions on Emerging Topics in Computational Intelligence, vol. 8, pp. 724-737, 2024.",
-        "Lebedeffson, “deep-neuro-fuzzy,” GitHub repository. Available: https://github.com/lebedeffson/deep-neuro-fuzzy. Accessed: Apr. 13, 2026.",
-    ]
+    return format_reference_lines("en")
 
 
 if __name__ == "__main__":

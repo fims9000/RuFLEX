@@ -8,6 +8,9 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from article_profile import analyze_article_profile, load_article_profile
+from article_references import analyze_article_references, load_article_references
+
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SUITE_ROOT = ROOT / "experiments/article_suite"
@@ -21,20 +24,29 @@ REQUIRED_DOCS = (
     ROOT / "docs/article/final_status.md",
     ROOT / "docs/article/paper_draft.md",
     ROOT / "docs/article/paper_draft.docx",
+    ROOT / "docs/article/paper_draft.pdf",
     ROOT / "docs/article/article_profile.template.json",
     ROOT / "docs/article/article_profile.json",
     ROOT / "docs/article/article_profile_card.md",
+    ROOT / "docs/article/article_references.json",
+    ROOT / "docs/article/submission_state.template.json",
+    ROOT / "docs/article/submission_state.json",
+    ROOT / "docs/article/references_ru_gost.md",
+    ROOT / "docs/article/references_en_ieee.md",
     ROOT / "docs/article/template_mapping.md",
     ROOT / "docs/article/shablon_dokladov_ready.md",
     ROOT / "docs/article/shablon_dokladov_ready.docx",
     ROOT / "docs/article/shablon_dokladov_illustrated.docx",
+    ROOT / "docs/article/shablon_dokladov_illustrated.pdf",
     ROOT / "docs/article/conference_template_ready_en.md",
     ROOT / "docs/article/conference_template_ready_en.docx",
     ROOT / "docs/article/conference_template_illustrated_en.docx",
+    ROOT / "docs/article/conference_template_illustrated_en.pdf",
     ROOT / "docs/article/figure_manifest.md",
     ROOT / "docs/article/manual_finish.md",
     ROOT / "docs/article/rinc_draft.md",
     ROOT / "docs/article/rinc_draft.docx",
+    ROOT / "docs/article/rinc_draft.pdf",
 )
 
 REQUIRED_BUNDLE_FIGURES = (
@@ -52,10 +64,18 @@ REQUIRED_BUNDLE_TABLES = (
 )
 
 MANUAL_ITEMS = (
-    "Вписать authors / affiliations / e-mail / ORCID в docx-шаблоны.",
+    "При необходимости заполнить или уточнить authors / affiliations / e-mail / ORCID в docs/article/article_profile.json и пересобрать пакет.",
     "Проверить и при необходимости дополнить стартовый список литературы под формат площадки.",
     "Выполнить antiplagiat check и приложить реальный скриншот в РИНЦ-файл.",
     "Проверить итоговую верстку после вставки рисунков, подписей и авторских данных.",
+)
+
+SUBMISSION_FLAGS = (
+    ("profile_confirmed", "Подтверждены реальные authors / affiliations / e-mail / ORCID."),
+    ("references_checked", "Стартовый список литературы проверен и приведен к стилю площадки."),
+    ("figures_finalized", "Итоговые figures и captions окончательно утверждены."),
+    ("antiplagiat_screenshot_added", "В РИНЦ-файл добавлен реальный antiplagiat screenshot."),
+    ("layout_reviewed", "Итоговая верстка `.docx`/`.pdf` просмотрена вручную."),
 )
 
 
@@ -71,6 +91,16 @@ def main() -> None:
         action="store_true",
         help="Run the article-related pytest suite as part of the readiness report.",
     )
+    parser.add_argument(
+        "--strict-profile",
+        action="store_true",
+        help="Exit with non-zero status unless profile_status is `ready`.",
+    )
+    parser.add_argument(
+        "--strict-submission",
+        action="store_true",
+        help="Exit with non-zero status unless submission_status is `ready`.",
+    )
     args = parser.parse_args()
 
     report_path = build_readiness_report(
@@ -78,11 +108,27 @@ def main() -> None:
         run_tests=args.run_tests,
     )
     print(report_path)
+    report_payload = json.loads(DEFAULT_REPORT_JSON.read_text(encoding="utf-8"))
+    if args.strict_profile and report_payload["profile_status"] != "ready":
+        print(
+            f"strict-profile gate failed: profile_status={report_payload['profile_status']}",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+    if args.strict_submission and report_payload["submission_status"] != "ready":
+        print(
+            f"strict-submission gate failed: submission_status={report_payload['submission_status']}",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
 
 
 def build_readiness_report(*, suite_dir: Path | None = None, run_tests: bool = False) -> Path:
     resolved_suite_dir = _resolve_suite_dir(suite_dir)
     suite_summary = _load_suite_summary(resolved_suite_dir)
+    profile_report = _profile_report()
+    references_report = _references_report()
+    submission_state, submission_state_error = _load_submission_state()
     checks: list[dict[str, Any]] = []
 
     for path in REQUIRED_DOCS:
@@ -93,6 +139,27 @@ def build_readiness_report(*, suite_dir: Path | None = None, run_tests: bool = F
                 detail=str(path),
             )
         )
+    checks.append(
+        _check(
+            name="article_profile_valid",
+            ok=not profile_report["errors"],
+            detail=_profile_detail(profile_report),
+        )
+    )
+    checks.append(
+        _check(
+            name="article_references_valid",
+            ok=not references_report["errors"],
+            detail=_references_detail(references_report),
+        )
+    )
+    checks.append(
+        _check(
+            name="submission_state_valid",
+            ok=submission_state_error is None,
+            detail=submission_state_error or "submission_state.json schema is valid",
+        )
+    )
 
     checks.append(
         _check(
@@ -150,13 +217,31 @@ def build_readiness_report(*, suite_dir: Path | None = None, run_tests: bool = F
     }
 
     overall_ok = all(bool(item["ok"]) for item in checks)
+    submission_items = _submission_items(submission_state)
+    submission_ready = all(item["done"] for item in submission_items)
     report_payload = {
         "generated_at": _utc_now(),
         "suite_dir": str(resolved_suite_dir),
         "overall_status": "pass" if overall_ok else "fail",
+        "submission_status": "ready"
+        if overall_ok
+        and submission_ready
+        and profile_report["status"] == "ready"
+        and references_report["status"] == "ready"
+        else "pending",
+        "profile_status": profile_report["status"],
+        "references_status": references_report["status"],
+        "profile_errors": profile_report["errors"],
+        "profile_warnings": profile_report["warnings"],
+        "profile_placeholder_warnings": profile_report["placeholder_warnings"],
+        "references_errors": references_report["errors"],
+        "references_warnings": references_report["warnings"],
+        "references_placeholder_warnings": references_report["placeholder_warnings"],
         "checks": checks,
         "best_results": best_results,
         "manual_items": [{"status": "pending", "item": item} for item in MANUAL_ITEMS],
+        "submission_state": submission_state,
+        "submission_items": submission_items,
     }
     if test_status is not None:
         report_payload["test_status"] = test_status
@@ -222,6 +307,12 @@ def _run_article_tests() -> dict[str, Any]:
         "tests/test_toolbox_api.py",
         "tests/test_sdk_smoke.py",
         "tests/test_article_dataset_recipes.py",
+        "tests/test_article_profile_cli.py",
+        "tests/test_article_profile_validation.py",
+        "tests/test_article_references_cli.py",
+        "tests/test_article_references_validation.py",
+        "tests/test_article_package_scripts.py",
+        "tests/test_submission_state_cli.py",
         "-q",
     ]
     completed = subprocess.run(command, cwd=ROOT, capture_output=True, text=True, check=False)
@@ -232,6 +323,91 @@ def _run_article_tests() -> dict[str, Any]:
         "command": command,
         "detail": detail,
     }
+
+
+def _profile_report() -> dict[str, Any]:
+    try:
+        profile = load_article_profile()
+    except Exception as error:  # pragma: no cover - defensive path for broken local configs
+        return {
+            "status": "invalid",
+            "errors": [str(error)],
+            "warnings": [],
+            "placeholder_warnings": [],
+        }
+    return analyze_article_profile(profile)
+
+
+def _references_report() -> dict[str, Any]:
+    try:
+        references = load_article_references()
+    except Exception as error:  # pragma: no cover - defensive path for broken local configs
+        return {
+            "status": "invalid",
+            "errors": [str(error)],
+            "warnings": [],
+            "placeholder_warnings": [],
+        }
+    return analyze_article_references(references)
+
+
+def _profile_detail(profile_report: dict[str, Any]) -> str:
+    if profile_report["errors"]:
+        return "; ".join(profile_report["errors"])
+    detail_parts = [f"profile_status={profile_report['status']}"]
+    if profile_report["placeholder_warnings"]:
+        detail_parts.append(
+            "placeholders=" + "; ".join(profile_report["placeholder_warnings"])
+        )
+    elif profile_report["warnings"]:
+        detail_parts.append("warnings=" + "; ".join(profile_report["warnings"]))
+    return " | ".join(detail_parts)
+
+
+def _references_detail(references_report: dict[str, Any]) -> str:
+    if references_report["errors"]:
+        return "; ".join(references_report["errors"])
+    detail_parts = [f"references_status={references_report['status']}"]
+    if references_report["placeholder_warnings"]:
+        detail_parts.append(
+            "placeholders=" + "; ".join(references_report["placeholder_warnings"])
+        )
+    elif references_report["warnings"]:
+        detail_parts.append("warnings=" + "; ".join(references_report["warnings"]))
+    return " | ".join(detail_parts)
+
+
+def _load_submission_state() -> tuple[dict[str, Any], str | None]:
+    path = ROOT / "docs/article/submission_state.json"
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as error:  # pragma: no cover - defensive path for broken local configs
+        return _default_submission_state(), f"submission_state.json could not be parsed: {error}"
+    for key, _description in SUBMISSION_FLAGS:
+        value = payload.get(key, False)
+        if not isinstance(value, bool):
+            default_state = _default_submission_state()
+            return default_state, f"submission_state key `{key}` must be boolean"
+        payload[key] = value
+    notes = payload.get("notes", "")
+    if not isinstance(notes, str):
+        default_state = _default_submission_state()
+        return default_state, "submission_state key `notes` must be a string"
+    payload["notes"] = notes
+    return payload, None
+
+
+def _submission_items(state: dict[str, Any]) -> list[dict[str, Any]]:
+    items: list[dict[str, Any]] = []
+    for key, description in SUBMISSION_FLAGS:
+        items.append(
+            {
+                "key": key,
+                "done": bool(state.get(key, False)),
+                "description": description,
+            }
+        )
+    return items
 
 
 def _check(*, name: str, ok: bool, detail: str) -> dict[str, Any]:
@@ -253,6 +429,9 @@ def _render_markdown(report: dict[str, Any]) -> str:
         f"- generated_at: `{report['generated_at']}`",
         f"- suite_dir: `{report['suite_dir']}`",
         f"- overall_status: `{report['overall_status']}`",
+        f"- submission_status: `{report['submission_status']}`",
+        f"- profile_status: `{report['profile_status']}`",
+        f"- references_status: `{report['references_status']}`",
         "",
         "## Critical automated checks",
         "",
@@ -279,6 +458,26 @@ def _render_markdown(report: dict[str, Any]) -> str:
                 f"- detail: `{report['test_status']['detail']}`",
             ]
         )
+    if report["profile_placeholder_warnings"] or report["profile_warnings"] or report["profile_errors"]:
+        lines.extend(["", "## Profile review", ""])
+        for item in report["profile_errors"]:
+            lines.append(f"- `error` {item}")
+        for item in report["profile_warnings"]:
+            lines.append(f"- `warning` {item}")
+        for item in report["profile_placeholder_warnings"]:
+            lines.append(f"- `placeholder` {item}")
+    if report["references_placeholder_warnings"] or report["references_warnings"] or report["references_errors"]:
+        lines.extend(["", "## References review", ""])
+        for item in report["references_errors"]:
+            lines.append(f"- `error` {item}")
+        for item in report["references_warnings"]:
+            lines.append(f"- `warning` {item}")
+        for item in report["references_placeholder_warnings"]:
+            lines.append(f"- `placeholder` {item}")
+    lines.extend(["", "## Submission state", ""])
+    for item in report["submission_items"]:
+        status = "done" if item["done"] else "pending"
+        lines.append(f"- `{status}` {item['description']}")
     lines.extend(["", "## Manual items", ""])
     for item in report["manual_items"]:
         lines.append(f"- `{item['status']}` {item['item']}")
@@ -311,6 +510,12 @@ def _utc_now() -> str:
     from datetime import datetime, timezone
 
     return datetime.now(timezone.utc).isoformat()
+
+
+def _default_submission_state() -> dict[str, Any]:
+    payload: dict[str, Any] = {key: False for key, _description in SUBMISSION_FLAGS}
+    payload["notes"] = ""
+    return payload
 
 
 if __name__ == "__main__":

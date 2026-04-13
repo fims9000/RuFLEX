@@ -1,7 +1,29 @@
 {
-  "generated_at": "2026-04-12T22:28:16.567680+00:00",
+  "generated_at": "2026-04-13T04:33:06.785628+00:00",
   "suite_dir": "/home/lebedeffson/Code/neurofuzzy_analysis/experiments/article_suite/2026_04_12t21_40_59_671052_00_00_article_suite",
   "overall_status": "pass",
+  "submission_status": "pending",
+  "profile_status": "template_placeholders_detected",
+  "references_status": "ready",
+  "profile_errors": [],
+  "profile_warnings": [],
+  "profile_placeholder_warnings": [
+    "author #1: placeholder Russian author name `И. О. Автор1`",
+    "author #1: placeholder English author name `Author One`",
+    "author #1: placeholder Russian affiliation `Организация, город, страна`",
+    "author #1: placeholder English affiliation `Organization, City, Country`",
+    "author #1: placeholder email `author1@example.com`",
+    "author #1: placeholder ORCID `0000-0000-0000-0000`",
+    "author #2: placeholder Russian author name `И. О. Автор2`",
+    "author #2: placeholder English author name `Author Two`",
+    "author #2: placeholder Russian affiliation `Организация, город, страна`",
+    "author #2: placeholder English affiliation `Organization, City, Country`",
+    "author #2: placeholder email `author2@example.com`",
+    "author #2: placeholder ORCID `0000-0000-0000-0000`"
+  ],
+  "references_errors": [],
+  "references_warnings": [],
+  "references_placeholder_warnings": [],
   "checks": [
     {
       "name": "doc:docs/article/final_metadata.md",
@@ -24,6 +46,11 @@
       "detail": "/home/lebedeffson/Code/neurofuzzy_analysis/docs/article/paper_draft.docx"
     },
     {
+      "name": "doc:docs/article/paper_draft.pdf",
+      "ok": true,
+      "detail": "/home/lebedeffson/Code/neurofuzzy_analysis/docs/article/paper_draft.pdf"
+    },
+    {
       "name": "doc:docs/article/article_profile.template.json",
       "ok": true,
       "detail": "/home/lebedeffson/Code/neurofuzzy_analysis/docs/article/article_profile.template.json"
@@ -37,6 +64,31 @@
       "name": "doc:docs/article/article_profile_card.md",
       "ok": true,
       "detail": "/home/lebedeffson/Code/neurofuzzy_analysis/docs/article/article_profile_card.md"
+    },
+    {
+      "name": "doc:docs/article/article_references.json",
+      "ok": true,
+      "detail": "/home/lebedeffson/Code/neurofuzzy_analysis/docs/article/article_references.json"
+    },
+    {
+      "name": "doc:docs/article/submission_state.template.json",
+      "ok": true,
+      "detail": "/home/lebedeffson/Code/neurofuzzy_analysis/docs/article/submission_state.template.json"
+    },
+    {
+      "name": "doc:docs/article/submission_state.json",
+      "ok": true,
+      "detail": "/home/lebedeffson/Code/neurofuzzy_analysis/docs/article/submission_state.json"
+    },
+    {
+      "name": "doc:docs/article/references_ru_gost.md",
+      "ok": true,
+      "detail": "/home/lebedeffson/Code/neurofuzzy_analysis/docs/article/references_ru_gost.md"
+    },
+    {
+      "name": "doc:docs/article/references_en_ieee.md",
+      "ok": true,
+      "detail": "/home/lebedeffson/Code/neurofuzzy_analysis/docs/article/references_en_ieee.md"
     },
     {
       "name": "doc:docs/article/template_mapping.md",
@@ -59,6 +111,11 @@
       "detail": "/home/lebedeffson/Code/neurofuzzy_analysis/docs/article/shablon_dokladov_illustrated.docx"
     },
     {
+      "name": "doc:docs/article/shablon_dokladov_illustrated.pdf",
+      "ok": true,
+      "detail": "/home/lebedeffson/Code/neurofuzzy_analysis/docs/article/shablon_dokladov_illustrated.pdf"
+    },
+    {
       "name": "doc:docs/article/conference_template_ready_en.md",
       "ok": true,
       "detail": "/home/lebedeffson/Code/neurofuzzy_analysis/docs/article/conference_template_ready_en.md"
@@ -72,6 +129,11 @@
       "name": "doc:docs/article/conference_template_illustrated_en.docx",
       "ok": true,
       "detail": "/home/lebedeffson/Code/neurofuzzy_analysis/docs/article/conference_template_illustrated_en.docx"
+    },
+    {
+      "name": "doc:docs/article/conference_template_illustrated_en.pdf",
+      "ok": true,
+      "detail": "/home/lebedeffson/Code/neurofuzzy_analysis/docs/article/conference_template_illustrated_en.pdf"
     },
     {
       "name": "doc:docs/article/figure_manifest.md",
@@ -92,6 +154,26 @@
       "name": "doc:docs/article/rinc_draft.docx",
       "ok": true,
       "detail": "/home/lebedeffson/Code/neurofuzzy_analysis/docs/article/rinc_draft.docx"
+    },
+    {
+      "name": "doc:docs/article/rinc_draft.pdf",
+      "ok": true,
+      "detail": "/home/lebedeffson/Code/neurofuzzy_analysis/docs/article/rinc_draft.pdf"
+    },
+    {
+      "name": "article_profile_valid",
+      "ok": true,
+      "detail": "profile_status=template_placeholders_detected | placeholders=author #1: placeholder Russian author name `И. О. Автор1`; author #1: placeholder English author name `Author One`; author #1: placeholder Russian affiliation `Организация, город, страна`; author #1: placeholder English affiliation `Organization, City, Country`; author #1: placeholder email `author1@example.com`; author #1: placeholder ORCID `0000-0000-0000-0000`; author #2: placeholder Russian author name `И. О. Автор2`; author #2: placeholder English author name `Author Two`; author #2: placeholder Russian affiliation `Организация, город, страна`; author #2: placeholder English affiliation `Organization, City, Country`; author #2: placeholder email `author2@example.com`; author #2: placeholder ORCID `0000-0000-0000-0000`"
+    },
+    {
+      "name": "article_references_valid",
+      "ok": true,
+      "detail": "references_status=ready"
+    },
+    {
+      "name": "submission_state_valid",
+      "ok": true,
+      "detail": "submission_state.json schema is valid"
     },
     {
       "name": "submission_bundle_dir",
@@ -176,7 +258,7 @@
     {
       "name": "pytest_article_suite",
       "ok": true,
-      "detail": "..........                                                               [100%]"
+      "detail": "..........................                                               [100%]"
     }
   ],
   "best_results": {
@@ -204,7 +286,7 @@
   "manual_items": [
     {
       "status": "pending",
-      "item": "Вписать authors / affiliations / e-mail / ORCID в docx-шаблоны."
+      "item": "При необходимости заполнить или уточнить authors / affiliations / e-mail / ORCID в docs/article/article_profile.json и пересобрать пакет."
     },
     {
       "status": "pending",
@@ -219,6 +301,41 @@
       "item": "Проверить итоговую верстку после вставки рисунков, подписей и авторских данных."
     }
   ],
+  "submission_state": {
+    "profile_confirmed": false,
+    "references_checked": false,
+    "figures_finalized": false,
+    "antiplagiat_screenshot_added": false,
+    "layout_reviewed": false,
+    "notes": "Switch flags to true only after the corresponding manual submission step has been completed."
+  },
+  "submission_items": [
+    {
+      "key": "profile_confirmed",
+      "done": false,
+      "description": "Подтверждены реальные authors / affiliations / e-mail / ORCID."
+    },
+    {
+      "key": "references_checked",
+      "done": false,
+      "description": "Стартовый список литературы проверен и приведен к стилю площадки."
+    },
+    {
+      "key": "figures_finalized",
+      "done": false,
+      "description": "Итоговые figures и captions окончательно утверждены."
+    },
+    {
+      "key": "antiplagiat_screenshot_added",
+      "done": false,
+      "description": "В РИНЦ-файл добавлен реальный antiplagiat screenshot."
+    },
+    {
+      "key": "layout_reviewed",
+      "done": false,
+      "description": "Итоговая верстка `.docx`/`.pdf` просмотрена вручную."
+    }
+  ],
   "test_status": {
     "ok": true,
     "returncode": 0,
@@ -229,8 +346,14 @@
       "tests/test_toolbox_api.py",
       "tests/test_sdk_smoke.py",
       "tests/test_article_dataset_recipes.py",
+      "tests/test_article_profile_cli.py",
+      "tests/test_article_profile_validation.py",
+      "tests/test_article_references_cli.py",
+      "tests/test_article_references_validation.py",
+      "tests/test_article_package_scripts.py",
+      "tests/test_submission_state_cli.py",
       "-q"
     ],
-    "detail": "..........                                                               [100%]"
+    "detail": "..........................                                               [100%]"
   }
 }

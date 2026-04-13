@@ -7,6 +7,7 @@
 - authors_ru: `И. О. Автор1, И. О. Автор2`
 - authors_en: `Author One, Author Two`
 - emails: `author1@example.com, author2@example.com`
+- orcids: `0000-0000-0000-0000, 0000-0000-0000-0000`
 - keywords_ru: `глубокое нечеткое обучение; hybrid neuro-fuzzy models; deep fuzzy feature learning; explainability; геоаналитика; интерпретируемое машинное обучение`
 - keywords_en: `deep fuzzy learning; hybrid neuro-fuzzy models; deep fuzzy feature learning; explainability; geoanalytics; interpretable machine learning`
 

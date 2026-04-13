@@ -3,10 +3,12 @@ from __future__ import annotations
 import argparse
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 from check_article_readiness import build_readiness_report
 from build_article_illustrated_manuscripts import build_illustrated_manuscripts
+from build_article_pdfs import build_article_pdfs
 from build_article_submission_bundle import build_submission_bundle
 from build_article_figure_boards import build_figure_board
 from render_article_profile_docs import render_article_profile_docs
@@ -51,6 +53,7 @@ def main() -> None:
     _convert_with_libreoffice(ROOT / "docs/article/conference_template_ready_en.md", ROOT / "docs/article")
     _convert_with_libreoffice(ROOT / "docs/article/rinc_draft.txt", ROOT / "docs/article")
     build_illustrated_manuscripts()
+    build_article_pdfs()
     build_submission_bundle(suite_dir=suite_dir)
     build_readiness_report(suite_dir=suite_dir, run_tests=False)
     bundle_dir = build_submission_bundle(suite_dir=suite_dir)
@@ -62,19 +65,31 @@ def _run_python_script(path: Path) -> None:
 
 
 def _convert_with_libreoffice(source: Path, output_dir: Path) -> None:
-    subprocess.run(
-        [
-            "libreoffice",
-            "--headless",
-            "--convert-to",
-            "docx",
-            "--outdir",
-            str(output_dir),
-            str(source),
-        ],
-        check=True,
-        cwd=ROOT,
-    )
+    command = [
+        "libreoffice",
+        "--headless",
+        "--convert-to",
+        "docx",
+        "--outdir",
+        str(output_dir),
+        str(source),
+    ]
+    _run_with_retry(command)
+
+
+def _run_with_retry(command: list[str], attempts: int = 3) -> None:
+    last_error: subprocess.CalledProcessError | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            subprocess.run(command, check=True, cwd=ROOT)
+            return
+        except subprocess.CalledProcessError as error:
+            last_error = error
+            if attempt == attempts:
+                raise
+            time.sleep(1.0)
+    if last_error is not None:
+        raise last_error
 
 
 def _latest_suite_dir(root_dir: Path) -> Path:

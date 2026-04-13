@@ -6,6 +6,7 @@
       "name_ru": "И. О. Автор1",
       "name_en": "Author One",
       "email": "author1@example.com",
+      "orcid": "0000-0000-0000-0000",
       "affiliation_ru": "Организация, город, страна",
       "affiliation_en": "Organization, City, Country"
     },
@@ -13,6 +14,7 @@
       "name_ru": "И. О. Автор2",
       "name_en": "Author Two",
       "email": "author2@example.com",
+      "orcid": "0000-0000-0000-0000",
       "affiliation_ru": "Организация, город, страна",
       "affiliation_en": "Organization, City, Country"
     }

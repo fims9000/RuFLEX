@@ -45,13 +45,20 @@ def build_submission_bundle(*, suite_dir: Path | None = None) -> Path:
     _copy(ROOT / "docs/article/final_status.md", docs_dir / "final_status.md")
     _copy(ROOT / "docs/article/paper_draft.md", docs_dir / "paper_draft.md")
     _copy_if_exists(ROOT / "docs/article/paper_draft.docx", docs_dir / "paper_draft.docx")
+    _copy_if_exists(ROOT / "docs/article/paper_draft.pdf", docs_dir / "paper_draft.pdf")
     _copy(ROOT / "docs/article/article_profile.template.json", docs_dir / "article_profile.template.json")
     _copy(ROOT / "docs/article/article_profile.json", docs_dir / "article_profile.json")
     _copy_if_exists(ROOT / "docs/article/article_profile_card.md", docs_dir / "article_profile_card.md")
+    _copy(ROOT / "docs/article/article_references.json", docs_dir / "article_references.json")
+    _copy(ROOT / "docs/article/submission_state.template.json", docs_dir / "submission_state.template.json")
+    _copy(ROOT / "docs/article/submission_state.json", docs_dir / "submission_state.json")
+    _copy_if_exists(ROOT / "docs/article/references_ru_gost.md", docs_dir / "references_ru_gost.md")
+    _copy_if_exists(ROOT / "docs/article/references_en_ieee.md", docs_dir / "references_en_ieee.md")
     _copy(ROOT / "docs/article/template_mapping.md", docs_dir / "template_mapping.md")
     _copy(ROOT / "docs/article/shablon_dokladov_ready.md", docs_dir / "shablon_dokladov_ready.md")
     _copy_if_exists(ROOT / "docs/article/shablon_dokladov_ready.docx", docs_dir / "shablon_dokladov_ready.docx")
     _copy_if_exists(ROOT / "docs/article/shablon_dokladov_illustrated.docx", docs_dir / "shablon_dokladov_illustrated.docx")
+    _copy_if_exists(ROOT / "docs/article/shablon_dokladov_illustrated.pdf", docs_dir / "shablon_dokladov_illustrated.pdf")
     _copy(ROOT / "docs/article/conference_template_ready_en.md", docs_dir / "conference_template_ready_en.md")
     _copy_if_exists(
         ROOT / "docs/article/conference_template_ready_en.docx",
@@ -61,11 +68,16 @@ def build_submission_bundle(*, suite_dir: Path | None = None) -> Path:
         ROOT / "docs/article/conference_template_illustrated_en.docx",
         docs_dir / "conference_template_illustrated_en.docx",
     )
+    _copy_if_exists(
+        ROOT / "docs/article/conference_template_illustrated_en.pdf",
+        docs_dir / "conference_template_illustrated_en.pdf",
+    )
     _copy(ROOT / "docs/article/figure_manifest.md", docs_dir / "figure_manifest.md")
     _copy(ROOT / "docs/article/manual_finish.md", docs_dir / "manual_finish.md")
     _copy(ROOT / "docs/article/rinc_draft.md", docs_dir / "rinc_draft.md")
     _copy(ROOT / "docs/article/rinc_draft.txt", docs_dir / "rinc_draft.txt")
     _copy(ROOT / "docs/article/rinc_draft.docx", docs_dir / "rinc_draft.docx")
+    _copy_if_exists(ROOT / "docs/article/rinc_draft.pdf", docs_dir / "rinc_draft.pdf")
     _copy_if_exists(ROOT / "docs/article/readiness_report.md", docs_dir / "readiness_report.md")
     _copy_if_exists(ROOT / "docs/article/readiness_report.json", docs_dir / "readiness_report.json")
 
@@ -172,18 +184,20 @@ def _bundle_readme(manifest: dict[str, Any]) -> str:
             "- `docs/final_status.md`: краткий статус готовности",
             "- `docs/paper_draft.md`: черновик основного текста статьи",
             "- `docs/paper_draft.docx`: редактируемый черновик основного текста статьи",
+            "- `docs/paper_draft.pdf`: PDF-версия черновика статьи",
             "- `docs/article_profile*.json`: единый профиль авторов, аффилиаций и funding",
             "- `docs/article_profile_card.md`: быстрая сводка по заполненному article profile",
+            "- `docs/article_references.json`: единый source of truth для библиографии",
+            "- `docs/submission_state*.json`: ручные флаги фактической готовности к отправке",
+            "- `docs/references_*.md`: сгенерированные reference-листы для RU/EN версий",
             "- `docs/template_mapping.md`: привязка материалов к реальным шаблонам",
             "- `docs/shablon_dokladov_ready.*`: русскоязычный template-ready вариант",
-            "- `docs/shablon_dokladov_illustrated.docx`: русскоязычная версия с вшитыми figures и tables",
+            "- `docs/shablon_dokladov_illustrated.*`: русскоязычная версия с вшитыми figures и tables",
             "- `docs/conference_template_ready_en.*`: англоязычный template-ready вариант",
-            "- `docs/conference_template_illustrated_en.docx`: англоязычная версия с вшитыми figures и tables",
+            "- `docs/conference_template_illustrated_en.*`: англоязычная версия с вшитыми figures и tables",
             "- `docs/figure_manifest.md`: рекомендуемые рисунки и подписи",
             "- `docs/manual_finish.md`: что осталось только на ручную фазу",
-            "- `docs/rinc_draft.md`: текстовая заготовка РИНЦ",
-            "- `docs/rinc_draft.txt`: plain-text версия РИНЦ-заготовки",
-            "- `docs/rinc_draft.docx`: редактируемый РИНЦ-черновик",
+            "- `docs/rinc_draft.*`: текстовая, docx- и PDF-версии РИНЦ-заготовки",
             "- `docs/readiness_report.*`: автоматическая проверка критичных article assets",
             "- `tables/*.csv`: основные таблицы результатов",
             "- `figures/*.png`: базовый набор figure assets для статьи",
@@ -191,7 +205,7 @@ def _bundle_readme(manifest: dict[str, Any]) -> str:
             "",
             "## Что остается вручную",
             "",
-            "- вписать authors / affiliations / e-mail / ORCID",
+            "- при необходимости уточнить authors / affiliations / e-mail / ORCID в docs/article/article_profile.json и пересобрать пакет",
             "- при необходимости дополнить стартовый список литературы",
             "- вставить figures в шаблон статьи",
             "- добавить antiplagiat screenshot в РИНЦ-файл",

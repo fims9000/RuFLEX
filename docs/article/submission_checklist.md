@@ -14,7 +14,7 @@
 - название статьи на английском;
 - список авторов;
 - организации и аффилиации;
-- e-mail или ORCID;
+- e-mail и ORCID;
 - аннотацию на русском;
 - abstract на английском;
 - ключевые слова на русском;
@@ -94,6 +94,8 @@
 - `done`: classification showcase переведен на более сильную постановку `california_value_binary_geo`;
 - `done`: собран `docs/article/submission_bundle.zip`;
 - `done`: подготовлен `docs/article/manual_finish.md` и будущий `docs/article/readiness_report.md`;
+- `done`: собираются PDF-версии ключевых article документов;
+- `done`: добавлен `docs/article/submission_state.json` для фиксации ручной готовности к отправке;
 
 ### Текст статьи
 
@@ -107,7 +109,7 @@
 
 - `draft ready`: подготовлена текстовая заготовка `docs/article/rinc_draft.md` под `fajl-dlya-rinc.doc`;
 - при необходимости дополнить стартовый список литературы;
-- вручную вставить authors/affiliations/e-mails в шаблоны `.doc`;
+- заполнить `docs/article/article_profile.json` и пересобрать template-ready / illustrated документы;
 - вручную подготовить antiplagiat screenshot после финального текста статьи;
 - привести все рисунки к единому стилю и качеству.
 

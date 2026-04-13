@@ -16,10 +16,12 @@ RuFLEX: A Hybrid Deep Fuzzy Learning Platform for Geodata with Interpretable Ana
 
 - И. О. Автор1 / Author One
 - author1@example.com
+- ORCID: 0000-0000-0000-0000
 - Организация, город, страна
 - Organization, City, Country
 - И. О. Автор2 / Author Two
 - author2@example.com
+- ORCID: 0000-0000-0000-0000
 - Организация, город, страна
 - Organization, City, Country
 

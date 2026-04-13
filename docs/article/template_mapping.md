@@ -59,22 +59,28 @@
 
 1. `docs/article/shablon_dokladov_ready.docx`
 2. `docs/article/shablon_dokladov_illustrated.docx`
-2. `docs/article/rinc_draft.docx`
-3. `docs/article/submission_bundle/figures/*`
-4. `docs/article/submission_bundle/tables/*`
+3. `docs/article/shablon_dokladov_illustrated.pdf`
+4. `docs/article/rinc_draft.docx`
+5. `docs/article/rinc_draft.pdf`
+6. `docs/article/submission_bundle/figures/*`
+7. `docs/article/submission_bundle/tables/*`
 
 ### Если нужен англоязычный paper-style вариант
 
 1. `docs/article/conference_template_ready_en.docx`
 2. `docs/article/conference_template_illustrated_en.docx`
-2. `docs/article/final_metadata.md`
-3. `docs/article/submission_bundle/figures/*`
-4. `docs/article/submission_bundle/tables/*`
+3. `docs/article/conference_template_illustrated_en.pdf`
+4. `docs/article/final_metadata.md`
+5. `docs/article/submission_bundle/figures/*`
+6. `docs/article/submission_bundle/tables/*`
 
 ## Откуда брать содержимое
 
-- авторы, аффилиации, e-mail, funding и acknowledgments: `docs/article/article_profile.json`
+- авторы, аффилиации, e-mail, ORCID, funding и acknowledgments: `docs/article/article_profile.json`
 - краткая проверка profile перед сборкой: `docs/article/article_profile_card.md`
+- единый список литературы: `docs/article/article_references.json`
+- ручные submission-флаги: `docs/article/submission_state.json`
+- сгенерированные reference-листы: `docs/article/references_ru_gost.md`, `docs/article/references_en_ieee.md`
 - safe title / abstract / keywords: `docs/article/final_metadata.md`
 - narrative text: `docs/article/paper_draft.md`
 - figures and captions: `docs/article/figure_manifest.md`
@@ -84,7 +90,7 @@
 ## Что еще останется руками
 
 - при изменении авторских данных сначала запустить `scripts/render_article_profile_docs.py`;
-- вписать авторов и аффилиации;
+- при необходимости только проверить, что authors / affiliations / e-mail / ORCID корректно подтянулись из `docs/article/article_profile.json`;
 - проверить стиль списка литературы под площадку;
 - вставить рисунки в `.docx`;
 - сделать antiplagiat screenshot для РИНЦ.

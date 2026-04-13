@@ -7,8 +7,10 @@ from article_profile import (
     format_author_names,
     format_emails,
     format_keywords,
+    format_orcids,
     load_article_profile,
 )
+from article_references import format_reference_lines
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -18,6 +20,8 @@ RINC_TXT_PATH = ROOT / "docs/article/rinc_draft.txt"
 PROFILE_CARD_PATH = ROOT / "docs/article/article_profile_card.md"
 READY_RU_PATH = ROOT / "docs/article/shablon_dokladov_ready.md"
 READY_EN_PATH = ROOT / "docs/article/conference_template_ready_en.md"
+REFERENCES_RU_PATH = ROOT / "docs/article/references_ru_gost.md"
+REFERENCES_EN_PATH = ROOT / "docs/article/references_en_ieee.md"
 
 
 def main() -> None:
@@ -28,6 +32,8 @@ def main() -> None:
     print(PROFILE_CARD_PATH)
     print(READY_RU_PATH)
     print(READY_EN_PATH)
+    print(REFERENCES_RU_PATH)
+    print(REFERENCES_EN_PATH)
 
 
 def render_article_profile_docs() -> None:
@@ -36,13 +42,32 @@ def render_article_profile_docs() -> None:
     final_metadata_text = _render_final_metadata(profile, final_metadata_text)
     FINAL_METADATA_PATH.write_text(final_metadata_text, encoding="utf-8")
     abstracts = _extract_abstracts(final_metadata_text)
-    references = _references_text()
+    references_ru = format_reference_lines("ru")
+    references_en = format_reference_lines("en")
 
-    RINC_MD_PATH.write_text(_render_rinc_md(profile, abstracts, references), encoding="utf-8")
-    RINC_TXT_PATH.write_text(_render_rinc_txt(profile, abstracts, references), encoding="utf-8")
+    RINC_MD_PATH.write_text(_render_rinc_md(profile, abstracts, references_ru), encoding="utf-8")
+    RINC_TXT_PATH.write_text(_render_rinc_txt(profile, abstracts, references_ru), encoding="utf-8")
     PROFILE_CARD_PATH.write_text(_render_profile_card(profile), encoding="utf-8")
     READY_RU_PATH.write_text(_render_ready_ru(profile, abstracts), encoding="utf-8")
     READY_EN_PATH.write_text(_render_ready_en(profile, abstracts), encoding="utf-8")
+    render_reference_docs(reference_lines_ru=references_ru, reference_lines_en=references_en)
+
+
+def render_reference_docs(
+    *,
+    reference_lines_ru: list[str] | None = None,
+    reference_lines_en: list[str] | None = None,
+) -> None:
+    references_ru = reference_lines_ru if reference_lines_ru is not None else format_reference_lines("ru")
+    references_en = reference_lines_en if reference_lines_en is not None else format_reference_lines("en")
+    REFERENCES_RU_PATH.write_text(
+        _render_reference_list("Список литературы для русскоязычной версии", references_ru),
+        encoding="utf-8",
+    )
+    REFERENCES_EN_PATH.write_text(
+        _render_reference_list("References for the English version", references_en),
+        encoding="utf-8",
+    )
 
 
 def _render_final_metadata(profile: dict[str, object], text: str) -> str:
@@ -92,6 +117,7 @@ def _render_ready_ru(profile: dict[str, object], abstracts: dict[str, str]) -> s
     lines.extend(
         [
             f"E-mail: {format_emails(profile)}",
+            f"ORCID: {format_orcids(profile)}",
             "",
             f"Аннотация. {abstracts['ru']}",
             "",
@@ -116,6 +142,7 @@ def _render_ready_en(profile: dict[str, object], abstracts: dict[str, str]) -> s
     lines.extend(
         [
             format_emails(profile),
+            f"ORCID: {format_orcids(profile)}",
             "",
             "## Abstract",
             "",
@@ -138,6 +165,7 @@ def _render_rinc_md(profile: dict[str, object], abstracts: dict[str, str], refer
             [
                 f"- {author['name_ru']} / {author['name_en']}",
                 f"- {author['email']}",
+                f"- ORCID: {author['orcid']}",
                 f"- {author['affiliation_ru']}",
                 f"- {author['affiliation_en']}",
             ]
@@ -205,7 +233,9 @@ def _render_rinc_md(profile: dict[str, object], abstracts: dict[str, str], refer
 def _render_rinc_txt(profile: dict[str, object], abstracts: dict[str, str], references: list[str]) -> str:
     author_block = []
     for author in profile["authors"]:
-        author_block.append(f"{author['name_ru']}\t\t\t{author['name_en']}\t\t\t{author['email']}")
+        author_block.append(
+            f"{author['name_ru']}\t\t\t{author['name_en']}\t\t\t{author['email']}\t\t\tORCID {author['orcid']}"
+        )
     aff_ru = "; ".join(format_affiliations(profile, language="ru"))
     aff_en = "; ".join(format_affiliations(profile, language="en"))
     return "\n".join(
@@ -245,6 +275,7 @@ def _render_profile_card(profile: dict[str, object]) -> str:
         f"- authors_ru: `{format_author_names(profile, language='ru')}`",
         f"- authors_en: `{format_author_names(profile, language='en')}`",
         f"- emails: `{format_emails(profile)}`",
+        f"- orcids: `{format_orcids(profile)}`",
         f"- keywords_ru: `{format_keywords(profile['keywords_ru'])}`",
         f"- keywords_en: `{format_keywords(profile['keywords_en'])}`",
         "",
@@ -267,6 +298,16 @@ def _render_profile_card(profile: dict[str, object]) -> str:
         ]
     )
     return "\n".join(lines)
+
+
+def _render_reference_list(title: str, references: list[str]) -> str:
+    return "\n".join(
+        [
+            f"# {title}",
+            "",
+            *[f"{index}. {item}" for index, item in enumerate(references, start=1)],
+        ]
+    )
 
 
 def _extract_abstracts(text: str) -> dict[str, str]:
@@ -294,19 +335,6 @@ def _replace_section(text: str, start_marker: str, end_marker: str, replacement:
     start = text.index(start_marker)
     end = text.index(end_marker)
     return text[:start] + replacement + text[end:]
-
-
-def _references_text() -> list[str]:
-    return [
-        "Jang J.-S. R. ANFIS: Adaptive-Network-Based Fuzzy Inference System // IEEE Transactions on Systems, Man, and Cybernetics. 1993. Vol. 23, No. 3. P. 665-685.",
-        "Paszke A., Gross S., Massa F. et al. PyTorch: An Imperative Style, High-Performance Deep Learning Library // Advances in Neural Information Processing Systems. 2019. Vol. 32.",
-        "Pedregosa F., Varoquaux G., Gramfort A. et al. Scikit-learn: Machine Learning in Python // Journal of Machine Learning Research. 2011. Vol. 12. P. 2825-2830.",
-        "Pace R. K., Barry R. Sparse Spatial Autoregressions // Statistics & Probability Letters. 1997. Vol. 33, No. 3. P. 291-297. DOI: 10.1016/S0167-7152(96)00140-X.",
-        "Rudin C. Stop Explaining Black Box Machine Learning Models for High Stakes Decisions and Use Interpretable Models Instead // Nature Machine Intelligence. 2019. Vol. 1. P. 206-215. DOI: 10.1038/s42256-019-0048-x.",
-        "Ma X., Chen L., Deng Z. et al. Deep Image Feature Learning With Fuzzy Rules // IEEE Transactions on Emerging Topics in Computational Intelligence. 2024. Vol. 8. P. 724-737. DOI: 10.1109/TETCI.2023.3259447.",
-        "Lebedeffson. deep-neuro-fuzzy [Электронный ресурс]. URL: https://github.com/lebedeffson/deep-neuro-fuzzy (дата обращения: 13.04.2026).",
-    ]
-
 
 if __name__ == "__main__":
     main()

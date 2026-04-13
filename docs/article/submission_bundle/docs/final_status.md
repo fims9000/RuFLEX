@@ -23,24 +23,33 @@
 - подготовлены draft-материалы для текста статьи:
   - `docs/article/paper_draft.md`
   - `docs/article/paper_draft.docx`
+  - `docs/article/paper_draft.pdf`
   - `docs/article/article_profile.json`
   - `docs/article/article_profile_card.md`
+  - `docs/article/article_references.json`
+  - `docs/article/submission_state.json`
+  - `docs/article/references_ru_gost.md`
+  - `docs/article/references_en_ieee.md`
   - `docs/article/shablon_dokladov_ready.md`
   - `docs/article/shablon_dokladov_ready.docx`
   - `docs/article/shablon_dokladov_illustrated.docx`
+  - `docs/article/shablon_dokladov_illustrated.pdf`
   - `docs/article/conference_template_ready_en.md`
   - `docs/article/conference_template_ready_en.docx`
   - `docs/article/conference_template_illustrated_en.docx`
+  - `docs/article/conference_template_illustrated_en.pdf`
   - `docs/article/figure_manifest.md`
 - подготовлена заготовка под РИНЦ:
   - `docs/article/rinc_draft.md`
   - `docs/article/rinc_draft.docx`
+  - `docs/article/rinc_draft.pdf`
 - собран submission bundle:
   - `docs/article/submission_bundle`
   - `docs/article/submission_bundle.zip`
 - подготовлен pre-submission контрольный слой:
   - `docs/article/manual_finish.md`
   - `docs/article/readiness_report.md`
+  - `profile_status`/`submission_status` в readiness-report для отделения технической готовности от реальной submission-ready фазы
 
 ## Main regression showcase
 
@@ -111,18 +120,24 @@
   - `docs/article/conference_template_ready_en.docx`
 - illustrated версии с уже встроенными таблицами и figures:
   - `docs/article/shablon_dokladov_illustrated.docx`
+  - `docs/article/shablon_dokladov_illustrated.pdf`
   - `docs/article/conference_template_illustrated_en.docx`
+  - `docs/article/conference_template_illustrated_en.pdf`
 - единый профиль статьи для авторов и аффилиаций:
   - `docs/article/article_profile.json`
+- PDF-версии для быстрой отправки и просмотра:
+  - `docs/article/paper_draft.pdf`
+  - `docs/article/rinc_draft.pdf`
 - стартовый список литературы из раздела `References` в `docs/article/paper_draft.md`
 - готовые имена итоговых рисунков из `docs/article/submission_bundle/figures/`
 
 ## Что осталось вручную перед подачей
 
-- вписать authors / affiliations / e-mail / ORCID в шаблоны `.doc`
+- заполнить и утвердить `docs/article/article_profile.json`, если еще не внесены реальные authors / affiliations / e-mail / ORCID
+- отметить завершенные ручные шаги в `docs/article/submission_state.json`
 - при необходимости подправить и дополнить стартовый список литературы под требования площадки
 - утвердить, остаются ли article boards основными иллюстрациями, или дополнительно вставить 1-2 отдельные explainability figures
 - вручную сделать 1-2 нормальных UI screenshots из Streamlit только если площадка требует именно screenshots интерфейса
 - вставить реальные figure captions в шаблон статьи
 - вручную сделать antiplagiat check и вставить скриншот в РИНЦ-файл
-- вручную проверить итоговую верстку `.docx` после вставки авторов, литературы и рисунков
+- вручную проверить итоговую верстку `.docx` после автоматической подстановки авторов, литературы и рисунков
