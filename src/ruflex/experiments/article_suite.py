@@ -19,10 +19,20 @@ def run_article_suite(
     assets_root: str | Path = "docs/article/assets",
     suite_root: str | Path = "experiments/article_suite",
     training_preset_override: str | None = None,
+    seeds: tuple[int, ...] | list[int] = (11, 23, 47),
     validation_fraction: float = 0.2,
     test_fraction: float = 0.2,
+    sample_size_override: int | None = None,
+    random_state_override: int | None = None,
+    output_name_suffix: str | None = None,
 ) -> dict[str, Any]:
-    dataset_manifests = prepare_article_datasets(dataset_names, output_root=dataset_root)
+    dataset_manifests = prepare_article_datasets(
+        dataset_names,
+        output_root=dataset_root,
+        sample_size_override=sample_size_override,
+        random_state_override=random_state_override,
+        output_name_suffix=output_name_suffix,
+    )
 
     suite_dir = _suite_directory(suite_root)
     suite_dir.mkdir(parents=True, exist_ok=False)
@@ -48,9 +58,14 @@ def run_article_suite(
             project,
             output_root=benchmark_root,
             training_preset_override=training_preset_override,
+            seeds=seeds,
         )
         materials = prepare_article_materials(benchmark["benchmark_dir"], output_root=assets_root)
         best_variant = _best_variant_for_task(
+            str(dataset_manifest["task_type"]),
+            list(benchmark.get("results", ())),
+        )
+        best_ruflex_variant = _best_ruflex_variant_for_task(
             str(dataset_manifest["task_type"]),
             list(benchmark.get("results", ())),
         )
@@ -60,7 +75,10 @@ def run_article_suite(
                 "benchmark_dir": benchmark["benchmark_dir"],
                 "materials_dir": materials["output_dir"],
                 "best_variant": best_variant,
+                "best_ruflex_variant": best_ruflex_variant,
                 "results": benchmark["results"],
+                "seed_count": benchmark.get("seed_count"),
+                "seeds": benchmark.get("seeds"),
             }
         )
         for row in benchmark["results"]:
@@ -78,6 +96,8 @@ def run_article_suite(
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "suite_dir": str(suite_dir),
         "training_preset_override": training_preset_override,
+        "seeds": [int(seed) for seed in seeds],
+        "seed_count": len(tuple(int(seed) for seed in seeds)),
         "dataset_runs": dataset_runs,
         "rows": suite_rows,
     }
@@ -124,19 +144,35 @@ def _best_variant_for_task(task_type: str, results: list[dict[str, Any]]) -> dic
     if not results:
         return None
     if task_type == "regression":
-        comparable = [row for row in results if row.get("test_rmse") is not None]
+        comparable = [row for row in results if _metric_value(row, "test_rmse") is not None]
         if comparable:
-            return dict(sorted(comparable, key=lambda row: float(row["test_rmse"]))[0])
-        comparable = [row for row in results if row.get("test_r2") is not None]
+            return dict(sorted(comparable, key=lambda row: float(_metric_value(row, "test_rmse") or 0.0))[0])
+        comparable = [row for row in results if _metric_value(row, "test_r2") is not None]
         if comparable:
-            return dict(sorted(comparable, key=lambda row: float(row["test_r2"]), reverse=True)[0])
+            return dict(sorted(comparable, key=lambda row: float(_metric_value(row, "test_r2") or 0.0), reverse=True)[0])
         return None
-    comparable = [row for row in results if row.get("test_f1") is not None]
+    comparable = [row for row in results if _metric_value(row, "test_f1") is not None]
     if comparable:
-        return dict(sorted(comparable, key=lambda row: float(row["test_f1"]), reverse=True)[0])
-    comparable = [row for row in results if row.get("test_accuracy") is not None]
+        return dict(sorted(comparable, key=lambda row: float(_metric_value(row, "test_f1") or 0.0), reverse=True)[0])
+    comparable = [row for row in results if _metric_value(row, "test_accuracy") is not None]
     if comparable:
-        return dict(sorted(comparable, key=lambda row: float(row["test_accuracy"]), reverse=True)[0])
+        return dict(
+            sorted(comparable, key=lambda row: float(_metric_value(row, "test_accuracy") or 0.0), reverse=True)[0]
+        )
+    return None
+
+
+def _best_ruflex_variant_for_task(task_type: str, results: list[dict[str, Any]]) -> dict[str, Any] | None:
+    ruflex_rows = [row for row in results if row.get("family") == "ruflex"]
+    return _best_variant_for_task(task_type, ruflex_rows)
+
+
+def _metric_value(row: dict[str, Any], metric_name: str) -> float | None:
+    if row.get(metric_name) is not None:
+        return float(row[metric_name])
+    mean_key = f"{metric_name}_mean"
+    if row.get(mean_key) is not None:
+        return float(row[mean_key])
     return None
 
 
@@ -159,6 +195,8 @@ def _suite_markdown(summary: dict[str, Any]) -> str:
         f"- generated_at_utc: {summary['generated_at_utc']}",
         f"- suite_dir: {summary['suite_dir']}",
         f"- training_preset_override: {summary.get('training_preset_override')}",
+        f"- seed_count: {summary.get('seed_count')}",
+        f"- seeds: {summary.get('seeds')}",
         "",
         "## Dataset Runs",
         "",
@@ -168,9 +206,16 @@ def _suite_markdown(summary: dict[str, Any]) -> str:
         lines.append(f"- {dataset['label']} (`{dataset['name']}`)")
         lines.append(f"  benchmark_dir: `{item['benchmark_dir']}`")
         lines.append(f"  materials_dir: `{item['materials_dir']}`")
+        if item.get("seed_count") is not None:
+            lines.append(f"  seed_count: `{item['seed_count']}`")
         if item["best_variant"] is not None:
             best = item["best_variant"]
             lines.append(
-                f"  best_variant: `{best.get('variant_label')}` via `{best.get('study_pipeline')}`"
+                f"  best_variant: `{best.get('model_label') or best.get('variant_label')}`"
+            )
+        if item.get("best_ruflex_variant") is not None:
+            best_ruflex = item["best_ruflex_variant"]
+            lines.append(
+                f"  best_ruflex_variant: `{best_ruflex.get('model_label') or best_ruflex.get('variant_label')}`"
             )
     return "\n".join(lines)

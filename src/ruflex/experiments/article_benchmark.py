@@ -1,15 +1,26 @@
 from __future__ import annotations
 
 import csv
+import random
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 import numpy as np
+import torch
 
+from ruanfis.benchmarks import (
+    BenchmarkEntryResult,
+    aggregate_benchmark_results,
+    evaluate_trained_model,
+    run_tabular_benchmark,
+    serialize_aggregated_benchmark_results,
+    serialize_benchmark_results,
+)
 from ruflex.io.project import load_manifest, save_manifest
 from ruflex.sdk.project import Project
+from ruflex.training.config import ModelTrainingConfig
 from ruflex.visualization.plots import plot_membership_functions, plot_training_history
 
 
@@ -17,58 +28,127 @@ from ruflex.visualization.plots import plot_membership_functions, plot_training_
 class ArticleBenchmarkVariant:
     name: str
     label: str
-    study_pipeline: str
     article_role: str
     description: str
+    workspace_template: str
+    training_preset: str
+    study_pipeline: str | None = None
+    workspace_overrides: dict[str, Any] | None = None
+    training_overrides: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "name": self.name,
             "label": self.label,
-            "study_pipeline": self.study_pipeline,
             "article_role": self.article_role,
             "description": self.description,
+            "workspace_template": self.workspace_template,
+            "training_preset": self.training_preset,
+            "study_pipeline": self.study_pipeline,
+            "workspace_overrides": None if self.workspace_overrides is None else dict(self.workspace_overrides),
+            "training_overrides": None if self.training_overrides is None else dict(self.training_overrides),
         }
 
 
 def article_benchmark_plan(project: Project) -> tuple[dict[str, Any], ...]:
     _require_project_dataset(project)
-    feature_count = len(project.dataset_config.feature_columns or project.dataset.numeric_feature_columns(project.dataset_config.target_column))
+    article_template = _workspace_template(project, "deep_article_demo")
+    research_template = _workspace_template(project, "deep_research")
+    article_stage_count = int(article_template["config"]["hidden_stage_count"])
+    research_stage_count = int(research_template["config"]["hidden_stage_count"])
 
     variants = [
         ArticleBenchmarkVariant(
             name="flat_baseline",
             label="Flat Baseline",
-            study_pipeline="flat_baseline_benchmark",
             article_role="baseline",
-            description="Reference flat neuro-fuzzy baseline for the article tables.",
+            description="Reference flat neuro-fuzzy baseline for the main comparison table.",
+            workspace_template="flat_baseline",
+            training_preset="balanced",
+            study_pipeline="flat_baseline_benchmark",
         ),
         ArticleBenchmarkVariant(
             name="flat_interpretable",
             label="Flat Interpretable",
-            study_pipeline="interpretable_flat_study",
             article_role="interpretable_baseline",
-            description="Compact interpretable flat model for rule-oriented comparison.",
-        ),
-        ArticleBenchmarkVariant(
-            name="deep_article_demo",
-            label="Deep Article Demo",
-            study_pipeline="deep_article_demo",
-            article_role="primary_deep_model",
-            description="Primary deep fuzzy feature learning configuration for the paper.",
+            description="Compact interpretable flat model with stronger structure-aware regularization.",
+            workspace_template="flat_interpretable",
+            training_preset="interpretable",
+            study_pipeline="interpretable_flat_study",
         ),
     ]
-    if feature_count >= 4:
+
+    if article_stage_count > 1:
         variants.append(
+            ArticleBenchmarkVariant(
+                name="deep_stage1_ablation",
+                label="Deep Depth 1",
+                article_role="depth_ablation",
+                description="Depth ablation with a single hidden concept stage.",
+                workspace_template="deep_article_demo",
+                training_preset="article_demo",
+                workspace_overrides={"config": {"hidden_stage_count": 1}},
+            )
+        )
+
+    variants.extend(
+        [
+            ArticleBenchmarkVariant(
+                name="deep_article_demo",
+                label="Deep Article Demo",
+                article_role="primary_deep_model",
+                description="Reference deep fuzzy feature learning configuration for the paper.",
+                workspace_template="deep_article_demo",
+                training_preset="article_demo",
+                study_pipeline="deep_article_demo",
+            ),
+            ArticleBenchmarkVariant(
+                name="deep_research_no_regularization",
+                label="Deep No Regularization",
+                article_role="regularization_ablation",
+                description="Ablation of rule and concept regularization in the richer deep configuration.",
+                workspace_template="deep_research",
+                training_preset="article_demo",
+                training_overrides={
+                    "fine_tuning": {
+                        "rule_sparsity_weight": 0.0,
+                        "rule_length_weight": 0.0,
+                        "concept_orthogonality_weight": 0.0,
+                        "concept_binarization_weight": 0.0,
+                        "membership_order_weight": 0.0,
+                        "membership_overlap_weight": 0.0,
+                        "membership_coverage_weight": 0.0,
+                    },
+                    "stagewise": {
+                        "rule_sparsity_weight": 0.0,
+                        "concept_orthogonality_weight": 0.0,
+                        "concept_binarization_weight": 0.0,
+                        "membership_order_weight": 0.0,
+                        "membership_overlap_weight": 0.0,
+                        "membership_coverage_weight": 0.0,
+                    },
+                },
+            ),
             ArticleBenchmarkVariant(
                 name="deep_research",
                 label="Deep Research",
-                study_pipeline="deep_research_study",
                 article_role="extended_deep_model",
                 description="Broader deep fuzzy configuration for extended article comparisons.",
-            )
-        )
-    return tuple(item.to_dict() for item in variants)
+                workspace_template="deep_research",
+                training_preset="article_demo",
+                study_pipeline="deep_research_study",
+            ),
+        ]
+    )
+
+    deduplicated: list[ArticleBenchmarkVariant] = []
+    seen_names: set[str] = set()
+    for variant in variants:
+        if variant.name in seen_names:
+            continue
+        seen_names.add(variant.name)
+        deduplicated.append(variant)
+    return tuple(item.to_dict() for item in deduplicated)
 
 
 def run_article_benchmark(
@@ -77,6 +157,7 @@ def run_article_benchmark(
     output_root: str | Path = "experiments/article_benchmark",
     variant_names: tuple[str, ...] | list[str] | None = None,
     training_preset_override: str | None = None,
+    seeds: tuple[int, ...] | list[int] | None = None,
 ) -> dict[str, Any]:
     _require_project_dataset(project)
 
@@ -87,34 +168,27 @@ def run_article_benchmark(
 
     plan = article_benchmark_plan(project)
     selected_plan = _select_variants(plan, variant_names)
-    results = []
-    for variant in selected_plan:
-        benchmark_project = _clone_project_for_benchmark(project, variant_name=str(variant["name"]))
-        study_record = benchmark_project.run_study_pipeline(
-            str(variant["study_pipeline"]),
-            export_root=runs_root,
+    resolved_seeds = _resolve_seeds(seeds)
+
+    per_seed_rows: list[dict[str, Any]] = []
+    per_seed_entries: list[tuple[BenchmarkEntryResult, ...]] = []
+    for seed in resolved_seeds:
+        seed_payload = _run_benchmark_seed(
+            project,
+            selected_plan=selected_plan,
+            seed=seed,
+            runs_root=runs_root,
             training_preset_override=training_preset_override,
         )
-        result_row = {
-            "variant_name": variant["name"],
-            "variant_label": variant["label"],
-            "article_role": variant["article_role"],
-            "study_pipeline": variant["study_pipeline"],
-            "training_preset": study_record.get("training_preset"),
-            "training_preset_override": study_record.get("training_preset_override"),
-            "model_kind": benchmark_project.model_kind,
-            "epochs_ran": study_record.get("epochs_ran"),
-            "training_source": study_record.get("training_source"),
-            "export_dir": (
-                None
-                if study_record.get("artifact_export") is None
-                else study_record["artifact_export"].get("export_dir")
-            ),
-        }
-        result_row.update(_flatten_metric_block(study_record.get("train_metrics"), "train"))
-        result_row.update(_flatten_metric_block(study_record.get("validation_metrics"), "validation"))
-        result_row.update(_flatten_metric_block(study_record.get("test_metrics"), "test"))
-        results.append(result_row)
+        per_seed_rows.extend(seed_payload["rows"])
+        per_seed_entries.append(seed_payload["entries"])
+
+    aggregated = aggregate_benchmark_results(per_seed_entries)
+    metadata_by_model = _aggregate_row_metadata(project.task_type, per_seed_rows)
+    results = [
+        _aggregated_result_row(item, metadata_by_model.get(item.model_name, {}))
+        for item in aggregated
+    ]
 
     summary = {
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
@@ -128,13 +202,32 @@ def run_article_benchmark(
         "benchmark_dir": str(benchmark_dir),
         "runs_root": str(runs_root),
         "variant_plan": [dict(item) for item in selected_plan],
-        "results": results,
         "training_preset_override": training_preset_override,
+        "seeds": list(resolved_seeds),
+        "seed_count": len(resolved_seeds),
+        "baseline_models": _baseline_model_names(per_seed_rows),
+        "results": results,
+        "per_seed_results": per_seed_rows,
+        "aggregated_results": list(serialize_aggregated_benchmark_results(aggregated)),
+        "serialized_per_seed_results": [
+            {
+                "seed": seed,
+                "results": list(serialize_benchmark_results(seed_results)),
+            }
+            for seed, seed_results in zip(resolved_seeds, per_seed_entries, strict=True)
+        ],
     }
 
     save_manifest(summary, benchmark_dir / "benchmark_results.json")
-    save_manifest({"variants": [dict(item) for item in selected_plan]}, benchmark_dir / "benchmark_plan.json")
+    save_manifest(
+        {
+            "variants": [dict(item) for item in selected_plan],
+            "seeds": list(resolved_seeds),
+        },
+        benchmark_dir / "benchmark_plan.json",
+    )
     _write_results_csv(results, benchmark_dir / "benchmark_results.csv")
+    _write_results_csv(per_seed_rows, benchmark_dir / "benchmark_per_seed_results.csv")
     (benchmark_dir / "benchmark_report.md").write_text(_benchmark_report(summary), encoding="utf-8")
     return summary
 
@@ -157,7 +250,9 @@ def list_article_benchmark_runs(root_dir: str | Path = "experiments/article_benc
                 "source_project_name": payload.get("source_project", {}).get("name"),
                 "task_type": payload.get("source_project", {}).get("task_type"),
                 "target_name": payload.get("source_project", {}).get("target_name"),
-                "variant_count": len(payload.get("results", ())),
+                "variant_count": len(payload.get("variant_plan", ())),
+                "model_count": len(payload.get("results", ())),
+                "seed_count": int(payload.get("seed_count", 1)),
                 "training_preset_override": payload.get("training_preset_override"),
             }
         )
@@ -183,6 +278,7 @@ def prepare_article_materials(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     results = list(summary.get("results", ()))
+    per_seed_results = list(summary.get("per_seed_results", ()))
     files: dict[str, str] = {}
 
     benchmark_results_path = output_dir / "benchmark_results.json"
@@ -203,18 +299,25 @@ def prepare_article_materials(
     )
     files["results_table_md"] = str(results_md_path)
 
+    per_seed_csv_path = output_dir / "per_seed_results_table.csv"
+    _write_results_csv(per_seed_results, per_seed_csv_path)
+    files["per_seed_results_table_csv"] = str(per_seed_csv_path)
+
     artifact_index_path = output_dir / "artifact_index.json"
     save_manifest(
         {
             "benchmark_dir": str(benchmark_root),
             "artifacts": [
                 {
-                    "variant_name": row.get("variant_name"),
-                    "variant_label": row.get("variant_label"),
+                    "model_name": row.get("model_name"),
+                    "model_label": row.get("model_label"),
+                    "article_role": row.get("article_role"),
                     "study_pipeline": row.get("study_pipeline"),
                     "export_dir": row.get("export_dir"),
+                    "best_seed": row.get("best_seed"),
                 }
                 for row in results
+                if row.get("export_dir") is not None
             ],
         },
         artifact_index_path,
@@ -247,7 +350,8 @@ def prepare_article_materials(
         "benchmark_dir": str(benchmark_root),
         "output_dir": str(output_dir),
         "files": files,
-        "variant_count": len(results),
+        "model_count": len(results),
+        "seed_count": int(summary.get("seed_count", 1)),
     }
 
 
@@ -256,7 +360,178 @@ def _require_project_dataset(project: Project) -> None:
         raise RuntimeError("Attach a dataset before running the article benchmark.")
 
 
-def _clone_project_for_benchmark(project: Project, *, variant_name: str) -> Project:
+def _resolve_seeds(seeds: tuple[int, ...] | list[int] | None) -> tuple[int, ...]:
+    if seeds is None:
+        return (42,)
+    resolved = tuple(int(seed) for seed in seeds)
+    if not resolved:
+        raise ValueError("Article benchmark seeds must not be empty.")
+    return resolved
+
+
+def _run_benchmark_seed(
+    project: Project,
+    *,
+    selected_plan: tuple[dict[str, Any], ...],
+    seed: int,
+    runs_root: Path,
+    training_preset_override: str | None,
+) -> dict[str, Any]:
+    split_project = _clone_project_for_benchmark(project, variant_name=f"seed_{seed}", random_state=seed)
+    split = split_project.dataset.split(split_project.dataset_config)  # type: ignore[union-attr]
+
+    baseline_entries = tuple(
+        run_tabular_benchmark(
+            train_inputs=torch.as_tensor(split.train_features, dtype=torch.float32),
+            train_targets=torch.as_tensor(split.train_targets, dtype=torch.float32),
+            test_inputs=torch.as_tensor(split.test_features, dtype=torch.float32),
+            test_targets=torch.as_tensor(split.test_targets, dtype=torch.float32),
+            task_type=project.task_type,
+            fuzzy_models=None,
+            random_state=seed,
+        )
+    )
+    baseline_rows = [
+        _seed_row_from_entry(seed=seed, entry=entry)
+        for entry in baseline_entries
+    ]
+
+    variant_rows: list[dict[str, Any]] = []
+    variant_entries: list[BenchmarkEntryResult] = []
+    for variant in selected_plan:
+        row, entry = _run_ruflex_variant(
+            project,
+            variant=variant,
+            seed=seed,
+            runs_root=runs_root,
+            training_preset_override=training_preset_override,
+        )
+        variant_rows.append(row)
+        variant_entries.append(entry)
+
+    return {
+        "rows": [*baseline_rows, *variant_rows],
+        "entries": tuple([*baseline_entries, *variant_entries]),
+    }
+
+
+def _run_ruflex_variant(
+    project: Project,
+    *,
+    variant: dict[str, Any],
+    seed: int,
+    runs_root: Path,
+    training_preset_override: str | None,
+) -> tuple[dict[str, Any], BenchmarkEntryResult]:
+    benchmark_project = _clone_project_for_benchmark(project, variant_name=str(variant["name"]), random_state=seed)
+    _apply_workspace_variant(benchmark_project, variant)
+    artifact_pipeline_name = str(variant.get("study_pipeline") or variant["name"])
+
+    resolved_training_preset = (
+        str(training_preset_override)
+        if training_preset_override is not None
+        else str(variant["training_preset"])
+    )
+    training_config = benchmark_project.training_preset(resolved_training_preset)
+    if variant.get("training_overrides") is not None:
+        training_config = _merged_training_config(training_config, dict(variant["training_overrides"]))
+
+    _set_global_seed(seed)
+    summary = benchmark_project.train(training_config=training_config)
+
+    record = {
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        "pipeline_name": artifact_pipeline_name,
+        "pipeline_label": variant["label"],
+        "workspace_template": variant["workspace_template"],
+        "training_preset": resolved_training_preset,
+        "training_preset_override": training_preset_override,
+        "training_source": summary.source,
+        "epochs_ran": int(summary.epochs_ran),
+        "train_metrics": dict(summary.train_metrics),
+        "validation_metrics": (
+            None if summary.validation_metrics is None else dict(summary.validation_metrics)
+        ),
+        "test_metrics": None if benchmark_project.test_metrics is None else dict(benchmark_project.test_metrics),
+        "training_config": training_config.to_dict(),
+        "project_manifest": benchmark_project.to_manifest(),
+        "project_summary": dict(benchmark_project.summary()),
+        "dataset_summary": benchmark_project.dataset_summary(),
+        "variable_catalog": benchmark_project.variable_catalog(),
+        "rule_base_catalog": benchmark_project.rule_base_catalog(),
+        "model_preset": benchmark_project.model_preset(),
+        "project_report": benchmark_project.project_report(),
+        "model_report": benchmark_project.model_report(),
+        "study_pipeline": variant.get("study_pipeline"),
+        "article_role": variant["article_role"],
+    }
+    history = list(benchmark_project.notes.get("study_run_history", ()))
+    history.append(record)
+    benchmark_project.notes["study_run_history"] = history
+    export_payload = benchmark_project.export_study_run_artifacts(
+        root_dir=runs_root,
+        study_run_index=len(history) - 1,
+    )
+    record["artifact_export"] = export_payload
+    history[-1] = record
+    benchmark_project.notes["study_run_history"] = history
+
+    split = benchmark_project.last_split
+    backend_model = None if benchmark_project.model is None else benchmark_project.model.backend_model
+    if split is None or backend_model is None:
+        raise RuntimeError("Expected the benchmark project to expose a trained backend model and cached split.")
+
+    evaluated = evaluate_trained_model(
+        variant["name"],
+        backend_model,
+        task_type=project.task_type,
+        train_inputs=torch.as_tensor(split.train_features, dtype=torch.float32),
+        train_targets=torch.as_tensor(split.train_targets, dtype=torch.float32),
+        test_inputs=torch.as_tensor(split.test_features, dtype=torch.float32),
+        test_targets=torch.as_tensor(split.test_targets, dtype=torch.float32),
+        family="ruflex",
+        classification_threshold=training_config.fine_tuning.classification_threshold,
+    )
+
+    entry = BenchmarkEntryResult(
+        model_name=str(variant["name"]),
+        family="ruflex",
+        train_metrics=dict(summary.train_metrics),
+        test_metrics={} if benchmark_project.test_metrics is None else dict(benchmark_project.test_metrics),
+        structural_metrics=dict(evaluated.structural_metrics),
+        explainability_metrics=dict(evaluated.explainability_metrics),
+        stability_artifacts=dict(evaluated.stability_artifacts),
+    )
+
+    row = {
+        "seed": seed,
+        "model_name": variant["name"],
+        "model_label": variant["label"],
+        "family": "ruflex",
+        "article_role": variant["article_role"],
+        "variant_name": variant["name"],
+        "variant_label": variant["label"],
+        "study_pipeline": variant.get("study_pipeline"),
+        "workspace_template": variant["workspace_template"],
+        "training_preset": resolved_training_preset,
+        "training_preset_override": training_preset_override,
+        "epochs_ran": int(summary.epochs_ran),
+        "export_dir": export_payload["export_dir"],
+    }
+    row.update(_flatten_metric_block(dict(summary.train_metrics), "train"))
+    row.update(_flatten_metric_block(dict(summary.validation_metrics or {}), "validation"))
+    row.update(_flatten_metric_block(dict(benchmark_project.test_metrics or {}), "test"))
+    row.update(_flatten_metric_block(dict(evaluated.structural_metrics), "structure"))
+    row.update(_flatten_metric_block(dict(evaluated.explainability_metrics), "explainability"))
+    return row, entry
+
+
+def _clone_project_for_benchmark(
+    project: Project,
+    *,
+    variant_name: str,
+    random_state: int | None = None,
+) -> Project:
     if project.dataset is None or project.dataset_config is None:
         raise RuntimeError("Attach a dataset before cloning a benchmark project.")
     config = project.dataset_config
@@ -273,9 +548,56 @@ def _clone_project_for_benchmark(project: Project, *, variant_name: str) -> Proj
         test_fraction=config.test_fraction,
         normalization=config.normalization,
         fill_missing=config.fill_missing,
-        random_state=config.random_state,
+        random_state=config.random_state if random_state is None else int(random_state),
     )
     return clone
+
+
+def _workspace_template(project: Project, template_name: str) -> dict[str, Any]:
+    for item in project.list_workspace_templates():
+        if item["name"] == template_name:
+            return dict(item)
+    raise KeyError(f"Unknown workspace template: {template_name!r}.")
+
+
+def _apply_workspace_variant(project: Project, variant: dict[str, Any]) -> None:
+    template = _workspace_template(project, str(variant["workspace_template"]))
+    overrides = dict(variant.get("workspace_overrides") or {})
+    config = dict(template["config"])
+    if overrides.get("config") is not None:
+        config = _merged_mapping(config, dict(overrides["config"]))
+    term_count = int(overrides.get("term_count", template["term_count"]))
+    membership_kind = str(overrides.get("membership_kind", template["membership_kind"]))
+    mode = str(overrides.get("mode", template["mode"]))
+    project.infer_variables(term_count=term_count, membership_kind=membership_kind)
+    project.configure_model(mode, **config)
+
+
+def _merged_training_config(
+    training_config: ModelTrainingConfig,
+    overrides: dict[str, Any],
+) -> ModelTrainingConfig:
+    payload = training_config.to_dict()
+    merged = _merged_mapping(payload, overrides)
+    return ModelTrainingConfig.from_dict(merged)
+
+
+def _merged_mapping(base: dict[str, Any], overrides: dict[str, Any]) -> dict[str, Any]:
+    merged = dict(base)
+    for key, value in overrides.items():
+        if isinstance(value, dict) and isinstance(merged.get(key), dict):
+            merged[key] = _merged_mapping(dict(merged[key]), dict(value))
+        else:
+            merged[key] = value
+    return merged
+
+
+def _set_global_seed(seed: int) -> None:
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
 
 
 def _select_variants(
@@ -295,9 +617,17 @@ def _select_variants(
 
 
 def _flatten_metric_block(payload: dict[str, Any] | None, prefix: str) -> dict[str, Any]:
-    if payload is None:
+    if not payload:
         return {}
     return {f"{prefix}_{key}": value for key, value in payload.items()}
+
+
+def _flatten_metric_summaries(payload: dict[str, Any], prefix: str) -> dict[str, Any]:
+    flattened: dict[str, Any] = {}
+    for key, summary in payload.items():
+        flattened[f"{prefix}_{key}_mean"] = float(summary.mean)
+        flattened[f"{prefix}_{key}_std"] = float(summary.std)
+    return flattened
 
 
 def _benchmark_directory(*, output_root: str | Path, project_name: str) -> Path:
@@ -335,6 +665,92 @@ def _write_results_csv(results: list[dict[str, Any]], path: Path) -> None:
         writer.writerows(results)
 
 
+def _aggregate_row_metadata(task_type: str, rows: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        grouped.setdefault(str(row["model_name"]), []).append(row)
+
+    metadata: dict[str, dict[str, Any]] = {}
+    for model_name, model_rows in grouped.items():
+        best_seed_row = _best_seed_row(task_type, model_rows)
+        first = model_rows[0]
+        metadata[model_name] = {
+            "model_label": first.get("model_label"),
+            "family": first.get("family"),
+            "article_role": first.get("article_role"),
+            "variant_name": first.get("variant_name"),
+            "variant_label": first.get("variant_label"),
+            "study_pipeline": first.get("study_pipeline"),
+            "workspace_template": first.get("workspace_template"),
+            "training_preset": first.get("training_preset"),
+            "training_preset_override": first.get("training_preset_override"),
+            "seed_values": [int(item["seed"]) for item in model_rows],
+            "best_seed": None if best_seed_row is None else best_seed_row.get("seed"),
+            "export_dir": None if best_seed_row is None else best_seed_row.get("export_dir"),
+        }
+    return metadata
+
+
+def _aggregated_result_row(result: Any, metadata: dict[str, Any]) -> dict[str, Any]:
+    row = {
+        "model_name": result.model_name,
+        "model_label": metadata.get("model_label") or _display_model_name(result.model_name),
+        "family": result.family,
+        "article_role": metadata.get("article_role"),
+        "variant_name": metadata.get("variant_name"),
+        "variant_label": metadata.get("variant_label"),
+        "study_pipeline": metadata.get("study_pipeline"),
+        "workspace_template": metadata.get("workspace_template"),
+        "training_preset": metadata.get("training_preset"),
+        "training_preset_override": metadata.get("training_preset_override"),
+        "runs": int(result.runs),
+        "seed_values": ",".join(str(seed) for seed in metadata.get("seed_values", ())),
+        "best_seed": metadata.get("best_seed"),
+        "export_dir": metadata.get("export_dir"),
+    }
+    row.update(_flatten_metric_summaries(dict(result.train_metrics), "train"))
+    row.update(_flatten_metric_summaries(dict(result.test_metrics), "test"))
+    row.update(_flatten_metric_summaries(dict(result.structural_metrics), "structure"))
+    row.update(_flatten_metric_summaries(dict(result.explainability_metrics), "explainability"))
+    for key, value in dict(result.stability_metrics).items():
+        row[f"stability_{key}"] = float(value)
+    return row
+
+
+def _seed_row_from_entry(*, seed: int, entry: BenchmarkEntryResult) -> dict[str, Any]:
+    row = {
+        "seed": seed,
+        "model_name": entry.model_name,
+        "model_label": _display_model_name(entry.model_name),
+        "family": entry.family,
+        "article_role": "external_baseline" if entry.family == "sklearn" else entry.family,
+        "variant_name": None,
+        "variant_label": None,
+        "study_pipeline": None,
+        "workspace_template": None,
+        "training_preset": None,
+        "training_preset_override": None,
+        "epochs_ran": None,
+        "export_dir": None,
+    }
+    row.update(_flatten_metric_block(dict(entry.train_metrics), "train"))
+    row.update(_flatten_metric_block(dict(entry.test_metrics), "test"))
+    row.update(_flatten_metric_block(dict(entry.structural_metrics), "structure"))
+    row.update(_flatten_metric_block(dict(entry.explainability_metrics), "explainability"))
+    return row
+
+
+def _baseline_model_names(rows: list[dict[str, Any]]) -> list[str]:
+    names: list[str] = []
+    for row in rows:
+        if row.get("family") != "sklearn":
+            continue
+        label = str(row.get("model_label") or row.get("model_name"))
+        if label not in names:
+            names.append(label)
+    return names
+
+
 def _benchmark_report(summary: dict[str, Any]) -> str:
     lines = [
         "# Article Benchmark Report",
@@ -344,20 +760,27 @@ def _benchmark_report(summary: dict[str, Any]) -> str:
         f"- task_type: {summary['source_project']['task_type']}",
         f"- target_name: {summary['source_project']['target_name']}",
         f"- benchmark_dir: {summary['benchmark_dir']}",
+        f"- seed_count: {summary.get('seed_count', 1)}",
+        f"- seeds: {summary.get('seeds', [])}",
         "",
-        "## Variants",
+        "## RuFLEX Variants",
     ]
     for item in summary["variant_plan"]:
         lines.append(
-            f"- {item['label']} (`{item['study_pipeline']}`): {item['description']}"
+            f"- {item['label']} (`{item['name']}`; template=`{item['workspace_template']}`; preset=`{item['training_preset']}`): {item['description']}"
         )
+
+    baseline_models = summary.get("baseline_models") or []
+    if baseline_models:
+        lines.extend(["", "## External Baselines", ""])
+        lines.extend(f"- {name}" for name in baseline_models)
 
     results = summary["results"]
     if results:
         lines.extend(
             [
                 "",
-                "## Results",
+                "## Aggregated Results",
                 "",
                 _markdown_table(
                     headers=_report_headers(results),
@@ -376,20 +799,29 @@ def _benchmark_report(summary: dict[str, Any]) -> str:
 
 def _report_headers(results: list[dict[str, Any]]) -> list[str]:
     preferred = [
-        "variant_name",
-        "variant_label",
+        "model_name",
+        "model_label",
+        "family",
         "article_role",
-        "study_pipeline",
+        "variant_name",
+        "workspace_template",
         "training_preset",
-        "model_kind",
-        "test_rmse",
-        "test_mae",
-        "test_r2",
-        "test_accuracy",
-        "test_precision",
-        "test_recall",
-        "test_f1",
-        "epochs_ran",
+        "runs",
+        "best_seed",
+        "test_rmse_mean",
+        "test_rmse_std",
+        "test_mae_mean",
+        "test_mae_std",
+        "test_r2_mean",
+        "test_r2_std",
+        "test_accuracy_mean",
+        "test_accuracy_std",
+        "test_precision_mean",
+        "test_precision_std",
+        "test_recall_mean",
+        "test_recall_std",
+        "test_f1_mean",
+        "test_f1_std",
         "export_dir",
     ]
     all_headers: list[str] = []
@@ -434,18 +866,28 @@ def _winner_lines_for_metrics(
 ) -> list[str]:
     lines = []
     for metric_name, higher_is_better in metrics:
-        available = [row for row in results if row.get(metric_name) is not None]
+        available = [row for row in results if _metric_value(row, metric_name) is not None]
         if not available:
             continue
         winner = sorted(
             available,
-            key=lambda row: float(row[metric_name]),
+            key=lambda row: float(_metric_value(row, metric_name) or 0.0),
             reverse=higher_is_better,
         )[0]
+        value = float(_metric_value(winner, metric_name) or 0.0)
         lines.append(
-            f"- {metric_name}: `{winner['variant_label']}` ({float(winner[metric_name]):.6f})"
+            f"- {metric_name}: `{winner['model_label']}` ({value:.6f})"
         )
     return lines
+
+
+def _metric_value(row: dict[str, Any], metric_name: str) -> float | None:
+    if row.get(metric_name) is not None:
+        return float(row[metric_name])
+    mean_key = f"{metric_name}_mean"
+    if row.get(mean_key) is not None:
+        return float(row[mean_key])
+    return None
 
 
 def _article_materials_summary(summary: dict[str, Any]) -> str:
@@ -458,6 +900,8 @@ def _article_materials_summary(summary: dict[str, Any]) -> str:
         f"- target_name: {summary.get('source_project', {}).get('target_name')}",
         f"- benchmark_dir: {summary.get('benchmark_dir')}",
         f"- generated_at_utc: {summary.get('generated_at_utc')}",
+        f"- seed_count: {summary.get('seed_count', 1)}",
+        f"- seeds: {summary.get('seeds', [])}",
         "",
         "## Suggested Winners",
         "",
@@ -472,9 +916,9 @@ def _article_materials_summary(summary: dict[str, Any]) -> str:
             "",
             "## Suggested Article Assets",
             "",
-            "- use `results_table.csv` for the main comparison table;",
-            "- use `results_table.md` for quick insertion into draft materials;",
-            "- use `artifact_index.json` to locate the exported run folders;",
+            "- use `results_table.csv` for the aggregated mean ± std comparison table;",
+            "- use `per_seed_results_table.csv` for the raw per-seed appendix or rebuttal notes;",
+            "- use `artifact_index.json` to locate the best RuFLEX exported run folders;",
             "- use `benchmark_report.md` for narrative experiment notes.",
         ]
     )
@@ -493,27 +937,38 @@ def _plot_article_results(summary: dict[str, Any], output_dir: Path) -> Path | N
 
     task_type = str(summary.get("source_project", {}).get("task_type", "regression"))
     if task_type == "regression":
-        metrics = (("test_rmse", "Test RMSE"), ("test_r2", "Test R2"))
+        metrics = (("test_rmse", "RMSE на тесте"), ("test_r2", "R2 на тесте"))
     else:
-        metrics = (("test_accuracy", "Test Accuracy"), ("test_f1", "Test F1"))
+        metrics = (("test_accuracy", "Точность на тесте"), ("test_f1", "F1 на тесте"))
 
-    labels = [str(row.get("variant_label") or row.get("variant_name")) for row in results]
-    figure, axes = plt.subplots(1, len(metrics), figsize=(6 * len(metrics), 4.5))
+    labels = [_ru_variant_label(str(row.get("model_label") or row.get("model_name"))) for row in results]
+    figure, axes = plt.subplots(1, len(metrics), figsize=(7.4 * len(metrics), 5.8))
     if len(metrics) == 1:
         axes = [axes]
 
     for axis, (metric_key, metric_title) in zip(axes, metrics, strict=False):
-        values = [row.get(metric_key) for row in results]
-        positions = range(len(labels))
-        axis.bar(positions, [0.0 if value is None else float(value) for value in values], color="#4C78A8")
-        axis.set_title(metric_title)
+        mean_key = f"{metric_key}_mean"
+        std_key = f"{metric_key}_std"
+        values = [row.get(mean_key) for row in results]
+        errors = [row.get(std_key) for row in results]
+        positions = np.arange(len(labels))
+        axis.bar(
+            positions,
+            [0.0 if value is None else float(value) for value in values],
+            yerr=[0.0 if error is None else float(error) for error in errors],
+            capsize=4,
+            color="#4C78A8",
+            alpha=0.92,
+        )
+        axis.set_title(metric_title, fontsize=16)
         axis.set_xticks(list(positions))
-        axis.set_xticklabels(labels, rotation=20, ha="right")
+        axis.set_xticklabels(labels, rotation=24, ha="right", fontsize=10)
+        axis.tick_params(axis="y", labelsize=11)
         axis.grid(axis="y", alpha=0.25)
         for position, value in enumerate(values):
             if value is None:
                 continue
-            axis.text(position, float(value), f"{float(value):.4f}", ha="center", va="bottom", fontsize=8)
+            axis.text(position, float(value), f"{float(value):.4f}", ha="center", va="bottom", fontsize=9)
 
     figure.tight_layout()
     path = output_dir / "results_overview.png"
@@ -561,8 +1016,8 @@ def _render_best_run_assets(summary: dict[str, Any], output_dir: Path) -> dict[s
     decision_rules_path = _plot_named_values(
         labels=[entry.rule_name for entry in dashboard.top_decision_rules],
         values=[_first_value(entry.contribution) for entry in dashboard.top_decision_rules],
-        title="Top Decision Rule Contributions",
-        ylabel="contribution",
+        title="Вклад наиболее активных правил",
+        ylabel="Вклад",
         path=output_dir / "best_sample_top_rules.png",
     )
     if decision_rules_path is not None:
@@ -571,8 +1026,8 @@ def _render_best_run_assets(summary: dict[str, Any], output_dir: Path) -> dict[s
     hidden_concepts_path = _plot_named_values(
         labels=[entry.concept_name for entry in dashboard.hidden_concepts],
         values=[entry.value for entry in dashboard.hidden_concepts],
-        title="Hidden Concepts for Best Sample",
-        ylabel="value",
+        title="Скрытые нечеткие концепты",
+        ylabel="Значение",
         path=output_dir / "best_sample_hidden_concepts.png",
     )
     if hidden_concepts_path is not None:
@@ -581,8 +1036,8 @@ def _render_best_run_assets(summary: dict[str, Any], output_dir: Path) -> dict[s
     decision_concepts_path = _plot_named_values(
         labels=[entry.concept_name for entry in dashboard.decision_concept_contributions],
         values=[_first_value(entry.contribution) for entry in dashboard.decision_concept_contributions],
-        title="Decision Concept Contributions",
-        ylabel="contribution",
+        title="Вклад решающих концептов",
+        ylabel="Вклад",
         path=output_dir / "best_sample_decision_concepts.png",
     )
     if decision_concepts_path is not None:
@@ -603,25 +1058,69 @@ def _render_best_run_assets(summary: dict[str, Any], output_dir: Path) -> dict[s
 
 
 def _best_result_row(summary: dict[str, Any]) -> dict[str, Any] | None:
-    results = list(summary.get("results", ()))
+    results = [row for row in summary.get("results", ()) if row.get("export_dir") is not None]
     if not results:
         return None
     task_type = str(summary.get("source_project", {}).get("task_type", "regression"))
     if task_type == "regression":
-        comparable = [row for row in results if row.get("test_rmse") is not None]
+        comparable = [row for row in results if row.get("test_rmse_mean") is not None]
+        if comparable:
+            return sorted(comparable, key=lambda row: float(row["test_rmse_mean"]))[0]
+        comparable = [row for row in results if row.get("test_r2_mean") is not None]
+        if comparable:
+            return sorted(comparable, key=lambda row: float(row["test_r2_mean"]), reverse=True)[0]
+        return None
+    comparable = [row for row in results if row.get("test_f1_mean") is not None]
+    if comparable:
+        return sorted(comparable, key=lambda row: float(row["test_f1_mean"]), reverse=True)[0]
+    comparable = [row for row in results if row.get("test_accuracy_mean") is not None]
+    if comparable:
+        return sorted(comparable, key=lambda row: float(row["test_accuracy_mean"]), reverse=True)[0]
+    return None
+
+
+def _best_seed_row(task_type: str, rows: list[dict[str, Any]]) -> dict[str, Any] | None:
+    if not rows:
+        return None
+    if task_type == "regression":
+        comparable = [row for row in rows if row.get("test_rmse") is not None]
         if comparable:
             return sorted(comparable, key=lambda row: float(row["test_rmse"]))[0]
-        comparable = [row for row in results if row.get("test_r2") is not None]
+        comparable = [row for row in rows if row.get("test_r2") is not None]
         if comparable:
             return sorted(comparable, key=lambda row: float(row["test_r2"]), reverse=True)[0]
         return None
-    comparable = [row for row in results if row.get("test_f1") is not None]
+    comparable = [row for row in rows if row.get("test_f1") is not None]
     if comparable:
         return sorted(comparable, key=lambda row: float(row["test_f1"]), reverse=True)[0]
-    comparable = [row for row in results if row.get("test_accuracy") is not None]
+    comparable = [row for row in rows if row.get("test_accuracy") is not None]
     if comparable:
         return sorted(comparable, key=lambda row: float(row["test_accuracy"]), reverse=True)[0]
     return None
+
+
+def _display_model_name(model_name: str) -> str:
+    mapping = {
+        "linear_regression": "Linear Regression",
+        "logistic_regression": "Logistic Regression",
+        "hist_gradient_boosting_regressor": "Gradient Boosting",
+        "hist_gradient_boosting_classifier": "Gradient Boosting",
+        "random_forest_regressor": "Random Forest",
+        "random_forest_classifier": "Random Forest",
+        "mlp_regressor": "MLP",
+        "mlp_classifier": "MLP",
+        "xgboost_regressor": "XGBoost",
+        "xgboost_classifier": "XGBoost",
+        "catboost_regressor": "CatBoost",
+        "catboost_classifier": "CatBoost",
+        "flat_baseline": "Flat Baseline",
+        "flat_interpretable": "Flat Interpretable",
+        "deep_stage1_ablation": "Deep Depth 1",
+        "deep_article_demo": "Deep Article Demo",
+        "deep_research_no_regularization": "Deep No Regularization",
+        "deep_research": "Deep Research",
+    }
+    return mapping.get(model_name, model_name.replace("_", " ").title())
 
 
 def _plot_named_values(
@@ -638,18 +1137,19 @@ def _plot_named_values(
 
     import matplotlib.pyplot as plt
 
-    figure, axis = plt.subplots(figsize=(8, 4.5))
+    figure, axis = plt.subplots(figsize=(9, 5))
     positions = np.arange(len(filtered))
     plot_labels = [item[0] for item in filtered]
     plot_values = [item[1] for item in filtered]
     axis.bar(positions, plot_values, color="#4C78A8")
-    axis.set_title(title)
-    axis.set_ylabel(ylabel)
+    axis.set_title(title, fontsize=16)
+    axis.set_ylabel(ylabel, fontsize=13)
     axis.set_xticks(positions)
-    axis.set_xticklabels(plot_labels, rotation=20, ha="right")
+    axis.set_xticklabels(plot_labels, rotation=18, ha="right", fontsize=11)
+    axis.tick_params(axis="y", labelsize=11)
     axis.grid(axis="y", alpha=0.25)
     for position, value in enumerate(plot_values):
-        axis.text(position, value, f"{value:.4f}", ha="center", va="bottom", fontsize=8)
+        axis.text(position, value, f"{value:.4f}", ha="center", va="bottom", fontsize=10)
     figure.tight_layout()
     figure.savefig(path, dpi=200, bbox_inches="tight")
     plt.close(figure)
@@ -678,15 +1178,15 @@ def _plot_sample_fuzzification(dashboard: Any, path: Path) -> Path | None:
         dtype=float,
     )
 
-    figure, axis = plt.subplots(figsize=(7, 4.5))
+    figure, axis = plt.subplots(figsize=(8.5, 5.2))
     image = axis.imshow(matrix, cmap="YlGnBu", aspect="auto", vmin=0.0, vmax=1.0)
-    axis.set_title("Sample Fuzzification Heatmap")
-    axis.set_xlabel("term")
-    axis.set_ylabel("variable")
+    axis.set_title("Карта фаззификации объекта", fontsize=16)
+    axis.set_xlabel("Терм", fontsize=13)
+    axis.set_ylabel("Переменная", fontsize=13)
     axis.set_xticks(np.arange(len(term_names)))
-    axis.set_xticklabels(term_names, rotation=20, ha="right")
+    axis.set_xticklabels(term_names, rotation=18, ha="right", fontsize=11)
     axis.set_yticks(np.arange(len(labels)))
-    axis.set_yticklabels(labels)
+    axis.set_yticklabels(labels, fontsize=11)
     figure.colorbar(image, ax=axis, shrink=0.85)
     figure.tight_layout()
     figure.savefig(path, dpi=200, bbox_inches="tight")
@@ -696,3 +1196,22 @@ def _plot_sample_fuzzification(dashboard: Any, path: Path) -> Path | None:
 
 def _first_value(values: tuple[float, ...]) -> float:
     return float(values[0]) if values else 0.0
+
+
+def _ru_variant_label(label: str) -> str:
+    mapping = {
+        "Flat Baseline": "Плоская базовая",
+        "Flat Interpretable": "Плоская интерпретируемая",
+        "Deep Depth 1": "Глубокая глубина 1",
+        "Deep Article Demo": "Глубокий демонстрационный",
+        "Deep No Regularization": "Глубокий без регуляризации",
+        "Deep Research": "Глубокий расширенный",
+        "Linear Regression": "Линейная регрессия",
+        "Logistic Regression": "Логистическая регрессия",
+        "Gradient Boosting": "Градиентный бустинг",
+        "Random Forest": "Случайный лес",
+        "MLP": "Многослойный персептрон",
+        "XGBoost": "XGBoost",
+        "CatBoost": "CatBoost",
+    }
+    return mapping.get(label, label)

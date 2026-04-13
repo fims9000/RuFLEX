@@ -48,32 +48,21 @@ The current boundary is documented in
 
 ## Article Docs
 
-Working materials for the paper are collected in:
+Current Q2 article materials are collected in:
 
-- [`docs/article/status_matrix.md`](docs/article/status_matrix.md)
-- [`docs/article/submission_checklist.md`](docs/article/submission_checklist.md)
-- [`docs/article/article_brief.md`](docs/article/article_brief.md)
-- [`docs/article/final_status.md`](docs/article/final_status.md)
-- [`docs/article/final_metadata.md`](docs/article/final_metadata.md)
-- [`docs/article/paper_draft.md`](docs/article/paper_draft.md)
-- [`docs/article/paper_draft.docx`](docs/article/paper_draft.docx)
-- [`docs/article/article_profile.json`](docs/article/article_profile.json)
-- [`docs/article/article_profile_card.md`](docs/article/article_profile_card.md)
-- [`docs/article/article_references.json`](docs/article/article_references.json)
-- [`docs/article/submission_state.json`](docs/article/submission_state.json)
-- [`docs/article/template_mapping.md`](docs/article/template_mapping.md)
-- [`docs/article/shablon_dokladov_ready.md`](docs/article/shablon_dokladov_ready.md)
-- [`docs/article/conference_template_ready_en.md`](docs/article/conference_template_ready_en.md)
-- [`docs/article/shablon_dokladov_illustrated.docx`](docs/article/shablon_dokladov_illustrated.docx)
-- [`docs/article/conference_template_illustrated_en.docx`](docs/article/conference_template_illustrated_en.docx)
-- [`docs/article/shablon_dokladov_illustrated.pdf`](docs/article/shablon_dokladov_illustrated.pdf)
-- [`docs/article/conference_template_illustrated_en.pdf`](docs/article/conference_template_illustrated_en.pdf)
-- [`docs/article/figure_manifest.md`](docs/article/figure_manifest.md)
-- [`docs/article/manual_finish.md`](docs/article/manual_finish.md)
+- [`docs/article/article_final_ru.md`](docs/article/article_final_ru.md)
+- [`docs/article/article_final_ru.docx`](docs/article/article_final_ru.docx)
+- [`docs/article/article_final_ru.pdf`](docs/article/article_final_ru.pdf)
+- [`docs/article/article_extended_materials_ru.md`](docs/article/article_extended_materials_ru.md)
+- [`docs/article/article_extended_materials_ru.docx`](docs/article/article_extended_materials_ru.docx)
+- [`docs/article/article_extended_materials_ru.pdf`](docs/article/article_extended_materials_ru.pdf)
+- [`docs/article/benchmark_summary_q2_final_plus.md`](docs/article/benchmark_summary_q2_final_plus.md)
+- [`docs/article/visual_package_ru.md`](docs/article/visual_package_ru.md)
+- [`docs/article/q2_submission_checklist_ru.md`](docs/article/q2_submission_checklist_ru.md)
+- [`docs/article/q2_build_report_ru.md`](docs/article/q2_build_report_ru.md)
 - [`docs/article/readiness_report.md`](docs/article/readiness_report.md)
-- [`docs/article/rinc_draft.md`](docs/article/rinc_draft.md)
-- [`docs/article/submission_bundle`](docs/article/submission_bundle)
-- [`docs/article/submission_bundle.zip`](docs/article/submission_bundle.zip)
+- [`docs/article/q2_submission_package`](docs/article/q2_submission_package)
+- [`docs/article/q2_submission_package.zip`](docs/article/q2_submission_package.zip)
 
 Article-oriented benchmark helpers are also available:
 
@@ -81,57 +70,31 @@ Article-oriented benchmark helpers are also available:
 - `python scripts/run_article_benchmark.py --csv <dataset.csv> --target <target_column>`
 - `python scripts/run_article_suite.py --dataset-root experiments/datasets`
 - `python scripts/prepare_article_materials.py --benchmark-dir <experiments/article_benchmark/...>`
-- `python scripts/check_article_readiness.py`
 - `python scripts/build_article_final_package.py --skip-suite`
+- `python scripts/check_article_readiness.py`
 
 Recommended pre-submission flow:
 
 ```bash
-.venv/bin/python scripts/manage_article_profile.py --show
-.venv/bin/python scripts/manage_article_references.py --show
-.venv/bin/python scripts/manage_submission_state.py --show
-.venv/bin/python scripts/render_article_profile_docs.py
 .venv/bin/python scripts/build_article_final_package.py --skip-suite
+.venv/bin/python scripts/check_article_readiness.py
 .venv/bin/python scripts/check_article_readiness.py --run-tests
-.venv/bin/python scripts/check_article_readiness.py --run-tests --strict-submission
+.venv/bin/python scripts/check_article_readiness.py --strict-submission
 ```
 
-The first command syncs author/title/keyword/ORCID/funding data from
-`docs/article/article_profile.json` into the generated article docs. The
-second command rebuilds the article boards, docx drafts, and
-`submission_bundle(.zip)`. The third command writes a compact
-`docs/article/readiness_report.md` summary and rechecks the article-related
-pytest suite. The profile sync also updates the template-ready markdown
-documents and the RINC draft, so author changes should be made in one place
-only. Manual submission completion is tracked separately in
-`docs/article/submission_state.json`. The readiness report now also exposes
-`profile_status`, so placeholder author data is surfaced explicitly even when
-the technical article bundle is otherwise green.
+The build command rebuilds the current Q2 article package, refreshes the
+`docx`/`pdf` outputs and rewrites `docs/article/q2_submission_package(.zip)`.
+The readiness command writes a current `docs/article/readiness_report.md`
+summary for the same Q2 package instead of the archived legacy article flow.
 For a real final gate, use `--strict-submission`: it exits with non-zero status
-until the profile is real and all submission flags are marked done.
+until the package is technically green and the article header contains the
+required author metadata for the target venue.
 
-For profile edits from the terminal, use:
-
-```bash
-.venv/bin/python scripts/manage_article_profile.py --show
-.venv/bin/python scripts/manage_article_profile.py \
-  --author-set "1:name_ru=Иван Иванов" \
-  --author-set "1:name_en=Ivan Ivanov" \
-  --author-set "1:email=ivan.ivanov@example.org" \
-  --author-set "1:orcid=0000-0001-2345-6789"
-
-.venv/bin/python scripts/manage_article_profile.py \
-  --author-add "name_ru=Петр Петров|name_en=Petr Petrov|email=petr.petrov@example.org|orcid=0000-0002-3456-7890|affiliation_ru=Институт, Санкт-Петербург, Россия|affiliation_en=Institute, Saint Petersburg, Russia"
-
-.venv/bin/python scripts/manage_article_profile.py --author-remove 3
-
-.venv/bin/python scripts/manage_article_references.py --show
-.venv/bin/python scripts/manage_article_references.py \
-  --add "key=new_reference|ru=Новая русская ссылка.|en=New English reference."
-.venv/bin/python scripts/manage_article_references.py \
-  --set "new_reference:en=Updated English reference."
-.venv/bin/python scripts/manage_article_references.py --remove new_reference
-```
+The old profile/reference/submission-state tooling now belongs to the archived
+legacy article flow under `docs/article/archive/legacy_versions` and is no
+longer part of the primary Q2 submission pipeline. The corresponding legacy
+entrypoint scripts were removed from `scripts/`; only the archived materials
+and reports are kept for historical reference.
 
 ## Toolbox-Style Functions
 
@@ -215,7 +178,7 @@ chosen metric and reused through fast model-preset application. For article work
 RuFLEX now includes an article benchmark flow that can run flat/deep comparison
 variants, prepare reproducible article datasets, execute a full multi-dataset
 article suite, and write article-ready summary tables and figure assets under
-`docs/article/assets/`.
+`docs/article/assets_q2_final_plus/`.
 
 ## Current scope
 

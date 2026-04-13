@@ -1,0 +1,50 @@
+SAMPLE 0
+  inputs: (-1.1473, -0.3096, -0.5941, -0.195, -0.0226, 1.2574, 0.2173, 0.2581)
+  prediction: (0.9451,)
+  hidden concepts:
+    stage_1/stage_1_block_1/stage_1_block_1_concept_1=0.3419
+      rule: stage_1_block_1_0 | MedInc IS term_1 AND HouseAge IS term_1 | weight=0.8690 | contribution=0.2357
+      rule: stage_1_block_1_3 | MedInc IS term_2 AND HouseAge IS term_2 | weight=0.0564 | contribution=0.0517
+      rule: stage_1_block_1_2 | MedInc IS term_1 AND HouseAge IS term_2 | weight=0.0605 | contribution=0.0438
+    stage_1/stage_1_block_1/stage_1_block_1_concept_2=0.0834
+      rule: stage_1_block_1_3 | MedInc IS term_2 AND HouseAge IS term_2 | weight=0.0564 | contribution=0.0562
+      rule: stage_1_block_1_1 | MedInc IS term_2 AND HouseAge IS term_1 | weight=0.0141 | contribution=0.0140
+      rule: stage_1_block_1_0 | MedInc IS term_1 AND HouseAge IS term_1 | weight=0.8690 | contribution=0.0110
+    stage_1/stage_1_block_2/stage_1_block_2_concept_1=0.7316
+      rule: stage_1_block_2_0 | AveRooms IS term_1 AND AveBedrms IS term_1 | weight=0.5932 | contribution=0.5167
+      rule: stage_1_block_2_2 | AveRooms IS term_2 AND AveBedrms IS term_1 | weight=0.2112 | contribution=0.1839
+      rule: stage_1_block_2_1 | AveRooms IS term_1 AND AveBedrms IS term_2 | weight=0.1503 | contribution=0.0239
+    stage_1/stage_1_block_2/stage_1_block_2_concept_2=0.2224
+      rule: stage_1_block_2_1 | AveRooms IS term_1 AND AveBedrms IS term_2 | weight=0.1503 | contribution=0.1132
+      rule: stage_1_block_2_0 | AveRooms IS term_1 AND AveBedrms IS term_1 | weight=0.5932 | contribution=0.0552
+      rule: stage_1_block_2_3 | AveRooms IS term_2 AND AveBedrms IS term_2 | weight=0.0453 | contribution=0.0344
+    stage_1/stage_1_block_3/stage_1_block_3_concept_1=0.5585
+      rule: stage_1_block_3_0 | Population IS term_1 AND AveOccup IS term_1 | weight=0.5405 | contribution=0.4075
+      rule: stage_1_block_3_2 | Population IS term_2 AND AveOccup IS term_1 | weight=0.1707 | contribution=0.1297
+      rule: stage_1_block_3_1 | Population IS term_1 AND AveOccup IS term_2 | weight=0.2159 | contribution=0.0160
+    stage_1/stage_1_block_3/stage_1_block_3_concept_2=0.3712
+      rule: stage_1_block_3_1 | Population IS term_1 AND AveOccup IS term_2 | weight=0.2159 | contribution=0.1818
+      rule: stage_1_block_3_0 | Population IS term_1 AND AveOccup IS term_1 | weight=0.5405 | contribution=0.0970
+      rule: stage_1_block_3_3 | Population IS term_2 AND AveOccup IS term_2 | weight=0.0729 | contribution=0.0613
+    stage_1/stage_1_block_4/stage_1_block_4_concept_1=0.0000
+      rule: stage_1_block_4_2 | Latitude IS term_2 AND Longitude IS term_1 | weight=0.0000 | contribution=0.0000
+      rule: stage_1_block_4_3 | Latitude IS term_2 AND Longitude IS term_2 | weight=0.0000 | contribution=0.0000
+      rule: stage_1_block_4_0 | Latitude IS term_1 AND Longitude IS term_1 | weight=0.0000 | contribution=0.0000
+    stage_1/stage_1_block_4/stage_1_block_4_concept_2=0.0000
+      rule: stage_1_block_4_2 | Latitude IS term_2 AND Longitude IS term_1 | weight=0.0000 | contribution=0.0000
+      rule: stage_1_block_4_3 | Latitude IS term_2 AND Longitude IS term_2 | weight=0.0000 | contribution=0.0000
+      rule: stage_1_block_4_0 | Latitude IS term_1 AND Longitude IS term_1 | weight=0.0000 | contribution=0.0000
+  bias contribution: (-5.1692,)
+  decision concept contributions:
+    stage_1/stage_1_block_1/stage_1_block_1_concept_1: value=0.3419, contribution=(0.7767,)
+    stage_1/stage_1_block_1/stage_1_block_1_concept_2: value=0.0834, contribution=(0.2221,)
+    stage_1/stage_1_block_2/stage_1_block_2_concept_1: value=0.7316, contribution=(-1.4015,)
+    stage_1/stage_1_block_2/stage_1_block_2_concept_2: value=0.2224, contribution=(-0.6684,)
+    stage_1/stage_1_block_3/stage_1_block_3_concept_1: value=0.5585, contribution=(25.3775,)
+    stage_1/stage_1_block_3/stage_1_block_3_concept_2: value=0.3712, contribution=(-18.1921,)
+    stage_1/stage_1_block_4/stage_1_block_4_concept_1: value=0.0000, contribution=(-0.0,)
+    stage_1/stage_1_block_4/stage_1_block_4_concept_2: value=0.0000, contribution=(-0.0,)
+  top decision rules:
+    rule: deep_decision_0 | stage_1_block_1_concept_2 IS low AND stage_1_block_2_concept_1 IS high | weight=0.2346 | contribution=(0.3384,)
+    rule: deep_decision_1 | stage_1_block_1_concept_1 IS high AND stage_1_block_2_concept_1 IS high | weight=0.3963 | contribution=(0.2552,)
+    rule: deep_decision_2 | stage_1_block_1_concept_2 IS low AND stage_1_block_2_concept_2 IS low | weight=0.1434 | contribution=(0.2021,)

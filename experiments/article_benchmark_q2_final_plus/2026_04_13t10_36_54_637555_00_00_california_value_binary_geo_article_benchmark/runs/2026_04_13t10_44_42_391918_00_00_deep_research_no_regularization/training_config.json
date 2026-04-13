@@ -1,0 +1,61 @@
+{
+  "task_type": "binary_classification",
+  "use_bootstrap_initialization": true,
+  "use_stagewise_pretraining": true,
+  "bootstrap": {
+    "hidden_high": 0.85,
+    "hidden_low": 0.15,
+    "gate_floor": 0.25,
+    "gate_ceiling": 0.85,
+    "decision_binary_target_clip": 0.05
+  },
+  "stagewise": {
+    "epochs_per_stage": 18,
+    "decision_epochs": 14,
+    "refinement_rounds": 1,
+    "learning_rate": 0.02,
+    "batch_size": 64,
+    "shuffle": true,
+    "rule_sparsity_weight": 0.0,
+    "concept_orthogonality_weight": 0.0,
+    "concept_binarization_weight": 0.0,
+    "membership_order_weight": 0.0,
+    "membership_min_gap": 0.0,
+    "membership_overlap_weight": 0.0,
+    "membership_max_overlap": 0.35,
+    "membership_coverage_weight": 0.0,
+    "membership_min_coverage": 0.6,
+    "classification_target_clip": 0.05
+  },
+  "fine_tuning": {
+    "max_epochs": 28,
+    "learning_rate": 0.001,
+    "batch_size": 32,
+    "patience": 8,
+    "min_delta": 0.0,
+    "weight_decay": 0.0,
+    "gradient_clip_norm": null,
+    "shuffle": true,
+    "device": null,
+    "classification_threshold": 0.5,
+    "rule_sparsity_weight": 0.0,
+    "rule_length_weight": 0.0,
+    "concept_orthogonality_weight": 0.0,
+    "concept_binarization_weight": 0.0,
+    "membership_order_weight": 0.0,
+    "membership_min_gap": 0.0,
+    "membership_overlap_weight": 0.0,
+    "membership_max_overlap": 0.35,
+    "membership_coverage_weight": 0.0,
+    "membership_min_coverage": 0.6,
+    "prune_after_fit": false,
+    "prune_threshold": 0.1,
+    "prune_temperature": 0.05,
+    "prune_keep_at_least": 1
+  },
+  "refinement": {
+    "cycles": 1,
+    "patience": null,
+    "min_delta": 0.0
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "suite_dir": "/home/lebedeffson/Code/neurofuzzy_analysis/experiments/article_suite/2026_04_12t21_40_59_671052_00_00_article_suite",
+  "docs": [
+    "article_profile.json",
+    "article_profile.template.json",
+    "article_profile_card.md",
+    "article_references.json",
+    "conference_template_illustrated_en.docx",
+    "conference_template_illustrated_en.pdf",
+    "conference_template_ready_en.docx",
+    "conference_template_ready_en.md",
+    "figure_manifest.md",
+    "final_metadata.md",
+    "final_status.md",
+    "manual_finish.md",
+    "paper_draft.docx",
+    "paper_draft.md",
+    "paper_draft.pdf",
+    "readiness_report.json",
+    "readiness_report.md",
+    "references_en_ieee.md",
+    "references_ru_gost.md",
+    "rinc_draft.docx",
+    "rinc_draft.md",
+    "rinc_draft.pdf",
+    "rinc_draft.txt",
+    "shablon_dokladov_illustrated.docx",
+    "shablon_dokladov_illustrated.pdf",
+    "shablon_dokladov_ready.docx",
+    "shablon_dokladov_ready.md",
+    "shablon_dokladov_template_based.docx",
+    "shablon_dokladov_template_based.pdf",
+    "submission_state.json",
+    "submission_state.template.json",
+    "template_mapping.md"
+  ],
+  "tables": [
+    "article_suite_results.csv",
+    "classification_results_table.csv",
+    "regression_results_table.csv"
+  ],
+  "figures": [
+    "figure1_regression_benchmark.png",
+    "figure2_regression_board.png",
+    "figure3_classification_benchmark.png",
+    "figure4_classification_board.png",
+    "figure5_membership_example.png",
+    "scheme1_ruflex_platform_architecture.png",
+    "scheme2_model_contour.png",
+    "scheme3_explainability_pipeline.png"
+  ]
+}

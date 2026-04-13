@@ -1,0 +1,3135 @@
+{
+  "generated_at_utc": "2026-04-13T12:38:02.501848+00:00",
+  "source_project": {
+    "name": "california_housing_regression_n20640_full",
+    "task_type": "regression",
+    "target_name": "MedHouseVal",
+    "feature_names": [],
+    "dataset_summary": {
+      "rows": 20640,
+      "columns": [
+        "MedInc",
+        "HouseAge",
+        "AveRooms",
+        "AveBedrms",
+        "Population",
+        "AveOccup",
+        "Latitude",
+        "Longitude",
+        "MedHouseVal"
+      ],
+      "numeric_columns": [
+        "MedInc",
+        "HouseAge",
+        "AveRooms",
+        "AveBedrms",
+        "Population",
+        "AveOccup",
+        "Latitude",
+        "Longitude",
+        "MedHouseVal"
+      ],
+      "missing_values": {
+        "MedInc": 0,
+        "HouseAge": 0,
+        "AveRooms": 0,
+        "AveBedrms": 0,
+        "Population": 0,
+        "AveOccup": 0,
+        "Latitude": 0,
+        "Longitude": 0,
+        "MedHouseVal": 0
+      },
+      "target_name": "MedHouseVal"
+    }
+  },
+  "benchmark_dir": "/home/lebedeffson/Code/neurofuzzy_analysis/experiments/article_benchmark_enlarged/2026_04_13t12_27_52_965999_00_00_california_housing_regression_n20640_full_article_benchmark",
+  "runs_root": "/home/lebedeffson/Code/neurofuzzy_analysis/experiments/article_benchmark_enlarged/2026_04_13t12_27_52_965999_00_00_california_housing_regression_n20640_full_article_benchmark/runs",
+  "variant_plan": [
+    {
+      "name": "flat_baseline",
+      "label": "Flat Baseline",
+      "article_role": "baseline",
+      "description": "Reference flat neuro-fuzzy baseline for the main comparison table.",
+      "workspace_template": "flat_baseline",
+      "training_preset": "balanced",
+      "study_pipeline": "flat_baseline_benchmark",
+      "workspace_overrides": null,
+      "training_overrides": null
+    },
+    {
+      "name": "deep_stage1_ablation",
+      "label": "Deep Depth 1",
+      "article_role": "depth_ablation",
+      "description": "Depth ablation with a single hidden concept stage.",
+      "workspace_template": "deep_article_demo",
+      "training_preset": "article_demo",
+      "study_pipeline": null,
+      "workspace_overrides": {
+        "config": {
+          "hidden_stage_count": 1
+        }
+      },
+      "training_overrides": null
+    },
+    {
+      "name": "deep_article_demo",
+      "label": "Deep Article Demo",
+      "article_role": "primary_deep_model",
+      "description": "Reference deep fuzzy feature learning configuration for the paper.",
+      "workspace_template": "deep_article_demo",
+      "training_preset": "article_demo",
+      "study_pipeline": "deep_article_demo",
+      "workspace_overrides": null,
+      "training_overrides": null
+    }
+  ],
+  "training_preset_override": null,
+  "seeds": [
+    11,
+    23,
+    47
+  ],
+  "seed_count": 3,
+  "baseline_models": [
+    "Linear Regression",
+    "Gradient Boosting",
+    "Random Forest",
+    "MLP"
+  ],
+  "results": [
+    {
+      "model_name": "linear_regression",
+      "model_label": "Linear Regression",
+      "family": "sklearn",
+      "article_role": "external_baseline",
+      "variant_name": null,
+      "variant_label": null,
+      "study_pipeline": null,
+      "workspace_template": null,
+      "training_preset": null,
+      "training_preset_override": null,
+      "runs": 3,
+      "seed_values": "11,23,47",
+      "best_seed": 47,
+      "export_dir": null,
+      "train_mse_mean": 0.5276668071746826,
+      "train_mse_std": 0.005566921550780535,
+      "train_mae_mean": 0.5308189988136292,
+      "train_mae_std": 0.0037731966003775597,
+      "train_rmse_mean": 0.7263967394828796,
+      "train_rmse_std": 0.0038289909716695547,
+      "train_r2_mean": 0.6014757752418518,
+      "train_r2_std": 0.005498288664966822,
+      "test_mse_mean": 0.6527594923973083,
+      "test_mse_std": 0.17790794372558594,
+      "test_mae_mean": 0.5387412905693054,
+      "test_mae_std": 0.003969364333897829,
+      "test_rmse_mean": 0.8009383678436279,
+      "test_rmse_std": 0.10610029846429825,
+      "test_r2_mean": 0.5180535316467285,
+      "test_r2_std": 0.13127583265304565
+    },
+    {
+      "model_name": "hist_gradient_boosting_regressor",
+      "model_label": "Gradient Boosting",
+      "family": "sklearn",
+      "article_role": "external_baseline",
+      "variant_name": null,
+      "variant_label": null,
+      "study_pipeline": null,
+      "workspace_template": null,
+      "training_preset": null,
+      "training_preset_override": null,
+      "runs": 3,
+      "seed_values": "11,23,47",
+      "best_seed": 11,
+      "export_dir": null,
+      "train_mse_mean": 0.19373434782028198,
+      "train_mse_std": 0.00032796160667203367,
+      "train_mae_mean": 0.3027772605419159,
+      "train_mae_std": 0.0011765403905883431,
+      "train_rmse_mean": 0.44015249609947205,
+      "train_rmse_std": 0.0003726642462424934,
+      "train_r2_mean": 0.8536839485168457,
+      "train_r2_std": 0.000880639418028295,
+      "test_mse_mean": 0.23598630726337433,
+      "test_mse_std": 0.0013634279603138566,
+      "test_mae_mean": 0.3340182304382324,
+      "test_mae_std": 0.0011339624179527164,
+      "test_rmse_mean": 0.4857822358608246,
+      "test_rmse_std": 0.0014020130038261414,
+      "test_r2_mean": 0.8257609009742737,
+      "test_r2_std": 0.00123318110127002
+    },
+    {
+      "model_name": "random_forest_regressor",
+      "model_label": "Random Forest",
+      "family": "sklearn",
+      "article_role": "external_baseline",
+      "variant_name": null,
+      "variant_label": null,
+      "study_pipeline": null,
+      "workspace_template": null,
+      "training_preset": null,
+      "training_preset_override": null,
+      "runs": 3,
+      "seed_values": "11,23,47",
+      "best_seed": 47,
+      "export_dir": null,
+      "train_mse_mean": 0.03825926408171654,
+      "train_mse_std": 0.000429322972195223,
+      "train_mae_mean": 0.12646351754665375,
+      "train_mae_std": 0.00016616492939647287,
+      "train_rmse_mean": 0.19559668004512787,
+      "train_rmse_std": 0.001097593572922051,
+      "train_r2_mean": 0.9711052775382996,
+      "train_r2_std": 0.0003492335672490299,
+      "test_mse_mean": 0.2637174427509308,
+      "test_mse_std": 0.0038640752900391817,
+      "test_mae_mean": 0.34044304490089417,
+      "test_mae_std": 0.0030952217057347298,
+      "test_rmse_mean": 0.5135204792022705,
+      "test_rmse_std": 0.003763673361390829,
+      "test_r2_mean": 0.8052773475646973,
+      "test_r2_std": 0.0034656336065381765
+    },
+    {
+      "model_name": "mlp_regressor",
+      "model_label": "MLP",
+      "family": "sklearn",
+      "article_role": "external_baseline",
+      "variant_name": null,
+      "variant_label": null,
+      "study_pipeline": null,
+      "workspace_template": null,
+      "training_preset": null,
+      "training_preset_override": null,
+      "runs": 3,
+      "seed_values": "11,23,47",
+      "best_seed": 11,
+      "export_dir": null,
+      "train_mse_mean": 0.2636946439743042,
+      "train_mse_std": 0.015357592143118382,
+      "train_mae_mean": 0.35216841101646423,
+      "train_mae_std": 0.010551298968493938,
+      "train_rmse_mean": 0.5132936239242554,
+      "train_rmse_std": 0.014977377839386463,
+      "train_r2_mean": 0.8007767796516418,
+      "train_r2_std": 0.012777445837855339,
+      "test_mse_mean": 0.3067449927330017,
+      "test_mse_std": 0.0221998393535614,
+      "test_mae_mean": 0.37058326601982117,
+      "test_mae_std": 0.00935343187302351,
+      "test_rmse_mean": 0.553488552570343,
+      "test_rmse_std": 0.019885538145899773,
+      "test_r2_mean": 0.7735418677330017,
+      "test_r2_std": 0.016092801466584206
+    },
+    {
+      "model_name": "flat_baseline",
+      "model_label": "Flat Baseline",
+      "family": "ruflex",
+      "article_role": "baseline",
+      "variant_name": "flat_baseline",
+      "variant_label": "Flat Baseline",
+      "study_pipeline": "flat_baseline_benchmark",
+      "workspace_template": "flat_baseline",
+      "training_preset": "balanced",
+      "training_preset_override": null,
+      "runs": 3,
+      "seed_values": "11,23,47",
+      "best_seed": 47,
+      "export_dir": "/home/lebedeffson/Code/neurofuzzy_analysis/experiments/article_benchmark_enlarged/2026_04_13t12_27_52_965999_00_00_california_housing_regression_n20640_full_article_benchmark/runs/2026_04_13t12_35_15_411311_00_00_flat_baseline_benchmark",
+      "train_mse_mean": 0.9005773067474365,
+      "train_mse_std": 0.30750083923339844,
+      "train_mae_mean": 0.7130573391914368,
+      "train_mae_std": 0.137101411819458,
+      "train_rmse_mean": 0.9362187385559082,
+      "train_rmse_std": 0.15515050292015076,
+      "train_r2_mean": 0.3213160037994385,
+      "train_r2_std": 0.22688333690166473,
+      "test_mse_mean": 0.9085351824760437,
+      "test_mse_std": 0.31597790122032166,
+      "test_mae_mean": 0.7200199961662292,
+      "test_mae_std": 0.14046905934810638,
+      "test_rmse_mean": 0.9398706555366516,
+      "test_rmse_std": 0.15867668390274048,
+      "test_r2_mean": 0.3291987180709839,
+      "test_r2_std": 0.23319126665592194,
+      "structure_total_rules_mean": 16.0,
+      "structure_total_rules_std": 0.0,
+      "structure_active_rules_mean": 8.0,
+      "structure_active_rules_std": 1.4142135381698608,
+      "structure_stages_mean": 1.0,
+      "structure_stages_std": 0.0,
+      "structure_hidden_blocks_mean": 1.0,
+      "structure_hidden_blocks_std": 0.0,
+      "structure_hidden_concepts_mean": 3.0,
+      "structure_hidden_concepts_std": 0.0,
+      "explainability_decision_top1_mass_mean": 0.49690350890159607,
+      "explainability_decision_top1_mass_std": 0.10295017808675766,
+      "explainability_decision_top3_mass_mean": 0.8968756794929504,
+      "explainability_decision_top3_mass_std": 0.05508085712790489,
+      "explainability_decision_entropy_mean": 1.2865573167800903,
+      "explainability_decision_entropy_std": 0.23691797256469727,
+      "explainability_hidden_top1_mass_mean": 0.17754517495632172,
+      "explainability_hidden_top1_mass_std": 0.025375179946422577,
+      "explainability_hidden_top3_mass_mean": 0.5190799832344055,
+      "explainability_hidden_top3_mass_std": 0.06169770658016205,
+      "explainability_hidden_entropy_mean": 1.9988231658935547,
+      "explainability_hidden_entropy_std": 0.025056710466742516,
+      "stability_generated_rule_jaccard": 0.7333333333333334,
+      "stability_active_rule_jaccard": 0.6666666666666666,
+      "stability_hidden_generated_rule_jaccard": 0.7333333333333334,
+      "stability_hidden_active_rule_jaccard": 0.6666666666666666,
+      "stability_decision_generated_rule_jaccard": 0.7333333333333334,
+      "stability_decision_active_rule_jaccard": 0.6666666666666666,
+      "stability_layer_active_rule_jaccard": 0.6666666666666666,
+      "stability_layer_generated_rule_jaccard": 0.7333333333333334
+    },
+    {
+      "model_name": "deep_stage1_ablation",
+      "model_label": "Deep Depth 1",
+      "family": "ruflex",
+      "article_role": "depth_ablation",
+      "variant_name": "deep_stage1_ablation",
+      "variant_label": "Deep Depth 1",
+      "study_pipeline": null,
+      "workspace_template": "deep_article_demo",
+      "training_preset": "article_demo",
+      "training_preset_override": null,
+      "runs": 3,
+      "seed_values": "11,23,47",
+      "best_seed": 23,
+      "export_dir": "/home/lebedeffson/Code/neurofuzzy_analysis/experiments/article_benchmark_enlarged/2026_04_13t12_27_52_965999_00_00_california_housing_regression_n20640_full_article_benchmark/runs/2026_04_13t12_33_22_083751_00_00_deep_stage1_ablation",
+      "train_mse_mean": 0.6235585808753967,
+      "train_mse_std": 0.005703967530280352,
+      "train_mae_mean": 0.5851679444313049,
+      "train_mae_std": 0.0031206149142235518,
+      "train_rmse_mean": 0.7896490097045898,
+      "train_rmse_std": 0.0036111532244831324,
+      "train_r2_mean": 0.5290568470954895,
+      "train_r2_std": 0.005677650682628155,
+      "test_mse_mean": 0.6177665591239929,
+      "test_mse_std": 0.008571084588766098,
+      "test_mae_mean": 0.5906303524971008,
+      "test_mae_std": 0.003374285763129592,
+      "test_rmse_mean": 0.7859623432159424,
+      "test_rmse_std": 0.005449846386909485,
+      "test_r2_mean": 0.5438538789749146,
+      "test_r2_std": 0.007996566593647003,
+      "structure_total_rules_mean": 20.0,
+      "structure_total_rules_std": 0.0,
+      "structure_active_rules_mean": 4.666666507720947,
+      "structure_active_rules_std": 1.2472190856933594,
+      "structure_stages_mean": 1.0,
+      "structure_stages_std": 0.0,
+      "structure_hidden_blocks_mean": 4.0,
+      "structure_hidden_blocks_std": 0.0,
+      "structure_hidden_concepts_mean": 8.0,
+      "structure_hidden_concepts_std": 0.0,
+      "explainability_decision_top1_mass_mean": 0.4741785526275635,
+      "explainability_decision_top1_mass_std": 0.03903935104608536,
+      "explainability_decision_top3_mass_mean": 0.9545612931251526,
+      "explainability_decision_top3_mass_std": 0.03166631981730461,
+      "explainability_decision_entropy_mean": 1.0381368398666382,
+      "explainability_decision_entropy_std": 0.24093781411647797,
+      "explainability_hidden_top1_mass_mean": 0.49364542961120605,
+      "explainability_hidden_top1_mass_std": 0.025340832769870758,
+      "explainability_hidden_top3_mass_mean": 0.7321410179138184,
+      "explainability_hidden_top3_mass_std": 0.0021603659261018038,
+      "explainability_hidden_entropy_mean": 0.657867431640625,
+      "explainability_hidden_entropy_std": 0.03570014238357544,
+      "stability_generated_rule_jaccard": 0.746031746031746,
+      "stability_active_rule_jaccard": 0.4916666666666667,
+      "stability_hidden_generated_rule_jaccard": 1.0,
+      "stability_hidden_active_rule_jaccard": 0.7333333333333334,
+      "stability_decision_generated_rule_jaccard": 0.19999999999999998,
+      "stability_decision_active_rule_jaccard": 0.3333333333333333,
+      "stability_layer_active_rule_jaccard": 0.8888888888888888,
+      "stability_layer_generated_rule_jaccard": 1.0
+    },
+    {
+      "model_name": "deep_article_demo",
+      "model_label": "Deep Article Demo",
+      "family": "ruflex",
+      "article_role": "primary_deep_model",
+      "variant_name": "deep_article_demo",
+      "variant_label": "Deep Article Demo",
+      "study_pipeline": "deep_article_demo",
+      "workspace_template": "deep_article_demo",
+      "training_preset": "article_demo",
+      "training_preset_override": null,
+      "runs": 3,
+      "seed_values": "11,23,47",
+      "best_seed": 23,
+      "export_dir": "/home/lebedeffson/Code/neurofuzzy_analysis/experiments/article_benchmark_enlarged/2026_04_13t12_27_52_965999_00_00_california_housing_regression_n20640_full_article_benchmark/runs/2026_04_13t12_34_34_273908_00_00_deep_article_demo",
+      "train_mse_mean": 0.6239973902702332,
+      "train_mse_std": 0.005241581238806248,
+      "train_mae_mean": 0.5846930146217346,
+      "train_mae_std": 0.0038815196603536606,
+      "train_rmse_mean": 0.7899280190467834,
+      "train_rmse_std": 0.0033202804625034332,
+      "train_r2_mean": 0.528731107711792,
+      "train_r2_std": 0.004898564890027046,
+      "test_mse_mean": 0.6185800433158875,
+      "test_mse_std": 0.008538387715816498,
+      "test_mae_mean": 0.5901833176612854,
+      "test_mae_std": 0.003016810864210129,
+      "test_rmse_mean": 0.7864798903465271,
+      "test_rmse_std": 0.0054216692224144936,
+      "test_r2_mean": 0.5432506799697876,
+      "test_r2_std": 0.008127361536026001,
+      "structure_total_rules_mean": 36.0,
+      "structure_total_rules_std": 0.0,
+      "structure_active_rules_mean": 5.333333492279053,
+      "structure_active_rules_std": 0.4714045226573944,
+      "structure_stages_mean": 2.0,
+      "structure_stages_std": 0.0,
+      "structure_hidden_blocks_mean": 8.0,
+      "structure_hidden_blocks_std": 0.0,
+      "structure_hidden_concepts_mean": 16.0,
+      "structure_hidden_concepts_std": 0.0,
+      "explainability_decision_top1_mass_mean": 0.5219064354896545,
+      "explainability_decision_top1_mass_std": 0.1340712308883667,
+      "explainability_decision_top3_mass_mean": 0.9992758631706238,
+      "explainability_decision_top3_mass_std": 0.0010240841656923294,
+      "explainability_decision_entropy_mean": 0.9174718260765076,
+      "explainability_decision_entropy_std": 0.1400466114282608,
+      "explainability_hidden_top1_mass_mean": 0.6697646975517273,
+      "explainability_hidden_top1_mass_std": 0.02257932536303997,
+      "explainability_hidden_top3_mass_mean": 0.8628632426261902,
+      "explainability_hidden_top3_mass_std": 0.0019288099138066173,
+      "explainability_hidden_entropy_mean": 0.48771777749061584,
+      "explainability_hidden_entropy_std": 0.04517120122909546,
+      "stability_generated_rule_jaccard": 0.8315789473684211,
+      "stability_active_rule_jaccard": 0.4583333333333333,
+      "stability_hidden_generated_rule_jaccard": 1.0,
+      "stability_hidden_active_rule_jaccard": 0.8333333333333334,
+      "stability_decision_generated_rule_jaccard": 0.1111111111111111,
+      "stability_decision_active_rule_jaccard": 0.08333333333333333,
+      "stability_layer_active_rule_jaccard": 0.9583333333333334,
+      "stability_layer_generated_rule_jaccard": 1.0
+    }
+  ],
+  "per_seed_results": [
+    {
+      "seed": 11,
+      "model_name": "linear_regression",
+      "model_label": "Linear Regression",
+      "family": "sklearn",
+      "article_role": "external_baseline",
+      "variant_name": null,
+      "variant_label": null,
+      "study_pipeline": null,
+      "workspace_template": null,
+      "training_preset": null,
+      "training_preset_override": null,
+      "epochs_ran": null,
+      "export_dir": null,
+      "train_mse": 0.5214681625366211,
+      "train_mae": 0.5281509757041931,
+      "train_rmse": 0.7221275251204742,
+      "train_r2": 0.6048142576056151,
+      "test_mse": 0.5304752588272095,
+      "test_mae": 0.5391479134559631,
+      "test_rmse": 0.7283373248895113,
+      "test_r2": 0.6057656299941736
+    },
+    {
+      "seed": 11,
+      "model_name": "hist_gradient_boosting_regressor",
+      "model_label": "Gradient Boosting",
+      "family": "sklearn",
+      "article_role": "external_baseline",
+      "variant_name": null,
+      "variant_label": null,
+      "study_pipeline": null,
+      "workspace_template": null,
+      "training_preset": null,
+      "training_preset_override": null,
+      "epochs_ran": null,
+      "export_dir": null,
+      "train_mse": 0.19327063858509064,
+      "train_mae": 0.3011718988418579,
+      "train_rmse": 0.43962556634605615,
+      "train_r2": 0.8535331467816853,
+      "test_mse": 0.23481179773807526,
+      "test_mae": 0.33498314023017883,
+      "test_rmse": 0.4845738310495886,
+      "test_r2": 0.8254944330732832
+    },
+    {
+      "seed": 11,
+      "model_name": "random_forest_regressor",
+      "model_label": "Random Forest",
+      "family": "sklearn",
+      "article_role": "external_baseline",
+      "variant_name": null,
+      "variant_label": null,
+      "study_pipeline": null,
+      "workspace_template": null,
+      "training_preset": null,
+      "training_preset_override": null,
+      "epochs_ran": null,
+      "export_dir": null,
+      "train_mse": 0.03877978026866913,
+      "train_mae": 0.12643516063690186,
+      "train_rmse": 0.1969258242807914,
+      "train_r2": 0.9706114054719492,
+      "test_mse": 0.2639561593532562,
+      "test_mae": 0.3426157236099243,
+      "test_rmse": 0.5137666390037954,
+      "test_r2": 0.8038351473080119
+    },
+    {
+      "seed": 11,
+      "model_name": "mlp_regressor",
+      "model_label": "MLP",
+      "family": "sklearn",
+      "article_role": "external_baseline",
+      "variant_name": null,
+      "variant_label": null,
+      "study_pipeline": null,
+      "workspace_template": null,
+      "training_preset": null,
+      "training_preset_override": null,
+      "epochs_ran": null,
+      "export_dir": null,
+      "train_mse": 0.2643319368362427,
+      "train_mae": 0.3567168116569519,
+      "train_rmse": 0.5141322172712411,
+      "train_r2": 0.7996805664078549,
+      "test_mse": 0.2843290865421295,
+      "test_mae": 0.3759066164493561,
+      "test_rmse": 0.5332251743326918,
+      "test_r2": 0.7886945711564137
+    },
+    {
+      "seed": 11,
+      "model_name": "flat_baseline",
+      "model_label": "Flat Baseline",
+      "family": "ruflex",
+      "article_role": "baseline",
+      "variant_name": "flat_baseline",
+      "variant_label": "Flat Baseline",
+      "study_pipeline": "flat_baseline_benchmark",
+      "workspace_template": "flat_baseline",
+      "training_preset": "balanced",
+      "training_preset_override": null,
+      "epochs_ran": 30,
+      "export_dir": "/home/lebedeffson/Code/neurofuzzy_analysis/experiments/article_benchmark_enlarged/2026_04_13t12_27_52_965999_00_00_california_housing_regression_n20640_full_article_benchmark/runs/2026_04_13t12_28_36_258165_00_00_flat_baseline_benchmark",
+      "train_mse": 0.6767678260803223,
+      "train_mae": 0.6118685007095337,
+      "train_rmse": 0.8226589974468901,
+      "train_r2": 0.48712306582145726,
+      "validation_mse": 0.6785940527915955,
+      "validation_mae": 0.6127111315727234,
+      "validation_rmse": 0.8237682033142548,
+      "validation_r2": 0.49805778344694474,
+      "test_mse": 0.6967274293078569,
+      "test_mae": 0.6293127488671716,
+      "test_rmse": 0.8347020003018184,
+      "test_r2": 0.48221164819639595,
+      "structure_total_rules": 16.0,
+      "structure_active_rules": 9.0,
+      "structure_stages": 1.0,
+      "structure_hidden_blocks": 1.0,
+      "structure_hidden_concepts": 3.0,
+      "explainability_decision_top1_mass": 0.5561079382896423,
+      "explainability_decision_top3_mass": 0.941707193851471,
+      "explainability_decision_entropy": 1.1312857866287231,
+      "explainability_hidden_top1_mass": 0.16023525595664978,
+      "explainability_hidden_top3_mass": 0.4772680699825287,
+      "explainability_hidden_entropy": 2.0169906616210938
+    },
+    {
+      "seed": 11,
+      "model_name": "deep_stage1_ablation",
+      "model_label": "Deep Depth 1",
+      "family": "ruflex",
+      "article_role": "depth_ablation",
+      "variant_name": "deep_stage1_ablation",
+      "variant_label": "Deep Depth 1",
+      "study_pipeline": null,
+      "workspace_template": "deep_article_demo",
+      "training_preset": "article_demo",
+      "training_preset_override": null,
+      "epochs_ran": 28,
+      "export_dir": "/home/lebedeffson/Code/neurofuzzy_analysis/experiments/article_benchmark_enlarged/2026_04_13t12_27_52_965999_00_00_california_housing_regression_n20640_full_article_benchmark/runs/2026_04_13t12_29_59_962024_00_00_deep_stage1_ablation",
+      "train_mse": 0.616710901260376,
+      "train_mae": 0.5818314552307129,
+      "train_rmse": 0.7853094302632408,
+      "train_r2": 0.5326361600439836,
+      "validation_mse": 0.6191859245300293,
+      "validation_mae": 0.5855845212936401,
+      "validation_rmse": 0.7868836791610494,
+      "validation_r2": 0.542000777464076,
+      "test_mse": 0.6286660172148371,
+      "test_mae": 0.593331239068106,
+      "test_rmse": 0.7928846178447637,
+      "test_r2": 0.5327929873351178,
+      "structure_total_rules": 20.0,
+      "structure_active_rules": 3.0,
+      "structure_stages": 1.0,
+      "structure_hidden_blocks": 4.0,
+      "structure_hidden_concepts": 8.0,
+      "explainability_decision_top1_mass": 0.5193959474563599,
+      "explainability_decision_top3_mass": 0.9992532730102539,
+      "explainability_decision_entropy": 0.6975839734077454,
+      "explainability_hidden_top1_mass": 0.49828676880544936,
+      "explainability_hidden_top3_mass": 0.7344640046699797,
+      "explainability_hidden_entropy": 0.6473465019749085
+    },
+    {
+      "seed": 11,
+      "model_name": "deep_article_demo",
+      "model_label": "Deep Article Demo",
+      "family": "ruflex",
+      "article_role": "primary_deep_model",
+      "variant_name": "deep_article_demo",
+      "variant_label": "Deep Article Demo",
+      "study_pipeline": "deep_article_demo",
+      "workspace_template": "deep_article_demo",
+      "training_preset": "article_demo",
+      "training_preset_override": null,
+      "epochs_ran": 20,
+      "export_dir": "/home/lebedeffson/Code/neurofuzzy_analysis/experiments/article_benchmark_enlarged/2026_04_13t12_27_52_965999_00_00_california_housing_regression_n20640_full_article_benchmark/runs/2026_04_13t12_31_40_085159_00_00_deep_article_demo",
+      "train_mse": 0.6170274019241333,
+      "train_mae": 0.5797080993652344,
+      "train_rmse": 0.7855109177625307,
+      "train_r2": 0.5323963121936353,
+      "validation_mse": 0.6205326914787292,
+      "validation_mae": 0.5832874774932861,
+      "validation_rmse": 0.7877389742032124,
+      "validation_r2": 0.5410046242751303,
+      "test_mse": 0.6299313337125562,
+      "test_mae": 0.5916750124644308,
+      "test_rmse": 0.7936821364454136,
+      "test_r2": 0.5318526394798386,
+      "structure_total_rules": 36.0,
+      "structure_active_rules": 6.0,
+      "structure_stages": 2.0,
+      "structure_hidden_blocks": 8.0,
+      "structure_hidden_concepts": 16.0,
+      "explainability_decision_top1_mass": 0.3504835069179535,
+      "explainability_decision_top3_mass": 0.9978275895118713,
+      "explainability_decision_entropy": 1.1013157367706299,
+      "explainability_hidden_top1_mass": 0.6554831937481183,
+      "explainability_hidden_top3_mass": 0.8640271352318579,
+      "explainability_hidden_entropy": 0.5131095838112998
+    },
+    {
+      "seed": 23,
+      "model_name": "linear_regression",
+      "model_label": "Linear Regression",
+      "family": "sklearn",
+      "article_role": "external_baseline",
+      "variant_name": null,
+      "variant_label": null,
+      "study_pipeline": null,
+      "workspace_template": null,
+      "training_preset": null,
+      "training_preset_override": null,
+      "epochs_ran": null,
+      "export_dir": null,
+      "train_mse": 0.5265626311302185,
+      "train_mae": 0.5281509160995483,
+      "train_rmse": 0.725646354039086,
+      "train_r2": 0.605888331098789,
+      "test_mse": 0.904326856136322,
+      "test_mae": 0.543386697769165,
+      "test_rmse": 0.9509610171486116,
+      "test_r2": 0.3324937530230829
+    },
+    {
+      "seed": 23,
+      "model_name": "hist_gradient_boosting_regressor",
+      "model_label": "Gradient Boosting",
+      "family": "sklearn",
+      "article_role": "external_baseline",
+      "variant_name": null,
+      "variant_label": null,
+      "study_pipeline": null,
+      "workspace_template": null,
+      "training_preset": null,
+      "training_preset_override": null,
+      "epochs_ran": null,
+      "export_dir": null,
+      "train_mse": 0.19395792484283447,
+      "train_mae": 0.3039587140083313,
+      "train_rmse": 0.4404065449591258,
+      "train_r2": 0.854830035934494,
+      "test_mse": 0.2378978729248047,
+      "test_mae": 0.3324264883995056,
+      "test_rmse": 0.48774775542774634,
+      "test_r2": 0.8244016369611491
+    },
+    {
+      "seed": 23,
+      "model_name": "random_forest_regressor",
+      "model_label": "Random Forest",
+      "family": "sklearn",
+      "article_role": "external_baseline",
+      "variant_name": null,
+      "variant_label": null,
+      "study_pipeline": null,
+      "workspace_template": null,
+      "training_preset": null,
+      "training_preset_override": null,
+      "epochs_ran": null,
+      "export_dir": null,
+      "train_mse": 0.03826969861984253,
+      "train_mae": 0.1262756735086441,
+      "train_rmse": 0.19562642617970233,
+      "train_r2": 0.9713566178926913,
+      "test_mse": 0.2683261036872864,
+      "test_mae": 0.34264761209487915,
+      "test_rmse": 0.5180020305822037,
+      "test_r2": 0.8019418013993926
+    },
+    {
+      "seed": 23,
+      "model_name": "mlp_regressor",
+      "model_label": "MLP",
+      "family": "sklearn",
+      "article_role": "external_baseline",
+      "variant_name": null,
+      "variant_label": null,
+      "study_pipeline": null,
+      "workspace_template": null,
+      "training_preset": null,
+      "training_preset_override": null,
+      "epochs_ran": null,
+      "export_dir": null,
+      "train_mse": 0.24457496404647827,
+      "train_mae": 0.33758652210235596,
+      "train_rmse": 0.4945452093049515,
+      "train_r2": 0.8169451406983819,
+      "test_mse": 0.3369896113872528,
+      "test_mae": 0.35743460059165955,
+      "test_rmse": 0.5805080631543827,
+      "test_r2": 0.751259545083878
+    },
+    {
+      "seed": 23,
+      "model_name": "flat_baseline",
+      "model_label": "Flat Baseline",
+      "family": "ruflex",
+      "article_role": "baseline",
+      "variant_name": "flat_baseline",
+      "variant_label": "Flat Baseline",
+      "study_pipeline": "flat_baseline_benchmark",
+      "workspace_template": "flat_baseline",
+      "training_preset": "balanced",
+      "training_preset_override": null,
+      "epochs_ran": 30,
+      "export_dir": "/home/lebedeffson/Code/neurofuzzy_analysis/experiments/article_benchmark_enlarged/2026_04_13t12_27_52_965999_00_00_california_housing_regression_n20640_full_article_benchmark/runs/2026_04_13t12_32_19_304849_00_00_flat_baseline_benchmark",
+      "train_mse": 1.3353862762451172,
+      "train_mae": 0.9068852066993713,
+      "train_rmse": 1.1555891468186767,
+      "train_r2": 0.0005152554569270995,
+      "validation_mse": 1.2928409576416016,
+      "validation_mae": 0.8951521515846252,
+      "validation_rmse": 1.1370316432015433,
+      "validation_r2": 0.0012077951355748962,
+      "test_mse": 1.355197140822801,
+      "test_mae": 0.9184306787592542,
+      "test_rmse": 1.164129348836632,
+      "test_r2": -0.00030486050605271764,
+      "structure_total_rules": 16.0,
+      "structure_active_rules": 6.0,
+      "structure_stages": 1.0,
+      "structure_hidden_blocks": 1.0,
+      "structure_hidden_concepts": 3.0,
+      "explainability_decision_top1_mass": 0.3521091043949127,
+      "explainability_decision_top3_mass": 0.819292426109314,
+      "explainability_decision_entropy": 1.6213181018829346,
+      "explainability_hidden_top1_mass": 0.2134237289428711,
+      "explainability_hidden_top3_mass": 0.6063088774681091,
+      "explainability_hidden_entropy": 1.9633915424346924
+    },
+    {
+      "seed": 23,
+      "model_name": "deep_stage1_ablation",
+      "model_label": "Deep Depth 1",
+      "family": "ruflex",
+      "article_role": "depth_ablation",
+      "variant_name": "deep_stage1_ablation",
+      "variant_label": "Deep Depth 1",
+      "study_pipeline": null,
+      "workspace_template": "deep_article_demo",
+      "training_preset": "article_demo",
+      "training_preset_override": null,
+      "epochs_ran": 28,
+      "export_dir": "/home/lebedeffson/Code/neurofuzzy_analysis/experiments/article_benchmark_enlarged/2026_04_13t12_27_52_965999_00_00_california_housing_regression_n20640_full_article_benchmark/runs/2026_04_13t12_33_22_083751_00_00_deep_stage1_ablation",
+      "train_mse": 0.6232898831367493,
+      "train_mae": 0.5843344926834106,
+      "train_rmse": 0.7894871013111926,
+      "train_r2": 0.5334917227427503,
+      "validation_mse": 0.6198136210441589,
+      "validation_mae": 0.5852891206741333,
+      "validation_rmse": 0.7872824277501429,
+      "validation_r2": 0.5211592146672406,
+      "test_mse": 0.6077237488809865,
+      "test_mae": 0.5926870203891281,
+      "test_rmse": 0.7795663851661296,
+      "test_r2": 0.5514239208905638,
+      "structure_total_rules": 20.0,
+      "structure_active_rules": 6.0,
+      "structure_stages": 1.0,
+      "structure_hidden_blocks": 4.0,
+      "structure_hidden_concepts": 8.0,
+      "explainability_decision_top1_mass": 0.4241354465484619,
+      "explainability_decision_top3_mass": 0.9346861839294434,
+      "explainability_decision_entropy": 1.2181285619735718,
+      "explainability_hidden_top1_mass": 0.5220994055384311,
+      "explainability_hidden_top3_mass": 0.7292609066110592,
+      "explainability_hidden_entropy": 0.6203642392443101
+    },
+    {
+      "seed": 23,
+      "model_name": "deep_article_demo",
+      "model_label": "Deep Article Demo",
+      "family": "ruflex",
+      "article_role": "primary_deep_model",
+      "variant_name": "deep_article_demo",
+      "variant_label": "Deep Article Demo",
+      "study_pipeline": "deep_article_demo",
+      "workspace_template": "deep_article_demo",
+      "training_preset": "article_demo",
+      "training_preset_override": null,
+      "epochs_ran": 16,
+      "export_dir": "/home/lebedeffson/Code/neurofuzzy_analysis/experiments/article_benchmark_enlarged/2026_04_13t12_27_52_965999_00_00_california_housing_regression_n20640_full_article_benchmark/runs/2026_04_13t12_34_34_273908_00_00_deep_article_demo",
+      "train_mse": 0.6252968907356262,
+      "train_mae": 0.5851950645446777,
+      "train_rmse": 0.7907571629366542,
+      "train_r2": 0.5319895730710146,
+      "validation_mse": 0.62018883228302,
+      "validation_mae": 0.5852376222610474,
+      "validation_rmse": 0.7875206868921095,
+      "validation_r2": 0.520869351145258,
+      "test_mse": 0.6093382708750756,
+      "test_mae": 0.592899100696098,
+      "test_rmse": 0.7806012239774388,
+      "test_r2": 0.5502322018783021,
+      "structure_total_rules": 36.0,
+      "structure_active_rules": 5.0,
+      "structure_stages": 2.0,
+      "structure_hidden_blocks": 8.0,
+      "structure_hidden_concepts": 16.0,
+      "explainability_decision_top1_mass": 0.5374518632888794,
+      "explainability_decision_top3_mass": 1.0,
+      "explainability_decision_entropy": 0.8893513083457947,
+      "explainability_hidden_top1_mass": 0.6521715224940342,
+      "explainability_hidden_top3_mass": 0.8601448762889987,
+      "explainability_hidden_entropy": 0.5257870430289913
+    },
+    {
+      "seed": 47,
+      "model_name": "linear_regression",
+      "model_label": "Linear Regression",
+      "family": "sklearn",
+      "article_role": "external_baseline",
+      "variant_name": null,
+      "variant_label": null,
+      "study_pipeline": null,
+      "workspace_template": null,
+      "training_preset": null,
+      "training_preset_override": null,
+      "epochs_ran": null,
+      "export_dir": null,
+      "train_mse": 0.5349695086479187,
+      "train_mae": 0.536155104637146,
+      "train_rmse": 0.7314160981602187,
+      "train_r2": 0.5937247839557298,
+      "test_mse": 0.5234763026237488,
+      "test_mae": 0.5336893200874329,
+      "test_rmse": 0.723516622216621,
+      "test_r2": 0.6159012773249394
+    },
+    {
+      "seed": 47,
+      "model_name": "hist_gradient_boosting_regressor",
+      "model_label": "Gradient Boosting",
+      "family": "sklearn",
+      "article_role": "external_baseline",
+      "variant_name": null,
+      "variant_label": null,
+      "study_pipeline": null,
+      "workspace_template": null,
+      "training_preset": null,
+      "training_preset_override": null,
+      "epochs_ran": null,
+      "export_dir": null,
+      "train_mse": 0.19397448003292084,
+      "train_mae": 0.30320119857788086,
+      "train_rmse": 0.44042533990782234,
+      "train_r2": 0.8526887601883748,
+      "test_mse": 0.23524925112724304,
+      "test_mae": 0.3346450626850128,
+      "test_rmse": 0.48502500051774966,
+      "test_r2": 0.8273867694645984
+    },
+    {
+      "seed": 47,
+      "model_name": "random_forest_regressor",
+      "model_label": "Random Forest",
+      "family": "sklearn",
+      "article_role": "external_baseline",
+      "variant_name": null,
+      "variant_label": null,
+      "study_pipeline": null,
+      "workspace_template": null,
+      "training_preset": null,
+      "training_preset_override": null,
+      "epochs_ran": null,
+      "export_dir": null,
+      "train_mse": 0.037728313356637955,
+      "train_mae": 0.12667971849441528,
+      "train_rmse": 0.19423777530809488,
+      "train_r2": 0.9713477522394931,
+      "test_mse": 0.25887012481689453,
+      "test_mae": 0.33606576919555664,
+      "test_rmse": 0.5087928112865733,
+      "test_r2": 0.810055045647017
+    },
+    {
+      "seed": 47,
+      "model_name": "mlp_regressor",
+      "model_label": "MLP",
+      "family": "sklearn",
+      "article_role": "external_baseline",
+      "variant_name": null,
+      "variant_label": null,
+      "study_pipeline": null,
+      "workspace_template": null,
+      "training_preset": null,
+      "training_preset_override": null,
+      "epochs_ran": null,
+      "export_dir": null,
+      "train_mse": 0.28217703104019165,
+      "train_mae": 0.36220186948776245,
+      "train_rmse": 0.5312033801099082,
+      "train_r2": 0.7857045562640951,
+      "test_mse": 0.2989162802696228,
+      "test_mae": 0.3784085214138031,
+      "test_rmse": 0.5467323662173502,
+      "test_r2": 0.7806713298475633
+    },
+    {
+      "seed": 47,
+      "model_name": "flat_baseline",
+      "model_label": "Flat Baseline",
+      "family": "ruflex",
+      "article_role": "baseline",
+      "variant_name": "flat_baseline",
+      "variant_label": "Flat Baseline",
+      "study_pipeline": "flat_baseline_benchmark",
+      "workspace_template": "flat_baseline",
+      "training_preset": "balanced",
+      "training_preset_override": null,
+      "epochs_ran": 30,
+      "export_dir": "/home/lebedeffson/Code/neurofuzzy_analysis/experiments/article_benchmark_enlarged/2026_04_13t12_27_52_965999_00_00_california_housing_regression_n20640_full_article_benchmark/runs/2026_04_13t12_35_15_411311_00_00_flat_baseline_benchmark",
+      "train_mse": 0.6895778179168701,
+      "train_mae": 0.6204184293746948,
+      "train_rmse": 0.830408223656817,
+      "train_r2": 0.476309659281798,
+      "validation_mse": 0.6557629108428955,
+      "validation_mae": 0.6033208966255188,
+      "validation_rmse": 0.8097918935398746,
+      "validation_r2": 0.5122485663501366,
+      "test_mse": 0.6736807271133806,
+      "test_mae": 0.6123164224861851,
+      "test_rmse": 0.8207805596585366,
+      "test_r2": 0.5056893461789373,
+      "structure_total_rules": 16.0,
+      "structure_active_rules": 9.0,
+      "structure_stages": 1.0,
+      "structure_hidden_blocks": 1.0,
+      "structure_hidden_concepts": 3.0,
+      "explainability_decision_top1_mass": 0.5824934244155884,
+      "explainability_decision_top3_mass": 0.9296274185180664,
+      "explainability_decision_entropy": 1.1070681810379028,
+      "explainability_hidden_top1_mass": 0.1589765101671219,
+      "explainability_hidden_top3_mass": 0.47366297245025635,
+      "explainability_hidden_entropy": 2.016087532043457
+    },
+    {
+      "seed": 47,
+      "model_name": "deep_stage1_ablation",
+      "model_label": "Deep Depth 1",
+      "family": "ruflex",
+      "article_role": "depth_ablation",
+      "variant_name": "deep_stage1_ablation",
+      "variant_label": "Deep Depth 1",
+      "study_pipeline": null,
+      "workspace_template": "deep_article_demo",
+      "training_preset": "article_demo",
+      "training_preset_override": null,
+      "epochs_ran": 28,
+      "export_dir": "/home/lebedeffson/Code/neurofuzzy_analysis/experiments/article_benchmark_enlarged/2026_04_13t12_27_52_965999_00_00_california_housing_regression_n20640_full_article_benchmark/runs/2026_04_13t12_36_15_674935_00_00_deep_stage1_ablation",
+      "train_mse": 0.6306749582290649,
+      "train_mae": 0.5893378257751465,
+      "train_rmse": 0.7941504632178117,
+      "train_r2": 0.5210426298694028,
+      "validation_mse": 0.5933125019073486,
+      "validation_mae": 0.5746281147003174,
+      "validation_rmse": 0.7702678118079118,
+      "validation_r2": 0.5586986811591386,
+      "test_mse": 0.6169097633945513,
+      "test_mae": 0.5858729566231394,
+      "test_rmse": 0.7854360339292763,
+      "test_r2": 0.5473448234168714,
+      "structure_total_rules": 20.0,
+      "structure_active_rules": 5.0,
+      "structure_stages": 1.0,
+      "structure_hidden_blocks": 4.0,
+      "structure_hidden_concepts": 8.0,
+      "explainability_decision_top1_mass": 0.47900429368019104,
+      "explainability_decision_top3_mass": 0.9297444820404053,
+      "explainability_decision_entropy": 1.198697805404663,
+      "explainability_hidden_top1_mass": 0.46055009962638915,
+      "explainability_hidden_top3_mass": 0.7326981574750154,
+      "explainability_hidden_entropy": 0.7058916145847718
+    },
+    {
+      "seed": 47,
+      "model_name": "deep_article_demo",
+      "model_label": "Deep Article Demo",
+      "family": "ruflex",
+      "article_role": "primary_deep_model",
+      "variant_name": "deep_article_demo",
+      "variant_label": "Deep Article Demo",
+      "study_pipeline": "deep_article_demo",
+      "workspace_template": "deep_article_demo",
+      "training_preset": "article_demo",
+      "training_preset_override": null,
+      "epochs_ran": 28,
+      "export_dir": "/home/lebedeffson/Code/neurofuzzy_analysis/experiments/article_benchmark_enlarged/2026_04_13t12_27_52_965999_00_00_california_housing_regression_n20640_full_article_benchmark/runs/2026_04_13t12_38_02_388762_00_00_deep_article_demo",
+      "train_mse": 0.6296677589416504,
+      "train_mae": 0.5891759991645813,
+      "train_rmse": 0.7935160735244438,
+      "train_r2": 0.5218075028215621,
+      "validation_mse": 0.5918833017349243,
+      "validation_mae": 0.5744893550872803,
+      "validation_rmse": 0.7693395230552791,
+      "validation_r2": 0.5597617388784306,
+      "test_mse": 0.6164704466662285,
+      "test_mae": 0.5859758135442309,
+      "test_rmse": 0.7851563198919235,
+      "test_r2": 0.5476671703840204,
+      "structure_total_rules": 36.0,
+      "structure_active_rules": 5.0,
+      "structure_stages": 2.0,
+      "structure_hidden_blocks": 8.0,
+      "structure_hidden_concepts": 16.0,
+      "explainability_decision_top1_mass": 0.6777839660644531,
+      "explainability_decision_top3_mass": 1.0,
+      "explainability_decision_entropy": 0.7617483139038086,
+      "explainability_hidden_top1_mass": 0.7016393840418039,
+      "explainability_hidden_top3_mass": 0.8644178137498435,
+      "explainability_hidden_entropy": 0.42425678098646813
+    }
+  ],
+  "aggregated_results": [
+    {
+      "model_name": "linear_regression",
+      "family": "sklearn",
+      "runs": 3,
+      "train_metrics": {
+        "mse": {
+          "mean": 0.5276668071746826,
+          "std": 0.005566921550780535
+        },
+        "mae": {
+          "mean": 0.5308189988136292,
+          "std": 0.0037731966003775597
+        },
+        "rmse": {
+          "mean": 0.7263967394828796,
+          "std": 0.0038289909716695547
+        },
+        "r2": {
+          "mean": 0.6014757752418518,
+          "std": 0.005498288664966822
+        }
+      },
+      "test_metrics": {
+        "mse": {
+          "mean": 0.6527594923973083,
+          "std": 0.17790794372558594
+        },
+        "mae": {
+          "mean": 0.5387412905693054,
+          "std": 0.003969364333897829
+        },
+        "rmse": {
+          "mean": 0.8009383678436279,
+          "std": 0.10610029846429825
+        },
+        "r2": {
+          "mean": 0.5180535316467285,
+          "std": 0.13127583265304565
+        }
+      },
+      "structural_metrics": {},
+      "explainability_metrics": {},
+      "stability_metrics": {}
+    },
+    {
+      "model_name": "hist_gradient_boosting_regressor",
+      "family": "sklearn",
+      "runs": 3,
+      "train_metrics": {
+        "mse": {
+          "mean": 0.19373434782028198,
+          "std": 0.00032796160667203367
+        },
+        "mae": {
+          "mean": 0.3027772605419159,
+          "std": 0.0011765403905883431
+        },
+        "rmse": {
+          "mean": 0.44015249609947205,
+          "std": 0.0003726642462424934
+        },
+        "r2": {
+          "mean": 0.8536839485168457,
+          "std": 0.000880639418028295
+        }
+      },
+      "test_metrics": {
+        "mse": {
+          "mean": 0.23598630726337433,
+          "std": 0.0013634279603138566
+        },
+        "mae": {
+          "mean": 0.3340182304382324,
+          "std": 0.0011339624179527164
+        },
+        "rmse": {
+          "mean": 0.4857822358608246,
+          "std": 0.0014020130038261414
+        },
+        "r2": {
+          "mean": 0.8257609009742737,
+          "std": 0.00123318110127002
+        }
+      },
+      "structural_metrics": {},
+      "explainability_metrics": {},
+      "stability_metrics": {}
+    },
+    {
+      "model_name": "random_forest_regressor",
+      "family": "sklearn",
+      "runs": 3,
+      "train_metrics": {
+        "mse": {
+          "mean": 0.03825926408171654,
+          "std": 0.000429322972195223
+        },
+        "mae": {
+          "mean": 0.12646351754665375,
+          "std": 0.00016616492939647287
+        },
+        "rmse": {
+          "mean": 0.19559668004512787,
+          "std": 0.001097593572922051
+        },
+        "r2": {
+          "mean": 0.9711052775382996,
+          "std": 0.0003492335672490299
+        }
+      },
+      "test_metrics": {
+        "mse": {
+          "mean": 0.2637174427509308,
+          "std": 0.0038640752900391817
+        },
+        "mae": {
+          "mean": 0.34044304490089417,
+          "std": 0.0030952217057347298
+        },
+        "rmse": {
+          "mean": 0.5135204792022705,
+          "std": 0.003763673361390829
+        },
+        "r2": {
+          "mean": 0.8052773475646973,
+          "std": 0.0034656336065381765
+        }
+      },
+      "structural_metrics": {},
+      "explainability_metrics": {},
+      "stability_metrics": {}
+    },
+    {
+      "model_name": "mlp_regressor",
+      "family": "sklearn",
+      "runs": 3,
+      "train_metrics": {
+        "mse": {
+          "mean": 0.2636946439743042,
+          "std": 0.015357592143118382
+        },
+        "mae": {
+          "mean": 0.35216841101646423,
+          "std": 0.010551298968493938
+        },
+        "rmse": {
+          "mean": 0.5132936239242554,
+          "std": 0.014977377839386463
+        },
+        "r2": {
+          "mean": 0.8007767796516418,
+          "std": 0.012777445837855339
+        }
+      },
+      "test_metrics": {
+        "mse": {
+          "mean": 0.3067449927330017,
+          "std": 0.0221998393535614
+        },
+        "mae": {
+          "mean": 0.37058326601982117,
+          "std": 0.00935343187302351
+        },
+        "rmse": {
+          "mean": 0.553488552570343,
+          "std": 0.019885538145899773
+        },
+        "r2": {
+          "mean": 0.7735418677330017,
+          "std": 0.016092801466584206
+        }
+      },
+      "structural_metrics": {},
+      "explainability_metrics": {},
+      "stability_metrics": {}
+    },
+    {
+      "model_name": "flat_baseline",
+      "family": "ruflex",
+      "runs": 3,
+      "train_metrics": {
+        "mse": {
+          "mean": 0.9005773067474365,
+          "std": 0.30750083923339844
+        },
+        "mae": {
+          "mean": 0.7130573391914368,
+          "std": 0.137101411819458
+        },
+        "rmse": {
+          "mean": 0.9362187385559082,
+          "std": 0.15515050292015076
+        },
+        "r2": {
+          "mean": 0.3213160037994385,
+          "std": 0.22688333690166473
+        }
+      },
+      "test_metrics": {
+        "mse": {
+          "mean": 0.9085351824760437,
+          "std": 0.31597790122032166
+        },
+        "mae": {
+          "mean": 0.7200199961662292,
+          "std": 0.14046905934810638
+        },
+        "rmse": {
+          "mean": 0.9398706555366516,
+          "std": 0.15867668390274048
+        },
+        "r2": {
+          "mean": 0.3291987180709839,
+          "std": 0.23319126665592194
+        }
+      },
+      "structural_metrics": {
+        "total_rules": {
+          "mean": 16.0,
+          "std": 0.0
+        },
+        "active_rules": {
+          "mean": 8.0,
+          "std": 1.4142135381698608
+        },
+        "stages": {
+          "mean": 1.0,
+          "std": 0.0
+        },
+        "hidden_blocks": {
+          "mean": 1.0,
+          "std": 0.0
+        },
+        "hidden_concepts": {
+          "mean": 3.0,
+          "std": 0.0
+        }
+      },
+      "explainability_metrics": {
+        "decision_top1_mass": {
+          "mean": 0.49690350890159607,
+          "std": 0.10295017808675766
+        },
+        "decision_top3_mass": {
+          "mean": 0.8968756794929504,
+          "std": 0.05508085712790489
+        },
+        "decision_entropy": {
+          "mean": 1.2865573167800903,
+          "std": 0.23691797256469727
+        },
+        "hidden_top1_mass": {
+          "mean": 0.17754517495632172,
+          "std": 0.025375179946422577
+        },
+        "hidden_top3_mass": {
+          "mean": 0.5190799832344055,
+          "std": 0.06169770658016205
+        },
+        "hidden_entropy": {
+          "mean": 1.9988231658935547,
+          "std": 0.025056710466742516
+        }
+      },
+      "stability_metrics": {
+        "generated_rule_jaccard": 0.7333333333333334,
+        "active_rule_jaccard": 0.6666666666666666,
+        "hidden_generated_rule_jaccard": 0.7333333333333334,
+        "hidden_active_rule_jaccard": 0.6666666666666666,
+        "decision_generated_rule_jaccard": 0.7333333333333334,
+        "decision_active_rule_jaccard": 0.6666666666666666,
+        "layer_active_rule_jaccard": 0.6666666666666666,
+        "layer_generated_rule_jaccard": 0.7333333333333334
+      }
+    },
+    {
+      "model_name": "deep_stage1_ablation",
+      "family": "ruflex",
+      "runs": 3,
+      "train_metrics": {
+        "mse": {
+          "mean": 0.6235585808753967,
+          "std": 0.005703967530280352
+        },
+        "mae": {
+          "mean": 0.5851679444313049,
+          "std": 0.0031206149142235518
+        },
+        "rmse": {
+          "mean": 0.7896490097045898,
+          "std": 0.0036111532244831324
+        },
+        "r2": {
+          "mean": 0.5290568470954895,
+          "std": 0.005677650682628155
+        }
+      },
+      "test_metrics": {
+        "mse": {
+          "mean": 0.6177665591239929,
+          "std": 0.008571084588766098
+        },
+        "mae": {
+          "mean": 0.5906303524971008,
+          "std": 0.003374285763129592
+        },
+        "rmse": {
+          "mean": 0.7859623432159424,
+          "std": 0.005449846386909485
+        },
+        "r2": {
+          "mean": 0.5438538789749146,
+          "std": 0.007996566593647003
+        }
+      },
+      "structural_metrics": {
+        "total_rules": {
+          "mean": 20.0,
+          "std": 0.0
+        },
+        "active_rules": {
+          "mean": 4.666666507720947,
+          "std": 1.2472190856933594
+        },
+        "stages": {
+          "mean": 1.0,
+          "std": 0.0
+        },
+        "hidden_blocks": {
+          "mean": 4.0,
+          "std": 0.0
+        },
+        "hidden_concepts": {
+          "mean": 8.0,
+          "std": 0.0
+        }
+      },
+      "explainability_metrics": {
+        "decision_top1_mass": {
+          "mean": 0.4741785526275635,
+          "std": 0.03903935104608536
+        },
+        "decision_top3_mass": {
+          "mean": 0.9545612931251526,
+          "std": 0.03166631981730461
+        },
+        "decision_entropy": {
+          "mean": 1.0381368398666382,
+          "std": 0.24093781411647797
+        },
+        "hidden_top1_mass": {
+          "mean": 0.49364542961120605,
+          "std": 0.025340832769870758
+        },
+        "hidden_top3_mass": {
+          "mean": 0.7321410179138184,
+          "std": 0.0021603659261018038
+        },
+        "hidden_entropy": {
+          "mean": 0.657867431640625,
+          "std": 0.03570014238357544
+        }
+      },
+      "stability_metrics": {
+        "generated_rule_jaccard": 0.746031746031746,
+        "active_rule_jaccard": 0.4916666666666667,
+        "hidden_generated_rule_jaccard": 1.0,
+        "hidden_active_rule_jaccard": 0.7333333333333334,
+        "decision_generated_rule_jaccard": 0.19999999999999998,
+        "decision_active_rule_jaccard": 0.3333333333333333,
+        "layer_active_rule_jaccard": 0.8888888888888888,
+        "layer_generated_rule_jaccard": 1.0
+      }
+    },
+    {
+      "model_name": "deep_article_demo",
+      "family": "ruflex",
+      "runs": 3,
+      "train_metrics": {
+        "mse": {
+          "mean": 0.6239973902702332,
+          "std": 0.005241581238806248
+        },
+        "mae": {
+          "mean": 0.5846930146217346,
+          "std": 0.0038815196603536606
+        },
+        "rmse": {
+          "mean": 0.7899280190467834,
+          "std": 0.0033202804625034332
+        },
+        "r2": {
+          "mean": 0.528731107711792,
+          "std": 0.004898564890027046
+        }
+      },
+      "test_metrics": {
+        "mse": {
+          "mean": 0.6185800433158875,
+          "std": 0.008538387715816498
+        },
+        "mae": {
+          "mean": 0.5901833176612854,
+          "std": 0.003016810864210129
+        },
+        "rmse": {
+          "mean": 0.7864798903465271,
+          "std": 0.0054216692224144936
+        },
+        "r2": {
+          "mean": 0.5432506799697876,
+          "std": 0.008127361536026001
+        }
+      },
+      "structural_metrics": {
+        "total_rules": {
+          "mean": 36.0,
+          "std": 0.0
+        },
+        "active_rules": {
+          "mean": 5.333333492279053,
+          "std": 0.4714045226573944
+        },
+        "stages": {
+          "mean": 2.0,
+          "std": 0.0
+        },
+        "hidden_blocks": {
+          "mean": 8.0,
+          "std": 0.0
+        },
+        "hidden_concepts": {
+          "mean": 16.0,
+          "std": 0.0
+        }
+      },
+      "explainability_metrics": {
+        "decision_top1_mass": {
+          "mean": 0.5219064354896545,
+          "std": 0.1340712308883667
+        },
+        "decision_top3_mass": {
+          "mean": 0.9992758631706238,
+          "std": 0.0010240841656923294
+        },
+        "decision_entropy": {
+          "mean": 0.9174718260765076,
+          "std": 0.1400466114282608
+        },
+        "hidden_top1_mass": {
+          "mean": 0.6697646975517273,
+          "std": 0.02257932536303997
+        },
+        "hidden_top3_mass": {
+          "mean": 0.8628632426261902,
+          "std": 0.0019288099138066173
+        },
+        "hidden_entropy": {
+          "mean": 0.48771777749061584,
+          "std": 0.04517120122909546
+        }
+      },
+      "stability_metrics": {
+        "generated_rule_jaccard": 0.8315789473684211,
+        "active_rule_jaccard": 0.4583333333333333,
+        "hidden_generated_rule_jaccard": 1.0,
+        "hidden_active_rule_jaccard": 0.8333333333333334,
+        "decision_generated_rule_jaccard": 0.1111111111111111,
+        "decision_active_rule_jaccard": 0.08333333333333333,
+        "layer_active_rule_jaccard": 0.9583333333333334,
+        "layer_generated_rule_jaccard": 1.0
+      }
+    }
+  ],
+  "serialized_per_seed_results": [
+    {
+      "seed": 11,
+      "results": [
+        {
+          "model_name": "linear_regression",
+          "family": "sklearn",
+          "train_metrics": {
+            "mse": 0.5214681625366211,
+            "mae": 0.5281509757041931,
+            "rmse": 0.7221275251204742,
+            "r2": 0.6048142576056151
+          },
+          "test_metrics": {
+            "mse": 0.5304752588272095,
+            "mae": 0.5391479134559631,
+            "rmse": 0.7283373248895113,
+            "r2": 0.6057656299941736
+          },
+          "structural_metrics": {},
+          "explainability_metrics": {},
+          "stability_artifacts": {}
+        },
+        {
+          "model_name": "hist_gradient_boosting_regressor",
+          "family": "sklearn",
+          "train_metrics": {
+            "mse": 0.19327063858509064,
+            "mae": 0.3011718988418579,
+            "rmse": 0.43962556634605615,
+            "r2": 0.8535331467816853
+          },
+          "test_metrics": {
+            "mse": 0.23481179773807526,
+            "mae": 0.33498314023017883,
+            "rmse": 0.4845738310495886,
+            "r2": 0.8254944330732832
+          },
+          "structural_metrics": {},
+          "explainability_metrics": {},
+          "stability_artifacts": {}
+        },
+        {
+          "model_name": "random_forest_regressor",
+          "family": "sklearn",
+          "train_metrics": {
+            "mse": 0.03877978026866913,
+            "mae": 0.12643516063690186,
+            "rmse": 0.1969258242807914,
+            "r2": 0.9706114054719492
+          },
+          "test_metrics": {
+            "mse": 0.2639561593532562,
+            "mae": 0.3426157236099243,
+            "rmse": 0.5137666390037954,
+            "r2": 0.8038351473080119
+          },
+          "structural_metrics": {},
+          "explainability_metrics": {},
+          "stability_artifacts": {}
+        },
+        {
+          "model_name": "mlp_regressor",
+          "family": "sklearn",
+          "train_metrics": {
+            "mse": 0.2643319368362427,
+            "mae": 0.3567168116569519,
+            "rmse": 0.5141322172712411,
+            "r2": 0.7996805664078549
+          },
+          "test_metrics": {
+            "mse": 0.2843290865421295,
+            "mae": 0.3759066164493561,
+            "rmse": 0.5332251743326918,
+            "r2": 0.7886945711564137
+          },
+          "structural_metrics": {},
+          "explainability_metrics": {},
+          "stability_artifacts": {}
+        },
+        {
+          "model_name": "flat_baseline",
+          "family": "ruflex",
+          "train_metrics": {
+            "mse": 0.6767678260803223,
+            "mae": 0.6118685007095337,
+            "rmse": 0.8226589974468901,
+            "r2": 0.48712306582145726
+          },
+          "test_metrics": {
+            "mse": 0.6967274293078569,
+            "mae": 0.6293127488671716,
+            "rmse": 0.8347020003018184,
+            "r2": 0.48221164819639595
+          },
+          "structural_metrics": {
+            "total_rules": 16.0,
+            "active_rules": 9.0,
+            "stages": 1.0,
+            "hidden_blocks": 1.0,
+            "hidden_concepts": 3.0
+          },
+          "explainability_metrics": {
+            "decision_top1_mass": 0.5561079382896423,
+            "decision_top3_mass": 0.941707193851471,
+            "decision_entropy": 1.1312857866287231,
+            "hidden_top1_mass": 0.16023525595664978,
+            "hidden_top3_mass": 0.4772680699825287,
+            "hidden_entropy": 2.0169906616210938
+          },
+          "stability_artifacts": {
+            "generated:flat_stage/flat_feature_block": [
+              "flat_stage/flat_feature_block::MedInc IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::AveRooms IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::AveBedrms IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::Population IS term_1 AND AveOccup IS term_1",
+              "flat_stage/flat_feature_block::AveRooms IS term_1 AND AveOccup IS term_1",
+              "flat_stage/flat_feature_block::HouseAge IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::MedInc IS term_1 AND AveOccup IS term_1",
+              "flat_stage/flat_feature_block::AveBedrms IS term_1 AND AveOccup IS term_1"
+            ],
+            "active:flat_stage/flat_feature_block": [
+              "flat_stage/flat_feature_block::AveRooms IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::AveBedrms IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::Population IS term_1 AND AveOccup IS term_1",
+              "flat_stage/flat_feature_block::AveRooms IS term_1 AND AveOccup IS term_1",
+              "flat_stage/flat_feature_block::HouseAge IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::AveBedrms IS term_1 AND AveOccup IS term_1"
+            ],
+            "generated:flat_decision": [
+              "flat_decision::flat_concept_2 IS low AND flat_concept_3 IS low",
+              "flat_decision::flat_concept_1 IS high AND flat_concept_3 IS low",
+              "flat_decision::flat_concept_1 IS high AND flat_concept_2 IS low",
+              "flat_decision::flat_concept_1 IS low AND flat_concept_3 IS low",
+              "flat_decision::flat_concept_1 IS low AND flat_concept_2 IS low",
+              "flat_decision::flat_concept_2 IS high AND flat_concept_3 IS low",
+              "flat_decision::flat_concept_1 IS high AND flat_concept_2 IS high",
+              "flat_decision::flat_concept_1 IS low AND flat_concept_2 IS high"
+            ],
+            "active:flat_decision": [
+              "flat_decision::flat_concept_2 IS low AND flat_concept_3 IS low",
+              "flat_decision::flat_concept_1 IS high AND flat_concept_2 IS low",
+              "flat_decision::flat_concept_1 IS low AND flat_concept_3 IS low"
+            ],
+            "generated:all": [
+              "flat_stage/flat_feature_block::MedInc IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::AveRooms IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::AveBedrms IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::Population IS term_1 AND AveOccup IS term_1",
+              "flat_stage/flat_feature_block::AveRooms IS term_1 AND AveOccup IS term_1",
+              "flat_stage/flat_feature_block::HouseAge IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::MedInc IS term_1 AND AveOccup IS term_1",
+              "flat_stage/flat_feature_block::AveBedrms IS term_1 AND AveOccup IS term_1",
+              "flat_decision::flat_concept_2 IS low AND flat_concept_3 IS low",
+              "flat_decision::flat_concept_1 IS high AND flat_concept_3 IS low",
+              "flat_decision::flat_concept_1 IS high AND flat_concept_2 IS low",
+              "flat_decision::flat_concept_1 IS low AND flat_concept_3 IS low",
+              "flat_decision::flat_concept_1 IS low AND flat_concept_2 IS low",
+              "flat_decision::flat_concept_2 IS high AND flat_concept_3 IS low",
+              "flat_decision::flat_concept_1 IS high AND flat_concept_2 IS high",
+              "flat_decision::flat_concept_1 IS low AND flat_concept_2 IS high"
+            ],
+            "generated:hidden": [
+              "flat_stage/flat_feature_block::MedInc IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::AveRooms IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::AveBedrms IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::Population IS term_1 AND AveOccup IS term_1",
+              "flat_stage/flat_feature_block::AveRooms IS term_1 AND AveOccup IS term_1",
+              "flat_stage/flat_feature_block::HouseAge IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::MedInc IS term_1 AND AveOccup IS term_1",
+              "flat_stage/flat_feature_block::AveBedrms IS term_1 AND AveOccup IS term_1"
+            ],
+            "generated:decision": [
+              "flat_decision::flat_concept_2 IS low AND flat_concept_3 IS low",
+              "flat_decision::flat_concept_1 IS high AND flat_concept_3 IS low",
+              "flat_decision::flat_concept_1 IS high AND flat_concept_2 IS low",
+              "flat_decision::flat_concept_1 IS low AND flat_concept_3 IS low",
+              "flat_decision::flat_concept_1 IS low AND flat_concept_2 IS low",
+              "flat_decision::flat_concept_2 IS high AND flat_concept_3 IS low",
+              "flat_decision::flat_concept_1 IS high AND flat_concept_2 IS high",
+              "flat_decision::flat_concept_1 IS low AND flat_concept_2 IS high"
+            ],
+            "active:all": [
+              "flat_stage/flat_feature_block::AveRooms IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::AveBedrms IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::Population IS term_1 AND AveOccup IS term_1",
+              "flat_stage/flat_feature_block::AveRooms IS term_1 AND AveOccup IS term_1",
+              "flat_stage/flat_feature_block::HouseAge IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::AveBedrms IS term_1 AND AveOccup IS term_1",
+              "flat_decision::flat_concept_2 IS low AND flat_concept_3 IS low",
+              "flat_decision::flat_concept_1 IS high AND flat_concept_2 IS low",
+              "flat_decision::flat_concept_1 IS low AND flat_concept_3 IS low"
+            ],
+            "active:hidden": [
+              "flat_stage/flat_feature_block::AveRooms IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::AveBedrms IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::Population IS term_1 AND AveOccup IS term_1",
+              "flat_stage/flat_feature_block::AveRooms IS term_1 AND AveOccup IS term_1",
+              "flat_stage/flat_feature_block::HouseAge IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::AveBedrms IS term_1 AND AveOccup IS term_1"
+            ],
+            "active:decision": [
+              "flat_decision::flat_concept_2 IS low AND flat_concept_3 IS low",
+              "flat_decision::flat_concept_1 IS high AND flat_concept_2 IS low",
+              "flat_decision::flat_concept_1 IS low AND flat_concept_3 IS low"
+            ]
+          }
+        },
+        {
+          "model_name": "deep_stage1_ablation",
+          "family": "ruflex",
+          "train_metrics": {
+            "mse": 0.616710901260376,
+            "mae": 0.5818314552307129,
+            "rmse": 0.7853094302632408,
+            "r2": 0.5326361600439836
+          },
+          "test_metrics": {
+            "mse": 0.6286660172148371,
+            "mae": 0.593331239068106,
+            "rmse": 0.7928846178447637,
+            "r2": 0.5327929873351178
+          },
+          "structural_metrics": {
+            "total_rules": 20.0,
+            "active_rules": 3.0,
+            "stages": 1.0,
+            "hidden_blocks": 4.0,
+            "hidden_concepts": 8.0
+          },
+          "explainability_metrics": {
+            "decision_top1_mass": 0.5193959474563599,
+            "decision_top3_mass": 0.9992532730102539,
+            "decision_entropy": 0.6975839734077454,
+            "hidden_top1_mass": 0.49828676880544936,
+            "hidden_top3_mass": 0.7344640046699797,
+            "hidden_entropy": 0.6473465019749085
+          },
+          "stability_artifacts": {
+            "generated:stage_1/stage_1_block_1": [
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_2",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_2"
+            ],
+            "active:stage_1/stage_1_block_1": [
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_2"
+            ],
+            "generated:stage_1/stage_1_block_2": [
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_1",
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_2",
+              "stage_1/stage_1_block_2::AveRooms IS term_2 AND AveBedrms IS term_1",
+              "stage_1/stage_1_block_2::AveRooms IS term_2 AND AveBedrms IS term_2"
+            ],
+            "active:stage_1/stage_1_block_2": [
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_1"
+            ],
+            "generated:stage_1/stage_1_block_3": [
+              "stage_1/stage_1_block_3::Population IS term_1 AND AveOccup IS term_1",
+              "stage_1/stage_1_block_3::Population IS term_2 AND AveOccup IS term_1",
+              "stage_1/stage_1_block_3::Population IS term_1 AND AveOccup IS term_2",
+              "stage_1/stage_1_block_3::Population IS term_2 AND AveOccup IS term_2"
+            ],
+            "active:stage_1/stage_1_block_3": [],
+            "generated:stage_1/stage_1_block_4": [
+              "stage_1/stage_1_block_4::Latitude IS term_1 AND Longitude IS term_1",
+              "stage_1/stage_1_block_4::Latitude IS term_1 AND Longitude IS term_2",
+              "stage_1/stage_1_block_4::Latitude IS term_2 AND Longitude IS term_1",
+              "stage_1/stage_1_block_4::Latitude IS term_2 AND Longitude IS term_2"
+            ],
+            "active:stage_1/stage_1_block_4": [],
+            "generated:deep_decision": [
+              "deep_decision::stage_1_block_1_concept_2 IS low AND stage_1_block_3_concept_2 IS low",
+              "deep_decision::stage_1_block_1_concept_1 IS high AND stage_1_block_3_concept_2 IS low",
+              "deep_decision::stage_1_block_1_concept_1 IS low AND stage_1_block_3_concept_2 IS low",
+              "deep_decision::stage_1_block_1_concept_1 IS high AND stage_1_block_1_concept_2 IS high"
+            ],
+            "active:deep_decision": [],
+            "generated:all": [
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_2",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_2",
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_1",
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_2",
+              "stage_1/stage_1_block_2::AveRooms IS term_2 AND AveBedrms IS term_1",
+              "stage_1/stage_1_block_2::AveRooms IS term_2 AND AveBedrms IS term_2",
+              "stage_1/stage_1_block_3::Population IS term_1 AND AveOccup IS term_1",
+              "stage_1/stage_1_block_3::Population IS term_2 AND AveOccup IS term_1",
+              "stage_1/stage_1_block_3::Population IS term_1 AND AveOccup IS term_2",
+              "stage_1/stage_1_block_3::Population IS term_2 AND AveOccup IS term_2",
+              "stage_1/stage_1_block_4::Latitude IS term_1 AND Longitude IS term_1",
+              "stage_1/stage_1_block_4::Latitude IS term_1 AND Longitude IS term_2",
+              "stage_1/stage_1_block_4::Latitude IS term_2 AND Longitude IS term_1",
+              "stage_1/stage_1_block_4::Latitude IS term_2 AND Longitude IS term_2",
+              "deep_decision::stage_1_block_1_concept_2 IS low AND stage_1_block_3_concept_2 IS low",
+              "deep_decision::stage_1_block_1_concept_1 IS high AND stage_1_block_3_concept_2 IS low",
+              "deep_decision::stage_1_block_1_concept_1 IS low AND stage_1_block_3_concept_2 IS low",
+              "deep_decision::stage_1_block_1_concept_1 IS high AND stage_1_block_1_concept_2 IS high"
+            ],
+            "generated:hidden": [
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_2",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_2",
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_1",
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_2",
+              "stage_1/stage_1_block_2::AveRooms IS term_2 AND AveBedrms IS term_1",
+              "stage_1/stage_1_block_2::AveRooms IS term_2 AND AveBedrms IS term_2",
+              "stage_1/stage_1_block_3::Population IS term_1 AND AveOccup IS term_1",
+              "stage_1/stage_1_block_3::Population IS term_2 AND AveOccup IS term_1",
+              "stage_1/stage_1_block_3::Population IS term_1 AND AveOccup IS term_2",
+              "stage_1/stage_1_block_3::Population IS term_2 AND AveOccup IS term_2",
+              "stage_1/stage_1_block_4::Latitude IS term_1 AND Longitude IS term_1",
+              "stage_1/stage_1_block_4::Latitude IS term_1 AND Longitude IS term_2",
+              "stage_1/stage_1_block_4::Latitude IS term_2 AND Longitude IS term_1",
+              "stage_1/stage_1_block_4::Latitude IS term_2 AND Longitude IS term_2"
+            ],
+            "generated:decision": [
+              "deep_decision::stage_1_block_1_concept_2 IS low AND stage_1_block_3_concept_2 IS low",
+              "deep_decision::stage_1_block_1_concept_1 IS high AND stage_1_block_3_concept_2 IS low",
+              "deep_decision::stage_1_block_1_concept_1 IS low AND stage_1_block_3_concept_2 IS low",
+              "deep_decision::stage_1_block_1_concept_1 IS high AND stage_1_block_1_concept_2 IS high"
+            ],
+            "active:all": [
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_2",
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_1"
+            ],
+            "active:hidden": [
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_2",
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_1"
+            ],
+            "active:decision": []
+          }
+        },
+        {
+          "model_name": "deep_article_demo",
+          "family": "ruflex",
+          "train_metrics": {
+            "mse": 0.6170274019241333,
+            "mae": 0.5797080993652344,
+            "rmse": 0.7855109177625307,
+            "r2": 0.5323963121936353
+          },
+          "test_metrics": {
+            "mse": 0.6299313337125562,
+            "mae": 0.5916750124644308,
+            "rmse": 0.7936821364454136,
+            "r2": 0.5318526394798386
+          },
+          "structural_metrics": {
+            "total_rules": 36.0,
+            "active_rules": 6.0,
+            "stages": 2.0,
+            "hidden_blocks": 8.0,
+            "hidden_concepts": 16.0
+          },
+          "explainability_metrics": {
+            "decision_top1_mass": 0.3504835069179535,
+            "decision_top3_mass": 0.9978275895118713,
+            "decision_entropy": 1.1013157367706299,
+            "hidden_top1_mass": 0.6554831937481183,
+            "hidden_top3_mass": 0.8640271352318579,
+            "hidden_entropy": 0.5131095838112998
+          },
+          "stability_artifacts": {
+            "generated:stage_1/stage_1_block_1": [
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_2",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_2"
+            ],
+            "active:stage_1/stage_1_block_1": [
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_2"
+            ],
+            "generated:stage_1/stage_1_block_2": [
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_1",
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_2",
+              "stage_1/stage_1_block_2::AveRooms IS term_2 AND AveBedrms IS term_1",
+              "stage_1/stage_1_block_2::AveRooms IS term_2 AND AveBedrms IS term_2"
+            ],
+            "active:stage_1/stage_1_block_2": [],
+            "generated:stage_1/stage_1_block_3": [
+              "stage_1/stage_1_block_3::Population IS term_1 AND AveOccup IS term_1",
+              "stage_1/stage_1_block_3::Population IS term_2 AND AveOccup IS term_1",
+              "stage_1/stage_1_block_3::Population IS term_1 AND AveOccup IS term_2",
+              "stage_1/stage_1_block_3::Population IS term_2 AND AveOccup IS term_2"
+            ],
+            "active:stage_1/stage_1_block_3": [],
+            "generated:stage_1/stage_1_block_4": [
+              "stage_1/stage_1_block_4::Latitude IS term_1 AND Longitude IS term_1",
+              "stage_1/stage_1_block_4::Latitude IS term_1 AND Longitude IS term_2",
+              "stage_1/stage_1_block_4::Latitude IS term_2 AND Longitude IS term_1",
+              "stage_1/stage_1_block_4::Latitude IS term_2 AND Longitude IS term_2"
+            ],
+            "active:stage_1/stage_1_block_4": [],
+            "generated:stage_2/stage_2_block_1": [
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS high AND stage_1_block_1_concept_2 IS high",
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS low AND stage_1_block_1_concept_2 IS low",
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS high AND stage_1_block_1_concept_2 IS low",
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS low AND stage_1_block_1_concept_2 IS high"
+            ],
+            "active:stage_2/stage_2_block_1": [
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS low AND stage_1_block_1_concept_2 IS low"
+            ],
+            "generated:stage_2/stage_2_block_2": [
+              "stage_2/stage_2_block_2::stage_1_block_2_concept_1 IS low AND stage_1_block_2_concept_2 IS low",
+              "stage_2/stage_2_block_2::stage_1_block_2_concept_1 IS low AND stage_1_block_2_concept_2 IS high",
+              "stage_2/stage_2_block_2::stage_1_block_2_concept_1 IS high AND stage_1_block_2_concept_2 IS low",
+              "stage_2/stage_2_block_2::stage_1_block_2_concept_1 IS high AND stage_1_block_2_concept_2 IS high"
+            ],
+            "active:stage_2/stage_2_block_2": [],
+            "generated:stage_2/stage_2_block_3": [
+              "stage_2/stage_2_block_3::stage_1_block_3_concept_1 IS low AND stage_1_block_3_concept_2 IS low",
+              "stage_2/stage_2_block_3::stage_1_block_3_concept_1 IS high AND stage_1_block_3_concept_2 IS low",
+              "stage_2/stage_2_block_3::stage_1_block_3_concept_1 IS low AND stage_1_block_3_concept_2 IS high",
+              "stage_2/stage_2_block_3::stage_1_block_3_concept_1 IS high AND stage_1_block_3_concept_2 IS high"
+            ],
+            "active:stage_2/stage_2_block_3": [],
+            "generated:stage_2/stage_2_block_4": [
+              "stage_2/stage_2_block_4::stage_1_block_4_concept_1 IS low AND stage_1_block_4_concept_2 IS low",
+              "stage_2/stage_2_block_4::stage_1_block_4_concept_1 IS low AND stage_1_block_4_concept_2 IS high",
+              "stage_2/stage_2_block_4::stage_1_block_4_concept_1 IS high AND stage_1_block_4_concept_2 IS low",
+              "stage_2/stage_2_block_4::stage_1_block_4_concept_1 IS high AND stage_1_block_4_concept_2 IS high"
+            ],
+            "active:stage_2/stage_2_block_4": [],
+            "generated:deep_decision": [
+              "deep_decision::stage_2_block_1_concept_1 IS low AND stage_2_block_1_concept_2 IS high",
+              "deep_decision::stage_2_block_1_concept_1 IS high AND stage_2_block_1_concept_2 IS low",
+              "deep_decision::stage_2_block_1_concept_2 IS low AND stage_2_block_4_concept_2 IS high",
+              "deep_decision::stage_2_block_1_concept_1 IS high AND stage_2_block_4_concept_2 IS high"
+            ],
+            "active:deep_decision": [
+              "deep_decision::stage_2_block_1_concept_1 IS high AND stage_2_block_1_concept_2 IS low",
+              "deep_decision::stage_2_block_1_concept_2 IS low AND stage_2_block_4_concept_2 IS high",
+              "deep_decision::stage_2_block_1_concept_1 IS high AND stage_2_block_4_concept_2 IS high"
+            ],
+            "generated:all": [
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_2",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_2",
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_1",
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_2",
+              "stage_1/stage_1_block_2::AveRooms IS term_2 AND AveBedrms IS term_1",
+              "stage_1/stage_1_block_2::AveRooms IS term_2 AND AveBedrms IS term_2",
+              "stage_1/stage_1_block_3::Population IS term_1 AND AveOccup IS term_1",
+              "stage_1/stage_1_block_3::Population IS term_2 AND AveOccup IS term_1",
+              "stage_1/stage_1_block_3::Population IS term_1 AND AveOccup IS term_2",
+              "stage_1/stage_1_block_3::Population IS term_2 AND AveOccup IS term_2",
+              "stage_1/stage_1_block_4::Latitude IS term_1 AND Longitude IS term_1",
+              "stage_1/stage_1_block_4::Latitude IS term_1 AND Longitude IS term_2",
+              "stage_1/stage_1_block_4::Latitude IS term_2 AND Longitude IS term_1",
+              "stage_1/stage_1_block_4::Latitude IS term_2 AND Longitude IS term_2",
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS high AND stage_1_block_1_concept_2 IS high",
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS low AND stage_1_block_1_concept_2 IS low",
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS high AND stage_1_block_1_concept_2 IS low",
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS low AND stage_1_block_1_concept_2 IS high",
+              "stage_2/stage_2_block_2::stage_1_block_2_concept_1 IS low AND stage_1_block_2_concept_2 IS low",
+              "stage_2/stage_2_block_2::stage_1_block_2_concept_1 IS low AND stage_1_block_2_concept_2 IS high",
+              "stage_2/stage_2_block_2::stage_1_block_2_concept_1 IS high AND stage_1_block_2_concept_2 IS low",
+              "stage_2/stage_2_block_2::stage_1_block_2_concept_1 IS high AND stage_1_block_2_concept_2 IS high",
+              "stage_2/stage_2_block_3::stage_1_block_3_concept_1 IS low AND stage_1_block_3_concept_2 IS low",
+              "stage_2/stage_2_block_3::stage_1_block_3_concept_1 IS high AND stage_1_block_3_concept_2 IS low",
+              "stage_2/stage_2_block_3::stage_1_block_3_concept_1 IS low AND stage_1_block_3_concept_2 IS high",
+              "stage_2/stage_2_block_3::stage_1_block_3_concept_1 IS high AND stage_1_block_3_concept_2 IS high",
+              "stage_2/stage_2_block_4::stage_1_block_4_concept_1 IS low AND stage_1_block_4_concept_2 IS low",
+              "stage_2/stage_2_block_4::stage_1_block_4_concept_1 IS low AND stage_1_block_4_concept_2 IS high",
+              "stage_2/stage_2_block_4::stage_1_block_4_concept_1 IS high AND stage_1_block_4_concept_2 IS low",
+              "stage_2/stage_2_block_4::stage_1_block_4_concept_1 IS high AND stage_1_block_4_concept_2 IS high",
+              "deep_decision::stage_2_block_1_concept_1 IS low AND stage_2_block_1_concept_2 IS high",
+              "deep_decision::stage_2_block_1_concept_1 IS high AND stage_2_block_1_concept_2 IS low",
+              "deep_decision::stage_2_block_1_concept_2 IS low AND stage_2_block_4_concept_2 IS high",
+              "deep_decision::stage_2_block_1_concept_1 IS high AND stage_2_block_4_concept_2 IS high"
+            ],
+            "generated:hidden": [
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_2",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_2",
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_1",
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_2",
+              "stage_1/stage_1_block_2::AveRooms IS term_2 AND AveBedrms IS term_1",
+              "stage_1/stage_1_block_2::AveRooms IS term_2 AND AveBedrms IS term_2",
+              "stage_1/stage_1_block_3::Population IS term_1 AND AveOccup IS term_1",
+              "stage_1/stage_1_block_3::Population IS term_2 AND AveOccup IS term_1",
+              "stage_1/stage_1_block_3::Population IS term_1 AND AveOccup IS term_2",
+              "stage_1/stage_1_block_3::Population IS term_2 AND AveOccup IS term_2",
+              "stage_1/stage_1_block_4::Latitude IS term_1 AND Longitude IS term_1",
+              "stage_1/stage_1_block_4::Latitude IS term_1 AND Longitude IS term_2",
+              "stage_1/stage_1_block_4::Latitude IS term_2 AND Longitude IS term_1",
+              "stage_1/stage_1_block_4::Latitude IS term_2 AND Longitude IS term_2",
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS high AND stage_1_block_1_concept_2 IS high",
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS low AND stage_1_block_1_concept_2 IS low",
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS high AND stage_1_block_1_concept_2 IS low",
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS low AND stage_1_block_1_concept_2 IS high",
+              "stage_2/stage_2_block_2::stage_1_block_2_concept_1 IS low AND stage_1_block_2_concept_2 IS low",
+              "stage_2/stage_2_block_2::stage_1_block_2_concept_1 IS low AND stage_1_block_2_concept_2 IS high",
+              "stage_2/stage_2_block_2::stage_1_block_2_concept_1 IS high AND stage_1_block_2_concept_2 IS low",
+              "stage_2/stage_2_block_2::stage_1_block_2_concept_1 IS high AND stage_1_block_2_concept_2 IS high",
+              "stage_2/stage_2_block_3::stage_1_block_3_concept_1 IS low AND stage_1_block_3_concept_2 IS low",
+              "stage_2/stage_2_block_3::stage_1_block_3_concept_1 IS high AND stage_1_block_3_concept_2 IS low",
+              "stage_2/stage_2_block_3::stage_1_block_3_concept_1 IS low AND stage_1_block_3_concept_2 IS high",
+              "stage_2/stage_2_block_3::stage_1_block_3_concept_1 IS high AND stage_1_block_3_concept_2 IS high",
+              "stage_2/stage_2_block_4::stage_1_block_4_concept_1 IS low AND stage_1_block_4_concept_2 IS low",
+              "stage_2/stage_2_block_4::stage_1_block_4_concept_1 IS low AND stage_1_block_4_concept_2 IS high",
+              "stage_2/stage_2_block_4::stage_1_block_4_concept_1 IS high AND stage_1_block_4_concept_2 IS low",
+              "stage_2/stage_2_block_4::stage_1_block_4_concept_1 IS high AND stage_1_block_4_concept_2 IS high"
+            ],
+            "generated:decision": [
+              "deep_decision::stage_2_block_1_concept_1 IS low AND stage_2_block_1_concept_2 IS high",
+              "deep_decision::stage_2_block_1_concept_1 IS high AND stage_2_block_1_concept_2 IS low",
+              "deep_decision::stage_2_block_1_concept_2 IS low AND stage_2_block_4_concept_2 IS high",
+              "deep_decision::stage_2_block_1_concept_1 IS high AND stage_2_block_4_concept_2 IS high"
+            ],
+            "active:all": [
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_2",
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS low AND stage_1_block_1_concept_2 IS low",
+              "deep_decision::stage_2_block_1_concept_1 IS high AND stage_2_block_1_concept_2 IS low",
+              "deep_decision::stage_2_block_1_concept_2 IS low AND stage_2_block_4_concept_2 IS high",
+              "deep_decision::stage_2_block_1_concept_1 IS high AND stage_2_block_4_concept_2 IS high"
+            ],
+            "active:hidden": [
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_2",
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS low AND stage_1_block_1_concept_2 IS low"
+            ],
+            "active:decision": [
+              "deep_decision::stage_2_block_1_concept_1 IS high AND stage_2_block_1_concept_2 IS low",
+              "deep_decision::stage_2_block_1_concept_2 IS low AND stage_2_block_4_concept_2 IS high",
+              "deep_decision::stage_2_block_1_concept_1 IS high AND stage_2_block_4_concept_2 IS high"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "seed": 23,
+      "results": [
+        {
+          "model_name": "linear_regression",
+          "family": "sklearn",
+          "train_metrics": {
+            "mse": 0.5265626311302185,
+            "mae": 0.5281509160995483,
+            "rmse": 0.725646354039086,
+            "r2": 0.605888331098789
+          },
+          "test_metrics": {
+            "mse": 0.904326856136322,
+            "mae": 0.543386697769165,
+            "rmse": 0.9509610171486116,
+            "r2": 0.3324937530230829
+          },
+          "structural_metrics": {},
+          "explainability_metrics": {},
+          "stability_artifacts": {}
+        },
+        {
+          "model_name": "hist_gradient_boosting_regressor",
+          "family": "sklearn",
+          "train_metrics": {
+            "mse": 0.19395792484283447,
+            "mae": 0.3039587140083313,
+            "rmse": 0.4404065449591258,
+            "r2": 0.854830035934494
+          },
+          "test_metrics": {
+            "mse": 0.2378978729248047,
+            "mae": 0.3324264883995056,
+            "rmse": 0.48774775542774634,
+            "r2": 0.8244016369611491
+          },
+          "structural_metrics": {},
+          "explainability_metrics": {},
+          "stability_artifacts": {}
+        },
+        {
+          "model_name": "random_forest_regressor",
+          "family": "sklearn",
+          "train_metrics": {
+            "mse": 0.03826969861984253,
+            "mae": 0.1262756735086441,
+            "rmse": 0.19562642617970233,
+            "r2": 0.9713566178926913
+          },
+          "test_metrics": {
+            "mse": 0.2683261036872864,
+            "mae": 0.34264761209487915,
+            "rmse": 0.5180020305822037,
+            "r2": 0.8019418013993926
+          },
+          "structural_metrics": {},
+          "explainability_metrics": {},
+          "stability_artifacts": {}
+        },
+        {
+          "model_name": "mlp_regressor",
+          "family": "sklearn",
+          "train_metrics": {
+            "mse": 0.24457496404647827,
+            "mae": 0.33758652210235596,
+            "rmse": 0.4945452093049515,
+            "r2": 0.8169451406983819
+          },
+          "test_metrics": {
+            "mse": 0.3369896113872528,
+            "mae": 0.35743460059165955,
+            "rmse": 0.5805080631543827,
+            "r2": 0.751259545083878
+          },
+          "structural_metrics": {},
+          "explainability_metrics": {},
+          "stability_artifacts": {}
+        },
+        {
+          "model_name": "flat_baseline",
+          "family": "ruflex",
+          "train_metrics": {
+            "mse": 1.3353862762451172,
+            "mae": 0.9068852066993713,
+            "rmse": 1.1555891468186767,
+            "r2": 0.0005152554569270995
+          },
+          "test_metrics": {
+            "mse": 1.355197140822801,
+            "mae": 0.9184306787592542,
+            "rmse": 1.164129348836632,
+            "r2": -0.00030486050605271764
+          },
+          "structural_metrics": {
+            "total_rules": 16.0,
+            "active_rules": 6.0,
+            "stages": 1.0,
+            "hidden_blocks": 1.0,
+            "hidden_concepts": 3.0
+          },
+          "explainability_metrics": {
+            "decision_top1_mass": 0.3521091043949127,
+            "decision_top3_mass": 0.819292426109314,
+            "decision_entropy": 1.6213181018829346,
+            "hidden_top1_mass": 0.2134237289428711,
+            "hidden_top3_mass": 0.6063088774681091,
+            "hidden_entropy": 1.9633915424346924
+          },
+          "stability_artifacts": {
+            "generated:flat_stage/flat_feature_block": [
+              "flat_stage/flat_feature_block::AveRooms IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::AveBedrms IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::Population IS term_1 AND AveOccup IS term_1",
+              "flat_stage/flat_feature_block::AveBedrms IS term_1 AND AveOccup IS term_1",
+              "flat_stage/flat_feature_block::HouseAge IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::HouseAge IS term_1 AND AveOccup IS term_1",
+              "flat_stage/flat_feature_block::AveRooms IS term_1 AND AveOccup IS term_1",
+              "flat_stage/flat_feature_block::AveRooms IS term_1 AND AveBedrms IS term_1"
+            ],
+            "active:flat_stage/flat_feature_block": [
+              "flat_stage/flat_feature_block::AveRooms IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::Population IS term_1 AND AveOccup IS term_1",
+              "flat_stage/flat_feature_block::AveRooms IS term_1 AND AveOccup IS term_1"
+            ],
+            "generated:flat_decision": [
+              "flat_decision::flat_concept_1 IS low AND flat_concept_2 IS low",
+              "flat_decision::flat_concept_2 IS low AND flat_concept_3 IS low",
+              "flat_decision::flat_concept_1 IS low AND flat_concept_3 IS low",
+              "flat_decision::flat_concept_2 IS low AND flat_concept_3 IS high",
+              "flat_decision::flat_concept_1 IS low AND flat_concept_3 IS high",
+              "flat_decision::flat_concept_1 IS high AND flat_concept_2 IS low",
+              "flat_decision::flat_concept_1 IS high AND flat_concept_3 IS low",
+              "flat_decision::flat_concept_1 IS low AND flat_concept_2 IS high"
+            ],
+            "active:flat_decision": [
+              "flat_decision::flat_concept_1 IS low AND flat_concept_2 IS low",
+              "flat_decision::flat_concept_2 IS low AND flat_concept_3 IS low",
+              "flat_decision::flat_concept_1 IS low AND flat_concept_3 IS low"
+            ],
+            "generated:all": [
+              "flat_stage/flat_feature_block::AveRooms IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::AveBedrms IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::Population IS term_1 AND AveOccup IS term_1",
+              "flat_stage/flat_feature_block::AveBedrms IS term_1 AND AveOccup IS term_1",
+              "flat_stage/flat_feature_block::HouseAge IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::HouseAge IS term_1 AND AveOccup IS term_1",
+              "flat_stage/flat_feature_block::AveRooms IS term_1 AND AveOccup IS term_1",
+              "flat_stage/flat_feature_block::AveRooms IS term_1 AND AveBedrms IS term_1",
+              "flat_decision::flat_concept_1 IS low AND flat_concept_2 IS low",
+              "flat_decision::flat_concept_2 IS low AND flat_concept_3 IS low",
+              "flat_decision::flat_concept_1 IS low AND flat_concept_3 IS low",
+              "flat_decision::flat_concept_2 IS low AND flat_concept_3 IS high",
+              "flat_decision::flat_concept_1 IS low AND flat_concept_3 IS high",
+              "flat_decision::flat_concept_1 IS high AND flat_concept_2 IS low",
+              "flat_decision::flat_concept_1 IS high AND flat_concept_3 IS low",
+              "flat_decision::flat_concept_1 IS low AND flat_concept_2 IS high"
+            ],
+            "generated:hidden": [
+              "flat_stage/flat_feature_block::AveRooms IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::AveBedrms IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::Population IS term_1 AND AveOccup IS term_1",
+              "flat_stage/flat_feature_block::AveBedrms IS term_1 AND AveOccup IS term_1",
+              "flat_stage/flat_feature_block::HouseAge IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::HouseAge IS term_1 AND AveOccup IS term_1",
+              "flat_stage/flat_feature_block::AveRooms IS term_1 AND AveOccup IS term_1",
+              "flat_stage/flat_feature_block::AveRooms IS term_1 AND AveBedrms IS term_1"
+            ],
+            "generated:decision": [
+              "flat_decision::flat_concept_1 IS low AND flat_concept_2 IS low",
+              "flat_decision::flat_concept_2 IS low AND flat_concept_3 IS low",
+              "flat_decision::flat_concept_1 IS low AND flat_concept_3 IS low",
+              "flat_decision::flat_concept_2 IS low AND flat_concept_3 IS high",
+              "flat_decision::flat_concept_1 IS low AND flat_concept_3 IS high",
+              "flat_decision::flat_concept_1 IS high AND flat_concept_2 IS low",
+              "flat_decision::flat_concept_1 IS high AND flat_concept_3 IS low",
+              "flat_decision::flat_concept_1 IS low AND flat_concept_2 IS high"
+            ],
+            "active:all": [
+              "flat_stage/flat_feature_block::AveRooms IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::Population IS term_1 AND AveOccup IS term_1",
+              "flat_stage/flat_feature_block::AveRooms IS term_1 AND AveOccup IS term_1",
+              "flat_decision::flat_concept_1 IS low AND flat_concept_2 IS low",
+              "flat_decision::flat_concept_2 IS low AND flat_concept_3 IS low",
+              "flat_decision::flat_concept_1 IS low AND flat_concept_3 IS low"
+            ],
+            "active:hidden": [
+              "flat_stage/flat_feature_block::AveRooms IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::Population IS term_1 AND AveOccup IS term_1",
+              "flat_stage/flat_feature_block::AveRooms IS term_1 AND AveOccup IS term_1"
+            ],
+            "active:decision": [
+              "flat_decision::flat_concept_1 IS low AND flat_concept_2 IS low",
+              "flat_decision::flat_concept_2 IS low AND flat_concept_3 IS low",
+              "flat_decision::flat_concept_1 IS low AND flat_concept_3 IS low"
+            ]
+          }
+        },
+        {
+          "model_name": "deep_stage1_ablation",
+          "family": "ruflex",
+          "train_metrics": {
+            "mse": 0.6232898831367493,
+            "mae": 0.5843344926834106,
+            "rmse": 0.7894871013111926,
+            "r2": 0.5334917227427503
+          },
+          "test_metrics": {
+            "mse": 0.6077237488809865,
+            "mae": 0.5926870203891281,
+            "rmse": 0.7795663851661296,
+            "r2": 0.5514239208905638
+          },
+          "structural_metrics": {
+            "total_rules": 20.0,
+            "active_rules": 6.0,
+            "stages": 1.0,
+            "hidden_blocks": 4.0,
+            "hidden_concepts": 8.0
+          },
+          "explainability_metrics": {
+            "decision_top1_mass": 0.4241354465484619,
+            "decision_top3_mass": 0.9346861839294434,
+            "decision_entropy": 1.2181285619735718,
+            "hidden_top1_mass": 0.5220994055384311,
+            "hidden_top3_mass": 0.7292609066110592,
+            "hidden_entropy": 0.6203642392443101
+          },
+          "stability_artifacts": {
+            "generated:stage_1/stage_1_block_1": [
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_2",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_2"
+            ],
+            "active:stage_1/stage_1_block_1": [
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_2"
+            ],
+            "generated:stage_1/stage_1_block_2": [
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_1",
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_2",
+              "stage_1/stage_1_block_2::AveRooms IS term_2 AND AveBedrms IS term_1",
+              "stage_1/stage_1_block_2::AveRooms IS term_2 AND AveBedrms IS term_2"
+            ],
+            "active:stage_1/stage_1_block_2": [
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_1"
+            ],
+            "generated:stage_1/stage_1_block_3": [
+              "stage_1/stage_1_block_3::Population IS term_1 AND AveOccup IS term_1",
+              "stage_1/stage_1_block_3::Population IS term_1 AND AveOccup IS term_2",
+              "stage_1/stage_1_block_3::Population IS term_2 AND AveOccup IS term_1",
+              "stage_1/stage_1_block_3::Population IS term_2 AND AveOccup IS term_2"
+            ],
+            "active:stage_1/stage_1_block_3": [],
+            "generated:stage_1/stage_1_block_4": [
+              "stage_1/stage_1_block_4::Latitude IS term_1 AND Longitude IS term_1",
+              "stage_1/stage_1_block_4::Latitude IS term_1 AND Longitude IS term_2",
+              "stage_1/stage_1_block_4::Latitude IS term_2 AND Longitude IS term_1",
+              "stage_1/stage_1_block_4::Latitude IS term_2 AND Longitude IS term_2"
+            ],
+            "active:stage_1/stage_1_block_4": [],
+            "generated:deep_decision": [
+              "deep_decision::stage_1_block_1_concept_1 IS low AND stage_1_block_1_concept_2 IS low",
+              "deep_decision::stage_1_block_1_concept_2 IS low AND stage_1_block_3_concept_2 IS low",
+              "deep_decision::stage_1_block_1_concept_1 IS low AND stage_1_block_3_concept_2 IS low",
+              "deep_decision::stage_1_block_1_concept_1 IS high AND stage_1_block_3_concept_2 IS low"
+            ],
+            "active:deep_decision": [
+              "deep_decision::stage_1_block_1_concept_1 IS low AND stage_1_block_1_concept_2 IS low",
+              "deep_decision::stage_1_block_1_concept_2 IS low AND stage_1_block_3_concept_2 IS low",
+              "deep_decision::stage_1_block_1_concept_1 IS low AND stage_1_block_3_concept_2 IS low"
+            ],
+            "generated:all": [
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_2",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_2",
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_1",
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_2",
+              "stage_1/stage_1_block_2::AveRooms IS term_2 AND AveBedrms IS term_1",
+              "stage_1/stage_1_block_2::AveRooms IS term_2 AND AveBedrms IS term_2",
+              "stage_1/stage_1_block_3::Population IS term_1 AND AveOccup IS term_1",
+              "stage_1/stage_1_block_3::Population IS term_1 AND AveOccup IS term_2",
+              "stage_1/stage_1_block_3::Population IS term_2 AND AveOccup IS term_1",
+              "stage_1/stage_1_block_3::Population IS term_2 AND AveOccup IS term_2",
+              "stage_1/stage_1_block_4::Latitude IS term_1 AND Longitude IS term_1",
+              "stage_1/stage_1_block_4::Latitude IS term_1 AND Longitude IS term_2",
+              "stage_1/stage_1_block_4::Latitude IS term_2 AND Longitude IS term_1",
+              "stage_1/stage_1_block_4::Latitude IS term_2 AND Longitude IS term_2",
+              "deep_decision::stage_1_block_1_concept_1 IS low AND stage_1_block_1_concept_2 IS low",
+              "deep_decision::stage_1_block_1_concept_2 IS low AND stage_1_block_3_concept_2 IS low",
+              "deep_decision::stage_1_block_1_concept_1 IS low AND stage_1_block_3_concept_2 IS low",
+              "deep_decision::stage_1_block_1_concept_1 IS high AND stage_1_block_3_concept_2 IS low"
+            ],
+            "generated:hidden": [
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_2",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_2",
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_1",
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_2",
+              "stage_1/stage_1_block_2::AveRooms IS term_2 AND AveBedrms IS term_1",
+              "stage_1/stage_1_block_2::AveRooms IS term_2 AND AveBedrms IS term_2",
+              "stage_1/stage_1_block_3::Population IS term_1 AND AveOccup IS term_1",
+              "stage_1/stage_1_block_3::Population IS term_1 AND AveOccup IS term_2",
+              "stage_1/stage_1_block_3::Population IS term_2 AND AveOccup IS term_1",
+              "stage_1/stage_1_block_3::Population IS term_2 AND AveOccup IS term_2",
+              "stage_1/stage_1_block_4::Latitude IS term_1 AND Longitude IS term_1",
+              "stage_1/stage_1_block_4::Latitude IS term_1 AND Longitude IS term_2",
+              "stage_1/stage_1_block_4::Latitude IS term_2 AND Longitude IS term_1",
+              "stage_1/stage_1_block_4::Latitude IS term_2 AND Longitude IS term_2"
+            ],
+            "generated:decision": [
+              "deep_decision::stage_1_block_1_concept_1 IS low AND stage_1_block_1_concept_2 IS low",
+              "deep_decision::stage_1_block_1_concept_2 IS low AND stage_1_block_3_concept_2 IS low",
+              "deep_decision::stage_1_block_1_concept_1 IS low AND stage_1_block_3_concept_2 IS low",
+              "deep_decision::stage_1_block_1_concept_1 IS high AND stage_1_block_3_concept_2 IS low"
+            ],
+            "active:all": [
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_2",
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_1",
+              "deep_decision::stage_1_block_1_concept_1 IS low AND stage_1_block_1_concept_2 IS low",
+              "deep_decision::stage_1_block_1_concept_2 IS low AND stage_1_block_3_concept_2 IS low",
+              "deep_decision::stage_1_block_1_concept_1 IS low AND stage_1_block_3_concept_2 IS low"
+            ],
+            "active:hidden": [
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_2",
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_1"
+            ],
+            "active:decision": [
+              "deep_decision::stage_1_block_1_concept_1 IS low AND stage_1_block_1_concept_2 IS low",
+              "deep_decision::stage_1_block_1_concept_2 IS low AND stage_1_block_3_concept_2 IS low",
+              "deep_decision::stage_1_block_1_concept_1 IS low AND stage_1_block_3_concept_2 IS low"
+            ]
+          }
+        },
+        {
+          "model_name": "deep_article_demo",
+          "family": "ruflex",
+          "train_metrics": {
+            "mse": 0.6252968907356262,
+            "mae": 0.5851950645446777,
+            "rmse": 0.7907571629366542,
+            "r2": 0.5319895730710146
+          },
+          "test_metrics": {
+            "mse": 0.6093382708750756,
+            "mae": 0.592899100696098,
+            "rmse": 0.7806012239774388,
+            "r2": 0.5502322018783021
+          },
+          "structural_metrics": {
+            "total_rules": 36.0,
+            "active_rules": 5.0,
+            "stages": 2.0,
+            "hidden_blocks": 8.0,
+            "hidden_concepts": 16.0
+          },
+          "explainability_metrics": {
+            "decision_top1_mass": 0.5374518632888794,
+            "decision_top3_mass": 1.0,
+            "decision_entropy": 0.8893513083457947,
+            "hidden_top1_mass": 0.6521715224940342,
+            "hidden_top3_mass": 0.8601448762889987,
+            "hidden_entropy": 0.5257870430289913
+          },
+          "stability_artifacts": {
+            "generated:stage_1/stage_1_block_1": [
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_2",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_2"
+            ],
+            "active:stage_1/stage_1_block_1": [
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_2"
+            ],
+            "generated:stage_1/stage_1_block_2": [
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_1",
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_2",
+              "stage_1/stage_1_block_2::AveRooms IS term_2 AND AveBedrms IS term_1",
+              "stage_1/stage_1_block_2::AveRooms IS term_2 AND AveBedrms IS term_2"
+            ],
+            "active:stage_1/stage_1_block_2": [],
+            "generated:stage_1/stage_1_block_3": [
+              "stage_1/stage_1_block_3::Population IS term_1 AND AveOccup IS term_1",
+              "stage_1/stage_1_block_3::Population IS term_1 AND AveOccup IS term_2",
+              "stage_1/stage_1_block_3::Population IS term_2 AND AveOccup IS term_1",
+              "stage_1/stage_1_block_3::Population IS term_2 AND AveOccup IS term_2"
+            ],
+            "active:stage_1/stage_1_block_3": [],
+            "generated:stage_1/stage_1_block_4": [
+              "stage_1/stage_1_block_4::Latitude IS term_1 AND Longitude IS term_1",
+              "stage_1/stage_1_block_4::Latitude IS term_1 AND Longitude IS term_2",
+              "stage_1/stage_1_block_4::Latitude IS term_2 AND Longitude IS term_1",
+              "stage_1/stage_1_block_4::Latitude IS term_2 AND Longitude IS term_2"
+            ],
+            "active:stage_1/stage_1_block_4": [],
+            "generated:stage_2/stage_2_block_1": [
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS low AND stage_1_block_1_concept_2 IS low",
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS high AND stage_1_block_1_concept_2 IS high",
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS low AND stage_1_block_1_concept_2 IS high",
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS high AND stage_1_block_1_concept_2 IS low"
+            ],
+            "active:stage_2/stage_2_block_1": [
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS low AND stage_1_block_1_concept_2 IS low"
+            ],
+            "generated:stage_2/stage_2_block_2": [
+              "stage_2/stage_2_block_2::stage_1_block_2_concept_1 IS high AND stage_1_block_2_concept_2 IS low",
+              "stage_2/stage_2_block_2::stage_1_block_2_concept_1 IS low AND stage_1_block_2_concept_2 IS low",
+              "stage_2/stage_2_block_2::stage_1_block_2_concept_1 IS high AND stage_1_block_2_concept_2 IS high",
+              "stage_2/stage_2_block_2::stage_1_block_2_concept_1 IS low AND stage_1_block_2_concept_2 IS high"
+            ],
+            "active:stage_2/stage_2_block_2": [],
+            "generated:stage_2/stage_2_block_3": [
+              "stage_2/stage_2_block_3::stage_1_block_3_concept_1 IS low AND stage_1_block_3_concept_2 IS low",
+              "stage_2/stage_2_block_3::stage_1_block_3_concept_1 IS low AND stage_1_block_3_concept_2 IS high",
+              "stage_2/stage_2_block_3::stage_1_block_3_concept_1 IS high AND stage_1_block_3_concept_2 IS low",
+              "stage_2/stage_2_block_3::stage_1_block_3_concept_1 IS high AND stage_1_block_3_concept_2 IS high"
+            ],
+            "active:stage_2/stage_2_block_3": [],
+            "generated:stage_2/stage_2_block_4": [
+              "stage_2/stage_2_block_4::stage_1_block_4_concept_1 IS low AND stage_1_block_4_concept_2 IS low",
+              "stage_2/stage_2_block_4::stage_1_block_4_concept_1 IS low AND stage_1_block_4_concept_2 IS high",
+              "stage_2/stage_2_block_4::stage_1_block_4_concept_1 IS high AND stage_1_block_4_concept_2 IS low",
+              "stage_2/stage_2_block_4::stage_1_block_4_concept_1 IS high AND stage_1_block_4_concept_2 IS high"
+            ],
+            "active:stage_2/stage_2_block_4": [],
+            "generated:deep_decision": [
+              "deep_decision::stage_2_block_1_concept_1 IS low AND stage_2_block_1_concept_2 IS high",
+              "deep_decision::stage_2_block_1_concept_1 IS high AND stage_2_block_1_concept_2 IS low",
+              "deep_decision::stage_2_block_1_concept_2 IS low AND stage_2_block_2_concept_2 IS high",
+              "deep_decision::stage_2_block_1_concept_1 IS low AND stage_2_block_2_concept_2 IS high"
+            ],
+            "active:deep_decision": [
+              "deep_decision::stage_2_block_1_concept_1 IS high AND stage_2_block_1_concept_2 IS low",
+              "deep_decision::stage_2_block_1_concept_2 IS low AND stage_2_block_2_concept_2 IS high"
+            ],
+            "generated:all": [
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_2",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_2",
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_1",
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_2",
+              "stage_1/stage_1_block_2::AveRooms IS term_2 AND AveBedrms IS term_1",
+              "stage_1/stage_1_block_2::AveRooms IS term_2 AND AveBedrms IS term_2",
+              "stage_1/stage_1_block_3::Population IS term_1 AND AveOccup IS term_1",
+              "stage_1/stage_1_block_3::Population IS term_1 AND AveOccup IS term_2",
+              "stage_1/stage_1_block_3::Population IS term_2 AND AveOccup IS term_1",
+              "stage_1/stage_1_block_3::Population IS term_2 AND AveOccup IS term_2",
+              "stage_1/stage_1_block_4::Latitude IS term_1 AND Longitude IS term_1",
+              "stage_1/stage_1_block_4::Latitude IS term_1 AND Longitude IS term_2",
+              "stage_1/stage_1_block_4::Latitude IS term_2 AND Longitude IS term_1",
+              "stage_1/stage_1_block_4::Latitude IS term_2 AND Longitude IS term_2",
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS low AND stage_1_block_1_concept_2 IS low",
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS high AND stage_1_block_1_concept_2 IS high",
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS low AND stage_1_block_1_concept_2 IS high",
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS high AND stage_1_block_1_concept_2 IS low",
+              "stage_2/stage_2_block_2::stage_1_block_2_concept_1 IS high AND stage_1_block_2_concept_2 IS low",
+              "stage_2/stage_2_block_2::stage_1_block_2_concept_1 IS low AND stage_1_block_2_concept_2 IS low",
+              "stage_2/stage_2_block_2::stage_1_block_2_concept_1 IS high AND stage_1_block_2_concept_2 IS high",
+              "stage_2/stage_2_block_2::stage_1_block_2_concept_1 IS low AND stage_1_block_2_concept_2 IS high",
+              "stage_2/stage_2_block_3::stage_1_block_3_concept_1 IS low AND stage_1_block_3_concept_2 IS low",
+              "stage_2/stage_2_block_3::stage_1_block_3_concept_1 IS low AND stage_1_block_3_concept_2 IS high",
+              "stage_2/stage_2_block_3::stage_1_block_3_concept_1 IS high AND stage_1_block_3_concept_2 IS low",
+              "stage_2/stage_2_block_3::stage_1_block_3_concept_1 IS high AND stage_1_block_3_concept_2 IS high",
+              "stage_2/stage_2_block_4::stage_1_block_4_concept_1 IS low AND stage_1_block_4_concept_2 IS low",
+              "stage_2/stage_2_block_4::stage_1_block_4_concept_1 IS low AND stage_1_block_4_concept_2 IS high",
+              "stage_2/stage_2_block_4::stage_1_block_4_concept_1 IS high AND stage_1_block_4_concept_2 IS low",
+              "stage_2/stage_2_block_4::stage_1_block_4_concept_1 IS high AND stage_1_block_4_concept_2 IS high",
+              "deep_decision::stage_2_block_1_concept_1 IS low AND stage_2_block_1_concept_2 IS high",
+              "deep_decision::stage_2_block_1_concept_1 IS high AND stage_2_block_1_concept_2 IS low",
+              "deep_decision::stage_2_block_1_concept_2 IS low AND stage_2_block_2_concept_2 IS high",
+              "deep_decision::stage_2_block_1_concept_1 IS low AND stage_2_block_2_concept_2 IS high"
+            ],
+            "generated:hidden": [
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_2",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_2",
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_1",
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_2",
+              "stage_1/stage_1_block_2::AveRooms IS term_2 AND AveBedrms IS term_1",
+              "stage_1/stage_1_block_2::AveRooms IS term_2 AND AveBedrms IS term_2",
+              "stage_1/stage_1_block_3::Population IS term_1 AND AveOccup IS term_1",
+              "stage_1/stage_1_block_3::Population IS term_1 AND AveOccup IS term_2",
+              "stage_1/stage_1_block_3::Population IS term_2 AND AveOccup IS term_1",
+              "stage_1/stage_1_block_3::Population IS term_2 AND AveOccup IS term_2",
+              "stage_1/stage_1_block_4::Latitude IS term_1 AND Longitude IS term_1",
+              "stage_1/stage_1_block_4::Latitude IS term_1 AND Longitude IS term_2",
+              "stage_1/stage_1_block_4::Latitude IS term_2 AND Longitude IS term_1",
+              "stage_1/stage_1_block_4::Latitude IS term_2 AND Longitude IS term_2",
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS low AND stage_1_block_1_concept_2 IS low",
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS high AND stage_1_block_1_concept_2 IS high",
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS low AND stage_1_block_1_concept_2 IS high",
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS high AND stage_1_block_1_concept_2 IS low",
+              "stage_2/stage_2_block_2::stage_1_block_2_concept_1 IS high AND stage_1_block_2_concept_2 IS low",
+              "stage_2/stage_2_block_2::stage_1_block_2_concept_1 IS low AND stage_1_block_2_concept_2 IS low",
+              "stage_2/stage_2_block_2::stage_1_block_2_concept_1 IS high AND stage_1_block_2_concept_2 IS high",
+              "stage_2/stage_2_block_2::stage_1_block_2_concept_1 IS low AND stage_1_block_2_concept_2 IS high",
+              "stage_2/stage_2_block_3::stage_1_block_3_concept_1 IS low AND stage_1_block_3_concept_2 IS low",
+              "stage_2/stage_2_block_3::stage_1_block_3_concept_1 IS low AND stage_1_block_3_concept_2 IS high",
+              "stage_2/stage_2_block_3::stage_1_block_3_concept_1 IS high AND stage_1_block_3_concept_2 IS low",
+              "stage_2/stage_2_block_3::stage_1_block_3_concept_1 IS high AND stage_1_block_3_concept_2 IS high",
+              "stage_2/stage_2_block_4::stage_1_block_4_concept_1 IS low AND stage_1_block_4_concept_2 IS low",
+              "stage_2/stage_2_block_4::stage_1_block_4_concept_1 IS low AND stage_1_block_4_concept_2 IS high",
+              "stage_2/stage_2_block_4::stage_1_block_4_concept_1 IS high AND stage_1_block_4_concept_2 IS low",
+              "stage_2/stage_2_block_4::stage_1_block_4_concept_1 IS high AND stage_1_block_4_concept_2 IS high"
+            ],
+            "generated:decision": [
+              "deep_decision::stage_2_block_1_concept_1 IS low AND stage_2_block_1_concept_2 IS high",
+              "deep_decision::stage_2_block_1_concept_1 IS high AND stage_2_block_1_concept_2 IS low",
+              "deep_decision::stage_2_block_1_concept_2 IS low AND stage_2_block_2_concept_2 IS high",
+              "deep_decision::stage_2_block_1_concept_1 IS low AND stage_2_block_2_concept_2 IS high"
+            ],
+            "active:all": [
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_2",
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS low AND stage_1_block_1_concept_2 IS low",
+              "deep_decision::stage_2_block_1_concept_1 IS high AND stage_2_block_1_concept_2 IS low",
+              "deep_decision::stage_2_block_1_concept_2 IS low AND stage_2_block_2_concept_2 IS high"
+            ],
+            "active:hidden": [
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_2",
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS low AND stage_1_block_1_concept_2 IS low"
+            ],
+            "active:decision": [
+              "deep_decision::stage_2_block_1_concept_1 IS high AND stage_2_block_1_concept_2 IS low",
+              "deep_decision::stage_2_block_1_concept_2 IS low AND stage_2_block_2_concept_2 IS high"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "seed": 47,
+      "results": [
+        {
+          "model_name": "linear_regression",
+          "family": "sklearn",
+          "train_metrics": {
+            "mse": 0.5349695086479187,
+            "mae": 0.536155104637146,
+            "rmse": 0.7314160981602187,
+            "r2": 0.5937247839557298
+          },
+          "test_metrics": {
+            "mse": 0.5234763026237488,
+            "mae": 0.5336893200874329,
+            "rmse": 0.723516622216621,
+            "r2": 0.6159012773249394
+          },
+          "structural_metrics": {},
+          "explainability_metrics": {},
+          "stability_artifacts": {}
+        },
+        {
+          "model_name": "hist_gradient_boosting_regressor",
+          "family": "sklearn",
+          "train_metrics": {
+            "mse": 0.19397448003292084,
+            "mae": 0.30320119857788086,
+            "rmse": 0.44042533990782234,
+            "r2": 0.8526887601883748
+          },
+          "test_metrics": {
+            "mse": 0.23524925112724304,
+            "mae": 0.3346450626850128,
+            "rmse": 0.48502500051774966,
+            "r2": 0.8273867694645984
+          },
+          "structural_metrics": {},
+          "explainability_metrics": {},
+          "stability_artifacts": {}
+        },
+        {
+          "model_name": "random_forest_regressor",
+          "family": "sklearn",
+          "train_metrics": {
+            "mse": 0.037728313356637955,
+            "mae": 0.12667971849441528,
+            "rmse": 0.19423777530809488,
+            "r2": 0.9713477522394931
+          },
+          "test_metrics": {
+            "mse": 0.25887012481689453,
+            "mae": 0.33606576919555664,
+            "rmse": 0.5087928112865733,
+            "r2": 0.810055045647017
+          },
+          "structural_metrics": {},
+          "explainability_metrics": {},
+          "stability_artifacts": {}
+        },
+        {
+          "model_name": "mlp_regressor",
+          "family": "sklearn",
+          "train_metrics": {
+            "mse": 0.28217703104019165,
+            "mae": 0.36220186948776245,
+            "rmse": 0.5312033801099082,
+            "r2": 0.7857045562640951
+          },
+          "test_metrics": {
+            "mse": 0.2989162802696228,
+            "mae": 0.3784085214138031,
+            "rmse": 0.5467323662173502,
+            "r2": 0.7806713298475633
+          },
+          "structural_metrics": {},
+          "explainability_metrics": {},
+          "stability_artifacts": {}
+        },
+        {
+          "model_name": "flat_baseline",
+          "family": "ruflex",
+          "train_metrics": {
+            "mse": 0.6895778179168701,
+            "mae": 0.6204184293746948,
+            "rmse": 0.830408223656817,
+            "r2": 0.476309659281798
+          },
+          "test_metrics": {
+            "mse": 0.6736807271133806,
+            "mae": 0.6123164224861851,
+            "rmse": 0.8207805596585366,
+            "r2": 0.5056893461789373
+          },
+          "structural_metrics": {
+            "total_rules": 16.0,
+            "active_rules": 9.0,
+            "stages": 1.0,
+            "hidden_blocks": 1.0,
+            "hidden_concepts": 3.0
+          },
+          "explainability_metrics": {
+            "decision_top1_mass": 0.5824934244155884,
+            "decision_top3_mass": 0.9296274185180664,
+            "decision_entropy": 1.1070681810379028,
+            "hidden_top1_mass": 0.1589765101671219,
+            "hidden_top3_mass": 0.47366297245025635,
+            "hidden_entropy": 2.016087532043457
+          },
+          "stability_artifacts": {
+            "generated:flat_stage/flat_feature_block": [
+              "flat_stage/flat_feature_block::AveRooms IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::AveBedrms IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::AveBedrms IS term_1 AND AveOccup IS term_1",
+              "flat_stage/flat_feature_block::Population IS term_1 AND AveOccup IS term_1",
+              "flat_stage/flat_feature_block::MedInc IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::HouseAge IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::AveRooms IS term_1 AND AveOccup IS term_1",
+              "flat_stage/flat_feature_block::MedInc IS term_1 AND AveOccup IS term_1"
+            ],
+            "active:flat_stage/flat_feature_block": [
+              "flat_stage/flat_feature_block::AveRooms IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::AveBedrms IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::AveBedrms IS term_1 AND AveOccup IS term_1",
+              "flat_stage/flat_feature_block::Population IS term_1 AND AveOccup IS term_1",
+              "flat_stage/flat_feature_block::HouseAge IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::AveRooms IS term_1 AND AveOccup IS term_1"
+            ],
+            "generated:flat_decision": [
+              "flat_decision::flat_concept_2 IS low AND flat_concept_3 IS low",
+              "flat_decision::flat_concept_1 IS high AND flat_concept_3 IS low",
+              "flat_decision::flat_concept_1 IS high AND flat_concept_2 IS low",
+              "flat_decision::flat_concept_1 IS low AND flat_concept_3 IS low",
+              "flat_decision::flat_concept_1 IS low AND flat_concept_2 IS low",
+              "flat_decision::flat_concept_2 IS high AND flat_concept_3 IS low",
+              "flat_decision::flat_concept_1 IS high AND flat_concept_2 IS high",
+              "flat_decision::flat_concept_1 IS low AND flat_concept_2 IS high"
+            ],
+            "active:flat_decision": [
+              "flat_decision::flat_concept_2 IS low AND flat_concept_3 IS low",
+              "flat_decision::flat_concept_1 IS high AND flat_concept_2 IS low",
+              "flat_decision::flat_concept_1 IS low AND flat_concept_3 IS low"
+            ],
+            "generated:all": [
+              "flat_stage/flat_feature_block::AveRooms IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::AveBedrms IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::AveBedrms IS term_1 AND AveOccup IS term_1",
+              "flat_stage/flat_feature_block::Population IS term_1 AND AveOccup IS term_1",
+              "flat_stage/flat_feature_block::MedInc IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::HouseAge IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::AveRooms IS term_1 AND AveOccup IS term_1",
+              "flat_stage/flat_feature_block::MedInc IS term_1 AND AveOccup IS term_1",
+              "flat_decision::flat_concept_2 IS low AND flat_concept_3 IS low",
+              "flat_decision::flat_concept_1 IS high AND flat_concept_3 IS low",
+              "flat_decision::flat_concept_1 IS high AND flat_concept_2 IS low",
+              "flat_decision::flat_concept_1 IS low AND flat_concept_3 IS low",
+              "flat_decision::flat_concept_1 IS low AND flat_concept_2 IS low",
+              "flat_decision::flat_concept_2 IS high AND flat_concept_3 IS low",
+              "flat_decision::flat_concept_1 IS high AND flat_concept_2 IS high",
+              "flat_decision::flat_concept_1 IS low AND flat_concept_2 IS high"
+            ],
+            "generated:hidden": [
+              "flat_stage/flat_feature_block::AveRooms IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::AveBedrms IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::AveBedrms IS term_1 AND AveOccup IS term_1",
+              "flat_stage/flat_feature_block::Population IS term_1 AND AveOccup IS term_1",
+              "flat_stage/flat_feature_block::MedInc IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::HouseAge IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::AveRooms IS term_1 AND AveOccup IS term_1",
+              "flat_stage/flat_feature_block::MedInc IS term_1 AND AveOccup IS term_1"
+            ],
+            "generated:decision": [
+              "flat_decision::flat_concept_2 IS low AND flat_concept_3 IS low",
+              "flat_decision::flat_concept_1 IS high AND flat_concept_3 IS low",
+              "flat_decision::flat_concept_1 IS high AND flat_concept_2 IS low",
+              "flat_decision::flat_concept_1 IS low AND flat_concept_3 IS low",
+              "flat_decision::flat_concept_1 IS low AND flat_concept_2 IS low",
+              "flat_decision::flat_concept_2 IS high AND flat_concept_3 IS low",
+              "flat_decision::flat_concept_1 IS high AND flat_concept_2 IS high",
+              "flat_decision::flat_concept_1 IS low AND flat_concept_2 IS high"
+            ],
+            "active:all": [
+              "flat_stage/flat_feature_block::AveRooms IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::AveBedrms IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::AveBedrms IS term_1 AND AveOccup IS term_1",
+              "flat_stage/flat_feature_block::Population IS term_1 AND AveOccup IS term_1",
+              "flat_stage/flat_feature_block::HouseAge IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::AveRooms IS term_1 AND AveOccup IS term_1",
+              "flat_decision::flat_concept_2 IS low AND flat_concept_3 IS low",
+              "flat_decision::flat_concept_1 IS high AND flat_concept_2 IS low",
+              "flat_decision::flat_concept_1 IS low AND flat_concept_3 IS low"
+            ],
+            "active:hidden": [
+              "flat_stage/flat_feature_block::AveRooms IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::AveBedrms IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::AveBedrms IS term_1 AND AveOccup IS term_1",
+              "flat_stage/flat_feature_block::Population IS term_1 AND AveOccup IS term_1",
+              "flat_stage/flat_feature_block::HouseAge IS term_1 AND Population IS term_1",
+              "flat_stage/flat_feature_block::AveRooms IS term_1 AND AveOccup IS term_1"
+            ],
+            "active:decision": [
+              "flat_decision::flat_concept_2 IS low AND flat_concept_3 IS low",
+              "flat_decision::flat_concept_1 IS high AND flat_concept_2 IS low",
+              "flat_decision::flat_concept_1 IS low AND flat_concept_3 IS low"
+            ]
+          }
+        },
+        {
+          "model_name": "deep_stage1_ablation",
+          "family": "ruflex",
+          "train_metrics": {
+            "mse": 0.6306749582290649,
+            "mae": 0.5893378257751465,
+            "rmse": 0.7941504632178117,
+            "r2": 0.5210426298694028
+          },
+          "test_metrics": {
+            "mse": 0.6169097633945513,
+            "mae": 0.5858729566231394,
+            "rmse": 0.7854360339292763,
+            "r2": 0.5473448234168714
+          },
+          "structural_metrics": {
+            "total_rules": 20.0,
+            "active_rules": 5.0,
+            "stages": 1.0,
+            "hidden_blocks": 4.0,
+            "hidden_concepts": 8.0
+          },
+          "explainability_metrics": {
+            "decision_top1_mass": 0.47900429368019104,
+            "decision_top3_mass": 0.9297444820404053,
+            "decision_entropy": 1.198697805404663,
+            "hidden_top1_mass": 0.46055009962638915,
+            "hidden_top3_mass": 0.7326981574750154,
+            "hidden_entropy": 0.7058916145847718
+          },
+          "stability_artifacts": {
+            "generated:stage_1/stage_1_block_1": [
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_2",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_2"
+            ],
+            "active:stage_1/stage_1_block_1": [
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_2"
+            ],
+            "generated:stage_1/stage_1_block_2": [
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_1",
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_2",
+              "stage_1/stage_1_block_2::AveRooms IS term_2 AND AveBedrms IS term_1",
+              "stage_1/stage_1_block_2::AveRooms IS term_2 AND AveBedrms IS term_2"
+            ],
+            "active:stage_1/stage_1_block_2": [
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_1",
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_2",
+              "stage_1/stage_1_block_2::AveRooms IS term_2 AND AveBedrms IS term_1"
+            ],
+            "generated:stage_1/stage_1_block_3": [
+              "stage_1/stage_1_block_3::Population IS term_1 AND AveOccup IS term_1",
+              "stage_1/stage_1_block_3::Population IS term_2 AND AveOccup IS term_1",
+              "stage_1/stage_1_block_3::Population IS term_1 AND AveOccup IS term_2",
+              "stage_1/stage_1_block_3::Population IS term_2 AND AveOccup IS term_2"
+            ],
+            "active:stage_1/stage_1_block_3": [],
+            "generated:stage_1/stage_1_block_4": [
+              "stage_1/stage_1_block_4::Latitude IS term_1 AND Longitude IS term_1",
+              "stage_1/stage_1_block_4::Latitude IS term_1 AND Longitude IS term_2",
+              "stage_1/stage_1_block_4::Latitude IS term_2 AND Longitude IS term_1",
+              "stage_1/stage_1_block_4::Latitude IS term_2 AND Longitude IS term_2"
+            ],
+            "active:stage_1/stage_1_block_4": [],
+            "generated:deep_decision": [
+              "deep_decision::stage_1_block_1_concept_1 IS low AND stage_1_block_2_concept_2 IS low",
+              "deep_decision::stage_1_block_1_concept_2 IS low AND stage_1_block_2_concept_2 IS low",
+              "deep_decision::stage_1_block_1_concept_2 IS high AND stage_1_block_2_concept_2 IS low",
+              "deep_decision::stage_1_block_1_concept_1 IS high AND stage_1_block_2_concept_2 IS low"
+            ],
+            "active:deep_decision": [],
+            "generated:all": [
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_2",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_2",
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_1",
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_2",
+              "stage_1/stage_1_block_2::AveRooms IS term_2 AND AveBedrms IS term_1",
+              "stage_1/stage_1_block_2::AveRooms IS term_2 AND AveBedrms IS term_2",
+              "stage_1/stage_1_block_3::Population IS term_1 AND AveOccup IS term_1",
+              "stage_1/stage_1_block_3::Population IS term_2 AND AveOccup IS term_1",
+              "stage_1/stage_1_block_3::Population IS term_1 AND AveOccup IS term_2",
+              "stage_1/stage_1_block_3::Population IS term_2 AND AveOccup IS term_2",
+              "stage_1/stage_1_block_4::Latitude IS term_1 AND Longitude IS term_1",
+              "stage_1/stage_1_block_4::Latitude IS term_1 AND Longitude IS term_2",
+              "stage_1/stage_1_block_4::Latitude IS term_2 AND Longitude IS term_1",
+              "stage_1/stage_1_block_4::Latitude IS term_2 AND Longitude IS term_2",
+              "deep_decision::stage_1_block_1_concept_1 IS low AND stage_1_block_2_concept_2 IS low",
+              "deep_decision::stage_1_block_1_concept_2 IS low AND stage_1_block_2_concept_2 IS low",
+              "deep_decision::stage_1_block_1_concept_2 IS high AND stage_1_block_2_concept_2 IS low",
+              "deep_decision::stage_1_block_1_concept_1 IS high AND stage_1_block_2_concept_2 IS low"
+            ],
+            "generated:hidden": [
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_2",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_2",
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_1",
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_2",
+              "stage_1/stage_1_block_2::AveRooms IS term_2 AND AveBedrms IS term_1",
+              "stage_1/stage_1_block_2::AveRooms IS term_2 AND AveBedrms IS term_2",
+              "stage_1/stage_1_block_3::Population IS term_1 AND AveOccup IS term_1",
+              "stage_1/stage_1_block_3::Population IS term_2 AND AveOccup IS term_1",
+              "stage_1/stage_1_block_3::Population IS term_1 AND AveOccup IS term_2",
+              "stage_1/stage_1_block_3::Population IS term_2 AND AveOccup IS term_2",
+              "stage_1/stage_1_block_4::Latitude IS term_1 AND Longitude IS term_1",
+              "stage_1/stage_1_block_4::Latitude IS term_1 AND Longitude IS term_2",
+              "stage_1/stage_1_block_4::Latitude IS term_2 AND Longitude IS term_1",
+              "stage_1/stage_1_block_4::Latitude IS term_2 AND Longitude IS term_2"
+            ],
+            "generated:decision": [
+              "deep_decision::stage_1_block_1_concept_1 IS low AND stage_1_block_2_concept_2 IS low",
+              "deep_decision::stage_1_block_1_concept_2 IS low AND stage_1_block_2_concept_2 IS low",
+              "deep_decision::stage_1_block_1_concept_2 IS high AND stage_1_block_2_concept_2 IS low",
+              "deep_decision::stage_1_block_1_concept_1 IS high AND stage_1_block_2_concept_2 IS low"
+            ],
+            "active:all": [
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_2",
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_1",
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_2",
+              "stage_1/stage_1_block_2::AveRooms IS term_2 AND AveBedrms IS term_1"
+            ],
+            "active:hidden": [
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_2",
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_1",
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_2",
+              "stage_1/stage_1_block_2::AveRooms IS term_2 AND AveBedrms IS term_1"
+            ],
+            "active:decision": []
+          }
+        },
+        {
+          "model_name": "deep_article_demo",
+          "family": "ruflex",
+          "train_metrics": {
+            "mse": 0.6296677589416504,
+            "mae": 0.5891759991645813,
+            "rmse": 0.7935160735244438,
+            "r2": 0.5218075028215621
+          },
+          "test_metrics": {
+            "mse": 0.6164704466662285,
+            "mae": 0.5859758135442309,
+            "rmse": 0.7851563198919235,
+            "r2": 0.5476671703840204
+          },
+          "structural_metrics": {
+            "total_rules": 36.0,
+            "active_rules": 5.0,
+            "stages": 2.0,
+            "hidden_blocks": 8.0,
+            "hidden_concepts": 16.0
+          },
+          "explainability_metrics": {
+            "decision_top1_mass": 0.6777839660644531,
+            "decision_top3_mass": 1.0,
+            "decision_entropy": 0.7617483139038086,
+            "hidden_top1_mass": 0.7016393840418039,
+            "hidden_top3_mass": 0.8644178137498435,
+            "hidden_entropy": 0.42425678098646813
+          },
+          "stability_artifacts": {
+            "generated:stage_1/stage_1_block_1": [
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_2",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_2"
+            ],
+            "active:stage_1/stage_1_block_1": [
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_2"
+            ],
+            "generated:stage_1/stage_1_block_2": [
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_1",
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_2",
+              "stage_1/stage_1_block_2::AveRooms IS term_2 AND AveBedrms IS term_1",
+              "stage_1/stage_1_block_2::AveRooms IS term_2 AND AveBedrms IS term_2"
+            ],
+            "active:stage_1/stage_1_block_2": [],
+            "generated:stage_1/stage_1_block_3": [
+              "stage_1/stage_1_block_3::Population IS term_1 AND AveOccup IS term_1",
+              "stage_1/stage_1_block_3::Population IS term_2 AND AveOccup IS term_1",
+              "stage_1/stage_1_block_3::Population IS term_1 AND AveOccup IS term_2",
+              "stage_1/stage_1_block_3::Population IS term_2 AND AveOccup IS term_2"
+            ],
+            "active:stage_1/stage_1_block_3": [],
+            "generated:stage_1/stage_1_block_4": [
+              "stage_1/stage_1_block_4::Latitude IS term_1 AND Longitude IS term_1",
+              "stage_1/stage_1_block_4::Latitude IS term_1 AND Longitude IS term_2",
+              "stage_1/stage_1_block_4::Latitude IS term_2 AND Longitude IS term_1",
+              "stage_1/stage_1_block_4::Latitude IS term_2 AND Longitude IS term_2"
+            ],
+            "active:stage_1/stage_1_block_4": [],
+            "generated:stage_2/stage_2_block_1": [
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS high AND stage_1_block_1_concept_2 IS high",
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS low AND stage_1_block_1_concept_2 IS low",
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS high AND stage_1_block_1_concept_2 IS low",
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS low AND stage_1_block_1_concept_2 IS high"
+            ],
+            "active:stage_2/stage_2_block_1": [
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS low AND stage_1_block_1_concept_2 IS low",
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS high AND stage_1_block_1_concept_2 IS low"
+            ],
+            "generated:stage_2/stage_2_block_2": [
+              "stage_2/stage_2_block_2::stage_1_block_2_concept_1 IS low AND stage_1_block_2_concept_2 IS low",
+              "stage_2/stage_2_block_2::stage_1_block_2_concept_1 IS low AND stage_1_block_2_concept_2 IS high",
+              "stage_2/stage_2_block_2::stage_1_block_2_concept_1 IS high AND stage_1_block_2_concept_2 IS low",
+              "stage_2/stage_2_block_2::stage_1_block_2_concept_1 IS high AND stage_1_block_2_concept_2 IS high"
+            ],
+            "active:stage_2/stage_2_block_2": [],
+            "generated:stage_2/stage_2_block_3": [
+              "stage_2/stage_2_block_3::stage_1_block_3_concept_1 IS low AND stage_1_block_3_concept_2 IS low",
+              "stage_2/stage_2_block_3::stage_1_block_3_concept_1 IS low AND stage_1_block_3_concept_2 IS high",
+              "stage_2/stage_2_block_3::stage_1_block_3_concept_1 IS high AND stage_1_block_3_concept_2 IS low",
+              "stage_2/stage_2_block_3::stage_1_block_3_concept_1 IS high AND stage_1_block_3_concept_2 IS high"
+            ],
+            "active:stage_2/stage_2_block_3": [],
+            "generated:stage_2/stage_2_block_4": [
+              "stage_2/stage_2_block_4::stage_1_block_4_concept_1 IS low AND stage_1_block_4_concept_2 IS low",
+              "stage_2/stage_2_block_4::stage_1_block_4_concept_1 IS low AND stage_1_block_4_concept_2 IS high",
+              "stage_2/stage_2_block_4::stage_1_block_4_concept_1 IS high AND stage_1_block_4_concept_2 IS low",
+              "stage_2/stage_2_block_4::stage_1_block_4_concept_1 IS high AND stage_1_block_4_concept_2 IS high"
+            ],
+            "active:stage_2/stage_2_block_4": [],
+            "generated:deep_decision": [
+              "deep_decision::stage_2_block_1_concept_1 IS low AND stage_2_block_3_concept_1 IS low",
+              "deep_decision::stage_2_block_1_concept_2 IS low AND stage_2_block_3_concept_1 IS low",
+              "deep_decision::stage_2_block_1_concept_1 IS high AND stage_2_block_3_concept_1 IS low",
+              "deep_decision::stage_2_block_1_concept_2 IS high AND stage_2_block_3_concept_1 IS low"
+            ],
+            "active:deep_decision": [
+              "deep_decision::stage_2_block_1_concept_2 IS low AND stage_2_block_3_concept_1 IS low"
+            ],
+            "generated:all": [
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_2",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_2",
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_1",
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_2",
+              "stage_1/stage_1_block_2::AveRooms IS term_2 AND AveBedrms IS term_1",
+              "stage_1/stage_1_block_2::AveRooms IS term_2 AND AveBedrms IS term_2",
+              "stage_1/stage_1_block_3::Population IS term_1 AND AveOccup IS term_1",
+              "stage_1/stage_1_block_3::Population IS term_2 AND AveOccup IS term_1",
+              "stage_1/stage_1_block_3::Population IS term_1 AND AveOccup IS term_2",
+              "stage_1/stage_1_block_3::Population IS term_2 AND AveOccup IS term_2",
+              "stage_1/stage_1_block_4::Latitude IS term_1 AND Longitude IS term_1",
+              "stage_1/stage_1_block_4::Latitude IS term_1 AND Longitude IS term_2",
+              "stage_1/stage_1_block_4::Latitude IS term_2 AND Longitude IS term_1",
+              "stage_1/stage_1_block_4::Latitude IS term_2 AND Longitude IS term_2",
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS high AND stage_1_block_1_concept_2 IS high",
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS low AND stage_1_block_1_concept_2 IS low",
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS high AND stage_1_block_1_concept_2 IS low",
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS low AND stage_1_block_1_concept_2 IS high",
+              "stage_2/stage_2_block_2::stage_1_block_2_concept_1 IS low AND stage_1_block_2_concept_2 IS low",
+              "stage_2/stage_2_block_2::stage_1_block_2_concept_1 IS low AND stage_1_block_2_concept_2 IS high",
+              "stage_2/stage_2_block_2::stage_1_block_2_concept_1 IS high AND stage_1_block_2_concept_2 IS low",
+              "stage_2/stage_2_block_2::stage_1_block_2_concept_1 IS high AND stage_1_block_2_concept_2 IS high",
+              "stage_2/stage_2_block_3::stage_1_block_3_concept_1 IS low AND stage_1_block_3_concept_2 IS low",
+              "stage_2/stage_2_block_3::stage_1_block_3_concept_1 IS low AND stage_1_block_3_concept_2 IS high",
+              "stage_2/stage_2_block_3::stage_1_block_3_concept_1 IS high AND stage_1_block_3_concept_2 IS low",
+              "stage_2/stage_2_block_3::stage_1_block_3_concept_1 IS high AND stage_1_block_3_concept_2 IS high",
+              "stage_2/stage_2_block_4::stage_1_block_4_concept_1 IS low AND stage_1_block_4_concept_2 IS low",
+              "stage_2/stage_2_block_4::stage_1_block_4_concept_1 IS low AND stage_1_block_4_concept_2 IS high",
+              "stage_2/stage_2_block_4::stage_1_block_4_concept_1 IS high AND stage_1_block_4_concept_2 IS low",
+              "stage_2/stage_2_block_4::stage_1_block_4_concept_1 IS high AND stage_1_block_4_concept_2 IS high",
+              "deep_decision::stage_2_block_1_concept_1 IS low AND stage_2_block_3_concept_1 IS low",
+              "deep_decision::stage_2_block_1_concept_2 IS low AND stage_2_block_3_concept_1 IS low",
+              "deep_decision::stage_2_block_1_concept_1 IS high AND stage_2_block_3_concept_1 IS low",
+              "deep_decision::stage_2_block_1_concept_2 IS high AND stage_2_block_3_concept_1 IS low"
+            ],
+            "generated:hidden": [
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_2",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_2",
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_1",
+              "stage_1/stage_1_block_2::AveRooms IS term_1 AND AveBedrms IS term_2",
+              "stage_1/stage_1_block_2::AveRooms IS term_2 AND AveBedrms IS term_1",
+              "stage_1/stage_1_block_2::AveRooms IS term_2 AND AveBedrms IS term_2",
+              "stage_1/stage_1_block_3::Population IS term_1 AND AveOccup IS term_1",
+              "stage_1/stage_1_block_3::Population IS term_2 AND AveOccup IS term_1",
+              "stage_1/stage_1_block_3::Population IS term_1 AND AveOccup IS term_2",
+              "stage_1/stage_1_block_3::Population IS term_2 AND AveOccup IS term_2",
+              "stage_1/stage_1_block_4::Latitude IS term_1 AND Longitude IS term_1",
+              "stage_1/stage_1_block_4::Latitude IS term_1 AND Longitude IS term_2",
+              "stage_1/stage_1_block_4::Latitude IS term_2 AND Longitude IS term_1",
+              "stage_1/stage_1_block_4::Latitude IS term_2 AND Longitude IS term_2",
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS high AND stage_1_block_1_concept_2 IS high",
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS low AND stage_1_block_1_concept_2 IS low",
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS high AND stage_1_block_1_concept_2 IS low",
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS low AND stage_1_block_1_concept_2 IS high",
+              "stage_2/stage_2_block_2::stage_1_block_2_concept_1 IS low AND stage_1_block_2_concept_2 IS low",
+              "stage_2/stage_2_block_2::stage_1_block_2_concept_1 IS low AND stage_1_block_2_concept_2 IS high",
+              "stage_2/stage_2_block_2::stage_1_block_2_concept_1 IS high AND stage_1_block_2_concept_2 IS low",
+              "stage_2/stage_2_block_2::stage_1_block_2_concept_1 IS high AND stage_1_block_2_concept_2 IS high",
+              "stage_2/stage_2_block_3::stage_1_block_3_concept_1 IS low AND stage_1_block_3_concept_2 IS low",
+              "stage_2/stage_2_block_3::stage_1_block_3_concept_1 IS low AND stage_1_block_3_concept_2 IS high",
+              "stage_2/stage_2_block_3::stage_1_block_3_concept_1 IS high AND stage_1_block_3_concept_2 IS low",
+              "stage_2/stage_2_block_3::stage_1_block_3_concept_1 IS high AND stage_1_block_3_concept_2 IS high",
+              "stage_2/stage_2_block_4::stage_1_block_4_concept_1 IS low AND stage_1_block_4_concept_2 IS low",
+              "stage_2/stage_2_block_4::stage_1_block_4_concept_1 IS low AND stage_1_block_4_concept_2 IS high",
+              "stage_2/stage_2_block_4::stage_1_block_4_concept_1 IS high AND stage_1_block_4_concept_2 IS low",
+              "stage_2/stage_2_block_4::stage_1_block_4_concept_1 IS high AND stage_1_block_4_concept_2 IS high"
+            ],
+            "generated:decision": [
+              "deep_decision::stage_2_block_1_concept_1 IS low AND stage_2_block_3_concept_1 IS low",
+              "deep_decision::stage_2_block_1_concept_2 IS low AND stage_2_block_3_concept_1 IS low",
+              "deep_decision::stage_2_block_1_concept_1 IS high AND stage_2_block_3_concept_1 IS low",
+              "deep_decision::stage_2_block_1_concept_2 IS high AND stage_2_block_3_concept_1 IS low"
+            ],
+            "active:all": [
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_2",
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS low AND stage_1_block_1_concept_2 IS low",
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS high AND stage_1_block_1_concept_2 IS low",
+              "deep_decision::stage_2_block_1_concept_2 IS low AND stage_2_block_3_concept_1 IS low"
+            ],
+            "active:hidden": [
+              "stage_1/stage_1_block_1::MedInc IS term_1 AND HouseAge IS term_1",
+              "stage_1/stage_1_block_1::MedInc IS term_2 AND HouseAge IS term_2",
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS low AND stage_1_block_1_concept_2 IS low",
+              "stage_2/stage_2_block_1::stage_1_block_1_concept_1 IS high AND stage_1_block_1_concept_2 IS low"
+            ],
+            "active:decision": [
+              "deep_decision::stage_2_block_1_concept_2 IS low AND stage_2_block_3_concept_1 IS low"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,234 @@
+{
+  "MedInc": {
+    "name": "MedInc",
+    "membership": {
+      "kind": "gaussian",
+      "term_names": [
+        "term_1",
+        "term_2",
+        "term_3"
+      ],
+      "centers": [
+        0.4999,
+        7.75,
+        15.0001
+      ],
+      "spreads": [
+        7.2501,
+        7.2501,
+        7.2501
+      ],
+      "min_spread": 0.001
+    },
+    "value_range": [
+      0.4999,
+      15.0001
+    ],
+    "data_type": "continuous",
+    "role": "input",
+    "normalization": "standard"
+  },
+  "HouseAge": {
+    "name": "HouseAge",
+    "membership": {
+      "kind": "gaussian",
+      "term_names": [
+        "term_1",
+        "term_2",
+        "term_3"
+      ],
+      "centers": [
+        1.0,
+        26.5,
+        52.0
+      ],
+      "spreads": [
+        25.5,
+        25.5,
+        25.5
+      ],
+      "min_spread": 0.001
+    },
+    "value_range": [
+      1.0,
+      52.0
+    ],
+    "data_type": "continuous",
+    "role": "input",
+    "normalization": "standard"
+  },
+  "AveRooms": {
+    "name": "AveRooms",
+    "membership": {
+      "kind": "gaussian",
+      "term_names": [
+        "term_1",
+        "term_2",
+        "term_3"
+      ],
+      "centers": [
+        0.8461538461538461,
+        71.37762237762237,
+        141.9090909090909
+      ],
+      "spreads": [
+        70.53146853146853,
+        70.53146853146853,
+        70.53146853146853
+      ],
+      "min_spread": 0.001
+    },
+    "value_range": [
+      0.8461538461538461,
+      141.9090909090909
+    ],
+    "data_type": "continuous",
+    "role": "input",
+    "normalization": "standard"
+  },
+  "AveBedrms": {
+    "name": "AveBedrms",
+    "membership": {
+      "kind": "gaussian",
+      "term_names": [
+        "term_1",
+        "term_2",
+        "term_3"
+      ],
+      "centers": [
+        0.3333333333333333,
+        17.2,
+        34.06666666666667
+      ],
+      "spreads": [
+        16.866666666666667,
+        16.866666666666667,
+        16.866666666666667
+      ],
+      "min_spread": 0.001
+    },
+    "value_range": [
+      0.3333333333333333,
+      34.06666666666667
+    ],
+    "data_type": "continuous",
+    "role": "input",
+    "normalization": "standard"
+  },
+  "Population": {
+    "name": "Population",
+    "membership": {
+      "kind": "gaussian",
+      "term_names": [
+        "term_1",
+        "term_2",
+        "term_3"
+      ],
+      "centers": [
+        3.0,
+        17842.5,
+        35682.0
+      ],
+      "spreads": [
+        17839.5,
+        17839.5,
+        17839.5
+      ],
+      "min_spread": 0.001
+    },
+    "value_range": [
+      3.0,
+      35682.0
+    ],
+    "data_type": "continuous",
+    "role": "input",
+    "normalization": "standard"
+  },
+  "AveOccup": {
+    "name": "AveOccup",
+    "membership": {
+      "kind": "gaussian",
+      "term_names": [
+        "term_1",
+        "term_2",
+        "term_3"
+      ],
+      "centers": [
+        0.6923076923076923,
+        622.0128205128206,
+        1243.3333333333333
+      ],
+      "spreads": [
+        621.3205128205128,
+        621.3205128205128,
+        621.3205128205128
+      ],
+      "min_spread": 0.001
+    },
+    "value_range": [
+      0.6923076923076923,
+      1243.3333333333333
+    ],
+    "data_type": "continuous",
+    "role": "input",
+    "normalization": "standard"
+  },
+  "Latitude": {
+    "name": "Latitude",
+    "membership": {
+      "kind": "gaussian",
+      "term_names": [
+        "term_1",
+        "term_2",
+        "term_3"
+      ],
+      "centers": [
+        32.54,
+        37.245000000000005,
+        41.95
+      ],
+      "spreads": [
+        4.705000000000002,
+        4.705000000000002,
+        4.705000000000002
+      ],
+      "min_spread": 0.001
+    },
+    "value_range": [
+      32.54,
+      41.95
+    ],
+    "data_type": "continuous",
+    "role": "input",
+    "normalization": "standard"
+  },
+  "Longitude": {
+    "name": "Longitude",
+    "membership": {
+      "kind": "gaussian",
+      "term_names": [
+        "term_1",
+        "term_2",
+        "term_3"
+      ],
+      "centers": [
+        -124.35,
+        -119.33,
+        -114.31
+      ],
+      "spreads": [
+        5.019999999999996,
+        5.019999999999996,
+        5.019999999999996
+      ],
+      "min_spread": 0.001
+    },
+    "value_range": [
+      -124.35,
+      -114.31
+    ],
+    "data_type": "continuous",
+    "role": "input",
+    "normalization": "standard"
+  }
+}

@@ -1,0 +1,30 @@
+PROJECT REPORT
+name: covtype_binary_geo-flat_interpretable
+task_type: binary_classification
+model_kind: flat_neuro_fuzzy
+dataset_rows: 6000
+dataset_columns: 11
+training_source: bootstrap_plus_finetuning
+train_metrics: {'accuracy': 0.503333330154419, 'precision': 0.0, 'recall': 0.0, 'f1': 0.0}
+validation_metrics: {'accuracy': 0.5091666579246521, 'precision': 0.0, 'recall': 0.0, 'f1': 0.0}
+test_metrics: {'accuracy': 0.48083333333333333, 'precision': 0.0, 'recall': 0.0, 'f1': 0.0}
+
+MODEL REPORT
+Input dimension: 10
+
+STAGE 0: flat_stage
+Output dimension: 2
+  BLOCK 0: flat_feature_block
+    Inputs: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    Outputs: [flat_concept_1, flat_concept_2]
+    RULE 0 (flat_feature_block_0): IF Aspect IS term_1 AND Horizontal_Distance_To_Hydrology IS term_1 THEN flat_concept_1=0.852, flat_concept_2=0.137 [gate=0.835]
+    RULE 1 (flat_feature_block_1): IF Horizontal_Distance_To_Hydrology IS term_1 AND Hillshade_3pm IS term_1 THEN flat_concept_1=0.852, flat_concept_2=0.137 [gate=0.820]
+    RULE 2 (flat_feature_block_2): IF Aspect IS term_1 AND Hillshade_3pm IS term_1 THEN flat_concept_1=0.852, flat_concept_2=0.137 [gate=0.807]
+    RULE 3 (flat_feature_block_3): IF Slope IS term_1 AND Horizontal_Distance_To_Hydrology IS term_1 THEN flat_concept_1=0.137, flat_concept_2=0.863 [gate=0.230]
+
+DECISION LAYER: flat_decision
+Output dimension: 1
+  RULE 0 (flat_decision_0): IF flat_concept_1 IS high AND flat_concept_2 IS low THEN target = -0.014 - 0.011*flat_concept_1 - 0.004*flat_concept_2 [gate=0.835]
+  RULE 1 (flat_decision_1): IF flat_concept_1 IS low AND flat_concept_2 IS low THEN target = -0.014 - 0.011*flat_concept_1 - 0.005*flat_concept_2 [gate=0.245]
+  RULE 2 (flat_decision_2): IF flat_concept_1 IS high AND flat_concept_2 IS high THEN target = -0.014 - 0.011*flat_concept_1 - 0.005*flat_concept_2 [gate=0.245]
+  RULE 3 (flat_decision_3): IF flat_concept_1 IS low AND flat_concept_2 IS high THEN target = -0.014 - 0.012*flat_concept_1 - 0.005*flat_concept_2 [gate=0.230]

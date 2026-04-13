@@ -1,0 +1,24 @@
+{
+  "name": "california_housing_regression-deep_article_demo",
+  "task_type": "regression",
+  "model_kind": "deep_fuzzy_feature_learning",
+  "target_name": "MedHouseVal",
+  "feature_count": 8,
+  "variable_count": 8,
+  "variable_roles": {
+    "input": 8
+  },
+  "dataset_rows": 4096,
+  "dataset_columns": 9,
+  "has_model": true,
+  "has_training_summary": true,
+  "experiment_count": 1,
+  "study_run_count": 0,
+  "manual_rule_targets": 0,
+  "test_metrics": {
+    "mse": 0.7045074623216705,
+    "mae": 0.6081621997505514,
+    "rmse": 0.8393494280224837,
+    "r2": 0.4297909879475047
+  }
+}

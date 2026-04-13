@@ -1,0 +1,22 @@
+{
+  "training_source": "bootstrap_plus_finetuning",
+  "epochs_ran": 20,
+  "train_metrics": {
+    "accuracy": 0.5066666603088379,
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1": 0.0
+  },
+  "validation_metrics": {
+    "accuracy": 0.49000000953674316,
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1": 0.0
+  },
+  "test_metrics": {
+    "accuracy": 0.49,
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1": 0.0
+  }
+}

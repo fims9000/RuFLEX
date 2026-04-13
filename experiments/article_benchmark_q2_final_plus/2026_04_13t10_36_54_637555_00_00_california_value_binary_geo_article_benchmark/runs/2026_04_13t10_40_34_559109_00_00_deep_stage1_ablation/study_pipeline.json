@@ -1,0 +1,9 @@
+{
+  "name": "deep_stage1_ablation",
+  "label": "Deep Depth 1",
+  "workspace_template": "deep_article_demo",
+  "training_preset": "article_demo",
+  "training_preset_override": null,
+  "article_role": "depth_ablation",
+  "kind": "ad_hoc_benchmark_variant"
+}

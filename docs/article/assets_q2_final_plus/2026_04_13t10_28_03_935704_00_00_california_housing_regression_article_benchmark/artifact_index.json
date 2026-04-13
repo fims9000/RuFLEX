@@ -1,0 +1,53 @@
+{
+  "benchmark_dir": "/home/lebedeffson/Code/neurofuzzy_analysis/experiments/article_benchmark_q2_final_plus/2026_04_13t10_28_03_935704_00_00_california_housing_regression_article_benchmark",
+  "artifacts": [
+    {
+      "model_name": "flat_baseline",
+      "model_label": "Flat Baseline",
+      "article_role": "baseline",
+      "study_pipeline": "flat_baseline_benchmark",
+      "export_dir": "/home/lebedeffson/Code/neurofuzzy_analysis/experiments/article_benchmark_q2_final_plus/2026_04_13t10_28_03_935704_00_00_california_housing_regression_article_benchmark/runs/2026_04_13t10_30_42_120282_00_00_flat_baseline_benchmark",
+      "best_seed": 23
+    },
+    {
+      "model_name": "flat_interpretable",
+      "model_label": "Flat Interpretable",
+      "article_role": "interpretable_baseline",
+      "study_pipeline": "interpretable_flat_study",
+      "export_dir": "/home/lebedeffson/Code/neurofuzzy_analysis/experiments/article_benchmark_q2_final_plus/2026_04_13t10_28_03_935704_00_00_california_housing_regression_article_benchmark/runs/2026_04_13t10_31_08_358193_00_00_interpretable_flat_study",
+      "best_seed": 23
+    },
+    {
+      "model_name": "deep_stage1_ablation",
+      "model_label": "Deep Depth 1",
+      "article_role": "depth_ablation",
+      "study_pipeline": null,
+      "export_dir": "/home/lebedeffson/Code/neurofuzzy_analysis/experiments/article_benchmark_q2_final_plus/2026_04_13t10_28_03_935704_00_00_california_housing_regression_article_benchmark/runs/2026_04_13t10_31_27_868531_00_00_deep_stage1_ablation",
+      "best_seed": 23
+    },
+    {
+      "model_name": "deep_article_demo",
+      "model_label": "Deep Article Demo",
+      "article_role": "primary_deep_model",
+      "study_pipeline": "deep_article_demo",
+      "export_dir": "/home/lebedeffson/Code/neurofuzzy_analysis/experiments/article_benchmark_q2_final_plus/2026_04_13t10_28_03_935704_00_00_california_housing_regression_article_benchmark/runs/2026_04_13t10_31_58_559415_00_00_deep_article_demo",
+      "best_seed": 23
+    },
+    {
+      "model_name": "deep_research_no_regularization",
+      "model_label": "Deep No Regularization",
+      "article_role": "regularization_ablation",
+      "study_pipeline": null,
+      "export_dir": "/home/lebedeffson/Code/neurofuzzy_analysis/experiments/article_benchmark_q2_final_plus/2026_04_13t10_28_03_935704_00_00_california_housing_regression_article_benchmark/runs/2026_04_13t10_32_41_045427_00_00_deep_research_no_regularization",
+      "best_seed": 23
+    },
+    {
+      "model_name": "deep_research",
+      "model_label": "Deep Research",
+      "article_role": "extended_deep_model",
+      "study_pipeline": "deep_research_study",
+      "export_dir": "/home/lebedeffson/Code/neurofuzzy_analysis/experiments/article_benchmark_q2_final_plus/2026_04_13t10_28_03_935704_00_00_california_housing_regression_article_benchmark/runs/2026_04_13t10_33_27_530962_00_00_deep_research_study",
+      "best_seed": 23
+    }
+  ]
+}

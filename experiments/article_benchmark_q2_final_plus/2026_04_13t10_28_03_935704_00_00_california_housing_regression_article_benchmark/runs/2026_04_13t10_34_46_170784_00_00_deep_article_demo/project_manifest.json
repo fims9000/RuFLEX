@@ -1,0 +1,1749 @@
+{
+  "name": "california_housing_regression-deep_article_demo",
+  "task_type": "regression",
+  "description": null,
+  "dataset_config": {
+    "target_column": "MedHouseVal",
+    "feature_columns": null,
+    "validation_fraction": 0.2,
+    "test_fraction": 0.2,
+    "normalization": "standard",
+    "fill_missing": "median",
+    "random_state": 47
+  },
+  "variables": [
+    {
+      "name": "MedInc",
+      "membership": {
+        "kind": "gaussian",
+        "term_names": [
+          "term_1",
+          "term_2",
+          "term_3"
+        ],
+        "centers": [
+          0.4999,
+          7.75,
+          15.0001
+        ],
+        "spreads": [
+          7.2501,
+          7.2501,
+          7.2501
+        ],
+        "min_spread": 0.001
+      },
+      "value_range": [
+        0.4999,
+        15.0001
+      ],
+      "data_type": "continuous",
+      "role": "input",
+      "normalization": "standard"
+    },
+    {
+      "name": "HouseAge",
+      "membership": {
+        "kind": "gaussian",
+        "term_names": [
+          "term_1",
+          "term_2",
+          "term_3"
+        ],
+        "centers": [
+          1.0,
+          26.5,
+          52.0
+        ],
+        "spreads": [
+          25.5,
+          25.5,
+          25.5
+        ],
+        "min_spread": 0.001
+      },
+      "value_range": [
+        1.0,
+        52.0
+      ],
+      "data_type": "continuous",
+      "role": "input",
+      "normalization": "standard"
+    },
+    {
+      "name": "AveRooms",
+      "membership": {
+        "kind": "gaussian",
+        "term_names": [
+          "term_1",
+          "term_2",
+          "term_3"
+        ],
+        "centers": [
+          0.8461538461538461,
+          66.68974358974359,
+          132.53333333333333
+        ],
+        "spreads": [
+          65.84358974358975,
+          65.84358974358975,
+          65.84358974358975
+        ],
+        "min_spread": 0.001
+      },
+      "value_range": [
+        0.8461538461538461,
+        132.53333333333333
+      ],
+      "data_type": "continuous",
+      "role": "input",
+      "normalization": "standard"
+    },
+    {
+      "name": "AveBedrms",
+      "membership": {
+        "kind": "gaussian",
+        "term_names": [
+          "term_1",
+          "term_2",
+          "term_3"
+        ],
+        "centers": [
+          0.5,
+          17.283333333333335,
+          34.06666666666667
+        ],
+        "spreads": [
+          16.783333333333335,
+          16.783333333333335,
+          16.783333333333335
+        ],
+        "min_spread": 0.001
+      },
+      "value_range": [
+        0.5,
+        34.06666666666667
+      ],
+      "data_type": "continuous",
+      "role": "input",
+      "normalization": "standard"
+    },
+    {
+      "name": "Population",
+      "membership": {
+        "kind": "gaussian",
+        "term_names": [
+          "term_1",
+          "term_2",
+          "term_3"
+        ],
+        "centers": [
+          8.0,
+          8065.0,
+          16122.0
+        ],
+        "spreads": [
+          8057.0,
+          8057.0,
+          8057.0
+        ],
+        "min_spread": 0.001
+      },
+      "value_range": [
+        8.0,
+        16122.0
+      ],
+      "data_type": "continuous",
+      "role": "input",
+      "normalization": "standard"
+    },
+    {
+      "name": "AveOccup",
+      "membership": {
+        "kind": "gaussian",
+        "term_names": [
+          "term_1",
+          "term_2",
+          "term_3"
+        ],
+        "centers": [
+          1.2635658914728682,
+          42.21749723145072,
+          83.17142857142858
+        ],
+        "spreads": [
+          40.953931339977856,
+          40.953931339977856,
+          40.953931339977856
+        ],
+        "min_spread": 0.001
+      },
+      "value_range": [
+        1.2635658914728682,
+        83.17142857142858
+      ],
+      "data_type": "continuous",
+      "role": "input",
+      "normalization": "standard"
+    },
+    {
+      "name": "Latitude",
+      "membership": {
+        "kind": "gaussian",
+        "term_names": [
+          "term_1",
+          "term_2",
+          "term_3"
+        ],
+        "centers": [
+          32.54,
+          37.175,
+          41.81
+        ],
+        "spreads": [
+          4.635000000000002,
+          4.635000000000002,
+          4.635000000000002
+        ],
+        "min_spread": 0.001
+      },
+      "value_range": [
+        32.54,
+        41.81
+      ],
+      "data_type": "continuous",
+      "role": "input",
+      "normalization": "standard"
+    },
+    {
+      "name": "Longitude",
+      "membership": {
+        "kind": "gaussian",
+        "term_names": [
+          "term_1",
+          "term_2",
+          "term_3"
+        ],
+        "centers": [
+          -124.19,
+          -119.38499999999999,
+          -114.58
+        ],
+        "spreads": [
+          4.805,
+          4.805,
+          4.805
+        ],
+        "min_spread": 0.001
+      },
+      "value_range": [
+        -124.19,
+        -114.58
+      ],
+      "data_type": "continuous",
+      "role": "input",
+      "normalization": "standard"
+    }
+  ],
+  "model_kind": "deep_fuzzy_feature_learning",
+  "model_spec": {
+    "kind": "deep_fuzzy_feature_learning",
+    "input_dim": 8,
+    "stages": [
+      {
+        "name": "stage_1",
+        "blocks": [
+          {
+            "name": "stage_1_block_1",
+            "input_indices": [
+              0,
+              1
+            ],
+            "variables": [
+              {
+                "name": "MedInc",
+                "membership": {
+                  "kind": "gaussian",
+                  "term_names": [
+                    "term_1",
+                    "term_2",
+                    "term_3"
+                  ],
+                  "centers": [
+                    0.4999,
+                    7.75,
+                    15.0001
+                  ],
+                  "spreads": [
+                    7.2501,
+                    7.2501,
+                    7.2501
+                  ],
+                  "min_spread": 0.001
+                },
+                "value_range": [
+                  0.4999,
+                  15.0001
+                ],
+                "data_type": "continuous",
+                "role": "input",
+                "normalization": "standard"
+              },
+              {
+                "name": "HouseAge",
+                "membership": {
+                  "kind": "gaussian",
+                  "term_names": [
+                    "term_1",
+                    "term_2",
+                    "term_3"
+                  ],
+                  "centers": [
+                    1.0,
+                    26.5,
+                    52.0
+                  ],
+                  "spreads": [
+                    25.5,
+                    25.5,
+                    25.5
+                  ],
+                  "min_spread": 0.001
+                },
+                "value_range": [
+                  1.0,
+                  52.0
+                ],
+                "data_type": "continuous",
+                "role": "input",
+                "normalization": "standard"
+              }
+            ],
+            "n_concepts": 2,
+            "concept_names": [
+              "stage_1_block_1_concept_1",
+              "stage_1_block_1_concept_2"
+            ],
+            "max_rule_arity": 2,
+            "max_rules": 4,
+            "gate_init": 0.0,
+            "rule_base": null,
+            "rule_generation_mode": "prototype",
+            "prototype_term_limit": 2,
+            "prototype_variable_pool_size": null,
+            "prototype_sample_size": 256
+          },
+          {
+            "name": "stage_1_block_2",
+            "input_indices": [
+              2,
+              3
+            ],
+            "variables": [
+              {
+                "name": "AveRooms",
+                "membership": {
+                  "kind": "gaussian",
+                  "term_names": [
+                    "term_1",
+                    "term_2",
+                    "term_3"
+                  ],
+                  "centers": [
+                    0.8461538461538461,
+                    66.68974358974359,
+                    132.53333333333333
+                  ],
+                  "spreads": [
+                    65.84358974358975,
+                    65.84358974358975,
+                    65.84358974358975
+                  ],
+                  "min_spread": 0.001
+                },
+                "value_range": [
+                  0.8461538461538461,
+                  132.53333333333333
+                ],
+                "data_type": "continuous",
+                "role": "input",
+                "normalization": "standard"
+              },
+              {
+                "name": "AveBedrms",
+                "membership": {
+                  "kind": "gaussian",
+                  "term_names": [
+                    "term_1",
+                    "term_2",
+                    "term_3"
+                  ],
+                  "centers": [
+                    0.5,
+                    17.283333333333335,
+                    34.06666666666667
+                  ],
+                  "spreads": [
+                    16.783333333333335,
+                    16.783333333333335,
+                    16.783333333333335
+                  ],
+                  "min_spread": 0.001
+                },
+                "value_range": [
+                  0.5,
+                  34.06666666666667
+                ],
+                "data_type": "continuous",
+                "role": "input",
+                "normalization": "standard"
+              }
+            ],
+            "n_concepts": 2,
+            "concept_names": [
+              "stage_1_block_2_concept_1",
+              "stage_1_block_2_concept_2"
+            ],
+            "max_rule_arity": 2,
+            "max_rules": 4,
+            "gate_init": 0.0,
+            "rule_base": null,
+            "rule_generation_mode": "prototype",
+            "prototype_term_limit": 2,
+            "prototype_variable_pool_size": null,
+            "prototype_sample_size": 256
+          },
+          {
+            "name": "stage_1_block_3",
+            "input_indices": [
+              4,
+              5
+            ],
+            "variables": [
+              {
+                "name": "Population",
+                "membership": {
+                  "kind": "gaussian",
+                  "term_names": [
+                    "term_1",
+                    "term_2",
+                    "term_3"
+                  ],
+                  "centers": [
+                    8.0,
+                    8065.0,
+                    16122.0
+                  ],
+                  "spreads": [
+                    8057.0,
+                    8057.0,
+                    8057.0
+                  ],
+                  "min_spread": 0.001
+                },
+                "value_range": [
+                  8.0,
+                  16122.0
+                ],
+                "data_type": "continuous",
+                "role": "input",
+                "normalization": "standard"
+              },
+              {
+                "name": "AveOccup",
+                "membership": {
+                  "kind": "gaussian",
+                  "term_names": [
+                    "term_1",
+                    "term_2",
+                    "term_3"
+                  ],
+                  "centers": [
+                    1.2635658914728682,
+                    42.21749723145072,
+                    83.17142857142858
+                  ],
+                  "spreads": [
+                    40.953931339977856,
+                    40.953931339977856,
+                    40.953931339977856
+                  ],
+                  "min_spread": 0.001
+                },
+                "value_range": [
+                  1.2635658914728682,
+                  83.17142857142858
+                ],
+                "data_type": "continuous",
+                "role": "input",
+                "normalization": "standard"
+              }
+            ],
+            "n_concepts": 2,
+            "concept_names": [
+              "stage_1_block_3_concept_1",
+              "stage_1_block_3_concept_2"
+            ],
+            "max_rule_arity": 2,
+            "max_rules": 4,
+            "gate_init": 0.0,
+            "rule_base": null,
+            "rule_generation_mode": "prototype",
+            "prototype_term_limit": 2,
+            "prototype_variable_pool_size": null,
+            "prototype_sample_size": 256
+          },
+          {
+            "name": "stage_1_block_4",
+            "input_indices": [
+              6,
+              7
+            ],
+            "variables": [
+              {
+                "name": "Latitude",
+                "membership": {
+                  "kind": "gaussian",
+                  "term_names": [
+                    "term_1",
+                    "term_2",
+                    "term_3"
+                  ],
+                  "centers": [
+                    32.54,
+                    37.175,
+                    41.81
+                  ],
+                  "spreads": [
+                    4.635000000000002,
+                    4.635000000000002,
+                    4.635000000000002
+                  ],
+                  "min_spread": 0.001
+                },
+                "value_range": [
+                  32.54,
+                  41.81
+                ],
+                "data_type": "continuous",
+                "role": "input",
+                "normalization": "standard"
+              },
+              {
+                "name": "Longitude",
+                "membership": {
+                  "kind": "gaussian",
+                  "term_names": [
+                    "term_1",
+                    "term_2",
+                    "term_3"
+                  ],
+                  "centers": [
+                    -124.19,
+                    -119.38499999999999,
+                    -114.58
+                  ],
+                  "spreads": [
+                    4.805,
+                    4.805,
+                    4.805
+                  ],
+                  "min_spread": 0.001
+                },
+                "value_range": [
+                  -124.19,
+                  -114.58
+                ],
+                "data_type": "continuous",
+                "role": "input",
+                "normalization": "standard"
+              }
+            ],
+            "n_concepts": 2,
+            "concept_names": [
+              "stage_1_block_4_concept_1",
+              "stage_1_block_4_concept_2"
+            ],
+            "max_rule_arity": 2,
+            "max_rules": 4,
+            "gate_init": 0.0,
+            "rule_base": null,
+            "rule_generation_mode": "prototype",
+            "prototype_term_limit": 2,
+            "prototype_variable_pool_size": null,
+            "prototype_sample_size": 256
+          }
+        ]
+      },
+      {
+        "name": "stage_2",
+        "blocks": [
+          {
+            "name": "stage_2_block_1",
+            "input_indices": [
+              0,
+              1
+            ],
+            "variables": [
+              {
+                "name": "stage_1_block_1_concept_1",
+                "membership": {
+                  "kind": "gaussian",
+                  "term_names": [
+                    "low",
+                    "high"
+                  ],
+                  "centers": [
+                    0.25,
+                    0.75
+                  ],
+                  "spreads": [
+                    0.2,
+                    0.2
+                  ],
+                  "min_spread": 0.001
+                },
+                "value_range": [
+                  0.0,
+                  1.0
+                ],
+                "data_type": "continuous",
+                "role": "hidden_concept",
+                "normalization": "none"
+              },
+              {
+                "name": "stage_1_block_1_concept_2",
+                "membership": {
+                  "kind": "gaussian",
+                  "term_names": [
+                    "low",
+                    "high"
+                  ],
+                  "centers": [
+                    0.25,
+                    0.75
+                  ],
+                  "spreads": [
+                    0.2,
+                    0.2
+                  ],
+                  "min_spread": 0.001
+                },
+                "value_range": [
+                  0.0,
+                  1.0
+                ],
+                "data_type": "continuous",
+                "role": "hidden_concept",
+                "normalization": "none"
+              }
+            ],
+            "n_concepts": 2,
+            "concept_names": [
+              "stage_2_block_1_concept_1",
+              "stage_2_block_1_concept_2"
+            ],
+            "max_rule_arity": 2,
+            "max_rules": 4,
+            "gate_init": 0.0,
+            "rule_base": null,
+            "rule_generation_mode": "prototype",
+            "prototype_term_limit": 2,
+            "prototype_variable_pool_size": null,
+            "prototype_sample_size": 256
+          },
+          {
+            "name": "stage_2_block_2",
+            "input_indices": [
+              2,
+              3
+            ],
+            "variables": [
+              {
+                "name": "stage_1_block_2_concept_1",
+                "membership": {
+                  "kind": "gaussian",
+                  "term_names": [
+                    "low",
+                    "high"
+                  ],
+                  "centers": [
+                    0.25,
+                    0.75
+                  ],
+                  "spreads": [
+                    0.2,
+                    0.2
+                  ],
+                  "min_spread": 0.001
+                },
+                "value_range": [
+                  0.0,
+                  1.0
+                ],
+                "data_type": "continuous",
+                "role": "hidden_concept",
+                "normalization": "none"
+              },
+              {
+                "name": "stage_1_block_2_concept_2",
+                "membership": {
+                  "kind": "gaussian",
+                  "term_names": [
+                    "low",
+                    "high"
+                  ],
+                  "centers": [
+                    0.25,
+                    0.75
+                  ],
+                  "spreads": [
+                    0.2,
+                    0.2
+                  ],
+                  "min_spread": 0.001
+                },
+                "value_range": [
+                  0.0,
+                  1.0
+                ],
+                "data_type": "continuous",
+                "role": "hidden_concept",
+                "normalization": "none"
+              }
+            ],
+            "n_concepts": 2,
+            "concept_names": [
+              "stage_2_block_2_concept_1",
+              "stage_2_block_2_concept_2"
+            ],
+            "max_rule_arity": 2,
+            "max_rules": 4,
+            "gate_init": 0.0,
+            "rule_base": null,
+            "rule_generation_mode": "prototype",
+            "prototype_term_limit": 2,
+            "prototype_variable_pool_size": null,
+            "prototype_sample_size": 256
+          },
+          {
+            "name": "stage_2_block_3",
+            "input_indices": [
+              4,
+              5
+            ],
+            "variables": [
+              {
+                "name": "stage_1_block_3_concept_1",
+                "membership": {
+                  "kind": "gaussian",
+                  "term_names": [
+                    "low",
+                    "high"
+                  ],
+                  "centers": [
+                    0.25,
+                    0.75
+                  ],
+                  "spreads": [
+                    0.2,
+                    0.2
+                  ],
+                  "min_spread": 0.001
+                },
+                "value_range": [
+                  0.0,
+                  1.0
+                ],
+                "data_type": "continuous",
+                "role": "hidden_concept",
+                "normalization": "none"
+              },
+              {
+                "name": "stage_1_block_3_concept_2",
+                "membership": {
+                  "kind": "gaussian",
+                  "term_names": [
+                    "low",
+                    "high"
+                  ],
+                  "centers": [
+                    0.25,
+                    0.75
+                  ],
+                  "spreads": [
+                    0.2,
+                    0.2
+                  ],
+                  "min_spread": 0.001
+                },
+                "value_range": [
+                  0.0,
+                  1.0
+                ],
+                "data_type": "continuous",
+                "role": "hidden_concept",
+                "normalization": "none"
+              }
+            ],
+            "n_concepts": 2,
+            "concept_names": [
+              "stage_2_block_3_concept_1",
+              "stage_2_block_3_concept_2"
+            ],
+            "max_rule_arity": 2,
+            "max_rules": 4,
+            "gate_init": 0.0,
+            "rule_base": null,
+            "rule_generation_mode": "prototype",
+            "prototype_term_limit": 2,
+            "prototype_variable_pool_size": null,
+            "prototype_sample_size": 256
+          },
+          {
+            "name": "stage_2_block_4",
+            "input_indices": [
+              6,
+              7
+            ],
+            "variables": [
+              {
+                "name": "stage_1_block_4_concept_1",
+                "membership": {
+                  "kind": "gaussian",
+                  "term_names": [
+                    "low",
+                    "high"
+                  ],
+                  "centers": [
+                    0.25,
+                    0.75
+                  ],
+                  "spreads": [
+                    0.2,
+                    0.2
+                  ],
+                  "min_spread": 0.001
+                },
+                "value_range": [
+                  0.0,
+                  1.0
+                ],
+                "data_type": "continuous",
+                "role": "hidden_concept",
+                "normalization": "none"
+              },
+              {
+                "name": "stage_1_block_4_concept_2",
+                "membership": {
+                  "kind": "gaussian",
+                  "term_names": [
+                    "low",
+                    "high"
+                  ],
+                  "centers": [
+                    0.25,
+                    0.75
+                  ],
+                  "spreads": [
+                    0.2,
+                    0.2
+                  ],
+                  "min_spread": 0.001
+                },
+                "value_range": [
+                  0.0,
+                  1.0
+                ],
+                "data_type": "continuous",
+                "role": "hidden_concept",
+                "normalization": "none"
+              }
+            ],
+            "n_concepts": 2,
+            "concept_names": [
+              "stage_2_block_4_concept_1",
+              "stage_2_block_4_concept_2"
+            ],
+            "max_rule_arity": 2,
+            "max_rules": 4,
+            "gate_init": 0.0,
+            "rule_base": null,
+            "rule_generation_mode": "prototype",
+            "prototype_term_limit": 2,
+            "prototype_variable_pool_size": null,
+            "prototype_sample_size": 256
+          }
+        ]
+      }
+    ],
+    "decision_layer": {
+      "name": "deep_decision",
+      "variables": [
+        {
+          "name": "stage_2_block_1_concept_1",
+          "membership": {
+            "kind": "gaussian",
+            "term_names": [
+              "low",
+              "high"
+            ],
+            "centers": [
+              0.25,
+              0.75
+            ],
+            "spreads": [
+              0.2,
+              0.2
+            ],
+            "min_spread": 0.001
+          },
+          "value_range": [
+            0.0,
+            1.0
+          ],
+          "data_type": "continuous",
+          "role": "hidden_concept",
+          "normalization": "none"
+        },
+        {
+          "name": "stage_2_block_1_concept_2",
+          "membership": {
+            "kind": "gaussian",
+            "term_names": [
+              "low",
+              "high"
+            ],
+            "centers": [
+              0.25,
+              0.75
+            ],
+            "spreads": [
+              0.2,
+              0.2
+            ],
+            "min_spread": 0.001
+          },
+          "value_range": [
+            0.0,
+            1.0
+          ],
+          "data_type": "continuous",
+          "role": "hidden_concept",
+          "normalization": "none"
+        },
+        {
+          "name": "stage_2_block_2_concept_1",
+          "membership": {
+            "kind": "gaussian",
+            "term_names": [
+              "low",
+              "high"
+            ],
+            "centers": [
+              0.25,
+              0.75
+            ],
+            "spreads": [
+              0.2,
+              0.2
+            ],
+            "min_spread": 0.001
+          },
+          "value_range": [
+            0.0,
+            1.0
+          ],
+          "data_type": "continuous",
+          "role": "hidden_concept",
+          "normalization": "none"
+        },
+        {
+          "name": "stage_2_block_2_concept_2",
+          "membership": {
+            "kind": "gaussian",
+            "term_names": [
+              "low",
+              "high"
+            ],
+            "centers": [
+              0.25,
+              0.75
+            ],
+            "spreads": [
+              0.2,
+              0.2
+            ],
+            "min_spread": 0.001
+          },
+          "value_range": [
+            0.0,
+            1.0
+          ],
+          "data_type": "continuous",
+          "role": "hidden_concept",
+          "normalization": "none"
+        },
+        {
+          "name": "stage_2_block_3_concept_1",
+          "membership": {
+            "kind": "gaussian",
+            "term_names": [
+              "low",
+              "high"
+            ],
+            "centers": [
+              0.25,
+              0.75
+            ],
+            "spreads": [
+              0.2,
+              0.2
+            ],
+            "min_spread": 0.001
+          },
+          "value_range": [
+            0.0,
+            1.0
+          ],
+          "data_type": "continuous",
+          "role": "hidden_concept",
+          "normalization": "none"
+        },
+        {
+          "name": "stage_2_block_3_concept_2",
+          "membership": {
+            "kind": "gaussian",
+            "term_names": [
+              "low",
+              "high"
+            ],
+            "centers": [
+              0.25,
+              0.75
+            ],
+            "spreads": [
+              0.2,
+              0.2
+            ],
+            "min_spread": 0.001
+          },
+          "value_range": [
+            0.0,
+            1.0
+          ],
+          "data_type": "continuous",
+          "role": "hidden_concept",
+          "normalization": "none"
+        },
+        {
+          "name": "stage_2_block_4_concept_1",
+          "membership": {
+            "kind": "gaussian",
+            "term_names": [
+              "low",
+              "high"
+            ],
+            "centers": [
+              0.25,
+              0.75
+            ],
+            "spreads": [
+              0.2,
+              0.2
+            ],
+            "min_spread": 0.001
+          },
+          "value_range": [
+            0.0,
+            1.0
+          ],
+          "data_type": "continuous",
+          "role": "hidden_concept",
+          "normalization": "none"
+        },
+        {
+          "name": "stage_2_block_4_concept_2",
+          "membership": {
+            "kind": "gaussian",
+            "term_names": [
+              "low",
+              "high"
+            ],
+            "centers": [
+              0.25,
+              0.75
+            ],
+            "spreads": [
+              0.2,
+              0.2
+            ],
+            "min_spread": 0.001
+          },
+          "value_range": [
+            0.0,
+            1.0
+          ],
+          "data_type": "continuous",
+          "role": "hidden_concept",
+          "normalization": "none"
+        }
+      ],
+      "output_dim": 1,
+      "output_names": [
+        "target"
+      ],
+      "max_rule_arity": 2,
+      "max_rules": 4,
+      "gate_init": 0.0,
+      "rule_base": null,
+      "rule_generation_mode": "prototype",
+      "prototype_term_limit": 2,
+      "prototype_variable_pool_size": null,
+      "prototype_sample_size": 256
+    }
+  },
+  "training_config": {
+    "task_type": "regression",
+    "use_bootstrap_initialization": true,
+    "use_stagewise_pretraining": true,
+    "bootstrap": {
+      "hidden_high": 0.85,
+      "hidden_low": 0.15,
+      "gate_floor": 0.25,
+      "gate_ceiling": 0.85,
+      "decision_binary_target_clip": 0.05
+    },
+    "stagewise": {
+      "epochs_per_stage": 18,
+      "decision_epochs": 14,
+      "refinement_rounds": 1,
+      "learning_rate": 0.02,
+      "batch_size": 64,
+      "shuffle": true,
+      "rule_sparsity_weight": 0.0,
+      "concept_orthogonality_weight": 0.0,
+      "concept_binarization_weight": 0.0,
+      "membership_order_weight": 0.0,
+      "membership_min_gap": 0.0,
+      "membership_overlap_weight": 0.0,
+      "membership_max_overlap": 0.35,
+      "membership_coverage_weight": 0.0,
+      "membership_min_coverage": 0.6,
+      "classification_target_clip": 0.05
+    },
+    "fine_tuning": {
+      "max_epochs": 28,
+      "learning_rate": 0.001,
+      "batch_size": 32,
+      "patience": 8,
+      "min_delta": 0.0,
+      "weight_decay": 0.0,
+      "gradient_clip_norm": null,
+      "shuffle": true,
+      "device": null,
+      "classification_threshold": 0.5,
+      "rule_sparsity_weight": 0.0005,
+      "rule_length_weight": 0.0,
+      "concept_orthogonality_weight": 0.0005,
+      "concept_binarization_weight": 0.0,
+      "membership_order_weight": 0.0,
+      "membership_min_gap": 0.0,
+      "membership_overlap_weight": 0.0,
+      "membership_max_overlap": 0.35,
+      "membership_coverage_weight": 0.0,
+      "membership_min_coverage": 0.6,
+      "prune_after_fit": false,
+      "prune_threshold": 0.1,
+      "prune_temperature": 0.05,
+      "prune_keep_at_least": 1
+    },
+    "refinement": {
+      "cycles": 1,
+      "patience": null,
+      "min_delta": 0.0
+    }
+  },
+  "training_summary": {
+    "source": "stagewise_pretraining_plus_finetuning",
+    "epochs_ran": 28,
+    "best_epoch": 24,
+    "monitor_name": "validation_loss",
+    "best_monitor_value": 0.6348744034767151,
+    "train_loss": 0.6658784747123718,
+    "train_metrics": {
+      "mse": 0.6658784747123718,
+      "mae": 0.6044096350669861,
+      "rmse": 0.8160137711536318,
+      "r2": 0.5021711107621216
+    },
+    "validation_loss": 0.6348744034767151,
+    "validation_metrics": {
+      "mse": 0.6348744034767151,
+      "mae": 0.6078604459762573,
+      "rmse": 0.7967900623606666,
+      "r2": 0.507138258575931
+    },
+    "history": [
+      {
+        "epoch": 1,
+        "train_loss": 0.6739057789476702,
+        "train_metrics": {
+          "mse": 0.6739058494567871,
+          "mae": 0.6148978471755981,
+          "rmse": 0.8209176873821072,
+          "r2": 0.49616962440314993
+        },
+        "validation_loss": 0.6458846926689148,
+        "validation_metrics": {
+          "mse": 0.6458846926689148,
+          "mae": 0.6211310029029846,
+          "rmse": 0.8036695170708634,
+          "r2": 0.49859084999567294
+        }
+      },
+      {
+        "epoch": 2,
+        "train_loss": 0.6735752960337241,
+        "train_metrics": {
+          "mse": 0.6735752820968628,
+          "mae": 0.6159602999687195,
+          "rmse": 0.8207163225480913,
+          "r2": 0.4964167068008878
+        },
+        "validation_loss": 0.6450367569923401,
+        "validation_metrics": {
+          "mse": 0.6450367569923401,
+          "mae": 0.620404064655304,
+          "rmse": 0.8031418037883099,
+          "r2": 0.49924911286668494
+        }
+      },
+      {
+        "epoch": 3,
+        "train_loss": 0.6730111316301302,
+        "train_metrics": {
+          "mse": 0.673011064529419,
+          "mae": 0.6127472519874573,
+          "rmse": 0.820372515708211,
+          "r2": 0.4968385527998419
+        },
+        "validation_loss": 0.646912693977356,
+        "validation_metrics": {
+          "mse": 0.646912693977356,
+          "mae": 0.6250879168510437,
+          "rmse": 0.8043088299759962,
+          "r2": 0.4977928118481304
+        }
+      },
+      {
+        "epoch": 4,
+        "train_loss": 0.6726132854728326,
+        "train_metrics": {
+          "mse": 0.672613263130188,
+          "mae": 0.615821123123169,
+          "rmse": 0.8201300281846702,
+          "r2": 0.49713596574183283
+        },
+        "validation_loss": 0.6429178714752197,
+        "validation_metrics": {
+          "mse": 0.6429178714752197,
+          "mae": 0.616647481918335,
+          "rmse": 0.8018215957899985,
+          "r2": 0.5008940179421473
+        }
+      },
+      {
+        "epoch": 5,
+        "train_loss": 0.6735050607173968,
+        "train_metrics": {
+          "mse": 0.6735050678253174,
+          "mae": 0.6125737428665161,
+          "rmse": 0.8206735452208249,
+          "r2": 0.49646926625443155
+        },
+        "validation_loss": 0.6461458206176758,
+        "validation_metrics": {
+          "mse": 0.6461458206176758,
+          "mae": 0.6252042055130005,
+          "rmse": 0.80383196043556,
+          "r2": 0.49838812956149947
+        }
+      },
+      {
+        "epoch": 6,
+        "train_loss": 0.6711388262467118,
+        "train_metrics": {
+          "mse": 0.6711388230323792,
+          "mae": 0.6141065359115601,
+          "rmse": 0.8192306287196416,
+          "r2": 0.49823829169155953
+        },
+        "validation_loss": 0.6452677249908447,
+        "validation_metrics": {
+          "mse": 0.6452677249908447,
+          "mae": 0.6241492629051208,
+          "rmse": 0.8032855812168203,
+          "r2": 0.4990698233046119
+        }
+      },
+      {
+        "epoch": 7,
+        "train_loss": 0.6717196148272496,
+        "train_metrics": {
+          "mse": 0.6717196702957153,
+          "mae": 0.615157961845398,
+          "rmse": 0.819585059829494,
+          "r2": 0.49780403966070796
+        },
+        "validation_loss": 0.644576907157898,
+        "validation_metrics": {
+          "mse": 0.644576907157898,
+          "mae": 0.6234557628631592,
+          "rmse": 0.8028554709023897,
+          "r2": 0.49960607207868557
+        }
+      },
+      {
+        "epoch": 8,
+        "train_loss": 0.6712930011079716,
+        "train_metrics": {
+          "mse": 0.6712930202484131,
+          "mae": 0.6163914799690247,
+          "rmse": 0.8193247343077182,
+          "r2": 0.49812299621404865
+        },
+        "validation_loss": 0.6404808759689331,
+        "validation_metrics": {
+          "mse": 0.6404808759689331,
+          "mae": 0.6123080849647522,
+          "rmse": 0.8003004910462901,
+          "r2": 0.502785901765751
+        }
+      },
+      {
+        "epoch": 9,
+        "train_loss": 0.6709567249354959,
+        "train_metrics": {
+          "mse": 0.6709567308425903,
+          "mae": 0.6126201152801514,
+          "rmse": 0.8191194850829703,
+          "r2": 0.4983744620231867
+        },
+        "validation_loss": 0.6403999924659729,
+        "validation_metrics": {
+          "mse": 0.6403999924659729,
+          "mae": 0.6134406924247742,
+          "rmse": 0.8002499562424061,
+          "r2": 0.5028486733613783
+        }
+      },
+      {
+        "epoch": 10,
+        "train_loss": 0.6705842768947041,
+        "train_metrics": {
+          "mse": 0.6705843210220337,
+          "mae": 0.6138728260993958,
+          "rmse": 0.8188921302723783,
+          "r2": 0.4986528570773775
+        },
+        "validation_loss": 0.6407831907272339,
+        "validation_metrics": {
+          "mse": 0.6407831907272339,
+          "mae": 0.6157614588737488,
+          "rmse": 0.80048934454322,
+          "r2": 0.5025511880667093
+        }
+      },
+      {
+        "epoch": 11,
+        "train_loss": 0.6705058424464075,
+        "train_metrics": {
+          "mse": 0.6705058217048645,
+          "mae": 0.6115151643753052,
+          "rmse": 0.8188441986757093,
+          "r2": 0.49871147040207786
+        },
+        "validation_loss": 0.6416548490524292,
+        "validation_metrics": {
+          "mse": 0.6416548490524292,
+          "mae": 0.6187375783920288,
+          "rmse": 0.8010336129354555,
+          "r2": 0.5018745276220481
+        }
+      },
+      {
+        "epoch": 12,
+        "train_loss": 0.6704078983329009,
+        "train_metrics": {
+          "mse": 0.6704078912734985,
+          "mae": 0.614102840423584,
+          "rmse": 0.8187843985283907,
+          "r2": 0.4987847187012694
+        },
+        "validation_loss": 0.6420665979385376,
+        "validation_metrics": {
+          "mse": 0.6420665979385376,
+          "mae": 0.6209728717803955,
+          "rmse": 0.8012905827092551,
+          "r2": 0.5015548842433927
+        }
+      },
+      {
+        "epoch": 13,
+        "train_loss": 0.6692703697659108,
+        "train_metrics": {
+          "mse": 0.669270396232605,
+          "mae": 0.6122279167175293,
+          "rmse": 0.8180894793557763,
+          "r2": 0.4996351704591928
+        },
+        "validation_loss": 0.6460087895393372,
+        "validation_metrics": {
+          "mse": 0.6460087895393372,
+          "mae": 0.6287364959716797,
+          "rmse": 0.8037467197689439,
+          "r2": 0.49849452307703745
+        }
+      },
+      {
+        "epoch": 14,
+        "train_loss": 0.6698126949621596,
+        "train_metrics": {
+          "mse": 0.6698126792907715,
+          "mae": 0.6129605174064636,
+          "rmse": 0.8184208448535335,
+          "r2": 0.49922977959721226
+        },
+        "validation_loss": 0.6442957520484924,
+        "validation_metrics": {
+          "mse": 0.6442957520484924,
+          "mae": 0.6261728405952454,
+          "rmse": 0.80268035484151,
+          "r2": 0.49982435524025426
+        }
+      },
+      {
+        "epoch": 15,
+        "train_loss": 0.6690148126317274,
+        "train_metrics": {
+          "mse": 0.6690147519111633,
+          "mae": 0.6153590083122253,
+          "rmse": 0.8179332197136655,
+          "r2": 0.4998263141105598
+        },
+        "validation_loss": 0.6378695964813232,
+        "validation_metrics": {
+          "mse": 0.6378695964813232,
+          "mae": 0.6101271510124207,
+          "rmse": 0.7986673878914321,
+          "r2": 0.5048130482534805
+        }
+      },
+      {
+        "epoch": 16,
+        "train_loss": 0.6703929545120539,
+        "train_metrics": {
+          "mse": 0.6703929901123047,
+          "mae": 0.610732913017273,
+          "rmse": 0.8187752989143632,
+          "r2": 0.4987959363147778
+        },
+        "validation_loss": 0.6381525993347168,
+        "validation_metrics": {
+          "mse": 0.6381525993347168,
+          "mae": 0.6129992008209229,
+          "rmse": 0.798844540154539,
+          "r2": 0.5045933765957875
+        }
+      },
+      {
+        "epoch": 17,
+        "train_loss": 0.6682238073236437,
+        "train_metrics": {
+          "mse": 0.6682237982749939,
+          "mae": 0.6124353408813477,
+          "rmse": 0.8174495692548831,
+          "r2": 0.5004176113344836
+        },
+        "validation_loss": 0.6390181183815002,
+        "validation_metrics": {
+          "mse": 0.6390181183815002,
+          "mae": 0.6168021559715271,
+          "rmse": 0.7993860884338058,
+          "r2": 0.5039214601795514
+        }
+      },
+      {
+        "epoch": 18,
+        "train_loss": 0.6677936303649533,
+        "train_metrics": {
+          "mse": 0.6677935719490051,
+          "mae": 0.6117366552352905,
+          "rmse": 0.8171863752835121,
+          "r2": 0.5007393164977378
+        },
+        "validation_loss": 0.6384023427963257,
+        "validation_metrics": {
+          "mse": 0.6384023427963257,
+          "mae": 0.6154370307922363,
+          "rmse": 0.7990008402976343,
+          "r2": 0.5043995078244075
+        }
+      },
+      {
+        "epoch": 19,
+        "train_loss": 0.6679692136887181,
+        "train_metrics": {
+          "mse": 0.6679692268371582,
+          "mae": 0.6131294965744019,
+          "rmse": 0.8172938436310151,
+          "r2": 0.5006080120453915
+        },
+        "validation_loss": 0.6363807916641235,
+        "validation_metrics": {
+          "mse": 0.6363807916641235,
+          "mae": 0.6086834669113159,
+          "rmse": 0.7977347877986289,
+          "r2": 0.5059688555690964
+        }
+      },
+      {
+        "epoch": 20,
+        "train_loss": 0.6675011929841754,
+        "train_metrics": {
+          "mse": 0.6675012111663818,
+          "mae": 0.6088205575942993,
+          "rmse": 0.8170074731398617,
+          "r2": 0.5009578725512462
+        },
+        "validation_loss": 0.6385608315467834,
+        "validation_metrics": {
+          "mse": 0.6385608315467834,
+          "mae": 0.6176024675369263,
+          "rmse": 0.7991000134819067,
+          "r2": 0.5042764523553758
+        }
+      },
+      {
+        "epoch": 21,
+        "train_loss": 0.667301501692142,
+        "train_metrics": {
+          "mse": 0.6673015356063843,
+          "mae": 0.6127837896347046,
+          "rmse": 0.8168852646524996,
+          "r2": 0.5011071547671395
+        },
+        "validation_loss": 0.6376416683197021,
+        "validation_metrics": {
+          "mse": 0.6376416683197021,
+          "mae": 0.6155009269714355,
+          "rmse": 0.7985246823484557,
+          "r2": 0.5049900236553461
+        }
+      },
+      {
+        "epoch": 22,
+        "train_loss": 0.6673865312961335,
+        "train_metrics": {
+          "mse": 0.6673865914344788,
+          "mae": 0.6115095615386963,
+          "rmse": 0.8169373240552048,
+          "r2": 0.5010436011013084
+        },
+        "validation_loss": 0.6359597444534302,
+        "validation_metrics": {
+          "mse": 0.6359597444534302,
+          "mae": 0.611551821231842,
+          "rmse": 0.7974708423844913,
+          "r2": 0.5062957306984002
+        }
+      },
+      {
+        "epoch": 23,
+        "train_loss": 0.6664515420533702,
+        "train_metrics": {
+          "mse": 0.6664515137672424,
+          "mae": 0.608356773853302,
+          "rmse": 0.816364816590746,
+          "r2": 0.501742653376601
+        },
+        "validation_loss": 0.6405662894248962,
+        "validation_metrics": {
+          "mse": 0.6405662894248962,
+          "mae": 0.6231058239936829,
+          "rmse": 0.8003538526332563,
+          "r2": 0.5027196010758073
+        }
+      },
+      {
+        "epoch": 24,
+        "train_loss": 0.666469915737017,
+        "train_metrics": {
+          "mse": 0.6664699912071228,
+          "mae": 0.6146278381347656,
+          "rmse": 0.8163761334134669,
+          "r2": 0.501728872909325
+        },
+        "validation_loss": 0.6348744034767151,
+        "validation_metrics": {
+          "mse": 0.6348744034767151,
+          "mae": 0.6078604459762573,
+          "rmse": 0.7967900623606666,
+          "r2": 0.507138258575931
+        }
+      },
+      {
+        "epoch": 25,
+        "train_loss": 0.6662763248481641,
+        "train_metrics": {
+          "mse": 0.6662763357162476,
+          "mae": 0.6097673177719116,
+          "rmse": 0.8162575180151467,
+          "r2": 0.5018736606760141
+        },
+        "validation_loss": 0.6349523663520813,
+        "validation_metrics": {
+          "mse": 0.6349523663520813,
+          "mae": 0.6104263663291931,
+          "rmse": 0.7968389839560319,
+          "r2": 0.5070777432865059
+        }
+      },
+      {
+        "epoch": 26,
+        "train_loss": 0.6655645223958345,
+        "train_metrics": {
+          "mse": 0.6655645370483398,
+          "mae": 0.6102357506752014,
+          "rmse": 0.8158213879571556,
+          "r2": 0.5024057872910961
+        },
+        "validation_loss": 0.6354909539222717,
+        "validation_metrics": {
+          "mse": 0.6354909539222717,
+          "mae": 0.6133385300636292,
+          "rmse": 0.7971768648940282,
+          "r2": 0.5066596323910231
+        }
+      },
+      {
+        "epoch": 27,
+        "train_loss": 0.6663897714335403,
+        "train_metrics": {
+          "mse": 0.6663897633552551,
+          "mae": 0.6111913919448853,
+          "rmse": 0.8163269953610839,
+          "r2": 0.5017888235135929
+        },
+        "validation_loss": 0.6411069631576538,
+        "validation_metrics": {
+          "mse": 0.6411069631576538,
+          "mae": 0.6251943707466125,
+          "rmse": 0.8006915530700033,
+          "r2": 0.5022998702681791
+        }
+      },
+      {
+        "epoch": 28,
+        "train_loss": 0.6655198864253692,
+        "train_metrics": {
+          "mse": 0.6655198931694031,
+          "mae": 0.6101878881454468,
+          "rmse": 0.8157940261912948,
+          "r2": 0.5024391428890445
+        },
+        "validation_loss": 0.6360628008842468,
+        "validation_metrics": {
+          "mse": 0.6360628008842468,
+          "mae": 0.6157687306404114,
+          "rmse": 0.7975354543117483,
+          "r2": 0.5062157186092271
+        }
+      }
+    ],
+    "refinement_cycles": []
+  },
+  "preprocessing": {
+    "mode": "standard",
+    "feature_columns": [
+      "MedInc",
+      "HouseAge",
+      "AveRooms",
+      "AveBedrms",
+      "Population",
+      "AveOccup",
+      "Latitude",
+      "Longitude"
+    ],
+    "center": [
+      3.826806796906799,
+      28.961334961334963,
+      5.433424413529617,
+      1.1065540031194712,
+      1412.967846967847,
+      3.003490317081298,
+      35.59580382580383,
+      -119.52360195360168
+    ],
+    "scale": [
+      1.9030648701092432,
+      12.503208002208485,
+      3.2616218666636025,
+      0.7577160919734836,
+      1084.8075522887025,
+      2.186432566781655,
+      2.1153528401563064,
+      2.0010345536203302
+    ],
+    "minimum": null,
+    "maximum": null
+  },
+  "test_metrics": {
+    "mse": 0.7045074623216705,
+    "mae": 0.6081621997505514,
+    "rmse": 0.8393494280224837,
+    "r2": 0.4297909879475047
+  },
+  "dataset_source_path": null,
+  "notes": {
+    "experiment_history": [
+      {
+        "timestamp_utc": "2026-04-13T10:34:46.170722+00:00",
+        "model_kind": "deep_fuzzy_feature_learning",
+        "training_source": "stagewise_pretraining_plus_finetuning",
+        "epochs_ran": 28,
+        "best_epoch": 24,
+        "train_metrics": {
+          "mse": 0.6658784747123718,
+          "mae": 0.6044096350669861,
+          "rmse": 0.8160137711536318,
+          "r2": 0.5021711107621216
+        },
+        "validation_metrics": {
+          "mse": 0.6348744034767151,
+          "mae": 0.6078604459762573,
+          "rmse": 0.7967900623606666,
+          "r2": 0.507138258575931
+        },
+        "test_metrics": {
+          "mse": 0.7045074623216705,
+          "mae": 0.6081621997505514,
+          "rmse": 0.8393494280224837,
+          "r2": 0.4297909879475047
+        },
+        "manual_rule_targets": 0,
+        "feature_names": [
+          "MedInc",
+          "HouseAge",
+          "AveRooms",
+          "AveBedrms",
+          "Population",
+          "AveOccup",
+          "Latitude",
+          "Longitude"
+        ]
+      }
+    ]
+  }
+}

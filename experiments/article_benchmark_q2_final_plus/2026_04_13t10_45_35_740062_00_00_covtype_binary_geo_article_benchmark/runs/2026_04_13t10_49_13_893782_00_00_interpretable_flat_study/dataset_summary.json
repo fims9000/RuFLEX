@@ -1,0 +1,43 @@
+{
+  "rows": 6000,
+  "columns": [
+    "Elevation",
+    "Aspect",
+    "Slope",
+    "Horizontal_Distance_To_Hydrology",
+    "Vertical_Distance_To_Hydrology",
+    "Horizontal_Distance_To_Roadways",
+    "Hillshade_9am",
+    "Hillshade_Noon",
+    "Hillshade_3pm",
+    "Horizontal_Distance_To_Fire_Points",
+    "CoverTypeBinary"
+  ],
+  "numeric_columns": [
+    "Elevation",
+    "Aspect",
+    "Slope",
+    "Horizontal_Distance_To_Hydrology",
+    "Vertical_Distance_To_Hydrology",
+    "Horizontal_Distance_To_Roadways",
+    "Hillshade_9am",
+    "Hillshade_Noon",
+    "Hillshade_3pm",
+    "Horizontal_Distance_To_Fire_Points",
+    "CoverTypeBinary"
+  ],
+  "missing_values": {
+    "Elevation": 0,
+    "Aspect": 0,
+    "Slope": 0,
+    "Horizontal_Distance_To_Hydrology": 0,
+    "Vertical_Distance_To_Hydrology": 0,
+    "Horizontal_Distance_To_Roadways": 0,
+    "Hillshade_9am": 0,
+    "Hillshade_Noon": 0,
+    "Hillshade_3pm": 0,
+    "Horizontal_Distance_To_Fire_Points": 0,
+    "CoverTypeBinary": 0
+  },
+  "target_name": "CoverTypeBinary"
+}

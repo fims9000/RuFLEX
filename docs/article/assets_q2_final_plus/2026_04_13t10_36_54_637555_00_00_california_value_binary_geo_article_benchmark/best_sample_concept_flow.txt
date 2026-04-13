@@ -1,0 +1,127 @@
+SAMPLE 0
+  inputs: (-0.7607, 0.5181, -0.7709, -0.2037, -0.7123, -0.0486, 1.0434, -1.344)
+  prediction: (-1.2067,)
+  hidden concepts:
+    stage_1/stage_1_block_1/stage_1_block_1_concept_1=0.8339
+      rule: stage_1_block_1_2 | MedInc IS term_1 AND AveRooms IS term_1 | weight=0.3497 | contribution=0.3425
+      rule: stage_1_block_1_0 | HouseAge IS term_1 AND AveRooms IS term_1 | weight=0.2371 | contribution=0.1841
+      rule: stage_1_block_1_5 | MedInc IS term_1 AND AveRooms IS term_2 | weight=0.1694 | contribution=0.1543
+    stage_1/stage_1_block_1/stage_1_block_1_concept_2=0.1239
+      rule: stage_1_block_1_4 | MedInc IS term_2 AND HouseAge IS term_1 | weight=0.0526 | contribution=0.0524
+      rule: stage_1_block_1_3 | MedInc IS term_2 AND AveRooms IS term_1 | weight=0.0308 | contribution=0.0306
+      rule: stage_1_block_1_0 | HouseAge IS term_1 AND AveRooms IS term_1 | weight=0.2371 | contribution=0.0297
+    stage_1/stage_1_block_1/stage_1_block_1_concept_3=0.4880
+      rule: stage_1_block_1_2 | MedInc IS term_1 AND AveRooms IS term_1 | weight=0.3497 | contribution=0.2331
+      rule: stage_1_block_1_5 | MedInc IS term_1 AND AveRooms IS term_2 | weight=0.1694 | contribution=0.1683
+      rule: stage_1_block_1_1 | MedInc IS term_1 AND HouseAge IS term_1 | weight=0.1603 | contribution=0.0625
+    stage_1/stage_1_block_2/stage_1_block_2_concept_1=0.3644
+      rule: stage_1_block_2_1 | AveBedrms IS term_1 AND AveOccup IS term_1 | weight=0.4811 | contribution=0.1700
+      rule: stage_1_block_2_0 | AveBedrms IS term_1 AND Population IS term_1 | weight=0.4811 | contribution=0.1700
+      rule: stage_1_block_2_2 | Population IS term_1 AND AveOccup IS term_1 | weight=0.0331 | contribution=0.0237
+    stage_1/stage_1_block_2/stage_1_block_2_concept_2=0.0588
+      rule: stage_1_block_2_0 | AveBedrms IS term_1 AND Population IS term_1 | weight=0.4811 | contribution=0.0278
+      rule: stage_1_block_2_1 | AveBedrms IS term_1 AND AveOccup IS term_1 | weight=0.4811 | contribution=0.0278
+      rule: stage_1_block_2_2 | Population IS term_1 AND AveOccup IS term_1 | weight=0.0331 | contribution=0.0027
+    stage_1/stage_1_block_2/stage_1_block_2_concept_3=0.0719
+      rule: stage_1_block_2_0 | AveBedrms IS term_1 AND Population IS term_1 | weight=0.4811 | contribution=0.0305
+      rule: stage_1_block_2_1 | AveBedrms IS term_1 AND AveOccup IS term_1 | weight=0.4811 | contribution=0.0305
+      rule: stage_1_block_2_2 | Population IS term_1 AND AveOccup IS term_1 | weight=0.0331 | contribution=0.0062
+    stage_1/stage_1_block_3/stage_1_block_3_concept_1=0.5152
+      rule: stage_1_block_3_4 | Latitude IS term_1 | weight=0.9994 | contribution=0.5148
+      rule: stage_1_block_3_5 | Latitude IS term_2 | weight=0.0005 | contribution=0.0004
+      rule: stage_1_block_3_0 | Latitude IS term_1 AND Longitude IS term_4 | weight=0.0000 | contribution=0.0000
+    stage_1/stage_1_block_3/stage_1_block_3_concept_2=0.0581
+      rule: stage_1_block_3_4 | Latitude IS term_1 | weight=0.9994 | contribution=0.0581
+      rule: stage_1_block_3_5 | Latitude IS term_2 | weight=0.0005 | contribution=0.0001
+      rule: stage_1_block_3_0 | Latitude IS term_1 AND Longitude IS term_4 | weight=0.0000 | contribution=0.0000
+    stage_1/stage_1_block_3/stage_1_block_3_concept_3=0.0971
+      rule: stage_1_block_3_4 | Latitude IS term_1 | weight=0.9994 | contribution=0.0970
+      rule: stage_1_block_3_5 | Latitude IS term_2 | weight=0.0005 | contribution=0.0001
+      rule: stage_1_block_3_0 | Latitude IS term_1 AND Longitude IS term_4 | weight=0.0000 | contribution=0.0000
+    stage_2/stage_2_block_1/stage_2_block_1_concept_1=0.7910
+      rule: stage_2_block_1_1 | stage_1_block_1_concept_1 IS high AND stage_1_block_1_concept_2 IS low | weight=0.7870 | contribution=0.7654
+      rule: stage_2_block_1_2 | stage_1_block_1_concept_2 IS low AND stage_1_block_1_concept_3 IS low | weight=0.1084 | contribution=0.0135
+      rule: stage_2_block_1_3 | stage_1_block_1_concept_1 IS high AND stage_1_block_1_concept_3 IS low | weight=0.1045 | contribution=0.0120
+    stage_2/stage_2_block_1/stage_2_block_1_concept_2=0.0524
+      rule: stage_2_block_1_1 | stage_1_block_1_concept_1 IS high AND stage_1_block_1_concept_2 IS low | weight=0.7870 | contribution=0.0197
+      rule: stage_2_block_1_3 | stage_1_block_1_concept_1 IS high AND stage_1_block_1_concept_3 IS low | weight=0.1045 | contribution=0.0167
+      rule: stage_2_block_1_2 | stage_1_block_1_concept_2 IS low AND stage_1_block_1_concept_3 IS low | weight=0.1084 | contribution=0.0160
+    stage_2/stage_2_block_1/stage_2_block_1_concept_3=0.2019
+      rule: stage_2_block_1_2 | stage_1_block_1_concept_2 IS low AND stage_1_block_1_concept_3 IS low | weight=0.1084 | contribution=0.0923
+      rule: stage_2_block_1_3 | stage_1_block_1_concept_1 IS high AND stage_1_block_1_concept_3 IS low | weight=0.1045 | contribution=0.0905
+      rule: stage_2_block_1_1 | stage_1_block_1_concept_1 IS high AND stage_1_block_1_concept_2 IS low | weight=0.7870 | contribution=0.0192
+    stage_2/stage_2_block_2/stage_2_block_2_concept_1=0.8367
+      rule: stage_2_block_2_4 | stage_1_block_2_concept_2 IS low AND stage_1_block_2_concept_3 IS low | weight=0.9882 | contribution=0.8322
+      rule: stage_2_block_2_2 | stage_1_block_2_concept_1 IS low AND stage_1_block_2_concept_3 IS low | weight=0.0044 | contribution=0.0036
+      rule: stage_2_block_2_5 | stage_1_block_2_concept_2 IS low AND stage_1_block_2_concept_3 IS high | weight=0.0074 | contribution=0.0009
+    stage_2/stage_2_block_2/stage_2_block_2_concept_2=0.1148
+      rule: stage_2_block_2_4 | stage_1_block_2_concept_2 IS low AND stage_1_block_2_concept_3 IS low | weight=0.9882 | contribution=0.1130
+      rule: stage_2_block_2_5 | stage_1_block_2_concept_2 IS low AND stage_1_block_2_concept_3 IS high | weight=0.0074 | contribution=0.0012
+      rule: stage_2_block_2_2 | stage_1_block_2_concept_1 IS low AND stage_1_block_2_concept_3 IS low | weight=0.0044 | contribution=0.0005
+    stage_2/stage_2_block_2/stage_2_block_2_concept_3=0.1136
+      rule: stage_2_block_2_4 | stage_1_block_2_concept_2 IS low AND stage_1_block_2_concept_3 IS low | weight=0.9882 | contribution=0.1066
+      rule: stage_2_block_2_5 | stage_1_block_2_concept_2 IS low AND stage_1_block_2_concept_3 IS high | weight=0.0074 | contribution=0.0065
+      rule: stage_2_block_2_2 | stage_1_block_2_concept_1 IS low AND stage_1_block_2_concept_3 IS low | weight=0.0044 | contribution=0.0005
+    stage_2/stage_2_block_3/stage_2_block_3_concept_1=0.2987
+      rule: stage_2_block_3_0 | stage_1_block_3_concept_2 IS low AND stage_1_block_3_concept_3 IS low | weight=0.2625 | contribution=0.2140
+      rule: stage_2_block_3_1 | stage_1_block_3_concept_1 IS high AND stage_1_block_3_concept_3 IS low | weight=0.1961 | contribution=0.0261
+      rule: stage_2_block_3_2 | stage_1_block_3_concept_1 IS high AND stage_1_block_3_concept_2 IS low | weight=0.1745 | contribution=0.0230
+    stage_2/stage_2_block_3/stage_2_block_3_concept_2=0.3513
+      rule: stage_2_block_3_3 | stage_1_block_3_concept_1 IS low AND stage_1_block_3_concept_3 IS low | weight=0.1923 | contribution=0.1469
+      rule: stage_2_block_3_4 | stage_1_block_3_concept_1 IS low AND stage_1_block_3_concept_2 IS low | weight=0.1747 | contribution=0.1324
+      rule: stage_2_block_3_0 | stage_1_block_3_concept_2 IS low AND stage_1_block_3_concept_3 IS low | weight=0.2625 | contribution=0.0276
+    stage_2/stage_2_block_3/stage_2_block_3_concept_3=0.3513
+      rule: stage_2_block_3_1 | stage_1_block_3_concept_1 IS high AND stage_1_block_3_concept_3 IS low | weight=0.1961 | contribution=0.1483
+      rule: stage_2_block_3_2 | stage_1_block_3_concept_1 IS high AND stage_1_block_3_concept_2 IS low | weight=0.1745 | contribution=0.1318
+      rule: stage_2_block_3_0 | stage_1_block_3_concept_2 IS low AND stage_1_block_3_concept_3 IS low | weight=0.2625 | contribution=0.0288
+    stage_3/stage_3_block_1/stage_3_block_1_concept_1=0.7887
+      rule: stage_3_block_1_2 | stage_2_block_1_concept_1 IS low AND stage_2_block_1_concept_3 IS high | weight=0.7855 | contribution=0.7683
+      rule: stage_3_block_1_0 | stage_2_block_1_concept_1 IS high AND stage_2_block_1_concept_3 IS low | weight=0.2121 | contribution=0.0203
+      rule: stage_3_block_1_5 | stage_2_block_1_concept_1 IS low AND stage_2_block_1_concept_2 IS high | weight=0.0006 | contribution=0.0001
+    stage_3/stage_3_block_1/stage_3_block_1_concept_2=0.6822
+      rule: stage_3_block_1_2 | stage_2_block_1_concept_1 IS low AND stage_2_block_1_concept_3 IS high | weight=0.7855 | contribution=0.5476
+      rule: stage_3_block_1_0 | stage_2_block_1_concept_1 IS high AND stage_2_block_1_concept_3 IS low | weight=0.2121 | contribution=0.1345
+      rule: stage_3_block_1_5 | stage_2_block_1_concept_1 IS low AND stage_2_block_1_concept_2 IS high | weight=0.0006 | contribution=0.0001
+    stage_3/stage_3_block_1/stage_3_block_1_concept_3=0.0811
+      rule: stage_3_block_1_0 | stage_2_block_1_concept_1 IS high AND stage_2_block_1_concept_3 IS low | weight=0.2121 | contribution=0.0696
+      rule: stage_3_block_1_2 | stage_2_block_1_concept_1 IS low AND stage_2_block_1_concept_3 IS high | weight=0.7855 | contribution=0.0092
+      rule: stage_3_block_1_3 | stage_2_block_1_concept_2 IS high AND stage_2_block_1_concept_3 IS high | weight=0.0018 | contribution=0.0018
+    stage_3/stage_3_block_2/stage_3_block_2_concept_1=0.8383
+      rule: stage_3_block_2_2 | stage_2_block_2_concept_1 IS high AND stage_2_block_2_concept_3 IS low | weight=1.0000 | contribution=0.8383
+      rule: stage_3_block_2_3 | stage_2_block_2_concept_1 IS high AND stage_2_block_2_concept_2 IS low | weight=0.0000 | contribution=0.0000
+      rule: stage_3_block_2_4 | stage_2_block_2_concept_2 IS low AND stage_2_block_2_concept_3 IS low | weight=0.0000 | contribution=0.0000
+    stage_3/stage_3_block_2/stage_3_block_2_concept_2=0.0961
+      rule: stage_3_block_2_2 | stage_2_block_2_concept_1 IS high AND stage_2_block_2_concept_3 IS low | weight=1.0000 | contribution=0.0961
+      rule: stage_3_block_2_3 | stage_2_block_2_concept_1 IS high AND stage_2_block_2_concept_2 IS low | weight=0.0000 | contribution=0.0000
+      rule: stage_3_block_2_4 | stage_2_block_2_concept_2 IS low AND stage_2_block_2_concept_3 IS low | weight=0.0000 | contribution=0.0000
+    stage_3/stage_3_block_2/stage_3_block_2_concept_3=0.0900
+      rule: stage_3_block_2_2 | stage_2_block_2_concept_1 IS high AND stage_2_block_2_concept_3 IS low | weight=1.0000 | contribution=0.0900
+      rule: stage_3_block_2_3 | stage_2_block_2_concept_1 IS high AND stage_2_block_2_concept_2 IS low | weight=0.0000 | contribution=0.0000
+      rule: stage_3_block_2_4 | stage_2_block_2_concept_2 IS low AND stage_2_block_2_concept_3 IS low | weight=0.0000 | contribution=0.0000
+    stage_3/stage_3_block_3/stage_3_block_3_concept_1=0.2977
+      rule: stage_3_block_3_1 | stage_2_block_3_concept_1 IS low AND stage_2_block_3_concept_3 IS low | weight=0.9997 | contribution=0.2977
+      rule: stage_3_block_3_3 | stage_2_block_3_concept_1 IS low AND stage_2_block_3_concept_3 IS high | weight=0.0003 | contribution=0.0000
+      rule: stage_3_block_3_5 | stage_2_block_3_concept_1 IS low AND stage_2_block_3_concept_2 IS high | weight=0.0001 | contribution=0.0000
+    stage_3/stage_3_block_3/stage_3_block_3_concept_2=0.0792
+      rule: stage_3_block_3_1 | stage_2_block_3_concept_1 IS low AND stage_2_block_3_concept_3 IS low | weight=0.9997 | contribution=0.0791
+      rule: stage_3_block_3_5 | stage_2_block_3_concept_1 IS low AND stage_2_block_3_concept_2 IS high | weight=0.0001 | contribution=0.0000
+      rule: stage_3_block_3_3 | stage_2_block_3_concept_1 IS low AND stage_2_block_3_concept_3 IS high | weight=0.0003 | contribution=0.0000
+    stage_3/stage_3_block_3/stage_3_block_3_concept_3=0.0541
+      rule: stage_3_block_3_1 | stage_2_block_3_concept_1 IS low AND stage_2_block_3_concept_3 IS low | weight=0.9997 | contribution=0.0539
+      rule: stage_3_block_3_3 | stage_2_block_3_concept_1 IS low AND stage_2_block_3_concept_3 IS high | weight=0.0003 | contribution=0.0002
+      rule: stage_3_block_3_5 | stage_2_block_3_concept_1 IS low AND stage_2_block_3_concept_2 IS high | weight=0.0001 | contribution=0.0000
+  bias contribution: (0.5793,)
+  decision concept contributions:
+    stage_3/stage_3_block_1/stage_3_block_1_concept_1: value=0.7887, contribution=(-2.4026,)
+    stage_3/stage_3_block_1/stage_3_block_1_concept_2: value=0.6822, contribution=(-0.4717,)
+    stage_3/stage_3_block_1/stage_3_block_1_concept_3: value=0.0811, contribution=(0.1754,)
+    stage_3/stage_3_block_2/stage_3_block_2_concept_1: value=0.8383, contribution=(0.9111,)
+    stage_3/stage_3_block_2/stage_3_block_2_concept_2: value=0.0961, contribution=(0.0614,)
+    stage_3/stage_3_block_2/stage_3_block_2_concept_3: value=0.0900, contribution=(-0.1526,)
+    stage_3/stage_3_block_3/stage_3_block_3_concept_1: value=0.2977, contribution=(0.0741,)
+    stage_3/stage_3_block_3/stage_3_block_3_concept_2: value=0.0792, contribution=(0.0117,)
+    stage_3/stage_3_block_3/stage_3_block_3_concept_3: value=0.0541, contribution=(0.0074,)
+  top decision rules:
+    rule: deep_decision_2 | stage_3_block_1_concept_3 IS low AND stage_3_block_3_concept_1 IS low | weight=0.7522 | contribution=(-1.021,)
+    rule: deep_decision_4 | stage_3_block_1_concept_1 IS high AND stage_3_block_3_concept_1 IS low | weight=0.2476 | contribution=(-0.185,)
+    rule: deep_decision_5 | stage_3_block_1_concept_1 IS low AND stage_3_block_3_concept_1 IS low | weight=0.0002 | contribution=(-0.0004,)

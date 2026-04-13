@@ -1,0 +1,1277 @@
+{
+  "name": "covtype_binary_geo-flat_baseline",
+  "task_type": "binary_classification",
+  "description": null,
+  "dataset_config": {
+    "target_column": "CoverTypeBinary",
+    "feature_columns": null,
+    "validation_fraction": 0.2,
+    "test_fraction": 0.2,
+    "normalization": "standard",
+    "fill_missing": "median",
+    "random_state": 11
+  },
+  "variables": [
+    {
+      "name": "Elevation",
+      "membership": {
+        "kind": "gaussian",
+        "term_names": [
+          "term_1",
+          "term_2",
+          "term_3"
+        ],
+        "centers": [
+          2184.0,
+          2925.5,
+          3667.0
+        ],
+        "spreads": [
+          741.5,
+          741.5,
+          741.5
+        ],
+        "min_spread": 0.001
+      },
+      "value_range": [
+        2184.0,
+        3667.0
+      ],
+      "data_type": "continuous",
+      "role": "input",
+      "normalization": "standard"
+    },
+    {
+      "name": "Aspect",
+      "membership": {
+        "kind": "gaussian",
+        "term_names": [
+          "term_1",
+          "term_2",
+          "term_3"
+        ],
+        "centers": [
+          0.0,
+          179.5,
+          359.0
+        ],
+        "spreads": [
+          179.5,
+          179.5,
+          179.5
+        ],
+        "min_spread": 0.001
+      },
+      "value_range": [
+        0.0,
+        359.0
+      ],
+      "data_type": "continuous",
+      "role": "input",
+      "normalization": "standard"
+    },
+    {
+      "name": "Slope",
+      "membership": {
+        "kind": "gaussian",
+        "term_names": [
+          "term_1",
+          "term_2",
+          "term_3"
+        ],
+        "centers": [
+          0.0,
+          25.5,
+          51.0
+        ],
+        "spreads": [
+          25.5,
+          25.5,
+          25.5
+        ],
+        "min_spread": 0.001
+      },
+      "value_range": [
+        0.0,
+        51.0
+      ],
+      "data_type": "continuous",
+      "role": "input",
+      "normalization": "standard"
+    },
+    {
+      "name": "Horizontal_Distance_To_Hydrology",
+      "membership": {
+        "kind": "gaussian",
+        "term_names": [
+          "term_1",
+          "term_2",
+          "term_3"
+        ],
+        "centers": [
+          0.0,
+          684.0,
+          1368.0
+        ],
+        "spreads": [
+          684.0,
+          684.0,
+          684.0
+        ],
+        "min_spread": 0.001
+      },
+      "value_range": [
+        0.0,
+        1368.0
+      ],
+      "data_type": "continuous",
+      "role": "input",
+      "normalization": "standard"
+    },
+    {
+      "name": "Vertical_Distance_To_Hydrology",
+      "membership": {
+        "kind": "gaussian",
+        "term_names": [
+          "term_1",
+          "term_2",
+          "term_3"
+        ],
+        "centers": [
+          -153.0,
+          195.0,
+          543.0
+        ],
+        "spreads": [
+          348.0,
+          348.0,
+          348.0
+        ],
+        "min_spread": 0.001
+      },
+      "value_range": [
+        -153.0,
+        543.0
+      ],
+      "data_type": "continuous",
+      "role": "input",
+      "normalization": "standard"
+    },
+    {
+      "name": "Horizontal_Distance_To_Roadways",
+      "membership": {
+        "kind": "gaussian",
+        "term_names": [
+          "term_1",
+          "term_2",
+          "term_3"
+        ],
+        "centers": [
+          30.0,
+          3482.5,
+          6935.0
+        ],
+        "spreads": [
+          3452.5,
+          3452.5,
+          3452.5
+        ],
+        "min_spread": 0.001
+      },
+      "value_range": [
+        30.0,
+        6935.0
+      ],
+      "data_type": "continuous",
+      "role": "input",
+      "normalization": "standard"
+    },
+    {
+      "name": "Hillshade_9am",
+      "membership": {
+        "kind": "gaussian",
+        "term_names": [
+          "term_1",
+          "term_2",
+          "term_3"
+        ],
+        "centers": [
+          56.0,
+          155.0,
+          254.0
+        ],
+        "spreads": [
+          99.0,
+          99.0,
+          99.0
+        ],
+        "min_spread": 0.001
+      },
+      "value_range": [
+        56.0,
+        254.0
+      ],
+      "data_type": "continuous",
+      "role": "input",
+      "normalization": "standard"
+    },
+    {
+      "name": "Hillshade_Noon",
+      "membership": {
+        "kind": "gaussian",
+        "term_names": [
+          "term_1",
+          "term_2",
+          "term_3"
+        ],
+        "centers": [
+          100.0,
+          177.0,
+          254.0
+        ],
+        "spreads": [
+          77.0,
+          77.0,
+          77.0
+        ],
+        "min_spread": 0.001
+      },
+      "value_range": [
+        100.0,
+        254.0
+      ],
+      "data_type": "continuous",
+      "role": "input",
+      "normalization": "standard"
+    },
+    {
+      "name": "Hillshade_3pm",
+      "membership": {
+        "kind": "gaussian",
+        "term_names": [
+          "term_1",
+          "term_2",
+          "term_3"
+        ],
+        "centers": [
+          0.0,
+          123.0,
+          246.0
+        ],
+        "spreads": [
+          123.0,
+          123.0,
+          123.0
+        ],
+        "min_spread": 0.001
+      },
+      "value_range": [
+        0.0,
+        246.0
+      ],
+      "data_type": "continuous",
+      "role": "input",
+      "normalization": "standard"
+    },
+    {
+      "name": "Horizontal_Distance_To_Fire_Points",
+      "membership": {
+        "kind": "gaussian",
+        "term_names": [
+          "term_1",
+          "term_2",
+          "term_3"
+        ],
+        "centers": [
+          30.0,
+          3555.0,
+          7080.0
+        ],
+        "spreads": [
+          3525.0,
+          3525.0,
+          3525.0
+        ],
+        "min_spread": 0.001
+      },
+      "value_range": [
+        30.0,
+        7080.0
+      ],
+      "data_type": "continuous",
+      "role": "input",
+      "normalization": "standard"
+    }
+  ],
+  "model_kind": "flat_neuro_fuzzy",
+  "model_spec": {
+    "kind": "flat_neuro_fuzzy",
+    "input_dim": 10,
+    "feature_block": {
+      "name": "flat_feature_block",
+      "input_indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "variables": [
+        {
+          "name": "Elevation",
+          "membership": {
+            "kind": "gaussian",
+            "term_names": [
+              "term_1",
+              "term_2",
+              "term_3"
+            ],
+            "centers": [
+              2184.0,
+              2925.5,
+              3667.0
+            ],
+            "spreads": [
+              741.5,
+              741.5,
+              741.5
+            ],
+            "min_spread": 0.001
+          },
+          "value_range": [
+            2184.0,
+            3667.0
+          ],
+          "data_type": "continuous",
+          "role": "input",
+          "normalization": "standard"
+        },
+        {
+          "name": "Aspect",
+          "membership": {
+            "kind": "gaussian",
+            "term_names": [
+              "term_1",
+              "term_2",
+              "term_3"
+            ],
+            "centers": [
+              0.0,
+              179.5,
+              359.0
+            ],
+            "spreads": [
+              179.5,
+              179.5,
+              179.5
+            ],
+            "min_spread": 0.001
+          },
+          "value_range": [
+            0.0,
+            359.0
+          ],
+          "data_type": "continuous",
+          "role": "input",
+          "normalization": "standard"
+        },
+        {
+          "name": "Slope",
+          "membership": {
+            "kind": "gaussian",
+            "term_names": [
+              "term_1",
+              "term_2",
+              "term_3"
+            ],
+            "centers": [
+              0.0,
+              25.5,
+              51.0
+            ],
+            "spreads": [
+              25.5,
+              25.5,
+              25.5
+            ],
+            "min_spread": 0.001
+          },
+          "value_range": [
+            0.0,
+            51.0
+          ],
+          "data_type": "continuous",
+          "role": "input",
+          "normalization": "standard"
+        },
+        {
+          "name": "Horizontal_Distance_To_Hydrology",
+          "membership": {
+            "kind": "gaussian",
+            "term_names": [
+              "term_1",
+              "term_2",
+              "term_3"
+            ],
+            "centers": [
+              0.0,
+              684.0,
+              1368.0
+            ],
+            "spreads": [
+              684.0,
+              684.0,
+              684.0
+            ],
+            "min_spread": 0.001
+          },
+          "value_range": [
+            0.0,
+            1368.0
+          ],
+          "data_type": "continuous",
+          "role": "input",
+          "normalization": "standard"
+        },
+        {
+          "name": "Vertical_Distance_To_Hydrology",
+          "membership": {
+            "kind": "gaussian",
+            "term_names": [
+              "term_1",
+              "term_2",
+              "term_3"
+            ],
+            "centers": [
+              -153.0,
+              195.0,
+              543.0
+            ],
+            "spreads": [
+              348.0,
+              348.0,
+              348.0
+            ],
+            "min_spread": 0.001
+          },
+          "value_range": [
+            -153.0,
+            543.0
+          ],
+          "data_type": "continuous",
+          "role": "input",
+          "normalization": "standard"
+        },
+        {
+          "name": "Horizontal_Distance_To_Roadways",
+          "membership": {
+            "kind": "gaussian",
+            "term_names": [
+              "term_1",
+              "term_2",
+              "term_3"
+            ],
+            "centers": [
+              30.0,
+              3482.5,
+              6935.0
+            ],
+            "spreads": [
+              3452.5,
+              3452.5,
+              3452.5
+            ],
+            "min_spread": 0.001
+          },
+          "value_range": [
+            30.0,
+            6935.0
+          ],
+          "data_type": "continuous",
+          "role": "input",
+          "normalization": "standard"
+        },
+        {
+          "name": "Hillshade_9am",
+          "membership": {
+            "kind": "gaussian",
+            "term_names": [
+              "term_1",
+              "term_2",
+              "term_3"
+            ],
+            "centers": [
+              56.0,
+              155.0,
+              254.0
+            ],
+            "spreads": [
+              99.0,
+              99.0,
+              99.0
+            ],
+            "min_spread": 0.001
+          },
+          "value_range": [
+            56.0,
+            254.0
+          ],
+          "data_type": "continuous",
+          "role": "input",
+          "normalization": "standard"
+        },
+        {
+          "name": "Hillshade_Noon",
+          "membership": {
+            "kind": "gaussian",
+            "term_names": [
+              "term_1",
+              "term_2",
+              "term_3"
+            ],
+            "centers": [
+              100.0,
+              177.0,
+              254.0
+            ],
+            "spreads": [
+              77.0,
+              77.0,
+              77.0
+            ],
+            "min_spread": 0.001
+          },
+          "value_range": [
+            100.0,
+            254.0
+          ],
+          "data_type": "continuous",
+          "role": "input",
+          "normalization": "standard"
+        },
+        {
+          "name": "Hillshade_3pm",
+          "membership": {
+            "kind": "gaussian",
+            "term_names": [
+              "term_1",
+              "term_2",
+              "term_3"
+            ],
+            "centers": [
+              0.0,
+              123.0,
+              246.0
+            ],
+            "spreads": [
+              123.0,
+              123.0,
+              123.0
+            ],
+            "min_spread": 0.001
+          },
+          "value_range": [
+            0.0,
+            246.0
+          ],
+          "data_type": "continuous",
+          "role": "input",
+          "normalization": "standard"
+        },
+        {
+          "name": "Horizontal_Distance_To_Fire_Points",
+          "membership": {
+            "kind": "gaussian",
+            "term_names": [
+              "term_1",
+              "term_2",
+              "term_3"
+            ],
+            "centers": [
+              30.0,
+              3555.0,
+              7080.0
+            ],
+            "spreads": [
+              3525.0,
+              3525.0,
+              3525.0
+            ],
+            "min_spread": 0.001
+          },
+          "value_range": [
+            30.0,
+            7080.0
+          ],
+          "data_type": "continuous",
+          "role": "input",
+          "normalization": "standard"
+        }
+      ],
+      "n_concepts": 3,
+      "concept_names": [
+        "flat_concept_1",
+        "flat_concept_2",
+        "flat_concept_3"
+      ],
+      "max_rule_arity": 2,
+      "max_rules": 8,
+      "gate_init": 0.0,
+      "rule_base": null,
+      "rule_generation_mode": "prototype",
+      "prototype_term_limit": 2,
+      "prototype_variable_pool_size": null,
+      "prototype_sample_size": 256
+    },
+    "decision_layer": {
+      "name": "flat_decision",
+      "variables": [
+        {
+          "name": "flat_concept_1",
+          "membership": {
+            "kind": "gaussian",
+            "term_names": [
+              "low",
+              "high"
+            ],
+            "centers": [
+              0.25,
+              0.75
+            ],
+            "spreads": [
+              0.2,
+              0.2
+            ],
+            "min_spread": 0.001
+          },
+          "value_range": [
+            0.0,
+            1.0
+          ],
+          "data_type": "continuous",
+          "role": "hidden_concept",
+          "normalization": "none"
+        },
+        {
+          "name": "flat_concept_2",
+          "membership": {
+            "kind": "gaussian",
+            "term_names": [
+              "low",
+              "high"
+            ],
+            "centers": [
+              0.25,
+              0.75
+            ],
+            "spreads": [
+              0.2,
+              0.2
+            ],
+            "min_spread": 0.001
+          },
+          "value_range": [
+            0.0,
+            1.0
+          ],
+          "data_type": "continuous",
+          "role": "hidden_concept",
+          "normalization": "none"
+        },
+        {
+          "name": "flat_concept_3",
+          "membership": {
+            "kind": "gaussian",
+            "term_names": [
+              "low",
+              "high"
+            ],
+            "centers": [
+              0.25,
+              0.75
+            ],
+            "spreads": [
+              0.2,
+              0.2
+            ],
+            "min_spread": 0.001
+          },
+          "value_range": [
+            0.0,
+            1.0
+          ],
+          "data_type": "continuous",
+          "role": "hidden_concept",
+          "normalization": "none"
+        }
+      ],
+      "output_dim": 1,
+      "output_names": [
+        "target"
+      ],
+      "max_rule_arity": 2,
+      "max_rules": 8,
+      "gate_init": 0.0,
+      "rule_base": null,
+      "rule_generation_mode": "prototype",
+      "prototype_term_limit": 2,
+      "prototype_variable_pool_size": null,
+      "prototype_sample_size": 256
+    },
+    "stage_name": "flat_stage"
+  },
+  "training_config": {
+    "task_type": "binary_classification",
+    "use_bootstrap_initialization": true,
+    "use_stagewise_pretraining": false,
+    "bootstrap": {
+      "hidden_high": 0.85,
+      "hidden_low": 0.15,
+      "gate_floor": 0.25,
+      "gate_ceiling": 0.85,
+      "decision_binary_target_clip": 0.05
+    },
+    "stagewise": {
+      "epochs_per_stage": 20,
+      "decision_epochs": 15,
+      "refinement_rounds": 1,
+      "learning_rate": 0.02,
+      "batch_size": 64,
+      "shuffle": true,
+      "rule_sparsity_weight": 0.0,
+      "concept_orthogonality_weight": 0.0,
+      "concept_binarization_weight": 0.0,
+      "membership_order_weight": 0.0,
+      "membership_min_gap": 0.0,
+      "membership_overlap_weight": 0.0,
+      "membership_max_overlap": 0.35,
+      "membership_coverage_weight": 0.0,
+      "membership_min_coverage": 0.6,
+      "classification_target_clip": 0.05
+    },
+    "fine_tuning": {
+      "max_epochs": 30,
+      "learning_rate": 0.001,
+      "batch_size": 32,
+      "patience": 10,
+      "min_delta": 0.0,
+      "weight_decay": 0.0,
+      "gradient_clip_norm": null,
+      "shuffle": true,
+      "device": null,
+      "classification_threshold": 0.5,
+      "rule_sparsity_weight": 0.0,
+      "rule_length_weight": 0.0,
+      "concept_orthogonality_weight": 0.0,
+      "concept_binarization_weight": 0.0,
+      "membership_order_weight": 0.0,
+      "membership_min_gap": 0.0,
+      "membership_overlap_weight": 0.0,
+      "membership_max_overlap": 0.35,
+      "membership_coverage_weight": 0.0,
+      "membership_min_coverage": 0.6,
+      "prune_after_fit": false,
+      "prune_threshold": 0.1,
+      "prune_temperature": 0.05,
+      "prune_keep_at_least": 1
+    },
+    "refinement": {
+      "cycles": 1,
+      "patience": null,
+      "min_delta": 0.0
+    }
+  },
+  "training_summary": {
+    "source": "bootstrap_plus_finetuning",
+    "epochs_ran": 22,
+    "best_epoch": 12,
+    "monitor_name": "validation_loss",
+    "best_monitor_value": 0.6931578516960144,
+    "train_loss": 0.6931437253952026,
+    "train_metrics": {
+      "accuracy": 0.5019444227218628,
+      "precision": 0.5019444444444443,
+      "recall": 0.9999999999999994,
+      "f1": 0.6683928241164401
+    },
+    "validation_loss": 0.6931578516960144,
+    "validation_metrics": {
+      "accuracy": 0.4950000047683716,
+      "precision": 0.4949999999999996,
+      "recall": 0.9999999999999982,
+      "f1": 0.662207357859088
+    },
+    "history": [
+      {
+        "epoch": 1,
+        "train_loss": 0.6933008538352119,
+        "train_metrics": {
+          "accuracy": 0.5019444227218628,
+          "precision": 0.5019444444444443,
+          "recall": 0.9999999999999994,
+          "f1": 0.6683928241164401
+        },
+        "validation_loss": 0.6932384967803955,
+        "validation_metrics": {
+          "accuracy": 0.4950000047683716,
+          "precision": 0.4949999999999996,
+          "recall": 0.9999999999999982,
+          "f1": 0.662207357859088
+        }
+      },
+      {
+        "epoch": 2,
+        "train_loss": 0.6931786309348212,
+        "train_metrics": {
+          "accuracy": 0.5019444227218628,
+          "precision": 0.5019444444444443,
+          "recall": 0.9999999999999994,
+          "f1": 0.6683928241164401
+        },
+        "validation_loss": 0.6932249665260315,
+        "validation_metrics": {
+          "accuracy": 0.4950000047683716,
+          "precision": 0.4949999999999996,
+          "recall": 0.9999999999999982,
+          "f1": 0.662207357859088
+        }
+      },
+      {
+        "epoch": 3,
+        "train_loss": 0.6932538233862983,
+        "train_metrics": {
+          "accuracy": 0.4925000071525574,
+          "precision": 0.4956896551724136,
+          "recall": 0.6364139457664635,
+          "f1": 0.5573055488243196
+        },
+        "validation_loss": 0.6931842565536499,
+        "validation_metrics": {
+          "accuracy": 0.4950000047683716,
+          "precision": 0.4949999999999996,
+          "recall": 0.9999999999999982,
+          "f1": 0.662207357859088
+        }
+      },
+      {
+        "epoch": 4,
+        "train_loss": 0.6932071815596687,
+        "train_metrics": {
+          "accuracy": 0.5019444227218628,
+          "precision": 0.5019444444444443,
+          "recall": 0.9999999999999994,
+          "f1": 0.6683928241164401
+        },
+        "validation_loss": 0.6932348012924194,
+        "validation_metrics": {
+          "accuracy": 0.4950000047683716,
+          "precision": 0.4949999999999996,
+          "recall": 0.9999999999999982,
+          "f1": 0.662207357859088
+        }
+      },
+      {
+        "epoch": 5,
+        "train_loss": 0.6932345040639242,
+        "train_metrics": {
+          "accuracy": 0.5019444227218628,
+          "precision": 0.5019444444444443,
+          "recall": 0.9999999999999994,
+          "f1": 0.6683928241164401
+        },
+        "validation_loss": 0.6932199597358704,
+        "validation_metrics": {
+          "accuracy": 0.4950000047683716,
+          "precision": 0.4949999999999996,
+          "recall": 0.9999999999999982,
+          "f1": 0.662207357859088
+        }
+      },
+      {
+        "epoch": 6,
+        "train_loss": 0.6931999201244778,
+        "train_metrics": {
+          "accuracy": 0.4891666769981384,
+          "precision": 0.4951219512195121,
+          "recall": 0.8987271721084666,
+          "f1": 0.6384902693134791
+        },
+        "validation_loss": 0.6931881308555603,
+        "validation_metrics": {
+          "accuracy": 0.4950000047683716,
+          "precision": 0.4949999999999996,
+          "recall": 0.9999999999999982,
+          "f1": 0.662207357859088
+        }
+      },
+      {
+        "epoch": 7,
+        "train_loss": 0.6932735922601488,
+        "train_metrics": {
+          "accuracy": 0.4858333468437195,
+          "precision": 0.4838235294117644,
+          "recall": 0.36413945766463734,
+          "f1": 0.4155352068198444
+        },
+        "validation_loss": 0.6931955218315125,
+        "validation_metrics": {
+          "accuracy": 0.4950000047683716,
+          "precision": 0.4949999999999996,
+          "recall": 0.9999999999999982,
+          "f1": 0.662207357859088
+        }
+      },
+      {
+        "epoch": 8,
+        "train_loss": 0.6932212795151604,
+        "train_metrics": {
+          "accuracy": 0.5019444227218628,
+          "precision": 0.5019444444444443,
+          "recall": 0.9999999999999994,
+          "f1": 0.6683928241164401
+        },
+        "validation_loss": 0.6932104229927063,
+        "validation_metrics": {
+          "accuracy": 0.4950000047683716,
+          "precision": 0.4949999999999996,
+          "recall": 0.9999999999999982,
+          "f1": 0.662207357859088
+        }
+      },
+      {
+        "epoch": 9,
+        "train_loss": 0.693183364868164,
+        "train_metrics": {
+          "accuracy": 0.5019444227218628,
+          "precision": 0.5019444444444443,
+          "recall": 0.9999999999999994,
+          "f1": 0.6683928241164401
+        },
+        "validation_loss": 0.6932084560394287,
+        "validation_metrics": {
+          "accuracy": 0.4950000047683716,
+          "precision": 0.4949999999999996,
+          "recall": 0.9999999999999982,
+          "f1": 0.662207357859088
+        }
+      },
+      {
+        "epoch": 10,
+        "train_loss": 0.6932008078363207,
+        "train_metrics": {
+          "accuracy": 0.5019444227218628,
+          "precision": 0.5019444444444443,
+          "recall": 0.9999999999999994,
+          "f1": 0.6683928241164401
+        },
+        "validation_loss": 0.693193793296814,
+        "validation_metrics": {
+          "accuracy": 0.4950000047683716,
+          "precision": 0.4949999999999996,
+          "recall": 0.9999999999999982,
+          "f1": 0.662207357859088
+        }
+      },
+      {
+        "epoch": 11,
+        "train_loss": 0.6931779180632697,
+        "train_metrics": {
+          "accuracy": 0.5019444227218628,
+          "precision": 0.5019444444444443,
+          "recall": 0.9999999999999994,
+          "f1": 0.6683928241164401
+        },
+        "validation_loss": 0.6932051777839661,
+        "validation_metrics": {
+          "accuracy": 0.4950000047683716,
+          "precision": 0.4949999999999996,
+          "recall": 0.9999999999999982,
+          "f1": 0.662207357859088
+        }
+      },
+      {
+        "epoch": 12,
+        "train_loss": 0.6932860432730781,
+        "train_metrics": {
+          "accuracy": 0.488055557012558,
+          "precision": 0.4926470588235292,
+          "recall": 0.6674045379081347,
+          "f1": 0.5668625146881128
+        },
+        "validation_loss": 0.6931578516960144,
+        "validation_metrics": {
+          "accuracy": 0.4950000047683716,
+          "precision": 0.4949999999999996,
+          "recall": 0.9999999999999982,
+          "f1": 0.662207357859088
+        }
+      },
+      {
+        "epoch": 13,
+        "train_loss": 0.6932027080323961,
+        "train_metrics": {
+          "accuracy": 0.4908333420753479,
+          "precision": 0.4953571428571427,
+          "recall": 0.7675705589374651,
+          "f1": 0.6021271977420887
+        },
+        "validation_loss": 0.6932138800621033,
+        "validation_metrics": {
+          "accuracy": 0.4950000047683716,
+          "precision": 0.4949999999999996,
+          "recall": 0.9999999999999982,
+          "f1": 0.662207357859088
+        }
+      },
+      {
+        "epoch": 14,
+        "train_loss": 0.693214697043101,
+        "train_metrics": {
+          "accuracy": 0.5019444227218628,
+          "precision": 0.5019444444444443,
+          "recall": 0.9999999999999994,
+          "f1": 0.6683928241164401
+        },
+        "validation_loss": 0.6931973099708557,
+        "validation_metrics": {
+          "accuracy": 0.4950000047683716,
+          "precision": 0.4949999999999996,
+          "recall": 0.9999999999999982,
+          "f1": 0.662207357859088
+        }
+      },
+      {
+        "epoch": 15,
+        "train_loss": 0.6932278911272685,
+        "train_metrics": {
+          "accuracy": 0.4908333420753479,
+          "precision": 0.4945469798657716,
+          "recall": 0.6524626452684004,
+          "f1": 0.5626342161770325
+        },
+        "validation_loss": 0.6932132244110107,
+        "validation_metrics": {
+          "accuracy": 0.4950000047683716,
+          "precision": 0.4949999999999996,
+          "recall": 0.9999999999999982,
+          "f1": 0.662207357859088
+        }
+      },
+      {
+        "epoch": 16,
+        "train_loss": 0.6931956587897407,
+        "train_metrics": {
+          "accuracy": 0.488611102104187,
+          "precision": 0.4934815950920244,
+          "recall": 0.7122302158273378,
+          "f1": 0.58301245753066
+        },
+        "validation_loss": 0.6931658983230591,
+        "validation_metrics": {
+          "accuracy": 0.4950000047683716,
+          "precision": 0.4949999999999996,
+          "recall": 0.9999999999999982,
+          "f1": 0.662207357859088
+        }
+      },
+      {
+        "epoch": 17,
+        "train_loss": 0.693163107501136,
+        "train_metrics": {
+          "accuracy": 0.5019444227218628,
+          "precision": 0.5019444444444443,
+          "recall": 0.9999999999999994,
+          "f1": 0.6683928241164401
+        },
+        "validation_loss": 0.6932281255722046,
+        "validation_metrics": {
+          "accuracy": 0.4950000047683716,
+          "precision": 0.4949999999999996,
+          "recall": 0.9999999999999982,
+          "f1": 0.662207357859088
+        }
+      },
+      {
+        "epoch": 18,
+        "train_loss": 0.6931992938783433,
+        "train_metrics": {
+          "accuracy": 0.4975000023841858,
+          "precision": 0.499491869918699,
+          "recall": 0.543995572772551,
+          "f1": 0.5207947019862557
+        },
+        "validation_loss": 0.6931837797164917,
+        "validation_metrics": {
+          "accuracy": 0.4950000047683716,
+          "precision": 0.4949999999999996,
+          "recall": 0.9999999999999982,
+          "f1": 0.662207357859088
+        }
+      },
+      {
+        "epoch": 19,
+        "train_loss": 0.6932464053895738,
+        "train_metrics": {
+          "accuracy": 0.48694443702697754,
+          "precision": 0.49358974358974345,
+          "recall": 0.8522412838959598,
+          "f1": 0.6251268520393161
+        },
+        "validation_loss": 0.6931889057159424,
+        "validation_metrics": {
+          "accuracy": 0.4950000047683716,
+          "precision": 0.4949999999999996,
+          "recall": 0.9999999999999982,
+          "f1": 0.662207357859088
+        }
+      },
+      {
+        "epoch": 20,
+        "train_loss": 0.6933330210049947,
+        "train_metrics": {
+          "accuracy": 0.4925000071525574,
+          "precision": 0.49646892655367214,
+          "recall": 0.7780852241283892,
+          "f1": 0.6061651217930142
+        },
+        "validation_loss": 0.6932193636894226,
+        "validation_metrics": {
+          "accuracy": 0.4950000047683716,
+          "precision": 0.4949999999999996,
+          "recall": 0.9999999999999982,
+          "f1": 0.662207357859088
+        }
+      },
+      {
+        "epoch": 21,
+        "train_loss": 0.693192114300198,
+        "train_metrics": {
+          "accuracy": 0.5019444227218628,
+          "precision": 0.5019444444444443,
+          "recall": 0.9999999999999994,
+          "f1": 0.6683928241164401
+        },
+        "validation_loss": 0.6932244300842285,
+        "validation_metrics": {
+          "accuracy": 0.4950000047683716,
+          "precision": 0.4949999999999996,
+          "recall": 0.9999999999999982,
+          "f1": 0.662207357859088
+        }
+      },
+      {
+        "epoch": 22,
+        "train_loss": 0.6932719042566088,
+        "train_metrics": {
+          "accuracy": 0.5019444227218628,
+          "precision": 0.5019444444444443,
+          "recall": 0.9999999999999994,
+          "f1": 0.6683928241164401
+        },
+        "validation_loss": 0.6932315230369568,
+        "validation_metrics": {
+          "accuracy": 0.4950000047683716,
+          "precision": 0.4949999999999996,
+          "recall": 0.9999999999999982,
+          "f1": 0.662207357859088
+        }
+      }
+    ],
+    "refinement_cycles": []
+  },
+  "preprocessing": {
+    "mode": "standard",
+    "feature_columns": [
+      "Elevation",
+      "Aspect",
+      "Slope",
+      "Horizontal_Distance_To_Hydrology",
+      "Vertical_Distance_To_Hydrology",
+      "Horizontal_Distance_To_Roadways",
+      "Hillshade_9am",
+      "Hillshade_Noon",
+      "Hillshade_3pm",
+      "Horizontal_Distance_To_Fire_Points"
+    ],
+    "center": [
+      3023.8147222222224,
+      152.00472222222223,
+      13.391111111111112,
+      270.65527777777777,
+      43.73361111111111,
+      2552.773611111111,
+      212.9011111111111,
+      223.99166666666667,
+      143.0636111111111,
+      2101.115
+    ],
+    "scale": [
+      198.9148012897611,
+      112.91668378809507,
+      6.947687775951,
+      212.14912941380197,
+      55.75721062750424,
+      1565.4845205321722,
+      25.029009810593145,
+      18.285921649059848,
+      35.51249558275833,
+      1331.7173493056496
+    ],
+    "minimum": null,
+    "maximum": null
+  },
+  "test_metrics": {
+    "accuracy": 0.49916666666666665,
+    "precision": 0.4991666666666663,
+    "recall": 0.9999999999999983,
+    "f1": 0.6659255141740964
+  },
+  "dataset_source_path": null,
+  "notes": {
+    "experiment_history": [
+      {
+        "timestamp_utc": "2026-04-13T10:45:50.174989+00:00",
+        "model_kind": "flat_neuro_fuzzy",
+        "training_source": "bootstrap_plus_finetuning",
+        "epochs_ran": 22,
+        "best_epoch": 12,
+        "train_metrics": {
+          "accuracy": 0.5019444227218628,
+          "precision": 0.5019444444444443,
+          "recall": 0.9999999999999994,
+          "f1": 0.6683928241164401
+        },
+        "validation_metrics": {
+          "accuracy": 0.4950000047683716,
+          "precision": 0.4949999999999996,
+          "recall": 0.9999999999999982,
+          "f1": 0.662207357859088
+        },
+        "test_metrics": {
+          "accuracy": 0.49916666666666665,
+          "precision": 0.4991666666666663,
+          "recall": 0.9999999999999983,
+          "f1": 0.6659255141740964
+        },
+        "manual_rule_targets": 0,
+        "feature_names": [
+          "Elevation",
+          "Aspect",
+          "Slope",
+          "Horizontal_Distance_To_Hydrology",
+          "Vertical_Distance_To_Hydrology",
+          "Horizontal_Distance_To_Roadways",
+          "Hillshade_9am",
+          "Hillshade_Noon",
+          "Hillshade_3pm",
+          "Horizontal_Distance_To_Fire_Points"
+        ]
+      }
+    ]
+  }
+}

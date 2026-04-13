@@ -1,0 +1,112 @@
+PROJECT REPORT
+name: california_housing_regression-deep_research
+task_type: regression
+model_kind: deep_fuzzy_feature_learning
+dataset_rows: 4096
+dataset_columns: 9
+training_source: stagewise_pretraining_plus_finetuning
+train_metrics: {'mse': 0.7290587425231934, 'mae': 0.6426743865013123, 'rmse': 0.8538493675837637, 'r2': 0.44987966885805464}
+validation_metrics: {'mse': 0.724826455116272, 'mae': 0.6515616178512573, 'rmse': 0.851367403132321, 'r2': 0.44015672948340634}
+test_metrics: {'mse': 0.6172649614987826, 'mae': 0.6054294114552939, 'rmse': 0.785662116624432, 'r2': 0.5115131227296597}
+
+MODEL REPORT
+Input dimension: 8
+
+STAGE 0: stage_1
+Output dimension: 9
+  BLOCK 0: stage_1_block_1
+    Inputs: [0, 1, 2]
+    Outputs: [stage_1_block_1_concept_1, stage_1_block_1_concept_2, stage_1_block_1_concept_3]
+    RULE 0 (stage_1_block_1_0): IF MedInc IS term_1 AND AveRooms IS term_1 THEN stage_1_block_1_concept_1=0.401, stage_1_block_1_concept_2=0.012, stage_1_block_1_concept_3=0.012 [gate=0.790]
+    RULE 1 (stage_1_block_1_1): IF HouseAge IS term_1 AND AveRooms IS term_1 THEN stage_1_block_1_concept_1=0.899, stage_1_block_1_concept_2=0.195, stage_1_block_1_concept_3=0.171 [gate=0.182]
+    RULE 2 (stage_1_block_1_2): IF MedInc IS term_1 AND HouseAge IS term_1 THEN stage_1_block_1_concept_1=0.415, stage_1_block_1_concept_2=0.012, stage_1_block_1_concept_3=0.012 [gate=0.772]
+    RULE 3 (stage_1_block_1_3): IF MedInc IS term_2 AND HouseAge IS term_1 THEN stage_1_block_1_concept_1=0.960, stage_1_block_1_concept_2=0.978, stage_1_block_1_concept_3=0.994 [gate=0.813]
+    RULE 4 (stage_1_block_1_4): IF MedInc IS term_2 AND AveRooms IS term_1 THEN stage_1_block_1_concept_1=0.959, stage_1_block_1_concept_2=0.978, stage_1_block_1_concept_3=0.994 [gate=0.805]
+    RULE 5 (stage_1_block_1_5): IF MedInc IS term_3 AND HouseAge IS term_1 THEN stage_1_block_1_concept_1=0.891, stage_1_block_1_concept_2=0.993, stage_1_block_1_concept_3=0.872 [gate=0.217]
+  BLOCK 1: stage_1_block_2
+    Inputs: [3, 4, 5]
+    Outputs: [stage_1_block_2_concept_1, stage_1_block_2_concept_2, stage_1_block_2_concept_3]
+    RULE 0 (stage_1_block_2_0): IF AveBedrms IS term_1 AND Population IS term_1 THEN stage_1_block_2_concept_1=0.533, stage_1_block_2_concept_2=0.134, stage_1_block_2_concept_3=0.129 [gate=0.443]
+    RULE 1 (stage_1_block_2_1): IF Population IS term_1 AND AveOccup IS term_1 THEN stage_1_block_2_concept_1=0.875, stage_1_block_2_concept_2=0.057, stage_1_block_2_concept_3=0.056 [gate=0.533]
+    RULE 2 (stage_1_block_2_2): IF AveBedrms IS term_1 AND AveOccup IS term_1 THEN stage_1_block_2_concept_1=0.889, stage_1_block_2_concept_2=0.061, stage_1_block_2_concept_3=0.059 [gate=0.464]
+    RULE 3 (stage_1_block_2_3): IF AveBedrms IS term_2 AND Population IS term_1 THEN stage_1_block_2_concept_1=0.067, stage_1_block_2_concept_2=0.950, stage_1_block_2_concept_3=0.089 [gate=0.142]
+    RULE 4 (stage_1_block_2_4): IF AveBedrms IS term_2 AND AveOccup IS term_1 THEN stage_1_block_2_concept_1=0.036, stage_1_block_2_concept_2=0.885, stage_1_block_2_concept_3=0.048 [gate=0.093]
+    RULE 5 (stage_1_block_2_5): IF Population IS term_1 AND AveOccup IS term_2 THEN stage_1_block_2_concept_1=0.035, stage_1_block_2_concept_2=0.049, stage_1_block_2_concept_3=0.894 [gate=0.090]
+  BLOCK 2: stage_1_block_3
+    Inputs: [6, 7]
+    Outputs: [stage_1_block_3_concept_1, stage_1_block_3_concept_2, stage_1_block_3_concept_3]
+    RULE 0 (stage_1_block_3_0): IF Latitude IS term_1 AND Longitude IS term_4 THEN stage_1_block_3_concept_1=0.052, stage_1_block_3_concept_2=0.916, stage_1_block_3_concept_3=0.049 [gate=0.098]
+    RULE 1 (stage_1_block_3_1): IF Latitude IS term_1 AND Longitude IS term_3 THEN stage_1_block_3_concept_1=0.052, stage_1_block_3_concept_2=0.916, stage_1_block_3_concept_3=0.049 [gate=0.098]
+    RULE 2 (stage_1_block_3_2): IF Latitude IS term_2 AND Longitude IS term_4 THEN stage_1_block_3_concept_1=0.060, stage_1_block_3_concept_2=0.065, stage_1_block_3_concept_3=0.912 [gate=0.083]
+    RULE 3 (stage_1_block_3_3): IF Latitude IS term_2 AND Longitude IS term_3 THEN stage_1_block_3_concept_1=0.060, stage_1_block_3_concept_2=0.065, stage_1_block_3_concept_3=0.912 [gate=0.084]
+    RULE 4 (stage_1_block_3_4): IF Latitude IS term_1 THEN stage_1_block_3_concept_1=0.878, stage_1_block_3_concept_2=0.064, stage_1_block_3_concept_3=0.034 [gate=0.654]
+    RULE 5 (stage_1_block_3_5): IF Latitude IS term_2 THEN stage_1_block_3_concept_1=0.922, stage_1_block_3_concept_2=0.095, stage_1_block_3_concept_3=0.050 [gate=0.231]
+
+STAGE 1: stage_2
+Output dimension: 9
+  BLOCK 0: stage_2_block_1
+    Inputs: [0, 1, 2]
+    Outputs: [stage_2_block_1_concept_1, stage_2_block_1_concept_2, stage_2_block_1_concept_3]
+    RULE 0 (stage_2_block_1_0): IF stage_1_block_1_concept_2 IS low AND stage_1_block_1_concept_3 IS low THEN stage_2_block_1_concept_1=0.236, stage_2_block_1_concept_2=0.022, stage_2_block_1_concept_3=0.015 [gate=0.758]
+    RULE 1 (stage_2_block_1_1): IF stage_1_block_1_concept_1 IS high AND stage_1_block_1_concept_2 IS low THEN stage_2_block_1_concept_1=0.933, stage_2_block_1_concept_2=0.111, stage_2_block_1_concept_3=0.445 [gate=0.856]
+    RULE 2 (stage_2_block_1_2): IF stage_1_block_1_concept_1 IS high AND stage_1_block_1_concept_3 IS low THEN stage_2_block_1_concept_1=0.975, stage_2_block_1_concept_2=0.807, stage_2_block_1_concept_3=0.926 [gate=0.754]
+    RULE 3 (stage_2_block_1_3): IF stage_1_block_1_concept_2 IS high AND stage_1_block_1_concept_3 IS high THEN stage_2_block_1_concept_1=0.074, stage_2_block_1_concept_2=0.930, stage_2_block_1_concept_3=0.067 [gate=0.062]
+    RULE 4 (stage_2_block_1_4): IF stage_1_block_1_concept_1 IS high AND stage_1_block_1_concept_2 IS high THEN stage_2_block_1_concept_1=0.079, stage_2_block_1_concept_2=0.043, stage_2_block_1_concept_3=0.964 [gate=0.054]
+    RULE 5 (stage_2_block_1_5): IF stage_1_block_1_concept_1 IS high AND stage_1_block_1_concept_3 IS high THEN stage_2_block_1_concept_1=0.080, stage_2_block_1_concept_2=0.043, stage_2_block_1_concept_3=0.964 [gate=0.052]
+  BLOCK 1: stage_2_block_2
+    Inputs: [3, 4, 5]
+    Outputs: [stage_2_block_2_concept_1, stage_2_block_2_concept_2, stage_2_block_2_concept_3]
+    RULE 0 (stage_2_block_2_0): IF stage_1_block_2_concept_1 IS high AND stage_1_block_2_concept_2 IS low THEN stage_2_block_2_concept_1=0.929, stage_2_block_2_concept_2=0.057, stage_2_block_2_concept_3=0.044 [gate=0.572]
+    RULE 1 (stage_2_block_2_1): IF stage_1_block_2_concept_2 IS low AND stage_1_block_2_concept_3 IS low THEN stage_2_block_2_concept_1=0.948, stage_2_block_2_concept_2=0.093, stage_2_block_2_concept_3=0.076 [gate=0.544]
+    RULE 2 (stage_2_block_2_2): IF stage_1_block_2_concept_1 IS high AND stage_1_block_2_concept_3 IS low THEN stage_2_block_2_concept_1=0.948, stage_2_block_2_concept_2=0.093, stage_2_block_2_concept_3=0.076 [gate=0.540]
+    RULE 3 (stage_2_block_2_3): IF stage_1_block_2_concept_1 IS low AND stage_1_block_2_concept_3 IS low THEN stage_2_block_2_concept_1=0.079, stage_2_block_2_concept_2=0.941, stage_2_block_2_concept_3=0.058 [gate=0.076]
+    RULE 4 (stage_2_block_2_4): IF stage_1_block_2_concept_1 IS low AND stage_1_block_2_concept_2 IS low THEN stage_2_block_2_concept_1=0.078, stage_2_block_2_concept_2=0.940, stage_2_block_2_concept_3=0.056 [gate=0.077]
+    RULE 5 (stage_2_block_2_5): IF stage_1_block_2_concept_2 IS high AND stage_1_block_2_concept_3 IS low THEN stage_2_block_2_concept_1=0.078, stage_2_block_2_concept_2=0.079, stage_2_block_2_concept_3=0.919 [gate=0.073]
+  BLOCK 2: stage_2_block_3
+    Inputs: [6, 7, 8]
+    Outputs: [stage_2_block_3_concept_1, stage_2_block_3_concept_2, stage_2_block_3_concept_3]
+    RULE 0 (stage_2_block_3_0): IF stage_1_block_3_concept_1 IS high AND stage_1_block_3_concept_2 IS low THEN stage_2_block_3_concept_1=0.930, stage_2_block_3_concept_2=0.091, stage_2_block_3_concept_3=0.067 [gate=0.408]
+    RULE 1 (stage_2_block_3_1): IF stage_1_block_3_concept_1 IS high AND stage_1_block_3_concept_3 IS low THEN stage_2_block_3_concept_1=0.931, stage_2_block_3_concept_2=0.092, stage_2_block_3_concept_3=0.068 [gate=0.277]
+    RULE 2 (stage_2_block_3_2): IF stage_1_block_3_concept_2 IS low AND stage_1_block_3_concept_3 IS low THEN stage_2_block_3_concept_1=0.927, stage_2_block_3_concept_2=0.088, stage_2_block_3_concept_3=0.063 [gate=0.238]
+    RULE 3 (stage_2_block_3_3): IF stage_1_block_3_concept_1 IS low AND stage_1_block_3_concept_2 IS low THEN stage_2_block_3_concept_1=0.046, stage_2_block_3_concept_2=0.829, stage_2_block_3_concept_3=0.039 [gate=0.145]
+    RULE 4 (stage_2_block_3_4): IF stage_1_block_3_concept_1 IS low AND stage_1_block_3_concept_3 IS low THEN stage_2_block_3_concept_1=0.057, stage_2_block_3_concept_2=0.937, stage_2_block_3_concept_3=0.056 [gate=0.139]
+    RULE 5 (stage_2_block_3_5): IF stage_1_block_3_concept_1 IS high AND stage_1_block_3_concept_2 IS high THEN stage_2_block_3_concept_1=0.056, stage_2_block_3_concept_2=0.079, stage_2_block_3_concept_3=0.913 [gate=0.070]
+
+STAGE 2: stage_3
+Output dimension: 9
+  BLOCK 0: stage_3_block_1
+    Inputs: [0, 1, 2]
+    Outputs: [stage_3_block_1_concept_1, stage_3_block_1_concept_2, stage_3_block_1_concept_3]
+    RULE 0 (stage_3_block_1_0): IF stage_2_block_1_concept_2 IS low AND stage_2_block_1_concept_3 IS low THEN stage_3_block_1_concept_1=0.864, stage_3_block_1_concept_2=0.034, stage_3_block_1_concept_3=0.053 [gate=0.902]
+    RULE 1 (stage_3_block_1_1): IF stage_2_block_1_concept_2 IS high AND stage_2_block_1_concept_3 IS high THEN stage_3_block_1_concept_1=0.040, stage_3_block_1_concept_2=0.963, stage_3_block_1_concept_3=0.074 [gate=0.060]
+    RULE 2 (stage_3_block_1_2): IF stage_2_block_1_concept_1 IS high AND stage_2_block_1_concept_2 IS low THEN stage_3_block_1_concept_1=0.028, stage_3_block_1_concept_2=0.887, stage_3_block_1_concept_3=0.980 [gate=0.521]
+    RULE 3 (stage_3_block_1_3): IF stage_2_block_1_concept_1 IS high AND stage_2_block_1_concept_3 IS high THEN stage_3_block_1_concept_1=0.218, stage_3_block_1_concept_2=0.866, stage_3_block_1_concept_3=0.199 [gate=0.279]
+    RULE 4 (stage_3_block_1_4): IF stage_2_block_1_concept_1 IS low AND stage_2_block_1_concept_3 IS low THEN stage_3_block_1_concept_1=0.947, stage_3_block_1_concept_2=0.016, stage_3_block_1_concept_3=0.025 [gate=0.669]
+    RULE 5 (stage_3_block_1_5): IF stage_2_block_1_concept_1 IS high AND stage_2_block_1_concept_3 IS low THEN stage_3_block_1_concept_1=0.126, stage_3_block_1_concept_2=0.063, stage_3_block_1_concept_3=0.706 [gate=0.569]
+  BLOCK 1: stage_3_block_2
+    Inputs: [3, 4, 5]
+    Outputs: [stage_3_block_2_concept_1, stage_3_block_2_concept_2, stage_3_block_2_concept_3]
+    RULE 0 (stage_3_block_2_0): IF stage_2_block_2_concept_1 IS high AND stage_2_block_2_concept_2 IS low THEN stage_3_block_2_concept_1=0.907, stage_3_block_2_concept_2=0.099, stage_3_block_2_concept_3=0.214 [gate=0.559]
+    RULE 1 (stage_3_block_2_1): IF stage_2_block_2_concept_1 IS high AND stage_2_block_2_concept_3 IS low THEN stage_3_block_2_concept_1=0.908, stage_3_block_2_concept_2=0.098, stage_3_block_2_concept_3=0.214 [gate=0.478]
+    RULE 2 (stage_3_block_2_2): IF stage_2_block_2_concept_2 IS low AND stage_2_block_2_concept_3 IS low THEN stage_3_block_2_concept_1=0.908, stage_3_block_2_concept_2=0.098, stage_3_block_2_concept_3=0.214 [gate=0.468]
+    RULE 3 (stage_3_block_2_3): IF stage_2_block_2_concept_1 IS low AND stage_2_block_2_concept_2 IS low THEN stage_3_block_2_concept_1=0.073, stage_3_block_2_concept_2=0.921, stage_3_block_2_concept_3=0.074 [gate=0.075]
+    RULE 4 (stage_3_block_2_4): IF stage_2_block_2_concept_1 IS high AND stage_2_block_2_concept_2 IS high THEN stage_3_block_2_concept_1=0.072, stage_3_block_2_concept_2=0.921, stage_3_block_2_concept_3=0.074 [gate=0.075]
+    RULE 5 (stage_3_block_2_5): IF stage_2_block_2_concept_1 IS low AND stage_2_block_2_concept_3 IS low THEN stage_3_block_2_concept_1=0.067, stage_3_block_2_concept_2=0.051, stage_3_block_2_concept_3=0.952 [gate=0.108]
+  BLOCK 2: stage_3_block_3
+    Inputs: [6, 7, 8]
+    Outputs: [stage_3_block_3_concept_1, stage_3_block_3_concept_2, stage_3_block_3_concept_3]
+    RULE 0 (stage_3_block_3_0): IF stage_2_block_3_concept_1 IS low AND stage_2_block_3_concept_2 IS high THEN stage_3_block_3_concept_1=0.910, stage_3_block_3_concept_2=0.081, stage_3_block_3_concept_3=0.056 [gate=0.439]
+    RULE 1 (stage_3_block_3_1): IF stage_2_block_3_concept_2 IS high AND stage_2_block_3_concept_3 IS low THEN stage_3_block_3_concept_1=0.096, stage_3_block_3_concept_2=0.901, stage_3_block_3_concept_3=0.144 [gate=0.552]
+    RULE 2 (stage_3_block_3_2): IF stage_2_block_3_concept_1 IS low AND stage_2_block_3_concept_3 IS low THEN stage_3_block_3_concept_1=0.094, stage_3_block_3_concept_2=0.903, stage_3_block_3_concept_3=0.136 [gate=0.415]
+    RULE 3 (stage_3_block_3_3): IF stage_2_block_3_concept_1 IS low AND stage_2_block_3_concept_2 IS low THEN stage_3_block_3_concept_1=0.053, stage_3_block_3_concept_2=0.067, stage_3_block_3_concept_3=0.923 [gate=0.107]
+    RULE 4 (stage_3_block_3_4): IF stage_2_block_3_concept_2 IS low AND stage_2_block_3_concept_3 IS low THEN stage_3_block_3_concept_1=0.915, stage_3_block_3_concept_2=0.080, stage_3_block_3_concept_3=0.055 [gate=0.074]
+    RULE 5 (stage_3_block_3_5): IF stage_2_block_3_concept_1 IS high AND stage_2_block_3_concept_2 IS high THEN stage_3_block_3_concept_1=0.045, stage_3_block_3_concept_2=0.079, stage_3_block_3_concept_3=0.939 [gate=0.075]
+
+DECISION LAYER: deep_decision
+Output dimension: 1
+  RULE 0 (deep_decision_0): IF stage_3_block_1_concept_2 IS low AND stage_3_block_2_concept_3 IS low THEN target = 0.660 - 1.040*stage_3_block_1_concept_1 + 1.458*stage_3_block_1_concept_2 + 1.644*stage_3_block_1_concept_3 + 0.600*stage_3_block_2_concept_1 + 0.071*stage_3_block_2_concept_2 + 0.149*stage_3_block_2_concept_3 + 0.069*stage_3_block_3_concept_1 + 0.596*stage_3_block_3_concept_2 + 0.100*stage_3_block_3_concept_3 [gate=0.887]
+  RULE 1 (deep_decision_1): IF stage_3_block_1_concept_3 IS low AND stage_3_block_2_concept_3 IS low THEN target = 0.642 - 0.973*stage_3_block_1_concept_1 + 1.347*stage_3_block_1_concept_2 + 1.469*stage_3_block_1_concept_3 + 0.582*stage_3_block_2_concept_1 + 0.054*stage_3_block_2_concept_2 + 0.132*stage_3_block_2_concept_3 + 0.051*stage_3_block_3_concept_1 + 0.578*stage_3_block_3_concept_2 + 0.083*stage_3_block_3_concept_3 [gate=0.791]
+  RULE 2 (deep_decision_2): IF stage_3_block_1_concept_1 IS high AND stage_3_block_2_concept_3 IS low THEN target = 0.665 - 0.911*stage_3_block_1_concept_1 + 1.273*stage_3_block_1_concept_2 + 1.338*stage_3_block_1_concept_3 + 0.605*stage_3_block_2_concept_1 + 0.077*stage_3_block_2_concept_2 + 0.154*stage_3_block_2_concept_3 + 0.074*stage_3_block_3_concept_1 + 0.601*stage_3_block_3_concept_2 + 0.105*stage_3_block_3_concept_3 [gate=0.633]
+  RULE 3 (deep_decision_3): IF stage_3_block_1_concept_2 IS high AND stage_3_block_2_concept_3 IS low THEN target = 0.811 - 1.421*stage_3_block_1_concept_1 + 1.605*stage_3_block_1_concept_2 + 1.937*stage_3_block_1_concept_3 + 0.751*stage_3_block_2_concept_1 + 0.222*stage_3_block_2_concept_2 + 0.300*stage_3_block_2_concept_3 + 0.219*stage_3_block_3_concept_1 + 0.747*stage_3_block_3_concept_2 + 0.251*stage_3_block_3_concept_3 [gate=0.225]
+  RULE 4 (deep_decision_4): IF stage_3_block_1_concept_3 IS high AND stage_3_block_2_concept_3 IS low THEN target = 0.598 - 1.175*stage_3_block_1_concept_1 + 1.337*stage_3_block_1_concept_2 + 1.583*stage_3_block_1_concept_3 + 0.538*stage_3_block_2_concept_1 + 0.010*stage_3_block_2_concept_2 + 0.087*stage_3_block_2_concept_3 + 0.007*stage_3_block_3_concept_1 + 0.534*stage_3_block_3_concept_2 + 0.038*stage_3_block_3_concept_3 [gate=0.393]
+  RULE 5 (deep_decision_5): IF stage_3_block_1_concept_2 IS high AND stage_3_block_1_concept_3 IS high THEN target = 0.546 - 1.243*stage_3_block_1_concept_1 + 1.199*stage_3_block_1_concept_2 + 1.549*stage_3_block_1_concept_3 + 0.486*stage_3_block_2_concept_1 - 0.042*stage_3_block_2_concept_2 + 0.036*stage_3_block_2_concept_3 - 0.045*stage_3_block_3_concept_1 + 0.482*stage_3_block_3_concept_2 - 0.013*stage_3_block_3_concept_3 [gate=0.165]

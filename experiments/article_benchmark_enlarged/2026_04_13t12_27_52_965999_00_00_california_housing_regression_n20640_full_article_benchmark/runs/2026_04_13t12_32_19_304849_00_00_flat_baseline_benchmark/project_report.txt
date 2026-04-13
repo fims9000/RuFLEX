@@ -1,0 +1,38 @@
+PROJECT REPORT
+name: california_housing_regression_n20640_full-flat_baseline
+task_type: regression
+model_kind: flat_neuro_fuzzy
+dataset_rows: 20640
+dataset_columns: 9
+training_source: bootstrap_plus_finetuning
+train_metrics: {'mse': 1.3353862762451172, 'mae': 0.9068852066993713, 'rmse': 1.1555891468186767, 'r2': 0.0005152554569270995}
+validation_metrics: {'mse': 1.2928409576416016, 'mae': 0.8951521515846252, 'rmse': 1.1370316432015433, 'r2': 0.0012077951355748962}
+test_metrics: {'mse': 1.355197140822801, 'mae': 0.9184306787592542, 'rmse': 1.164129348836632, 'r2': -0.00030486050605271764}
+
+MODEL REPORT
+Input dimension: 8
+
+STAGE 0: flat_stage
+Output dimension: 3
+  BLOCK 0: flat_feature_block
+    Inputs: [0, 1, 2, 3, 4, 5, 6, 7]
+    Outputs: [flat_concept_1, flat_concept_2, flat_concept_3]
+    RULE 0 (flat_feature_block_0): IF AveRooms IS term_1 AND Population IS term_1 THEN flat_concept_1=0.151, flat_concept_2=0.148, flat_concept_3=0.851 [gate=0.784]
+    RULE 1 (flat_feature_block_1): IF AveBedrms IS term_1 AND Population IS term_1 THEN flat_concept_1=0.148, flat_concept_2=0.851, flat_concept_3=0.148 [gate=0.378]
+    RULE 2 (flat_feature_block_2): IF Population IS term_1 AND AveOccup IS term_1 THEN flat_concept_1=0.851, flat_concept_2=0.149, flat_concept_3=0.149 [gate=0.850]
+    RULE 3 (flat_feature_block_3): IF AveBedrms IS term_1 AND AveOccup IS term_1 THEN flat_concept_1=0.148, flat_concept_2=0.851, flat_concept_3=0.148 [gate=0.377]
+    RULE 4 (flat_feature_block_4): IF HouseAge IS term_1 AND Population IS term_1 THEN flat_concept_1=0.853, flat_concept_2=0.146, flat_concept_3=0.152 [gate=0.254]
+    RULE 5 (flat_feature_block_5): IF HouseAge IS term_1 AND AveOccup IS term_1 THEN flat_concept_1=0.853, flat_concept_2=0.146, flat_concept_3=0.152 [gate=0.253]
+    RULE 6 (flat_feature_block_6): IF AveRooms IS term_1 AND AveOccup IS term_1 THEN flat_concept_1=0.151, flat_concept_2=0.148, flat_concept_3=0.851 [gate=0.784]
+    RULE 7 (flat_feature_block_7): IF AveRooms IS term_1 AND AveBedrms IS term_1 THEN flat_concept_1=0.149, flat_concept_2=0.851, flat_concept_3=0.149 [gate=0.323]
+
+DECISION LAYER: flat_decision
+Output dimension: 1
+  RULE 0 (flat_decision_0): IF flat_concept_1 IS low AND flat_concept_2 IS low THEN target = 1.598 - 1.686*flat_concept_1 + 4.400*flat_concept_2 - 0.888*flat_concept_3 [gate=0.859]
+  RULE 1 (flat_decision_1): IF flat_concept_2 IS low AND flat_concept_3 IS low THEN target = 1.598 - 1.686*flat_concept_1 + 4.400*flat_concept_2 - 0.888*flat_concept_3 [gate=0.762]
+  RULE 2 (flat_decision_2): IF flat_concept_1 IS low AND flat_concept_3 IS low THEN target = 1.598 - 1.686*flat_concept_1 + 4.400*flat_concept_2 - 0.888*flat_concept_3 [gate=0.675]
+  RULE 3 (flat_decision_3): IF flat_concept_2 IS low AND flat_concept_3 IS high THEN target = 1.598 - 1.685*flat_concept_1 + 4.399*flat_concept_2 - 0.888*flat_concept_3 [gate=0.394]
+  RULE 4 (flat_decision_4): IF flat_concept_1 IS low AND flat_concept_3 IS high THEN target = 1.598 - 1.686*flat_concept_1 + 4.400*flat_concept_2 - 0.888*flat_concept_3 [gate=0.357]
+  RULE 5 (flat_decision_5): IF flat_concept_1 IS high AND flat_concept_2 IS low THEN target = 1.598 - 1.684*flat_concept_1 + 4.396*flat_concept_2 - 0.888*flat_concept_3 [gate=0.329]
+  RULE 6 (flat_decision_6): IF flat_concept_1 IS high AND flat_concept_3 IS low THEN target = 1.598 - 1.683*flat_concept_1 + 4.396*flat_concept_2 - 0.887*flat_concept_3 [gate=0.281]
+  RULE 7 (flat_decision_7): IF flat_concept_1 IS low AND flat_concept_2 IS high THEN target = 1.599 - 1.686*flat_concept_1 + 4.402*flat_concept_2 - 0.887*flat_concept_3 [gate=0.246]

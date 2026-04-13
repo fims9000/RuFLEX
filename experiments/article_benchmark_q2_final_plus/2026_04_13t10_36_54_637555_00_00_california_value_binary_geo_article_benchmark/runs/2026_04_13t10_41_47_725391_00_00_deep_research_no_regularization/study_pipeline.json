@@ -1,0 +1,9 @@
+{
+  "name": "deep_research_no_regularization",
+  "label": "Deep No Regularization",
+  "workspace_template": "deep_research",
+  "training_preset": "article_demo",
+  "training_preset_override": null,
+  "article_role": "regularization_ablation",
+  "kind": "ad_hoc_benchmark_variant"
+}

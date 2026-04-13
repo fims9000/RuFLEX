@@ -1,0 +1,24 @@
+{
+  "name": "california_housing_regression-flat_baseline",
+  "task_type": "regression",
+  "model_kind": "flat_neuro_fuzzy",
+  "target_name": "MedHouseVal",
+  "feature_count": 8,
+  "variable_count": 8,
+  "variable_roles": {
+    "input": 8
+  },
+  "dataset_rows": 4096,
+  "dataset_columns": 9,
+  "has_model": true,
+  "has_training_summary": true,
+  "experiment_count": 1,
+  "study_run_count": 0,
+  "manual_rule_targets": 0,
+  "test_metrics": {
+    "mse": 0.7103541601694756,
+    "mae": 0.6369285820462761,
+    "rmse": 0.84282510651349,
+    "r2": 0.4378448363331139
+  }
+}

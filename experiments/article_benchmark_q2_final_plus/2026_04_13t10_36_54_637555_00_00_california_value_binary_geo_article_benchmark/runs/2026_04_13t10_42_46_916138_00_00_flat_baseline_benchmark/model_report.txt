@@ -1,0 +1,27 @@
+MODEL REPORT
+Input dimension: 8
+
+STAGE 0: flat_stage
+Output dimension: 3
+  BLOCK 0: flat_feature_block
+    Inputs: [0, 1, 2, 3, 4, 5, 6, 7]
+    Outputs: [flat_concept_1, flat_concept_2, flat_concept_3]
+    RULE 0 (flat_feature_block_0): IF MedInc IS term_1 AND Population IS term_1 THEN flat_concept_1=0.132, flat_concept_2=0.171, flat_concept_3=0.868 [gate=0.314]
+    RULE 1 (flat_feature_block_1): IF AveBedrms IS term_1 AND Population IS term_1 THEN flat_concept_1=0.153, flat_concept_2=0.847, flat_concept_3=0.147 [gate=0.238]
+    RULE 2 (flat_feature_block_2): IF AveBedrms IS term_1 AND AveOccup IS term_1 THEN flat_concept_1=0.153, flat_concept_2=0.847, flat_concept_3=0.147 [gate=0.238]
+    RULE 3 (flat_feature_block_3): IF MedInc IS term_1 AND AveOccup IS term_1 THEN flat_concept_1=0.132, flat_concept_2=0.171, flat_concept_3=0.868 [gate=0.314]
+    RULE 4 (flat_feature_block_4): IF AveRooms IS term_1 AND Population IS term_1 THEN flat_concept_1=0.853, flat_concept_2=0.147, flat_concept_3=0.147 [gate=0.749]
+    RULE 5 (flat_feature_block_5): IF Population IS term_1 AND AveOccup IS term_1 THEN flat_concept_1=0.853, flat_concept_2=0.147, flat_concept_3=0.147 [gate=0.842]
+    RULE 6 (flat_feature_block_6): IF AveRooms IS term_1 AND AveOccup IS term_1 THEN flat_concept_1=0.853, flat_concept_2=0.147, flat_concept_3=0.147 [gate=0.748]
+    RULE 7 (flat_feature_block_7): IF HouseAge IS term_1 AND Population IS term_1 THEN flat_concept_1=0.853, flat_concept_2=0.147, flat_concept_3=0.147 [gate=0.642]
+
+DECISION LAYER: flat_decision
+Output dimension: 1
+  RULE 0 (flat_decision_0): IF flat_concept_1 IS high AND flat_concept_3 IS low THEN target = 10.872 - 32.912*flat_concept_1 + 13.299*flat_concept_2 + 32.062*flat_concept_3 [gate=0.819]
+  RULE 1 (flat_decision_1): IF flat_concept_2 IS low AND flat_concept_3 IS low THEN target = 10.840 - 32.953*flat_concept_1 + 13.264*flat_concept_2 + 32.059*flat_concept_3 [gate=0.813]
+  RULE 2 (flat_decision_2): IF flat_concept_1 IS high AND flat_concept_2 IS low THEN target = 10.876 - 32.916*flat_concept_1 + 13.300*flat_concept_2 + 32.090*flat_concept_3 [gate=0.725]
+  RULE 3 (flat_decision_3): IF flat_concept_1 IS low AND flat_concept_3 IS low THEN target = 10.936 - 32.860*flat_concept_1 + 13.359*flat_concept_2 + 32.162*flat_concept_3 [gate=0.248]
+  RULE 4 (flat_decision_4): IF flat_concept_1 IS low AND flat_concept_2 IS low THEN target = 11.164 - 32.644*flat_concept_1 + 13.581*flat_concept_2 + 32.428*flat_concept_3 [gate=0.323]
+  RULE 5 (flat_decision_5): IF flat_concept_1 IS high AND flat_concept_3 IS high THEN target = 10.999 - 32.802*flat_concept_1 + 13.419*flat_concept_2 + 32.242*flat_concept_3 [gate=0.236]
+  RULE 6 (flat_decision_6): IF flat_concept_2 IS low AND flat_concept_3 IS high THEN target = 11.243 - 32.570*flat_concept_1 + 13.658*flat_concept_2 + 32.527*flat_concept_3 [gate=0.304]
+  RULE 7 (flat_decision_7): IF flat_concept_2 IS high AND flat_concept_3 IS low THEN target = 10.907 - 32.875*flat_concept_1 + 13.335*flat_concept_2 + 32.091*flat_concept_3 [gate=0.226]

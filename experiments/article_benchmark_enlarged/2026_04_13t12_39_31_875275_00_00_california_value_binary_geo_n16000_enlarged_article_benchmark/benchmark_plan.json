@@ -1,0 +1,75 @@
+{
+  "variants": [
+    {
+      "name": "flat_baseline",
+      "label": "Flat Baseline",
+      "article_role": "baseline",
+      "description": "Reference flat neuro-fuzzy baseline for the main comparison table.",
+      "workspace_template": "flat_baseline",
+      "training_preset": "balanced",
+      "study_pipeline": "flat_baseline_benchmark",
+      "workspace_overrides": null,
+      "training_overrides": null
+    },
+    {
+      "name": "deep_stage1_ablation",
+      "label": "Deep Depth 1",
+      "article_role": "depth_ablation",
+      "description": "Depth ablation with a single hidden concept stage.",
+      "workspace_template": "deep_article_demo",
+      "training_preset": "article_demo",
+      "study_pipeline": null,
+      "workspace_overrides": {
+        "config": {
+          "hidden_stage_count": 1
+        }
+      },
+      "training_overrides": null
+    },
+    {
+      "name": "deep_article_demo",
+      "label": "Deep Article Demo",
+      "article_role": "primary_deep_model",
+      "description": "Reference deep fuzzy feature learning configuration for the paper.",
+      "workspace_template": "deep_article_demo",
+      "training_preset": "article_demo",
+      "study_pipeline": "deep_article_demo",
+      "workspace_overrides": null,
+      "training_overrides": null
+    },
+    {
+      "name": "deep_research_no_regularization",
+      "label": "Deep No Regularization",
+      "article_role": "regularization_ablation",
+      "description": "Ablation of rule and concept regularization in the richer deep configuration.",
+      "workspace_template": "deep_research",
+      "training_preset": "article_demo",
+      "study_pipeline": null,
+      "workspace_overrides": null,
+      "training_overrides": {
+        "fine_tuning": {
+          "rule_sparsity_weight": 0.0,
+          "rule_length_weight": 0.0,
+          "concept_orthogonality_weight": 0.0,
+          "concept_binarization_weight": 0.0,
+          "membership_order_weight": 0.0,
+          "membership_overlap_weight": 0.0,
+          "membership_coverage_weight": 0.0
+        },
+        "stagewise": {
+          "rule_sparsity_weight": 0.0,
+          "concept_orthogonality_weight": 0.0,
+          "concept_binarization_weight": 0.0,
+          "membership_order_weight": 0.0,
+          "membership_overlap_weight": 0.0,
+          "membership_coverage_weight": 0.0
+        }
+      }
+    }
+  ],
+  "seeds": [
+    11,
+    23,
+    47
+  ]
+}

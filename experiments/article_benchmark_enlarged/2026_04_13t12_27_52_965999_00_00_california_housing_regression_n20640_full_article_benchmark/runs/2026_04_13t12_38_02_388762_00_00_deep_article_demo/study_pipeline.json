@@ -1,0 +1,11 @@
+{
+  "name": "deep_article_demo",
+  "label": "Deep Article Demo",
+  "description": "Article-style deep fuzzy feature learning run with the reference preset.",
+  "workspace_template": "deep_article_demo",
+  "training_preset": "article_demo",
+  "outputs": [
+    "project_report",
+    "model_report"
+  ]
+}

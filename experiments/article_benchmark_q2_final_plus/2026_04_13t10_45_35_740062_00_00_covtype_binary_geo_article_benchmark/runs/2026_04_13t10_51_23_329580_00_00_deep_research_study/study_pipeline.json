@@ -1,0 +1,11 @@
+{
+  "name": "deep_research_study",
+  "label": "Deep Research Study",
+  "description": "Richer deep fuzzy run for exploratory studies with broader hidden concepts.",
+  "workspace_template": "deep_research",
+  "training_preset": "article_demo",
+  "outputs": [
+    "project_report",
+    "model_report"
+  ]
+}

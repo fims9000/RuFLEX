@@ -1,0 +1,24 @@
+{
+  "name": "california_housing_regression_n20640_full-deep_stage1_ablation",
+  "task_type": "regression",
+  "model_kind": "deep_fuzzy_feature_learning",
+  "target_name": "MedHouseVal",
+  "feature_count": 8,
+  "variable_count": 8,
+  "variable_roles": {
+    "input": 8
+  },
+  "dataset_rows": 20640,
+  "dataset_columns": 9,
+  "has_model": true,
+  "has_training_summary": true,
+  "experiment_count": 1,
+  "study_run_count": 0,
+  "manual_rule_targets": 0,
+  "test_metrics": {
+    "mse": 0.6286660172148371,
+    "mae": 0.593331239068106,
+    "rmse": 0.7928846178447637,
+    "r2": 0.5327929873351178
+  }
+}

@@ -1,0 +1,19 @@
+MODEL REPORT
+Input dimension: 8
+
+STAGE 0: flat_stage
+Output dimension: 2
+  BLOCK 0: flat_feature_block
+    Inputs: [0, 1, 2, 3, 4, 5, 6, 7]
+    Outputs: [flat_concept_1, flat_concept_2]
+    RULE 0 (flat_feature_block_0): IF MedInc IS term_1 AND Population IS term_1 THEN flat_concept_1=0.883, flat_concept_2=0.118 [gate=0.842]
+    RULE 1 (flat_feature_block_1): IF AveBedrms IS term_1 AND Population IS term_1 THEN flat_concept_1=0.137, flat_concept_2=0.861 [gate=0.242]
+    RULE 2 (flat_feature_block_2): IF AveBedrms IS term_1 AND AveOccup IS term_1 THEN flat_concept_1=0.137, flat_concept_2=0.861 [gate=0.240]
+    RULE 3 (flat_feature_block_3): IF MedInc IS term_1 AND AveOccup IS term_1 THEN flat_concept_1=0.883, flat_concept_2=0.118 [gate=0.841]
+
+DECISION LAYER: flat_decision
+Output dimension: 1
+  RULE 0 (flat_decision_0): IF flat_concept_1 IS high AND flat_concept_2 IS low THEN target = 1.503 - 6.708*flat_concept_1 + 7.926*flat_concept_2 [gate=0.436]
+  RULE 1 (flat_decision_1): IF flat_concept_1 IS high AND flat_concept_2 IS high THEN target = 1.795 - 6.448*flat_concept_1 + 8.291*flat_concept_2 [gate=0.029]
+  RULE 2 (flat_decision_2): IF flat_concept_1 IS low AND flat_concept_2 IS low THEN target = 1.798 - 6.446*flat_concept_1 + 8.293*flat_concept_2 [gate=0.029]
+  RULE 3 (flat_decision_3): IF flat_concept_1 IS low AND flat_concept_2 IS high THEN target = 2.566 - 5.750*flat_concept_1 + 9.203*flat_concept_2 [gate=0.104]

@@ -1,0 +1,292 @@
+{
+  "Elevation": {
+    "name": "Elevation",
+    "membership": {
+      "kind": "gaussian",
+      "term_names": [
+        "term_1",
+        "term_2",
+        "term_3"
+      ],
+      "centers": [
+        2184.0,
+        2925.5,
+        3667.0
+      ],
+      "spreads": [
+        741.5,
+        741.5,
+        741.5
+      ],
+      "min_spread": 0.001
+    },
+    "value_range": [
+      2184.0,
+      3667.0
+    ],
+    "data_type": "continuous",
+    "role": "input",
+    "normalization": "standard"
+  },
+  "Aspect": {
+    "name": "Aspect",
+    "membership": {
+      "kind": "gaussian",
+      "term_names": [
+        "term_1",
+        "term_2",
+        "term_3"
+      ],
+      "centers": [
+        0.0,
+        179.5,
+        359.0
+      ],
+      "spreads": [
+        179.5,
+        179.5,
+        179.5
+      ],
+      "min_spread": 0.001
+    },
+    "value_range": [
+      0.0,
+      359.0
+    ],
+    "data_type": "continuous",
+    "role": "input",
+    "normalization": "standard"
+  },
+  "Slope": {
+    "name": "Slope",
+    "membership": {
+      "kind": "gaussian",
+      "term_names": [
+        "term_1",
+        "term_2",
+        "term_3"
+      ],
+      "centers": [
+        0.0,
+        25.5,
+        51.0
+      ],
+      "spreads": [
+        25.5,
+        25.5,
+        25.5
+      ],
+      "min_spread": 0.001
+    },
+    "value_range": [
+      0.0,
+      51.0
+    ],
+    "data_type": "continuous",
+    "role": "input",
+    "normalization": "standard"
+  },
+  "Horizontal_Distance_To_Hydrology": {
+    "name": "Horizontal_Distance_To_Hydrology",
+    "membership": {
+      "kind": "gaussian",
+      "term_names": [
+        "term_1",
+        "term_2",
+        "term_3"
+      ],
+      "centers": [
+        0.0,
+        684.0,
+        1368.0
+      ],
+      "spreads": [
+        684.0,
+        684.0,
+        684.0
+      ],
+      "min_spread": 0.001
+    },
+    "value_range": [
+      0.0,
+      1368.0
+    ],
+    "data_type": "continuous",
+    "role": "input",
+    "normalization": "standard"
+  },
+  "Vertical_Distance_To_Hydrology": {
+    "name": "Vertical_Distance_To_Hydrology",
+    "membership": {
+      "kind": "gaussian",
+      "term_names": [
+        "term_1",
+        "term_2",
+        "term_3"
+      ],
+      "centers": [
+        -153.0,
+        195.0,
+        543.0
+      ],
+      "spreads": [
+        348.0,
+        348.0,
+        348.0
+      ],
+      "min_spread": 0.001
+    },
+    "value_range": [
+      -153.0,
+      543.0
+    ],
+    "data_type": "continuous",
+    "role": "input",
+    "normalization": "standard"
+  },
+  "Horizontal_Distance_To_Roadways": {
+    "name": "Horizontal_Distance_To_Roadways",
+    "membership": {
+      "kind": "gaussian",
+      "term_names": [
+        "term_1",
+        "term_2",
+        "term_3"
+      ],
+      "centers": [
+        30.0,
+        3482.5,
+        6935.0
+      ],
+      "spreads": [
+        3452.5,
+        3452.5,
+        3452.5
+      ],
+      "min_spread": 0.001
+    },
+    "value_range": [
+      30.0,
+      6935.0
+    ],
+    "data_type": "continuous",
+    "role": "input",
+    "normalization": "standard"
+  },
+  "Hillshade_9am": {
+    "name": "Hillshade_9am",
+    "membership": {
+      "kind": "gaussian",
+      "term_names": [
+        "term_1",
+        "term_2",
+        "term_3"
+      ],
+      "centers": [
+        56.0,
+        155.0,
+        254.0
+      ],
+      "spreads": [
+        99.0,
+        99.0,
+        99.0
+      ],
+      "min_spread": 0.001
+    },
+    "value_range": [
+      56.0,
+      254.0
+    ],
+    "data_type": "continuous",
+    "role": "input",
+    "normalization": "standard"
+  },
+  "Hillshade_Noon": {
+    "name": "Hillshade_Noon",
+    "membership": {
+      "kind": "gaussian",
+      "term_names": [
+        "term_1",
+        "term_2",
+        "term_3"
+      ],
+      "centers": [
+        100.0,
+        177.0,
+        254.0
+      ],
+      "spreads": [
+        77.0,
+        77.0,
+        77.0
+      ],
+      "min_spread": 0.001
+    },
+    "value_range": [
+      100.0,
+      254.0
+    ],
+    "data_type": "continuous",
+    "role": "input",
+    "normalization": "standard"
+  },
+  "Hillshade_3pm": {
+    "name": "Hillshade_3pm",
+    "membership": {
+      "kind": "gaussian",
+      "term_names": [
+        "term_1",
+        "term_2",
+        "term_3"
+      ],
+      "centers": [
+        0.0,
+        123.0,
+        246.0
+      ],
+      "spreads": [
+        123.0,
+        123.0,
+        123.0
+      ],
+      "min_spread": 0.001
+    },
+    "value_range": [
+      0.0,
+      246.0
+    ],
+    "data_type": "continuous",
+    "role": "input",
+    "normalization": "standard"
+  },
+  "Horizontal_Distance_To_Fire_Points": {
+    "name": "Horizontal_Distance_To_Fire_Points",
+    "membership": {
+      "kind": "gaussian",
+      "term_names": [
+        "term_1",
+        "term_2",
+        "term_3"
+      ],
+      "centers": [
+        30.0,
+        3555.0,
+        7080.0
+      ],
+      "spreads": [
+        3525.0,
+        3525.0,
+        3525.0
+      ],
+      "min_spread": 0.001
+    },
+    "value_range": [
+      30.0,
+      7080.0
+    ],
+    "data_type": "continuous",
+    "role": "input",
+    "normalization": "standard"
+  }
+}

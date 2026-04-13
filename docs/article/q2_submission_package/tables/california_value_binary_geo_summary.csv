@@ -1,0 +1,11 @@
+model,class,accuracy,f1,precision,recall
+Logistic Regression,external_baseline,0.834 ± 0.009,0.838 ± 0.009,0.834 ± 0.015,0.842 ± 0.004
+Gradient Boosting,external_baseline,0.892 ± 0.006,0.895 ± 0.007,0.886 ± 0.007,0.903 ± 0.007
+Random Forest,external_baseline,0.868 ± 0.001,0.870 ± 0.002,0.869 ± 0.005,0.872 ± 0.009
+MLP,external_baseline,0.871 ± 0.005,0.874 ± 0.004,0.869 ± 0.011,0.880 ± 0.004
+Flat Baseline,RuFLEX,0.737 ± 0.011,0.733 ± 0.009,0.758 ± 0.026,0.710 ± 0.008
+Flat Interpretable,RuFLEX,0.650 ± 0.117,0.482 ± 0.341,0.514 ± 0.368,0.465 ± 0.338
+Deep Depth 1,RuFLEX,0.751 ± 0.008,0.745 ± 0.009,0.777 ± 0.018,0.716 ± 0.015
+Deep Article Demo,RuFLEX,0.746 ± 0.007,0.745 ± 0.010,0.761 ± 0.012,0.730 ± 0.014
+Deep No Regularization,RuFLEX,0.748 ± 0.013,0.748 ± 0.014,0.762 ± 0.021,0.735 ± 0.017
+Deep Research,RuFLEX,0.743 ± 0.016,0.745 ± 0.017,0.754 ± 0.023,0.737 ± 0.015

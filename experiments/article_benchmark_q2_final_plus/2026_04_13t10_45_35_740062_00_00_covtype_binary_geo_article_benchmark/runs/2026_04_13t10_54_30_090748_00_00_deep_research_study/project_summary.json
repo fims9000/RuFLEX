@@ -1,0 +1,24 @@
+{
+  "name": "covtype_binary_geo-deep_research",
+  "task_type": "binary_classification",
+  "model_kind": "deep_fuzzy_feature_learning",
+  "target_name": "CoverTypeBinary",
+  "feature_count": 10,
+  "variable_count": 10,
+  "variable_roles": {
+    "input": 10
+  },
+  "dataset_rows": 6000,
+  "dataset_columns": 11,
+  "has_model": true,
+  "has_training_summary": true,
+  "experiment_count": 1,
+  "study_run_count": 0,
+  "manual_rule_targets": 0,
+  "test_metrics": {
+    "accuracy": 0.49,
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1": 0.0
+  }
+}

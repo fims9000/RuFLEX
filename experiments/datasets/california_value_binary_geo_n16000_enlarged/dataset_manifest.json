@@ -1,0 +1,56 @@
+{
+  "name": "california_value_binary_geo_n16000_enlarged",
+  "label": "California Value Binary Geo (n=16000, enlarged)",
+  "task_type": "binary_classification",
+  "description": "Balanced spatially informed binary classification benchmark derived from California Housing by thresholding median house value and preserving latitude/longitude as explicit geo-features.",
+  "source_dataset": "sklearn.fetch_california_housing",
+  "target_column": "HighValue",
+  "feature_columns": [
+    "MedInc",
+    "HouseAge",
+    "AveRooms",
+    "AveBedrms",
+    "Population",
+    "AveOccup",
+    "Latitude",
+    "Longitude"
+  ],
+  "sample_size": 16000,
+  "random_state": 42,
+  "default_enabled": true,
+  "base_recipe_name": "california_value_binary_geo",
+  "base_recipe_label": "California Value Binary Geo",
+  "sampling": {
+    "kind": "balanced_threshold_subsample",
+    "sample_size": 16000,
+    "max_balanced_sample_size": 20630,
+    "original_row_count": 20640,
+    "threshold": 1.797,
+    "random_state": 42
+  },
+  "task_notes": {
+    "problem_type": "binary_classification",
+    "positive_class_label": 1,
+    "positive_class_meaning": "original MedHouseVal >= 1.797000",
+    "negative_class_meaning": "original MedHouseVal < 1.797000",
+    "geo_features": [
+      "Latitude",
+      "Longitude"
+    ]
+  },
+  "output_dir": "/home/lebedeffson/Code/neurofuzzy_analysis/experiments/datasets/california_value_binary_geo_n16000_enlarged",
+  "csv_path": "/home/lebedeffson/Code/neurofuzzy_analysis/experiments/datasets/california_value_binary_geo_n16000_enlarged/dataset.csv",
+  "row_count": 16000,
+  "column_count": 9,
+  "columns": [
+    "MedInc",
+    "HouseAge",
+    "AveRooms",
+    "AveBedrms",
+    "Population",
+    "AveOccup",
+    "Latitude",
+    "Longitude",
+    "HighValue"
+  ]
+}

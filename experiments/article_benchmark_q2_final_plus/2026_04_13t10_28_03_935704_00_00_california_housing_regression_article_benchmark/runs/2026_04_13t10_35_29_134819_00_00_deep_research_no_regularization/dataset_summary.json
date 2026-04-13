@@ -1,0 +1,37 @@
+{
+  "rows": 4096,
+  "columns": [
+    "MedInc",
+    "HouseAge",
+    "AveRooms",
+    "AveBedrms",
+    "Population",
+    "AveOccup",
+    "Latitude",
+    "Longitude",
+    "MedHouseVal"
+  ],
+  "numeric_columns": [
+    "MedInc",
+    "HouseAge",
+    "AveRooms",
+    "AveBedrms",
+    "Population",
+    "AveOccup",
+    "Latitude",
+    "Longitude",
+    "MedHouseVal"
+  ],
+  "missing_values": {
+    "MedInc": 0,
+    "HouseAge": 0,
+    "AveRooms": 0,
+    "AveBedrms": 0,
+    "Population": 0,
+    "AveOccup": 0,
+    "Latitude": 0,
+    "Longitude": 0,
+    "MedHouseVal": 0
+  },
+  "target_name": "MedHouseVal"
+}

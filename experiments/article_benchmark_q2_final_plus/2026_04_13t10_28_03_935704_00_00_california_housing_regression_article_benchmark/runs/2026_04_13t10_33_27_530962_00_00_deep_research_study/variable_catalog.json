@@ -1,0 +1,314 @@
+{
+  "MedInc": {
+    "name": "MedInc",
+    "membership": {
+      "kind": "generalized_bell",
+      "term_names": [
+        "term_1",
+        "term_2",
+        "term_3",
+        "term_4"
+      ],
+      "centers": [
+        0.4999,
+        5.3333,
+        10.1667,
+        15.0001
+      ],
+      "widths": [
+        3.62505,
+        3.62505,
+        3.62505,
+        3.62505
+      ],
+      "slopes": [
+        2.0,
+        2.0,
+        2.0,
+        2.0
+      ],
+      "min_width": 0.001,
+      "min_slope": 0.01
+    },
+    "value_range": [
+      0.4999,
+      15.0001
+    ],
+    "data_type": "continuous",
+    "role": "input",
+    "normalization": "standard"
+  },
+  "HouseAge": {
+    "name": "HouseAge",
+    "membership": {
+      "kind": "generalized_bell",
+      "term_names": [
+        "term_1",
+        "term_2",
+        "term_3",
+        "term_4"
+      ],
+      "centers": [
+        1.0,
+        18.0,
+        35.0,
+        52.0
+      ],
+      "widths": [
+        12.75,
+        12.75,
+        12.75,
+        12.75
+      ],
+      "slopes": [
+        2.0,
+        2.0,
+        2.0,
+        2.0
+      ],
+      "min_width": 0.001,
+      "min_slope": 0.01
+    },
+    "value_range": [
+      1.0,
+      52.0
+    ],
+    "data_type": "continuous",
+    "role": "input",
+    "normalization": "standard"
+  },
+  "AveRooms": {
+    "name": "AveRooms",
+    "membership": {
+      "kind": "generalized_bell",
+      "term_names": [
+        "term_1",
+        "term_2",
+        "term_3",
+        "term_4"
+      ],
+      "centers": [
+        0.8461538461538461,
+        44.741880341880346,
+        88.63760683760684,
+        132.53333333333333
+      ],
+      "widths": [
+        32.92179487179487,
+        32.92179487179487,
+        32.92179487179487,
+        32.92179487179487
+      ],
+      "slopes": [
+        2.0,
+        2.0,
+        2.0,
+        2.0
+      ],
+      "min_width": 0.001,
+      "min_slope": 0.01
+    },
+    "value_range": [
+      0.8461538461538461,
+      132.53333333333333
+    ],
+    "data_type": "continuous",
+    "role": "input",
+    "normalization": "standard"
+  },
+  "AveBedrms": {
+    "name": "AveBedrms",
+    "membership": {
+      "kind": "generalized_bell",
+      "term_names": [
+        "term_1",
+        "term_2",
+        "term_3",
+        "term_4"
+      ],
+      "centers": [
+        0.5,
+        11.68888888888889,
+        22.87777777777778,
+        34.06666666666667
+      ],
+      "widths": [
+        8.391666666666667,
+        8.391666666666667,
+        8.391666666666667,
+        8.391666666666667
+      ],
+      "slopes": [
+        2.0,
+        2.0,
+        2.0,
+        2.0
+      ],
+      "min_width": 0.001,
+      "min_slope": 0.01
+    },
+    "value_range": [
+      0.5,
+      34.06666666666667
+    ],
+    "data_type": "continuous",
+    "role": "input",
+    "normalization": "standard"
+  },
+  "Population": {
+    "name": "Population",
+    "membership": {
+      "kind": "generalized_bell",
+      "term_names": [
+        "term_1",
+        "term_2",
+        "term_3",
+        "term_4"
+      ],
+      "centers": [
+        8.0,
+        5379.333333333333,
+        10750.666666666666,
+        16122.0
+      ],
+      "widths": [
+        4028.5,
+        4028.5,
+        4028.5,
+        4028.5
+      ],
+      "slopes": [
+        2.0,
+        2.0,
+        2.0,
+        2.0
+      ],
+      "min_width": 0.001,
+      "min_slope": 0.01
+    },
+    "value_range": [
+      8.0,
+      16122.0
+    ],
+    "data_type": "continuous",
+    "role": "input",
+    "normalization": "standard"
+  },
+  "AveOccup": {
+    "name": "AveOccup",
+    "membership": {
+      "kind": "generalized_bell",
+      "term_names": [
+        "term_1",
+        "term_2",
+        "term_3",
+        "term_4"
+      ],
+      "centers": [
+        1.2635658914728682,
+        28.56618678479144,
+        55.86880767811001,
+        83.17142857142858
+      ],
+      "widths": [
+        20.476965669988928,
+        20.476965669988928,
+        20.476965669988928,
+        20.476965669988928
+      ],
+      "slopes": [
+        2.0,
+        2.0,
+        2.0,
+        2.0
+      ],
+      "min_width": 0.001,
+      "min_slope": 0.01
+    },
+    "value_range": [
+      1.2635658914728682,
+      83.17142857142858
+    ],
+    "data_type": "continuous",
+    "role": "input",
+    "normalization": "standard"
+  },
+  "Latitude": {
+    "name": "Latitude",
+    "membership": {
+      "kind": "generalized_bell",
+      "term_names": [
+        "term_1",
+        "term_2",
+        "term_3",
+        "term_4"
+      ],
+      "centers": [
+        32.54,
+        35.63,
+        38.72,
+        41.81
+      ],
+      "widths": [
+        2.317500000000001,
+        2.317500000000001,
+        2.317500000000001,
+        2.317500000000001
+      ],
+      "slopes": [
+        2.0,
+        2.0,
+        2.0,
+        2.0
+      ],
+      "min_width": 0.001,
+      "min_slope": 0.01
+    },
+    "value_range": [
+      32.54,
+      41.81
+    ],
+    "data_type": "continuous",
+    "role": "input",
+    "normalization": "standard"
+  },
+  "Longitude": {
+    "name": "Longitude",
+    "membership": {
+      "kind": "generalized_bell",
+      "term_names": [
+        "term_1",
+        "term_2",
+        "term_3",
+        "term_4"
+      ],
+      "centers": [
+        -124.19,
+        -120.98666666666666,
+        -117.78333333333333,
+        -114.58
+      ],
+      "widths": [
+        2.4025,
+        2.4025,
+        2.4025,
+        2.4025
+      ],
+      "slopes": [
+        2.0,
+        2.0,
+        2.0,
+        2.0
+      ],
+      "min_width": 0.001,
+      "min_slope": 0.01
+    },
+    "value_range": [
+      -124.19,
+      -114.58
+    ],
+    "data_type": "continuous",
+    "role": "input",
+    "normalization": "standard"
+  }
+}

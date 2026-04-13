@@ -6,7 +6,12 @@ from pathlib import Path
 from typing import Callable, Mapping, Sequence
 
 import torch
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.ensemble import (
+    HistGradientBoostingClassifier,
+    HistGradientBoostingRegressor,
+    RandomForestClassifier,
+    RandomForestRegressor,
+)
 from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.neural_network import MLPClassifier, MLPRegressor
 from torch import Tensor, nn
@@ -338,6 +343,12 @@ def evaluate_trained_model(
 def _regression_estimators(random_state: int) -> dict[str, object]:
     estimators: dict[str, object] = {
         "linear_regression": LinearRegression(),
+        "hist_gradient_boosting_regressor": HistGradientBoostingRegressor(
+            learning_rate=0.08,
+            max_depth=4,
+            max_iter=200,
+            random_state=random_state,
+        ),
         "random_forest_regressor": RandomForestRegressor(
             n_estimators=80,
             random_state=random_state,
@@ -374,6 +385,12 @@ def _binary_estimators(random_state: int) -> dict[str, object]:
     estimators: dict[str, object] = {
         "logistic_regression": LogisticRegression(
             max_iter=500,
+            random_state=random_state,
+        ),
+        "hist_gradient_boosting_classifier": HistGradientBoostingClassifier(
+            learning_rate=0.08,
+            max_depth=4,
+            max_iter=200,
             random_state=random_state,
         ),
         "random_forest_classifier": RandomForestClassifier(

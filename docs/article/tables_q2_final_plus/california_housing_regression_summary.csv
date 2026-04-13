@@ -1,0 +1,11 @@
+model,class,rmse,mae,r2
+Linear Regression,external_baseline,0.699 ± 0.048,0.516 ± 0.028,0.601 ± 0.057
+Gradient Boosting,external_baseline,0.505 ± 0.015,0.349 ± 0.010,0.793 ± 0.013
+Random Forest,external_baseline,0.571 ± 0.017,0.393 ± 0.010,0.734 ± 0.018
+MLP,external_baseline,0.582 ± 0.028,0.415 ± 0.017,0.724 ± 0.026
+Flat Baseline,RuFLEX,0.869 ± 0.023,0.655 ± 0.013,0.386 ± 0.038
+Flat Interpretable,RuFLEX,1.086 ± 0.018,0.860 ± 0.010,0.041 ± 0.039
+Deep Depth 1,RuFLEX,0.780 ± 0.033,0.586 ± 0.008,0.504 ± 0.046
+Deep Article Demo,RuFLEX,0.798 ± 0.033,0.597 ± 0.012,0.482 ± 0.048
+Deep No Regularization,RuFLEX,0.821 ± 0.030,0.620 ± 0.010,0.451 ± 0.045
+Deep Research,RuFLEX,0.821 ± 0.030,0.620 ± 0.010,0.451 ± 0.045

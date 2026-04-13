@@ -1,136 +1,102 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import json
+import re
 import shutil
 import subprocess
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from article_profile import analyze_article_profile, load_article_profile
-from article_references import analyze_article_references, load_article_references
+from build_article_q2_package import (
+    BUILD_REPORT_PATH,
+    CHECKLIST_PATH,
+    DATASETS,
+    EXT_DOC_DOCX,
+    EXT_DOC_MD,
+    EXT_DOC_PDF,
+    MAIN_DOC_DOCX,
+    MAIN_DOC_MD,
+    MAIN_DOC_PDF,
+    PACKAGE_DIR,
+    PACKAGE_ZIP,
+    SCHEMES,
+    TABLES_DIR,
+    VISUAL_PACKAGE,
+    BENCHMARK_SUMMARY,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_SUITE_ROOT = ROOT / "experiments/article_suite"
-DEFAULT_REPORT_MD = ROOT / "docs/article/readiness_report.md"
-DEFAULT_REPORT_JSON = ROOT / "docs/article/readiness_report.json"
-SUBMISSION_BUNDLE_DIR = ROOT / "docs/article/submission_bundle"
-SUBMISSION_BUNDLE_ZIP = ROOT / "docs/article/submission_bundle.zip"
+ARTICLE_DIR = ROOT / "docs" / "article"
+DEFAULT_REPORT_MD = ARTICLE_DIR / "readiness_report.md"
+DEFAULT_REPORT_JSON = ARTICLE_DIR / "readiness_report.json"
+
+EMAIL_PATTERN = re.compile(r"[\w.\-+]+@[\w.\-]+\.\w+")
+ORCID_PATTERN = re.compile(r"\b\d{4}-\d{4}-\d{4}-\d{3}[\dX]\b")
+AFFILIATION_HINTS = (
+    "универс",
+    "институт",
+    "лаборатор",
+    "центр",
+    "academy",
+    "university",
+    "institute",
+    "laboratory",
+    "center",
+    "school",
+)
 
 REQUIRED_DOCS = (
-    ROOT / "docs/article/final_metadata.md",
-    ROOT / "docs/article/final_status.md",
-    ROOT / "docs/article/paper_draft.md",
-    ROOT / "docs/article/paper_draft.docx",
-    ROOT / "docs/article/paper_draft.pdf",
-    ROOT / "docs/article/article_profile.template.json",
-    ROOT / "docs/article/article_profile.json",
-    ROOT / "docs/article/article_profile_card.md",
-    ROOT / "docs/article/article_references.json",
-    ROOT / "docs/article/submission_state.template.json",
-    ROOT / "docs/article/submission_state.json",
-    ROOT / "docs/article/references_ru_gost.md",
-    ROOT / "docs/article/references_en_ieee.md",
-    ROOT / "docs/article/template_mapping.md",
-    ROOT / "docs/article/shablon_dokladov_ready.md",
-    ROOT / "docs/article/shablon_dokladov_ready.docx",
-    ROOT / "docs/article/shablon_dokladov_illustrated.docx",
-    ROOT / "docs/article/shablon_dokladov_illustrated.pdf",
-    ROOT / "docs/article/conference_template_ready_en.md",
-    ROOT / "docs/article/conference_template_ready_en.docx",
-    ROOT / "docs/article/conference_template_illustrated_en.docx",
-    ROOT / "docs/article/conference_template_illustrated_en.pdf",
-    ROOT / "docs/article/figure_manifest.md",
-    ROOT / "docs/article/manual_finish.md",
-    ROOT / "docs/article/rinc_draft.md",
-    ROOT / "docs/article/rinc_draft.docx",
-    ROOT / "docs/article/rinc_draft.pdf",
+    MAIN_DOC_MD,
+    MAIN_DOC_DOCX,
+    MAIN_DOC_PDF,
+    EXT_DOC_MD,
+    EXT_DOC_DOCX,
+    EXT_DOC_PDF,
+    VISUAL_PACKAGE,
+    BENCHMARK_SUMMARY,
+    CHECKLIST_PATH,
+    BUILD_REPORT_PATH,
 )
 
-REQUIRED_BUNDLE_FIGURES = (
-    "figure1_regression_benchmark.png",
-    "figure2_regression_board.png",
-    "figure3_classification_benchmark.png",
-    "figure4_classification_board.png",
-    "figure5_membership_example.png",
-)
-
-REQUIRED_BUNDLE_TABLES = (
-    "article_suite_results.csv",
-    "regression_results_table.csv",
-    "classification_results_table.csv",
-)
-
-MANUAL_ITEMS = (
-    "При необходимости заполнить или уточнить authors / affiliations / e-mail / ORCID в docs/article/article_profile.json и пересобрать пакет.",
-    "Проверить и при необходимости дополнить стартовый список литературы под формат площадки.",
-    "Выполнить antiplagiat check и приложить реальный скриншот в РИНЦ-файл.",
-    "Проверить итоговую верстку после вставки рисунков, подписей и авторских данных.",
-)
-
-SUBMISSION_FLAGS = (
-    ("profile_confirmed", "Подтверждены реальные authors / affiliations / e-mail / ORCID."),
-    ("references_checked", "Стартовый список литературы проверен и приведен к стилю площадки."),
-    ("figures_finalized", "Итоговые figures и captions окончательно утверждены."),
-    ("antiplagiat_screenshot_added", "В РИНЦ-файл добавлен реальный antiplagiat screenshot."),
-    ("layout_reviewed", "Итоговая верстка `.docx`/`.pdf` просмотрена вручную."),
+Q2_TEST_SUITE = (
+    "tests/test_article_dataset_recipes.py",
+    "tests/test_toolbox_api.py",
+    "tests/test_sdk_smoke.py",
 )
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Check RuFLEX article package readiness.")
-    parser.add_argument(
-        "--suite-dir",
-        default=None,
-        help="Optional article suite directory. If omitted, the latest suite under experiments/article_suite is used.",
-    )
+    parser = argparse.ArgumentParser(description="Check readiness of the current RuFLEX Q2 article package.")
     parser.add_argument(
         "--run-tests",
         action="store_true",
-        help="Run the article-related pytest suite as part of the readiness report.",
-    )
-    parser.add_argument(
-        "--strict-profile",
-        action="store_true",
-        help="Exit with non-zero status unless profile_status is `ready`.",
+        help="Run the stable Q2 article-related smoke suite and include it in the report.",
     )
     parser.add_argument(
         "--strict-submission",
         action="store_true",
-        help="Exit with non-zero status unless submission_status is `ready`.",
+        help="Exit with non-zero status unless the package is technically ready and author metadata is complete.",
     )
     args = parser.parse_args()
 
-    report_path = build_readiness_report(
-        suite_dir=None if args.suite_dir is None else Path(args.suite_dir),
-        run_tests=args.run_tests,
-    )
+    report_path = build_readiness_report(run_tests=args.run_tests)
     print(report_path)
-    report_payload = json.loads(DEFAULT_REPORT_JSON.read_text(encoding="utf-8"))
-    if args.strict_profile and report_payload["profile_status"] != "ready":
+    payload = json.loads(DEFAULT_REPORT_JSON.read_text(encoding="utf-8"))
+    if args.strict_submission and payload["submission_status"] != "ready":
         print(
-            f"strict-profile gate failed: profile_status={report_payload['profile_status']}",
-            file=sys.stderr,
-        )
-        raise SystemExit(1)
-    if args.strict_submission and report_payload["submission_status"] != "ready":
-        print(
-            f"strict-submission gate failed: submission_status={report_payload['submission_status']}",
+            f"strict-submission gate failed: submission_status={payload['submission_status']}",
             file=sys.stderr,
         )
         raise SystemExit(1)
 
 
-def build_readiness_report(*, suite_dir: Path | None = None, run_tests: bool = False) -> Path:
-    resolved_suite_dir = _resolve_suite_dir(suite_dir)
-    suite_summary = _load_suite_summary(resolved_suite_dir)
-    profile_report = _profile_report()
-    references_report = _references_report()
-    submission_state, submission_state_error = _load_submission_state()
+def build_readiness_report(*, run_tests: bool = False) -> Path:
     checks: list[dict[str, Any]] = []
-
     for path in REQUIRED_DOCS:
         checks.append(
             _check(
@@ -139,383 +105,319 @@ def build_readiness_report(*, suite_dir: Path | None = None, run_tests: bool = F
                 detail=str(path),
             )
         )
-    checks.append(
-        _check(
-            name="article_profile_valid",
-            ok=not profile_report["errors"],
-            detail=_profile_detail(profile_report),
-        )
-    )
-    checks.append(
-        _check(
-            name="article_references_valid",
-            ok=not references_report["errors"],
-            detail=_references_detail(references_report),
-        )
-    )
-    checks.append(
-        _check(
-            name="submission_state_valid",
-            ok=submission_state_error is None,
-            detail=submission_state_error or "submission_state.json schema is valid",
-        )
-    )
 
-    checks.append(
-        _check(
-            name="submission_bundle_dir",
-            ok=SUBMISSION_BUNDLE_DIR.exists(),
-            detail=str(SUBMISSION_BUNDLE_DIR),
-        )
-    )
-    checks.append(
-        _check(
-            name="submission_bundle_zip",
-            ok=SUBMISSION_BUNDLE_ZIP.exists(),
-            detail=str(SUBMISSION_BUNDLE_ZIP),
-        )
-    )
+    checks.append(_check("q2_package_dir", PACKAGE_DIR.exists(), str(PACKAGE_DIR)))
+    checks.append(_check("q2_package_zip", PACKAGE_ZIP.exists(), str(PACKAGE_ZIP)))
 
-    dataset_runs = list(suite_summary.get("dataset_runs", ()))
-    regression_item = next(
-        (item for item in dataset_runs if str((item.get("dataset") or {}).get("task_type")) == "regression"),
-        None,
-    )
-    classification_item = next(
-        (
-            item
-            for item in dataset_runs
-            if str((item.get("dataset") or {}).get("task_type")) == "binary_classification"
-        ),
-        None,
-    )
+    for dataset in DATASETS:
+        checks.extend(_dataset_checks(dataset))
 
-    checks.extend(_dataset_checks("regression", regression_item))
-    checks.extend(_dataset_checks("binary_classification", classification_item))
+    checks.extend(_package_checks())
 
-    for figure_name in REQUIRED_BUNDLE_FIGURES:
-        path = SUBMISSION_BUNDLE_DIR / "figures" / figure_name
-        checks.append(_check(name=f"figure:{figure_name}", ok=path.exists(), detail=str(path)))
-    for table_name in REQUIRED_BUNDLE_TABLES:
-        path = SUBMISSION_BUNDLE_DIR / "tables" / table_name
-        checks.append(_check(name=f"table:{table_name}", ok=path.exists(), detail=str(path)))
+    author_metadata = inspect_author_metadata(MAIN_DOC_MD)
+    checks.extend(author_metadata["checks"])
 
     test_status: dict[str, Any] | None = None
     if run_tests:
-        test_status = _run_article_tests()
+        test_status = _run_q2_tests()
         checks.append(
             _check(
-                name="pytest_article_suite",
+                name="pytest_q2_smoke_suite",
                 ok=bool(test_status["ok"]),
                 detail=test_status["detail"],
             )
         )
 
-    best_results = {
-        "regression": _best_result_payload(regression_item),
-        "binary_classification": _best_result_payload(classification_item),
-    }
+    technical_checks = [item for item in checks if not str(item["name"]).startswith("author_")]
+    technical_status = "pass" if all(bool(item["ok"]) for item in technical_checks) else "fail"
+    submission_status = "ready" if technical_status == "pass" and author_metadata["status"] == "ready" else "pending"
 
-    overall_ok = all(bool(item["ok"]) for item in checks)
-    submission_items = _submission_items(submission_state)
-    submission_ready = all(item["done"] for item in submission_items)
-    report_payload = {
-        "generated_at": _utc_now(),
-        "suite_dir": str(resolved_suite_dir),
-        "overall_status": "pass" if overall_ok else "fail",
-        "submission_status": "ready"
-        if overall_ok
-        and submission_ready
-        and profile_report["status"] == "ready"
-        and references_report["status"] == "ready"
-        else "pending",
-        "profile_status": profile_report["status"],
-        "references_status": references_report["status"],
-        "profile_errors": profile_report["errors"],
-        "profile_warnings": profile_report["warnings"],
-        "profile_placeholder_warnings": profile_report["placeholder_warnings"],
-        "references_errors": references_report["errors"],
-        "references_warnings": references_report["warnings"],
-        "references_placeholder_warnings": references_report["placeholder_warnings"],
+    payload: dict[str, Any] = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "package_kind": "q2_submission_package",
+        "overall_status": technical_status,
+        "submission_status": submission_status,
+        "author_metadata_status": author_metadata["status"],
+        "author_metadata_summary": author_metadata["summary"],
+        "benchmark_assets": [
+            {
+                "slug": dataset.slug,
+                "asset_dir": str(dataset.asset_dir),
+                "results_table": str(dataset.results_table_path),
+                "board_path": str(dataset.board_path),
+            }
+            for dataset in DATASETS
+        ],
+        "best_results": collect_best_results(),
         "checks": checks,
-        "best_results": best_results,
-        "manual_items": [{"status": "pending", "item": item} for item in MANUAL_ITEMS],
-        "submission_state": submission_state,
-        "submission_items": submission_items,
+        "manual_items": [
+            {
+                "status": "pending",
+                "item": "Добавить аффилиации, e-mail и ORCID в шапку статьи, если этого требует площадка.",
+            },
+            {
+                "status": "pending",
+                "item": "Проверить финальную верстку и требования журнала к Word-формулам.",
+            },
+            {
+                "status": "pending",
+                "item": "При необходимости дополнить основной текст живыми UI-скриншотами.",
+            },
+        ],
     }
     if test_status is not None:
-        report_payload["test_status"] = test_status
+        payload["test_status"] = test_status
 
-    DEFAULT_REPORT_MD.write_text(_render_markdown(report_payload), encoding="utf-8")
-    DEFAULT_REPORT_JSON.write_text(json.dumps(report_payload, indent=2, ensure_ascii=False), encoding="utf-8")
-    _sync_report_into_bundle(DEFAULT_REPORT_MD, DEFAULT_REPORT_JSON)
+    DEFAULT_REPORT_MD.write_text(render_markdown(payload), encoding="utf-8")
+    DEFAULT_REPORT_JSON.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    sync_report_into_package()
     return DEFAULT_REPORT_MD
 
 
-def _dataset_checks(task_name: str, item: dict[str, Any] | None) -> list[dict[str, Any]]:
-    if item is None:
-        return [_check(name=f"dataset:{task_name}", ok=False, detail="dataset run missing from article suite")]
+def inspect_author_metadata(path: Path) -> dict[str, Any]:
+    lines = path.read_text(encoding="utf-8").splitlines()
+    preamble: list[str] = []
+    for line in lines[1:]:
+        stripped = line.strip()
+        if stripped.startswith("Аннотация.") or stripped.startswith("## "):
+            break
+        if stripped:
+            preamble.append(stripped)
 
-    benchmark_dir = Path(str(item.get("benchmark_dir", "")))
-    materials_dir = Path(str(item.get("materials_dir", "")))
+    authors_present = bool(preamble)
+    preamble_text = "\n".join(preamble)
+    email_matches = EMAIL_PATTERN.findall(preamble_text)
+    orcid_matches = ORCID_PATTERN.findall(preamble_text)
+    affiliation_lines = [
+        line
+        for line in preamble
+        if re.match(r"^\d+\s", line)
+        or any(token in line.casefold() for token in AFFILIATION_HINTS)
+    ]
+
     checks = [
-        _check(name=f"{task_name}:benchmark_dir", ok=benchmark_dir.exists(), detail=str(benchmark_dir)),
-        _check(name=f"{task_name}:materials_dir", ok=materials_dir.exists(), detail=str(materials_dir)),
+        _check("author_line_present", authors_present, preamble[0] if preamble else "author line is missing"),
+        _check("author_affiliations_present", bool(affiliation_lines), "; ".join(affiliation_lines) or "no affiliations found"),
+        _check("author_emails_present", bool(email_matches), ", ".join(email_matches) or "no e-mail addresses found"),
+        _check("author_orcids_present", bool(orcid_matches), ", ".join(orcid_matches) or "no ORCID identifiers found"),
     ]
-    best_variant = item.get("best_variant") or {}
-    checks.append(
-        _check(
-            name=f"{task_name}:best_variant",
-            ok=bool(best_variant),
-            detail=json.dumps(
-                {
-                    "variant_label": best_variant.get("variant_label"),
-                    "metrics": {
-                        key: value
-                        for key, value in best_variant.items()
-                        if str(key).startswith("test_")
-                    },
-                },
-                ensure_ascii=False,
-            ),
-        )
-    )
-    return checks
 
-
-def _best_result_payload(item: dict[str, Any] | None) -> dict[str, Any] | None:
-    if item is None:
-        return None
-    best_variant = item.get("best_variant") or {}
-    if not best_variant:
-        return None
-    return {
-        "dataset": (item.get("dataset") or {}).get("name"),
-        "variant_label": best_variant.get("variant_label"),
-        "metrics": {key: value for key, value in best_variant.items() if str(key).startswith("test_")},
+    status = "ready" if all(item["ok"] for item in checks) else "incomplete"
+    summary = {
+        "authors_line": preamble[0] if preamble else "",
+        "affiliations": affiliation_lines,
+        "emails": email_matches,
+        "orcids": orcid_matches,
     }
+    return {"status": status, "summary": summary, "checks": checks}
 
 
-def _run_article_tests() -> dict[str, Any]:
-    python_executable = ROOT / ".venv/bin/python"
-    if not python_executable.exists():
-        python_executable = Path(sys.executable)
-    command = [
-        str(python_executable),
-        "-m",
-        "pytest",
-        "tests/test_toolbox_api.py",
-        "tests/test_sdk_smoke.py",
-        "tests/test_article_dataset_recipes.py",
-        "tests/test_article_profile_cli.py",
-        "tests/test_article_profile_validation.py",
-        "tests/test_article_references_cli.py",
-        "tests/test_article_references_validation.py",
-        "tests/test_article_package_scripts.py",
-        "tests/test_submission_state_cli.py",
-        "-q",
-    ]
-    completed = subprocess.run(command, cwd=ROOT, capture_output=True, text=True, check=False)
-    detail = (completed.stdout or completed.stderr).strip()
-    return {
-        "ok": completed.returncode == 0,
-        "returncode": completed.returncode,
-        "command": command,
-        "detail": detail,
-    }
-
-
-def _profile_report() -> dict[str, Any]:
-    try:
-        profile = load_article_profile()
-    except Exception as error:  # pragma: no cover - defensive path for broken local configs
-        return {
-            "status": "invalid",
-            "errors": [str(error)],
-            "warnings": [],
-            "placeholder_warnings": [],
-        }
-    return analyze_article_profile(profile)
-
-
-def _references_report() -> dict[str, Any]:
-    try:
-        references = load_article_references()
-    except Exception as error:  # pragma: no cover - defensive path for broken local configs
-        return {
-            "status": "invalid",
-            "errors": [str(error)],
-            "warnings": [],
-            "placeholder_warnings": [],
-        }
-    return analyze_article_references(references)
-
-
-def _profile_detail(profile_report: dict[str, Any]) -> str:
-    if profile_report["errors"]:
-        return "; ".join(profile_report["errors"])
-    detail_parts = [f"profile_status={profile_report['status']}"]
-    if profile_report["placeholder_warnings"]:
-        detail_parts.append(
-            "placeholders=" + "; ".join(profile_report["placeholder_warnings"])
-        )
-    elif profile_report["warnings"]:
-        detail_parts.append("warnings=" + "; ".join(profile_report["warnings"]))
-    return " | ".join(detail_parts)
-
-
-def _references_detail(references_report: dict[str, Any]) -> str:
-    if references_report["errors"]:
-        return "; ".join(references_report["errors"])
-    detail_parts = [f"references_status={references_report['status']}"]
-    if references_report["placeholder_warnings"]:
-        detail_parts.append(
-            "placeholders=" + "; ".join(references_report["placeholder_warnings"])
-        )
-    elif references_report["warnings"]:
-        detail_parts.append("warnings=" + "; ".join(references_report["warnings"]))
-    return " | ".join(detail_parts)
-
-
-def _load_submission_state() -> tuple[dict[str, Any], str | None]:
-    path = ROOT / "docs/article/submission_state.json"
-    try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-    except Exception as error:  # pragma: no cover - defensive path for broken local configs
-        return _default_submission_state(), f"submission_state.json could not be parsed: {error}"
-    for key, _description in SUBMISSION_FLAGS:
-        value = payload.get(key, False)
-        if not isinstance(value, bool):
-            default_state = _default_submission_state()
-            return default_state, f"submission_state key `{key}` must be boolean"
-        payload[key] = value
-    notes = payload.get("notes", "")
-    if not isinstance(notes, str):
-        default_state = _default_submission_state()
-        return default_state, "submission_state key `notes` must be a string"
-    payload["notes"] = notes
-    return payload, None
-
-
-def _submission_items(state: dict[str, Any]) -> list[dict[str, Any]]:
-    items: list[dict[str, Any]] = []
-    for key, description in SUBMISSION_FLAGS:
-        items.append(
+def collect_best_results() -> list[dict[str, Any]]:
+    results: list[dict[str, Any]] = []
+    for dataset in DATASETS:
+        summary_path = TABLES_DIR / f"{dataset.slug}_summary.csv"
+        source_path = summary_path if summary_path.exists() else dataset.results_table_path
+        if not source_path.exists():
+            continue
+        rows = list(csv.DictReader(source_path.open(encoding="utf-8")))
+        if not rows:
+            continue
+        if dataset.task_type == "regression":
+            best_ruflex = min((row for row in rows if row["class"] == "RuFLEX"), key=lambda row: _metric_mean(row["rmse"]))
+            best_external = min(
+                (row for row in rows if row["class"] != "RuFLEX"),
+                key=lambda row: _metric_mean(row["rmse"]),
+            )
+            metrics_keys = ("rmse", "mae", "r2")
+        else:
+            best_ruflex = max(
+                (row for row in rows if row["class"] == "RuFLEX"),
+                key=lambda row: (_metric_mean(row["accuracy"]), _metric_mean(row["f1"])),
+            )
+            best_external = max(
+                (row for row in rows if row["class"] != "RuFLEX"),
+                key=lambda row: (_metric_mean(row["accuracy"]), _metric_mean(row["f1"])),
+            )
+            metrics_keys = ("accuracy", "f1", "precision", "recall")
+        results.append(
             {
-                "key": key,
-                "done": bool(state.get(key, False)),
-                "description": description,
+                "dataset": dataset.slug,
+                "best_ruflex": {"model": best_ruflex["model"], "metrics": {key: best_ruflex[key] for key in metrics_keys}},
+                "best_external": {
+                    "model": best_external["model"],
+                    "metrics": {key: best_external[key] for key in metrics_keys},
+                },
             }
         )
-    return items
+    return results
 
 
-def _check(*, name: str, ok: bool, detail: str) -> dict[str, Any]:
-    return {"name": name, "ok": ok, "detail": detail}
-
-
-def _sync_report_into_bundle(markdown_path: Path, json_path: Path) -> None:
-    docs_dir = SUBMISSION_BUNDLE_DIR / "docs"
-    if not docs_dir.exists():
-        return
-    shutil.copy2(markdown_path, docs_dir / markdown_path.name)
-    shutil.copy2(json_path, docs_dir / json_path.name)
-
-
-def _render_markdown(report: dict[str, Any]) -> str:
+def render_markdown(payload: dict[str, Any]) -> str:
     lines = [
-        "# RuFLEX article readiness report",
+        "# RuFLEX Q2 readiness report",
         "",
-        f"- generated_at: `{report['generated_at']}`",
-        f"- suite_dir: `{report['suite_dir']}`",
-        f"- overall_status: `{report['overall_status']}`",
-        f"- submission_status: `{report['submission_status']}`",
-        f"- profile_status: `{report['profile_status']}`",
-        f"- references_status: `{report['references_status']}`",
+        f"- generated_at: `{payload['generated_at']}`",
+        f"- package_kind: `{payload['package_kind']}`",
+        f"- overall_status: `{payload['overall_status']}`",
+        f"- submission_status: `{payload['submission_status']}`",
+        f"- author_metadata_status: `{payload['author_metadata_status']}`",
         "",
         "## Critical automated checks",
         "",
     ]
-    for item in report["checks"]:
+    for item in payload["checks"]:
         status = "PASS" if item["ok"] else "FAIL"
         lines.append(f"- `{status}` {item['name']}: {item['detail']}")
+
     lines.extend(["", "## Best benchmark results", ""])
-    for task_name, payload in report["best_results"].items():
-        if payload is None:
-            lines.append(f"- `{task_name}`: unavailable")
-            continue
-        metric_text = ", ".join(f"{key}={value}" for key, value in payload["metrics"].items())
+    for item in payload["best_results"]:
         lines.append(
-            f"- `{task_name}`: {payload['dataset']} -> {payload['variant_label']} ({metric_text})"
+            f"- `{item['dataset']}`: RuFLEX -> {item['best_ruflex']['model']}; external -> {item['best_external']['model']}"
         )
-    if "test_status" in report:
+
+    lines.extend(["", "## Author metadata", ""])
+    summary = payload["author_metadata_summary"]
+    lines.append(f"- authors_line: `{summary['authors_line']}`")
+    lines.append(f"- affiliations: `{', '.join(summary['affiliations']) if summary['affiliations'] else '(missing)'}`")
+    lines.append(f"- emails: `{', '.join(summary['emails']) if summary['emails'] else '(missing)'}`")
+    lines.append(f"- orcids: `{', '.join(summary['orcids']) if summary['orcids'] else '(missing)'}`")
+
+    if "test_status" in payload:
         lines.extend(
             [
                 "",
-                "## Test run",
+                "## Q2 smoke tests",
                 "",
-                f"- returncode: `{report['test_status']['returncode']}`",
-                f"- detail: `{report['test_status']['detail']}`",
+                f"- status: `{'pass' if payload['test_status']['ok'] else 'fail'}`",
+                f"- detail: `{payload['test_status']['detail']}`",
             ]
         )
-    if report["profile_placeholder_warnings"] or report["profile_warnings"] or report["profile_errors"]:
-        lines.extend(["", "## Profile review", ""])
-        for item in report["profile_errors"]:
-            lines.append(f"- `error` {item}")
-        for item in report["profile_warnings"]:
-            lines.append(f"- `warning` {item}")
-        for item in report["profile_placeholder_warnings"]:
-            lines.append(f"- `placeholder` {item}")
-    if report["references_placeholder_warnings"] or report["references_warnings"] or report["references_errors"]:
-        lines.extend(["", "## References review", ""])
-        for item in report["references_errors"]:
-            lines.append(f"- `error` {item}")
-        for item in report["references_warnings"]:
-            lines.append(f"- `warning` {item}")
-        for item in report["references_placeholder_warnings"]:
-            lines.append(f"- `placeholder` {item}")
-    lines.extend(["", "## Submission state", ""])
-    for item in report["submission_items"]:
-        status = "done" if item["done"] else "pending"
-        lines.append(f"- `{status}` {item['description']}")
+
     lines.extend(["", "## Manual items", ""])
-    for item in report["manual_items"]:
+    for item in payload["manual_items"]:
         lines.append(f"- `{item['status']}` {item['item']}")
     return "\n".join(lines)
 
 
-def _load_suite_summary(suite_dir: Path) -> dict[str, Any]:
-    summary_path = suite_dir / "article_suite_summary.json"
-    if not summary_path.exists():
-        raise FileNotFoundError(f"Article suite summary was not found: {summary_path}")
-    return json.loads(summary_path.read_text(encoding="utf-8"))
+def _dataset_checks(dataset: Any) -> list[dict[str, Any]]:
+    return [
+        _check(
+            name=f"{dataset.slug}:asset_dir",
+            ok=dataset.asset_dir.exists(),
+            detail=str(dataset.asset_dir),
+        ),
+        _check(
+            name=f"{dataset.slug}:benchmark_results",
+            ok=(dataset.asset_dir / "benchmark_results.json").exists(),
+            detail=str(dataset.asset_dir / "benchmark_results.json"),
+        ),
+        _check(
+            name=f"{dataset.slug}:results_table",
+            ok=dataset.results_table_path.exists(),
+            detail=str(dataset.results_table_path),
+        ),
+        _check(
+            name=f"{dataset.slug}:board",
+            ok=dataset.board_path.exists(),
+            detail=str(dataset.board_path),
+        ),
+        _check(
+            name=f"{dataset.slug}:overview",
+            ok=dataset.overview_path.exists(),
+            detail=str(dataset.overview_path),
+        ),
+    ]
 
 
-def _resolve_suite_dir(suite_dir: Path | None) -> Path:
-    if suite_dir is not None:
-        resolved = suite_dir.expanduser().resolve()
-        if not resolved.exists():
-            raise FileNotFoundError(f"Article suite directory was not found: {resolved}")
-        return resolved
+def _package_checks() -> list[dict[str, Any]]:
+    package_docs = PACKAGE_DIR / "docs"
+    package_figures = PACKAGE_DIR / "figures"
+    package_tables = PACKAGE_DIR / "tables"
+    checks = [
+        _check("package_docs_dir", package_docs.exists(), str(package_docs)),
+        _check("package_figures_dir", package_figures.exists(), str(package_figures)),
+        _check("package_tables_dir", package_tables.exists(), str(package_tables)),
+    ]
+    for source in (
+        MAIN_DOC_MD,
+        EXT_DOC_MD,
+        MAIN_DOC_DOCX,
+        EXT_DOC_DOCX,
+        MAIN_DOC_PDF,
+        EXT_DOC_PDF,
+        VISUAL_PACKAGE,
+        BENCHMARK_SUMMARY,
+        CHECKLIST_PATH,
+        BUILD_REPORT_PATH,
+    ):
+        checks.append(
+            _check(
+                name=f"package_doc:{source.name}",
+                ok=(package_docs / source.name).exists(),
+                detail=str(package_docs / source.name),
+            )
+        )
+    for figure_path, _caption in SCHEMES:
+        checks.append(
+            _check(
+                name=f"package_figure:{figure_path.name}",
+                ok=(package_figures / figure_path.name).exists(),
+                detail=str(package_figures / figure_path.name),
+            )
+        )
+    for dataset in DATASETS:
+        checks.append(
+            _check(
+                name=f"package_figure:{dataset.board_path.name}",
+                ok=(package_figures / dataset.board_path.name).exists(),
+                detail=str(package_figures / dataset.board_path.name),
+            )
+        )
+        overview_name = dataset.overview_path.name.replace("results_overview", f"{dataset.slug}_results_overview")
+        checks.append(
+            _check(
+                name=f"package_figure:{overview_name}",
+                ok=(package_figures / overview_name).exists(),
+                detail=str(package_figures / overview_name),
+            )
+        )
+        checks.append(
+            _check(
+                name=f"package_table:{dataset.slug}_summary.csv",
+                ok=(package_tables / f"{dataset.slug}_summary.csv").exists(),
+                detail=str(package_tables / f"{dataset.slug}_summary.csv"),
+            )
+        )
+    return checks
 
-    if not DEFAULT_SUITE_ROOT.exists():
-        raise FileNotFoundError(f"Article suite root was not found: {DEFAULT_SUITE_ROOT}")
-    candidates = sorted((path for path in DEFAULT_SUITE_ROOT.iterdir() if path.is_dir()), key=lambda path: path.name)
-    if not candidates:
-        raise FileNotFoundError(f"No article suite directories were found under: {DEFAULT_SUITE_ROOT}")
-    return candidates[-1]
+
+def _run_q2_tests() -> dict[str, Any]:
+    command = [sys.executable, "-m", "pytest", *Q2_TEST_SUITE]
+    result = subprocess.run(
+        command,
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    detail = result.stdout.strip().splitlines()[-1] if result.stdout.strip() else (result.stderr.strip() or "no output")
+    return {"ok": result.returncode == 0, "detail": detail}
 
 
-def _utc_now() -> str:
-    from datetime import datetime, timezone
-
-    return datetime.now(timezone.utc).isoformat()
+def _metric_mean(value: str) -> float:
+    return float(value.split("±", 1)[0].strip())
 
 
-def _default_submission_state() -> dict[str, Any]:
-    payload: dict[str, Any] = {key: False for key, _description in SUBMISSION_FLAGS}
-    payload["notes"] = ""
-    return payload
+def _check(name: str, ok: bool, detail: str) -> dict[str, Any]:
+    return {"name": name, "ok": bool(ok), "detail": detail}
+
+
+def sync_report_into_package() -> None:
+    package_docs = PACKAGE_DIR / "docs"
+    if not package_docs.exists():
+        return
+    shutil.copy2(DEFAULT_REPORT_MD, package_docs / DEFAULT_REPORT_MD.name)
+    shutil.copy2(DEFAULT_REPORT_JSON, package_docs / DEFAULT_REPORT_JSON.name)
 
 
 if __name__ == "__main__":

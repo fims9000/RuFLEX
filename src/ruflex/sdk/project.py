@@ -379,7 +379,19 @@ class Project:
         pipeline_name = record.get("pipeline_name")
         if pipeline_name:
             pipeline_path = export_dir / "study_pipeline.json"
-            save_manifest(self.study_pipeline(str(pipeline_name)), pipeline_path)
+            try:
+                pipeline_payload = self.study_pipeline(str(pipeline_name))
+            except KeyError:
+                pipeline_payload = {
+                    "name": str(pipeline_name),
+                    "label": record.get("pipeline_label"),
+                    "workspace_template": record.get("workspace_template"),
+                    "training_preset": record.get("training_preset"),
+                    "training_preset_override": record.get("training_preset_override"),
+                    "article_role": record.get("article_role"),
+                    "kind": "ad_hoc_benchmark_variant",
+                }
+            save_manifest(pipeline_payload, pipeline_path)
             files["study_pipeline"] = str(pipeline_path)
 
         project_report_path = export_dir / "project_report.txt"

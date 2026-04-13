@@ -1,0 +1,27 @@
+RuFLEX: гибридная платформа глубокого нечеткого обучения для геоданных с интерпретируемым анализом правил, факторов и скрытых концептов
+RuFLEX: A Hybrid Deep Fuzzy Learning Platform for Geodata with Interpretable Analysis of Rules, Factors, and Hidden Concepts
+
+И. О. Автор1			Author One			author1@example.com			ORCID 0000-0000-0000-0000
+И. О. Автор2			Author Two			author2@example.com			ORCID 0000-0000-0000-0000
+Организация, город, страна
+Organization, City, Country
+
+Abstract — This paper presents RuFLEX, a platform for hybrid deep fuzzy learning oriented toward geoanalytics, spatially informed classification, forecasting, and intelligent decision support. In contrast to black-box approaches, RuFLEX combines interpretable rule-based mechanisms, differentiable fuzzy layers, and deep fuzzy feature-learning architectures within a unified workflow implemented in Python and PyTorch. The platform supports the definition of variables, linguistic terms, membership functions, and rules; the training of membership-function parameters, local rule bases, and hidden representations; and the comparison of flat neuro-fuzzy baseline models against deeper fuzzy configurations. The software core is delivered as a Python SDK and toolbox-style API, while the user-facing contour includes a web-based visual modeling interface, reproducible experiment tooling, and an Explainability Dashboard for analyzing fuzzification, activated rules, hidden concepts, and factor contributions to the final decision. The platform is designed to be extensible toward spatial fuzzy modules, stronger logical traceability, and counterfactual analysis in future work.
+
+Аннотация. В работе представлена платформа RuFLEX для гибридного глубокого нечеткого обучения, ориентированная на обработку геоданных в задачах, где высокая прогностическая точность должна сочетаться с интерпретируемостью, экспертной верифицируемостью и прозрачностью логики вывода. В отличие от традиционных непрозрачных подходов предложенная архитектура объединяет дифференцируемые нечеткие слои, модули глубокого нечеткого формирования признаков, расширяемый пространственный контур глубоких нечетких сверток и механизмы принятия решений на основе правил в едином дифференцируемом вычислительном контуре, реализованном в экосистеме PyTorch. Модельный контур поддерживает совместное обучение параметров функций принадлежности, базы правил и глубоких представлений признаков при сохранении семантически интерпретируемого вывода на уровне факторов и правил. Платформа включает программное ядро в виде программного интерфейса Python, веб-интерфейс визуального проектирования моделей и панель интерпретации, обеспечивающую анализ функций принадлежности, структуры правил, скрытых нечетких концептов и вклада факторов в итоговое решение. Перспективным направлением развития является расширение контура объяснимости в сторону логической прослеживаемости правил и контрфактуального анализа.
+
+Keywords — deep fuzzy learning; hybrid neuro-fuzzy models; deep fuzzy feature learning; explainability; geoanalytics; interpretable machine learning
+Ключевые слова — глубокое нечеткое обучение; гибридные нейро-нечеткие модели; глубокое нечеткое формирование признаков; геоаналитика; пространственная классификация; объяснимое машинное обучение
+
+Список литературы
+1. Jang J.-S. R. ANFIS: Adaptive-Network-Based Fuzzy Inference System // IEEE Transactions on Systems, Man, and Cybernetics. 1993. Vol. 23, No. 3. P. 665-685.
+2. Paszke A., Gross S., Massa F. et al. PyTorch: An Imperative Style, High-Performance Deep Learning Library // Advances in Neural Information Processing Systems. 2019. Vol. 32.
+3. Pedregosa F., Varoquaux G., Gramfort A. et al. Scikit-learn: Machine Learning in Python // Journal of Machine Learning Research. 2011. Vol. 12. P. 2825-2830.
+4. Pace R. K., Barry R. Sparse Spatial Autoregressions // Statistics & Probability Letters. 1997. Vol. 33, No. 3. P. 291-297. DOI: 10.1016/S0167-7152(96)00140-X.
+5. Rudin C. Stop Explaining Black Box Machine Learning Models for High Stakes Decisions and Use Interpretable Models Instead // Nature Machine Intelligence. 2019. Vol. 1. P. 206-215. DOI: 10.1038/s42256-019-0048-x.
+6. Ma X., Chen L., Deng Z. et al. Deep Image Feature Learning With Fuzzy Rules // IEEE Transactions on Emerging Topics in Computational Intelligence. 2024. Vol. 8. P. 724-737. DOI: 10.1109/TETCI.2023.3259447.
+7. Lebedeffson. deep-neuro-fuzzy [Электронный ресурс]. URL: https://github.com/lebedeffson/deep-neuro-fuzzy (дата обращения: 13.04.2026).
+
+При наличии финансирования здесь указывается формулировка на русском языке.
+
+На последней странице файла вставить реальный скриншот из antiplagiat.ru после окончательной проверки текста статьи.

@@ -19,6 +19,7 @@
   ],
   "sample_size": 6000,
   "random_state": 42,
+  "default_enabled": true,
   "sampling": {
     "kind": "balanced_binary_subsample",
     "sample_size": 6000,

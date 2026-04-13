@@ -19,6 +19,23 @@ def main() -> None:
         help="Root directory where dataset folders should be written.",
     )
     parser.add_argument(
+        "--sample-size",
+        type=int,
+        default=None,
+        help="Optional sample size override applied to each selected dataset recipe.",
+    )
+    parser.add_argument(
+        "--random-state",
+        type=int,
+        default=None,
+        help="Optional random state override applied to each selected dataset recipe.",
+    )
+    parser.add_argument(
+        "--output-name-suffix",
+        default=None,
+        help="Optional suffix appended to enlarged dataset directory names so canonical datasets are not overwritten.",
+    )
+    parser.add_argument(
         "--list",
         action="store_true",
         help="Print available dataset recipes and exit.",
@@ -30,7 +47,13 @@ def main() -> None:
             print(f"- {item['name']}: {item['label']} [{item['task_type']}]")
         return
 
-    manifests = prepare_article_datasets(args.datasets, output_root=args.output_root)
+    manifests = prepare_article_datasets(
+        args.datasets,
+        output_root=args.output_root,
+        sample_size_override=args.sample_size,
+        random_state_override=args.random_state,
+        output_name_suffix=args.output_name_suffix,
+    )
     for manifest in manifests:
         print(manifest["output_dir"])
 

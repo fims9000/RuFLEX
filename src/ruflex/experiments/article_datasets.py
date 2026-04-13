@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
@@ -46,25 +46,36 @@ def prepare_article_dataset(
     recipe_name: str,
     *,
     output_root: str | Path = "experiments/datasets",
+    sample_size_override: int | None = None,
+    random_state_override: int | None = None,
+    output_name_suffix: str | None = None,
 ) -> dict[str, Any]:
-    recipe = _recipe_by_name(recipe_name)
+    base_recipe = _recipe_by_name(recipe_name)
+    recipe = _resolved_recipe(
+        base_recipe,
+        sample_size_override=sample_size_override,
+        random_state_override=random_state_override,
+        output_name_suffix=output_name_suffix,
+    )
     output_dir = Path(output_root).expanduser().resolve() / recipe.name
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    if recipe.name == "california_housing_regression":
+    if base_recipe.name == "california_housing_regression":
         frame, extra_manifest = _prepare_california_housing(recipe)
-    elif recipe.name == "california_value_binary_geo":
+    elif base_recipe.name == "california_value_binary_geo":
         frame, extra_manifest = _prepare_california_value_binary_geo(recipe)
-    elif recipe.name == "covtype_binary_geo":
+    elif base_recipe.name == "covtype_binary_geo":
         frame, extra_manifest = _prepare_covtype_binary_geo(recipe)
     else:
-        raise ValueError(f"Unsupported article dataset recipe: {recipe.name!r}.")
+        raise ValueError(f"Unsupported article dataset recipe: {base_recipe.name!r}.")
 
     csv_path = output_dir / "dataset.csv"
     frame.to_csv(csv_path, index=False)
 
     manifest = {
         **recipe.to_dict(),
+        "base_recipe_name": base_recipe.name,
+        "base_recipe_label": base_recipe.label,
         **extra_manifest,
         "output_dir": str(output_dir),
         "csv_path": str(csv_path),
@@ -85,9 +96,21 @@ def prepare_article_datasets(
     recipe_names: tuple[str, ...] | list[str] | None = None,
     *,
     output_root: str | Path = "experiments/datasets",
+    sample_size_override: int | None = None,
+    random_state_override: int | None = None,
+    output_name_suffix: str | None = None,
 ) -> tuple[dict[str, Any], ...]:
     selected = _select_recipes(recipe_names)
-    return tuple(prepare_article_dataset(recipe.name, output_root=output_root) for recipe in selected)
+    return tuple(
+        prepare_article_dataset(
+            recipe.name,
+            output_root=output_root,
+            sample_size_override=sample_size_override,
+            random_state_override=random_state_override,
+            output_name_suffix=output_name_suffix,
+        )
+        for recipe in selected
+    )
 
 
 def _recipe_catalog() -> tuple[ArticleDatasetRecipe, ...]:
@@ -159,7 +182,7 @@ def _recipe_catalog() -> tuple[ArticleDatasetRecipe, ...]:
                 "Horizontal_Distance_To_Fire_Points",
             ),
             sample_size=6000,
-            default_enabled=False,
+            default_enabled=True,
         ),
     )
 
@@ -169,6 +192,40 @@ def _recipe_by_name(recipe_name: str) -> ArticleDatasetRecipe:
         if recipe.name == recipe_name:
             return recipe
     raise ValueError(f"Unknown article dataset recipe: {recipe_name!r}.")
+
+
+def _resolved_recipe(
+    recipe: ArticleDatasetRecipe,
+    *,
+    sample_size_override: int | None,
+    random_state_override: int | None,
+    output_name_suffix: str | None,
+) -> ArticleDatasetRecipe:
+    sample_size = recipe.sample_size if sample_size_override is None else int(sample_size_override)
+    random_state = recipe.random_state if random_state_override is None else int(random_state_override)
+    if sample_size <= 0:
+        raise ValueError("sample_size_override must be positive when provided.")
+
+    suffix_parts: list[str] = []
+    label_parts: list[str] = []
+    if sample_size != recipe.sample_size:
+        suffix_parts.append(f"n{sample_size}")
+        label_parts.append(f"n={sample_size}")
+    if random_state != recipe.random_state:
+        suffix_parts.append(f"rs{random_state}")
+        label_parts.append(f"rs={random_state}")
+    if output_name_suffix:
+        suffix_parts.append(_slug(output_name_suffix))
+        label_parts.append(str(output_name_suffix).strip())
+
+    if suffix_parts:
+        name = f"{recipe.name}_{'_'.join(suffix_parts)}"
+        label = f"{recipe.label} ({', '.join(label_parts)})"
+    else:
+        name = recipe.name
+        label = recipe.label
+
+    return replace(recipe, name=name, label=label, sample_size=sample_size, random_state=random_state)
 
 
 def _select_recipes(recipe_names: tuple[str, ...] | list[str] | None) -> tuple[ArticleDatasetRecipe, ...]:
@@ -185,12 +242,14 @@ def _select_recipes(recipe_names: tuple[str, ...] | list[str] | None) -> tuple[A
 def _prepare_california_housing(recipe: ArticleDatasetRecipe) -> tuple[pd.DataFrame, dict[str, Any]]:
     bundle = fetch_california_housing(as_frame=True)
     frame = bundle.frame.loc[:, list(recipe.feature_columns) + [recipe.target_column]].copy()
+    actual_sample_size = min(len(frame), recipe.sample_size)
     if len(frame) > recipe.sample_size:
         frame = frame.sample(n=recipe.sample_size, random_state=recipe.random_state).reset_index(drop=True)
     return frame, {
         "sampling": {
             "kind": "random_subsample",
-            "sample_size": recipe.sample_size,
+            "sample_size": actual_sample_size,
+            "requested_sample_size": recipe.sample_size,
             "original_row_count": int(len(bundle.frame)),
             "random_state": recipe.random_state,
         },
@@ -205,6 +264,15 @@ def _prepare_covtype_binary_geo(recipe: ArticleDatasetRecipe) -> tuple[pd.DataFr
     bundle = fetch_covtype(as_frame=True)
     frame = bundle.frame.loc[:, list(recipe.feature_columns) + ["Cover_Type"]].copy()
     frame = frame[frame["Cover_Type"].isin((1, 2))].reset_index(drop=True)
+    max_balanced_sample_size = 2 * min(
+        int((frame["Cover_Type"] == 1).sum()),
+        int((frame["Cover_Type"] == 2).sum()),
+    )
+    if recipe.sample_size > max_balanced_sample_size:
+        raise ValueError(
+            "Requested sample_size exceeds the maximum balanced sample for covtype_binary_geo: "
+            f"requested={recipe.sample_size}, max_balanced={max_balanced_sample_size}."
+        )
 
     half = recipe.sample_size // 2
     class_1 = frame[frame["Cover_Type"] == 1].sample(n=half, random_state=recipe.random_state)
@@ -221,6 +289,7 @@ def _prepare_covtype_binary_geo(recipe: ArticleDatasetRecipe) -> tuple[pd.DataFr
         "sampling": {
             "kind": "balanced_binary_subsample",
             "sample_size": recipe.sample_size,
+            "max_balanced_sample_size": max_balanced_sample_size,
             "original_row_count": int(len(bundle.frame)),
             "eligible_binary_row_count": int(len(frame)),
             "random_state": recipe.random_state,
@@ -243,6 +312,12 @@ def _prepare_california_value_binary_geo(recipe: ArticleDatasetRecipe) -> tuple[
 
     class_0 = frame[frame[recipe.target_column] == 0]
     class_1 = frame[frame[recipe.target_column] == 1]
+    max_balanced_sample_size = 2 * min(len(class_0), len(class_1))
+    if recipe.sample_size > max_balanced_sample_size:
+        raise ValueError(
+            "Requested sample_size exceeds the maximum balanced sample for california_value_binary_geo: "
+            f"requested={recipe.sample_size}, max_balanced={max_balanced_sample_size}."
+        )
     half = recipe.sample_size // 2
     balanced = (
         pd.concat(
@@ -260,6 +335,7 @@ def _prepare_california_value_binary_geo(recipe: ArticleDatasetRecipe) -> tuple[
         "sampling": {
             "kind": "balanced_threshold_subsample",
             "sample_size": recipe.sample_size,
+            "max_balanced_sample_size": max_balanced_sample_size,
             "original_row_count": int(len(bundle.frame)),
             "threshold": threshold,
             "random_state": recipe.random_state,
@@ -303,3 +379,11 @@ def _dataset_readme(manifest: dict[str, Any]) -> str:
         lines.extend(["", "## Task Notes", ""])
         lines.extend(f"- {key}: {value}" for key, value in task_notes.items())
     return "\n".join(lines)
+
+
+def _slug(value: str) -> str:
+    slug = "".join(character if character.isalnum() else "_" for character in str(value).strip().lower())
+    slug = slug.strip("_")
+    while "__" in slug:
+        slug = slug.replace("__", "_")
+    return slug or "variant"

@@ -1,0 +1,4300 @@
+{
+  "timestamp_utc": "2026-04-13T10:33:27.530962+00:00",
+  "pipeline_name": "deep_research_study",
+  "pipeline_label": "Deep Research",
+  "workspace_template": "deep_research",
+  "training_preset": "article_demo",
+  "training_preset_override": null,
+  "training_source": "stagewise_pretraining_plus_finetuning",
+  "epochs_ran": 27,
+  "train_metrics": {
+    "mse": 0.7290587425231934,
+    "mae": 0.6426743865013123,
+    "rmse": 0.8538493675837637,
+    "r2": 0.44987966885805464
+  },
+  "validation_metrics": {
+    "mse": 0.724826455116272,
+    "mae": 0.6515616178512573,
+    "rmse": 0.851367403132321,
+    "r2": 0.44015672948340634
+  },
+  "test_metrics": {
+    "mse": 0.6172649614987826,
+    "mae": 0.6054294114552939,
+    "rmse": 0.785662116624432,
+    "r2": 0.5115131227296597
+  },
+  "training_config": {
+    "task_type": "regression",
+    "use_bootstrap_initialization": true,
+    "use_stagewise_pretraining": true,
+    "bootstrap": {
+      "hidden_high": 0.85,
+      "hidden_low": 0.15,
+      "gate_floor": 0.25,
+      "gate_ceiling": 0.85,
+      "decision_binary_target_clip": 0.05
+    },
+    "stagewise": {
+      "epochs_per_stage": 18,
+      "decision_epochs": 14,
+      "refinement_rounds": 1,
+      "learning_rate": 0.02,
+      "batch_size": 64,
+      "shuffle": true,
+      "rule_sparsity_weight": 0.0,
+      "concept_orthogonality_weight": 0.0,
+      "concept_binarization_weight": 0.0,
+      "membership_order_weight": 0.0,
+      "membership_min_gap": 0.0,
+      "membership_overlap_weight": 0.0,
+      "membership_max_overlap": 0.35,
+      "membership_coverage_weight": 0.0,
+      "membership_min_coverage": 0.6,
+      "classification_target_clip": 0.05
+    },
+    "fine_tuning": {
+      "max_epochs": 28,
+      "learning_rate": 0.001,
+      "batch_size": 32,
+      "patience": 8,
+      "min_delta": 0.0,
+      "weight_decay": 0.0,
+      "gradient_clip_norm": null,
+      "shuffle": true,
+      "device": null,
+      "classification_threshold": 0.5,
+      "rule_sparsity_weight": 0.0005,
+      "rule_length_weight": 0.0,
+      "concept_orthogonality_weight": 0.0005,
+      "concept_binarization_weight": 0.0,
+      "membership_order_weight": 0.0,
+      "membership_min_gap": 0.0,
+      "membership_overlap_weight": 0.0,
+      "membership_max_overlap": 0.35,
+      "membership_coverage_weight": 0.0,
+      "membership_min_coverage": 0.6,
+      "prune_after_fit": false,
+      "prune_threshold": 0.1,
+      "prune_temperature": 0.05,
+      "prune_keep_at_least": 1
+    },
+    "refinement": {
+      "cycles": 1,
+      "patience": null,
+      "min_delta": 0.0
+    }
+  },
+  "project_manifest": {
+    "name": "california_housing_regression-deep_research",
+    "task_type": "regression",
+    "description": null,
+    "dataset_config": {
+      "target_column": "MedHouseVal",
+      "feature_columns": null,
+      "validation_fraction": 0.2,
+      "test_fraction": 0.2,
+      "normalization": "standard",
+      "fill_missing": "median",
+      "random_state": 23
+    },
+    "variables": [
+      {
+        "name": "MedInc",
+        "membership": {
+          "kind": "generalized_bell",
+          "term_names": [
+            "term_1",
+            "term_2",
+            "term_3",
+            "term_4"
+          ],
+          "centers": [
+            0.4999,
+            5.3333,
+            10.1667,
+            15.0001
+          ],
+          "widths": [
+            3.62505,
+            3.62505,
+            3.62505,
+            3.62505
+          ],
+          "slopes": [
+            2.0,
+            2.0,
+            2.0,
+            2.0
+          ],
+          "min_width": 0.001,
+          "min_slope": 0.01
+        },
+        "value_range": [
+          0.4999,
+          15.0001
+        ],
+        "data_type": "continuous",
+        "role": "input",
+        "normalization": "standard"
+      },
+      {
+        "name": "HouseAge",
+        "membership": {
+          "kind": "generalized_bell",
+          "term_names": [
+            "term_1",
+            "term_2",
+            "term_3",
+            "term_4"
+          ],
+          "centers": [
+            1.0,
+            18.0,
+            35.0,
+            52.0
+          ],
+          "widths": [
+            12.75,
+            12.75,
+            12.75,
+            12.75
+          ],
+          "slopes": [
+            2.0,
+            2.0,
+            2.0,
+            2.0
+          ],
+          "min_width": 0.001,
+          "min_slope": 0.01
+        },
+        "value_range": [
+          1.0,
+          52.0
+        ],
+        "data_type": "continuous",
+        "role": "input",
+        "normalization": "standard"
+      },
+      {
+        "name": "AveRooms",
+        "membership": {
+          "kind": "generalized_bell",
+          "term_names": [
+            "term_1",
+            "term_2",
+            "term_3",
+            "term_4"
+          ],
+          "centers": [
+            0.8461538461538461,
+            44.741880341880346,
+            88.63760683760684,
+            132.53333333333333
+          ],
+          "widths": [
+            32.92179487179487,
+            32.92179487179487,
+            32.92179487179487,
+            32.92179487179487
+          ],
+          "slopes": [
+            2.0,
+            2.0,
+            2.0,
+            2.0
+          ],
+          "min_width": 0.001,
+          "min_slope": 0.01
+        },
+        "value_range": [
+          0.8461538461538461,
+          132.53333333333333
+        ],
+        "data_type": "continuous",
+        "role": "input",
+        "normalization": "standard"
+      },
+      {
+        "name": "AveBedrms",
+        "membership": {
+          "kind": "generalized_bell",
+          "term_names": [
+            "term_1",
+            "term_2",
+            "term_3",
+            "term_4"
+          ],
+          "centers": [
+            0.5,
+            11.68888888888889,
+            22.87777777777778,
+            34.06666666666667
+          ],
+          "widths": [
+            8.391666666666667,
+            8.391666666666667,
+            8.391666666666667,
+            8.391666666666667
+          ],
+          "slopes": [
+            2.0,
+            2.0,
+            2.0,
+            2.0
+          ],
+          "min_width": 0.001,
+          "min_slope": 0.01
+        },
+        "value_range": [
+          0.5,
+          34.06666666666667
+        ],
+        "data_type": "continuous",
+        "role": "input",
+        "normalization": "standard"
+      },
+      {
+        "name": "Population",
+        "membership": {
+          "kind": "generalized_bell",
+          "term_names": [
+            "term_1",
+            "term_2",
+            "term_3",
+            "term_4"
+          ],
+          "centers": [
+            8.0,
+            5379.333333333333,
+            10750.666666666666,
+            16122.0
+          ],
+          "widths": [
+            4028.5,
+            4028.5,
+            4028.5,
+            4028.5
+          ],
+          "slopes": [
+            2.0,
+            2.0,
+            2.0,
+            2.0
+          ],
+          "min_width": 0.001,
+          "min_slope": 0.01
+        },
+        "value_range": [
+          8.0,
+          16122.0
+        ],
+        "data_type": "continuous",
+        "role": "input",
+        "normalization": "standard"
+      },
+      {
+        "name": "AveOccup",
+        "membership": {
+          "kind": "generalized_bell",
+          "term_names": [
+            "term_1",
+            "term_2",
+            "term_3",
+            "term_4"
+          ],
+          "centers": [
+            1.2635658914728682,
+            28.56618678479144,
+            55.86880767811001,
+            83.17142857142858
+          ],
+          "widths": [
+            20.476965669988928,
+            20.476965669988928,
+            20.476965669988928,
+            20.476965669988928
+          ],
+          "slopes": [
+            2.0,
+            2.0,
+            2.0,
+            2.0
+          ],
+          "min_width": 0.001,
+          "min_slope": 0.01
+        },
+        "value_range": [
+          1.2635658914728682,
+          83.17142857142858
+        ],
+        "data_type": "continuous",
+        "role": "input",
+        "normalization": "standard"
+      },
+      {
+        "name": "Latitude",
+        "membership": {
+          "kind": "generalized_bell",
+          "term_names": [
+            "term_1",
+            "term_2",
+            "term_3",
+            "term_4"
+          ],
+          "centers": [
+            32.54,
+            35.63,
+            38.72,
+            41.81
+          ],
+          "widths": [
+            2.317500000000001,
+            2.317500000000001,
+            2.317500000000001,
+            2.317500000000001
+          ],
+          "slopes": [
+            2.0,
+            2.0,
+            2.0,
+            2.0
+          ],
+          "min_width": 0.001,
+          "min_slope": 0.01
+        },
+        "value_range": [
+          32.54,
+          41.81
+        ],
+        "data_type": "continuous",
+        "role": "input",
+        "normalization": "standard"
+      },
+      {
+        "name": "Longitude",
+        "membership": {
+          "kind": "generalized_bell",
+          "term_names": [
+            "term_1",
+            "term_2",
+            "term_3",
+            "term_4"
+          ],
+          "centers": [
+            -124.19,
+            -120.98666666666666,
+            -117.78333333333333,
+            -114.58
+          ],
+          "widths": [
+            2.4025,
+            2.4025,
+            2.4025,
+            2.4025
+          ],
+          "slopes": [
+            2.0,
+            2.0,
+            2.0,
+            2.0
+          ],
+          "min_width": 0.001,
+          "min_slope": 0.01
+        },
+        "value_range": [
+          -124.19,
+          -114.58
+        ],
+        "data_type": "continuous",
+        "role": "input",
+        "normalization": "standard"
+      }
+    ],
+    "model_kind": "deep_fuzzy_feature_learning",
+    "model_spec": {
+      "kind": "deep_fuzzy_feature_learning",
+      "input_dim": 8,
+      "stages": [
+        {
+          "name": "stage_1",
+          "blocks": [
+            {
+              "name": "stage_1_block_1",
+              "input_indices": [
+                0,
+                1,
+                2
+              ],
+              "variables": [
+                {
+                  "name": "MedInc",
+                  "membership": {
+                    "kind": "generalized_bell",
+                    "term_names": [
+                      "term_1",
+                      "term_2",
+                      "term_3",
+                      "term_4"
+                    ],
+                    "centers": [
+                      0.4999,
+                      5.3333,
+                      10.1667,
+                      15.0001
+                    ],
+                    "widths": [
+                      3.62505,
+                      3.62505,
+                      3.62505,
+                      3.62505
+                    ],
+                    "slopes": [
+                      2.0,
+                      2.0,
+                      2.0,
+                      2.0
+                    ],
+                    "min_width": 0.001,
+                    "min_slope": 0.01
+                  },
+                  "value_range": [
+                    0.4999,
+                    15.0001
+                  ],
+                  "data_type": "continuous",
+                  "role": "input",
+                  "normalization": "standard"
+                },
+                {
+                  "name": "HouseAge",
+                  "membership": {
+                    "kind": "generalized_bell",
+                    "term_names": [
+                      "term_1",
+                      "term_2",
+                      "term_3",
+                      "term_4"
+                    ],
+                    "centers": [
+                      1.0,
+                      18.0,
+                      35.0,
+                      52.0
+                    ],
+                    "widths": [
+                      12.75,
+                      12.75,
+                      12.75,
+                      12.75
+                    ],
+                    "slopes": [
+                      2.0,
+                      2.0,
+                      2.0,
+                      2.0
+                    ],
+                    "min_width": 0.001,
+                    "min_slope": 0.01
+                  },
+                  "value_range": [
+                    1.0,
+                    52.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "input",
+                  "normalization": "standard"
+                },
+                {
+                  "name": "AveRooms",
+                  "membership": {
+                    "kind": "generalized_bell",
+                    "term_names": [
+                      "term_1",
+                      "term_2",
+                      "term_3",
+                      "term_4"
+                    ],
+                    "centers": [
+                      0.8461538461538461,
+                      44.741880341880346,
+                      88.63760683760684,
+                      132.53333333333333
+                    ],
+                    "widths": [
+                      32.92179487179487,
+                      32.92179487179487,
+                      32.92179487179487,
+                      32.92179487179487
+                    ],
+                    "slopes": [
+                      2.0,
+                      2.0,
+                      2.0,
+                      2.0
+                    ],
+                    "min_width": 0.001,
+                    "min_slope": 0.01
+                  },
+                  "value_range": [
+                    0.8461538461538461,
+                    132.53333333333333
+                  ],
+                  "data_type": "continuous",
+                  "role": "input",
+                  "normalization": "standard"
+                }
+              ],
+              "n_concepts": 3,
+              "concept_names": [
+                "stage_1_block_1_concept_1",
+                "stage_1_block_1_concept_2",
+                "stage_1_block_1_concept_3"
+              ],
+              "max_rule_arity": 2,
+              "max_rules": 6,
+              "gate_init": 0.0,
+              "rule_base": null,
+              "rule_generation_mode": "prototype",
+              "prototype_term_limit": 2,
+              "prototype_variable_pool_size": null,
+              "prototype_sample_size": 256
+            },
+            {
+              "name": "stage_1_block_2",
+              "input_indices": [
+                3,
+                4,
+                5
+              ],
+              "variables": [
+                {
+                  "name": "AveBedrms",
+                  "membership": {
+                    "kind": "generalized_bell",
+                    "term_names": [
+                      "term_1",
+                      "term_2",
+                      "term_3",
+                      "term_4"
+                    ],
+                    "centers": [
+                      0.5,
+                      11.68888888888889,
+                      22.87777777777778,
+                      34.06666666666667
+                    ],
+                    "widths": [
+                      8.391666666666667,
+                      8.391666666666667,
+                      8.391666666666667,
+                      8.391666666666667
+                    ],
+                    "slopes": [
+                      2.0,
+                      2.0,
+                      2.0,
+                      2.0
+                    ],
+                    "min_width": 0.001,
+                    "min_slope": 0.01
+                  },
+                  "value_range": [
+                    0.5,
+                    34.06666666666667
+                  ],
+                  "data_type": "continuous",
+                  "role": "input",
+                  "normalization": "standard"
+                },
+                {
+                  "name": "Population",
+                  "membership": {
+                    "kind": "generalized_bell",
+                    "term_names": [
+                      "term_1",
+                      "term_2",
+                      "term_3",
+                      "term_4"
+                    ],
+                    "centers": [
+                      8.0,
+                      5379.333333333333,
+                      10750.666666666666,
+                      16122.0
+                    ],
+                    "widths": [
+                      4028.5,
+                      4028.5,
+                      4028.5,
+                      4028.5
+                    ],
+                    "slopes": [
+                      2.0,
+                      2.0,
+                      2.0,
+                      2.0
+                    ],
+                    "min_width": 0.001,
+                    "min_slope": 0.01
+                  },
+                  "value_range": [
+                    8.0,
+                    16122.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "input",
+                  "normalization": "standard"
+                },
+                {
+                  "name": "AveOccup",
+                  "membership": {
+                    "kind": "generalized_bell",
+                    "term_names": [
+                      "term_1",
+                      "term_2",
+                      "term_3",
+                      "term_4"
+                    ],
+                    "centers": [
+                      1.2635658914728682,
+                      28.56618678479144,
+                      55.86880767811001,
+                      83.17142857142858
+                    ],
+                    "widths": [
+                      20.476965669988928,
+                      20.476965669988928,
+                      20.476965669988928,
+                      20.476965669988928
+                    ],
+                    "slopes": [
+                      2.0,
+                      2.0,
+                      2.0,
+                      2.0
+                    ],
+                    "min_width": 0.001,
+                    "min_slope": 0.01
+                  },
+                  "value_range": [
+                    1.2635658914728682,
+                    83.17142857142858
+                  ],
+                  "data_type": "continuous",
+                  "role": "input",
+                  "normalization": "standard"
+                }
+              ],
+              "n_concepts": 3,
+              "concept_names": [
+                "stage_1_block_2_concept_1",
+                "stage_1_block_2_concept_2",
+                "stage_1_block_2_concept_3"
+              ],
+              "max_rule_arity": 2,
+              "max_rules": 6,
+              "gate_init": 0.0,
+              "rule_base": null,
+              "rule_generation_mode": "prototype",
+              "prototype_term_limit": 2,
+              "prototype_variable_pool_size": null,
+              "prototype_sample_size": 256
+            },
+            {
+              "name": "stage_1_block_3",
+              "input_indices": [
+                6,
+                7
+              ],
+              "variables": [
+                {
+                  "name": "Latitude",
+                  "membership": {
+                    "kind": "generalized_bell",
+                    "term_names": [
+                      "term_1",
+                      "term_2",
+                      "term_3",
+                      "term_4"
+                    ],
+                    "centers": [
+                      32.54,
+                      35.63,
+                      38.72,
+                      41.81
+                    ],
+                    "widths": [
+                      2.317500000000001,
+                      2.317500000000001,
+                      2.317500000000001,
+                      2.317500000000001
+                    ],
+                    "slopes": [
+                      2.0,
+                      2.0,
+                      2.0,
+                      2.0
+                    ],
+                    "min_width": 0.001,
+                    "min_slope": 0.01
+                  },
+                  "value_range": [
+                    32.54,
+                    41.81
+                  ],
+                  "data_type": "continuous",
+                  "role": "input",
+                  "normalization": "standard"
+                },
+                {
+                  "name": "Longitude",
+                  "membership": {
+                    "kind": "generalized_bell",
+                    "term_names": [
+                      "term_1",
+                      "term_2",
+                      "term_3",
+                      "term_4"
+                    ],
+                    "centers": [
+                      -124.19,
+                      -120.98666666666666,
+                      -117.78333333333333,
+                      -114.58
+                    ],
+                    "widths": [
+                      2.4025,
+                      2.4025,
+                      2.4025,
+                      2.4025
+                    ],
+                    "slopes": [
+                      2.0,
+                      2.0,
+                      2.0,
+                      2.0
+                    ],
+                    "min_width": 0.001,
+                    "min_slope": 0.01
+                  },
+                  "value_range": [
+                    -124.19,
+                    -114.58
+                  ],
+                  "data_type": "continuous",
+                  "role": "input",
+                  "normalization": "standard"
+                }
+              ],
+              "n_concepts": 3,
+              "concept_names": [
+                "stage_1_block_3_concept_1",
+                "stage_1_block_3_concept_2",
+                "stage_1_block_3_concept_3"
+              ],
+              "max_rule_arity": 2,
+              "max_rules": 6,
+              "gate_init": 0.0,
+              "rule_base": null,
+              "rule_generation_mode": "prototype",
+              "prototype_term_limit": 2,
+              "prototype_variable_pool_size": null,
+              "prototype_sample_size": 256
+            }
+          ]
+        },
+        {
+          "name": "stage_2",
+          "blocks": [
+            {
+              "name": "stage_2_block_1",
+              "input_indices": [
+                0,
+                1,
+                2
+              ],
+              "variables": [
+                {
+                  "name": "stage_1_block_1_concept_1",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "low",
+                      "high"
+                    ],
+                    "centers": [
+                      0.25,
+                      0.75
+                    ],
+                    "spreads": [
+                      0.2,
+                      0.2
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    1.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "hidden_concept",
+                  "normalization": "none"
+                },
+                {
+                  "name": "stage_1_block_1_concept_2",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "low",
+                      "high"
+                    ],
+                    "centers": [
+                      0.25,
+                      0.75
+                    ],
+                    "spreads": [
+                      0.2,
+                      0.2
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    1.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "hidden_concept",
+                  "normalization": "none"
+                },
+                {
+                  "name": "stage_1_block_1_concept_3",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "low",
+                      "high"
+                    ],
+                    "centers": [
+                      0.25,
+                      0.75
+                    ],
+                    "spreads": [
+                      0.2,
+                      0.2
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    1.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "hidden_concept",
+                  "normalization": "none"
+                }
+              ],
+              "n_concepts": 3,
+              "concept_names": [
+                "stage_2_block_1_concept_1",
+                "stage_2_block_1_concept_2",
+                "stage_2_block_1_concept_3"
+              ],
+              "max_rule_arity": 2,
+              "max_rules": 6,
+              "gate_init": 0.0,
+              "rule_base": null,
+              "rule_generation_mode": "prototype",
+              "prototype_term_limit": 2,
+              "prototype_variable_pool_size": null,
+              "prototype_sample_size": 256
+            },
+            {
+              "name": "stage_2_block_2",
+              "input_indices": [
+                3,
+                4,
+                5
+              ],
+              "variables": [
+                {
+                  "name": "stage_1_block_2_concept_1",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "low",
+                      "high"
+                    ],
+                    "centers": [
+                      0.25,
+                      0.75
+                    ],
+                    "spreads": [
+                      0.2,
+                      0.2
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    1.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "hidden_concept",
+                  "normalization": "none"
+                },
+                {
+                  "name": "stage_1_block_2_concept_2",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "low",
+                      "high"
+                    ],
+                    "centers": [
+                      0.25,
+                      0.75
+                    ],
+                    "spreads": [
+                      0.2,
+                      0.2
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    1.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "hidden_concept",
+                  "normalization": "none"
+                },
+                {
+                  "name": "stage_1_block_2_concept_3",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "low",
+                      "high"
+                    ],
+                    "centers": [
+                      0.25,
+                      0.75
+                    ],
+                    "spreads": [
+                      0.2,
+                      0.2
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    1.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "hidden_concept",
+                  "normalization": "none"
+                }
+              ],
+              "n_concepts": 3,
+              "concept_names": [
+                "stage_2_block_2_concept_1",
+                "stage_2_block_2_concept_2",
+                "stage_2_block_2_concept_3"
+              ],
+              "max_rule_arity": 2,
+              "max_rules": 6,
+              "gate_init": 0.0,
+              "rule_base": null,
+              "rule_generation_mode": "prototype",
+              "prototype_term_limit": 2,
+              "prototype_variable_pool_size": null,
+              "prototype_sample_size": 256
+            },
+            {
+              "name": "stage_2_block_3",
+              "input_indices": [
+                6,
+                7,
+                8
+              ],
+              "variables": [
+                {
+                  "name": "stage_1_block_3_concept_1",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "low",
+                      "high"
+                    ],
+                    "centers": [
+                      0.25,
+                      0.75
+                    ],
+                    "spreads": [
+                      0.2,
+                      0.2
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    1.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "hidden_concept",
+                  "normalization": "none"
+                },
+                {
+                  "name": "stage_1_block_3_concept_2",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "low",
+                      "high"
+                    ],
+                    "centers": [
+                      0.25,
+                      0.75
+                    ],
+                    "spreads": [
+                      0.2,
+                      0.2
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    1.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "hidden_concept",
+                  "normalization": "none"
+                },
+                {
+                  "name": "stage_1_block_3_concept_3",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "low",
+                      "high"
+                    ],
+                    "centers": [
+                      0.25,
+                      0.75
+                    ],
+                    "spreads": [
+                      0.2,
+                      0.2
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    1.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "hidden_concept",
+                  "normalization": "none"
+                }
+              ],
+              "n_concepts": 3,
+              "concept_names": [
+                "stage_2_block_3_concept_1",
+                "stage_2_block_3_concept_2",
+                "stage_2_block_3_concept_3"
+              ],
+              "max_rule_arity": 2,
+              "max_rules": 6,
+              "gate_init": 0.0,
+              "rule_base": null,
+              "rule_generation_mode": "prototype",
+              "prototype_term_limit": 2,
+              "prototype_variable_pool_size": null,
+              "prototype_sample_size": 256
+            }
+          ]
+        },
+        {
+          "name": "stage_3",
+          "blocks": [
+            {
+              "name": "stage_3_block_1",
+              "input_indices": [
+                0,
+                1,
+                2
+              ],
+              "variables": [
+                {
+                  "name": "stage_2_block_1_concept_1",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "low",
+                      "high"
+                    ],
+                    "centers": [
+                      0.25,
+                      0.75
+                    ],
+                    "spreads": [
+                      0.2,
+                      0.2
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    1.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "hidden_concept",
+                  "normalization": "none"
+                },
+                {
+                  "name": "stage_2_block_1_concept_2",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "low",
+                      "high"
+                    ],
+                    "centers": [
+                      0.25,
+                      0.75
+                    ],
+                    "spreads": [
+                      0.2,
+                      0.2
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    1.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "hidden_concept",
+                  "normalization": "none"
+                },
+                {
+                  "name": "stage_2_block_1_concept_3",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "low",
+                      "high"
+                    ],
+                    "centers": [
+                      0.25,
+                      0.75
+                    ],
+                    "spreads": [
+                      0.2,
+                      0.2
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    1.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "hidden_concept",
+                  "normalization": "none"
+                }
+              ],
+              "n_concepts": 3,
+              "concept_names": [
+                "stage_3_block_1_concept_1",
+                "stage_3_block_1_concept_2",
+                "stage_3_block_1_concept_3"
+              ],
+              "max_rule_arity": 2,
+              "max_rules": 6,
+              "gate_init": 0.0,
+              "rule_base": null,
+              "rule_generation_mode": "prototype",
+              "prototype_term_limit": 2,
+              "prototype_variable_pool_size": null,
+              "prototype_sample_size": 256
+            },
+            {
+              "name": "stage_3_block_2",
+              "input_indices": [
+                3,
+                4,
+                5
+              ],
+              "variables": [
+                {
+                  "name": "stage_2_block_2_concept_1",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "low",
+                      "high"
+                    ],
+                    "centers": [
+                      0.25,
+                      0.75
+                    ],
+                    "spreads": [
+                      0.2,
+                      0.2
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    1.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "hidden_concept",
+                  "normalization": "none"
+                },
+                {
+                  "name": "stage_2_block_2_concept_2",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "low",
+                      "high"
+                    ],
+                    "centers": [
+                      0.25,
+                      0.75
+                    ],
+                    "spreads": [
+                      0.2,
+                      0.2
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    1.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "hidden_concept",
+                  "normalization": "none"
+                },
+                {
+                  "name": "stage_2_block_2_concept_3",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "low",
+                      "high"
+                    ],
+                    "centers": [
+                      0.25,
+                      0.75
+                    ],
+                    "spreads": [
+                      0.2,
+                      0.2
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    1.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "hidden_concept",
+                  "normalization": "none"
+                }
+              ],
+              "n_concepts": 3,
+              "concept_names": [
+                "stage_3_block_2_concept_1",
+                "stage_3_block_2_concept_2",
+                "stage_3_block_2_concept_3"
+              ],
+              "max_rule_arity": 2,
+              "max_rules": 6,
+              "gate_init": 0.0,
+              "rule_base": null,
+              "rule_generation_mode": "prototype",
+              "prototype_term_limit": 2,
+              "prototype_variable_pool_size": null,
+              "prototype_sample_size": 256
+            },
+            {
+              "name": "stage_3_block_3",
+              "input_indices": [
+                6,
+                7,
+                8
+              ],
+              "variables": [
+                {
+                  "name": "stage_2_block_3_concept_1",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "low",
+                      "high"
+                    ],
+                    "centers": [
+                      0.25,
+                      0.75
+                    ],
+                    "spreads": [
+                      0.2,
+                      0.2
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    1.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "hidden_concept",
+                  "normalization": "none"
+                },
+                {
+                  "name": "stage_2_block_3_concept_2",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "low",
+                      "high"
+                    ],
+                    "centers": [
+                      0.25,
+                      0.75
+                    ],
+                    "spreads": [
+                      0.2,
+                      0.2
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    1.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "hidden_concept",
+                  "normalization": "none"
+                },
+                {
+                  "name": "stage_2_block_3_concept_3",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "low",
+                      "high"
+                    ],
+                    "centers": [
+                      0.25,
+                      0.75
+                    ],
+                    "spreads": [
+                      0.2,
+                      0.2
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    1.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "hidden_concept",
+                  "normalization": "none"
+                }
+              ],
+              "n_concepts": 3,
+              "concept_names": [
+                "stage_3_block_3_concept_1",
+                "stage_3_block_3_concept_2",
+                "stage_3_block_3_concept_3"
+              ],
+              "max_rule_arity": 2,
+              "max_rules": 6,
+              "gate_init": 0.0,
+              "rule_base": null,
+              "rule_generation_mode": "prototype",
+              "prototype_term_limit": 2,
+              "prototype_variable_pool_size": null,
+              "prototype_sample_size": 256
+            }
+          ]
+        }
+      ],
+      "decision_layer": {
+        "name": "deep_decision",
+        "variables": [
+          {
+            "name": "stage_3_block_1_concept_1",
+            "membership": {
+              "kind": "gaussian",
+              "term_names": [
+                "low",
+                "high"
+              ],
+              "centers": [
+                0.25,
+                0.75
+              ],
+              "spreads": [
+                0.2,
+                0.2
+              ],
+              "min_spread": 0.001
+            },
+            "value_range": [
+              0.0,
+              1.0
+            ],
+            "data_type": "continuous",
+            "role": "hidden_concept",
+            "normalization": "none"
+          },
+          {
+            "name": "stage_3_block_1_concept_2",
+            "membership": {
+              "kind": "gaussian",
+              "term_names": [
+                "low",
+                "high"
+              ],
+              "centers": [
+                0.25,
+                0.75
+              ],
+              "spreads": [
+                0.2,
+                0.2
+              ],
+              "min_spread": 0.001
+            },
+            "value_range": [
+              0.0,
+              1.0
+            ],
+            "data_type": "continuous",
+            "role": "hidden_concept",
+            "normalization": "none"
+          },
+          {
+            "name": "stage_3_block_1_concept_3",
+            "membership": {
+              "kind": "gaussian",
+              "term_names": [
+                "low",
+                "high"
+              ],
+              "centers": [
+                0.25,
+                0.75
+              ],
+              "spreads": [
+                0.2,
+                0.2
+              ],
+              "min_spread": 0.001
+            },
+            "value_range": [
+              0.0,
+              1.0
+            ],
+            "data_type": "continuous",
+            "role": "hidden_concept",
+            "normalization": "none"
+          },
+          {
+            "name": "stage_3_block_2_concept_1",
+            "membership": {
+              "kind": "gaussian",
+              "term_names": [
+                "low",
+                "high"
+              ],
+              "centers": [
+                0.25,
+                0.75
+              ],
+              "spreads": [
+                0.2,
+                0.2
+              ],
+              "min_spread": 0.001
+            },
+            "value_range": [
+              0.0,
+              1.0
+            ],
+            "data_type": "continuous",
+            "role": "hidden_concept",
+            "normalization": "none"
+          },
+          {
+            "name": "stage_3_block_2_concept_2",
+            "membership": {
+              "kind": "gaussian",
+              "term_names": [
+                "low",
+                "high"
+              ],
+              "centers": [
+                0.25,
+                0.75
+              ],
+              "spreads": [
+                0.2,
+                0.2
+              ],
+              "min_spread": 0.001
+            },
+            "value_range": [
+              0.0,
+              1.0
+            ],
+            "data_type": "continuous",
+            "role": "hidden_concept",
+            "normalization": "none"
+          },
+          {
+            "name": "stage_3_block_2_concept_3",
+            "membership": {
+              "kind": "gaussian",
+              "term_names": [
+                "low",
+                "high"
+              ],
+              "centers": [
+                0.25,
+                0.75
+              ],
+              "spreads": [
+                0.2,
+                0.2
+              ],
+              "min_spread": 0.001
+            },
+            "value_range": [
+              0.0,
+              1.0
+            ],
+            "data_type": "continuous",
+            "role": "hidden_concept",
+            "normalization": "none"
+          },
+          {
+            "name": "stage_3_block_3_concept_1",
+            "membership": {
+              "kind": "gaussian",
+              "term_names": [
+                "low",
+                "high"
+              ],
+              "centers": [
+                0.25,
+                0.75
+              ],
+              "spreads": [
+                0.2,
+                0.2
+              ],
+              "min_spread": 0.001
+            },
+            "value_range": [
+              0.0,
+              1.0
+            ],
+            "data_type": "continuous",
+            "role": "hidden_concept",
+            "normalization": "none"
+          },
+          {
+            "name": "stage_3_block_3_concept_2",
+            "membership": {
+              "kind": "gaussian",
+              "term_names": [
+                "low",
+                "high"
+              ],
+              "centers": [
+                0.25,
+                0.75
+              ],
+              "spreads": [
+                0.2,
+                0.2
+              ],
+              "min_spread": 0.001
+            },
+            "value_range": [
+              0.0,
+              1.0
+            ],
+            "data_type": "continuous",
+            "role": "hidden_concept",
+            "normalization": "none"
+          },
+          {
+            "name": "stage_3_block_3_concept_3",
+            "membership": {
+              "kind": "gaussian",
+              "term_names": [
+                "low",
+                "high"
+              ],
+              "centers": [
+                0.25,
+                0.75
+              ],
+              "spreads": [
+                0.2,
+                0.2
+              ],
+              "min_spread": 0.001
+            },
+            "value_range": [
+              0.0,
+              1.0
+            ],
+            "data_type": "continuous",
+            "role": "hidden_concept",
+            "normalization": "none"
+          }
+        ],
+        "output_dim": 1,
+        "output_names": [
+          "target"
+        ],
+        "max_rule_arity": 2,
+        "max_rules": 6,
+        "gate_init": 0.0,
+        "rule_base": null,
+        "rule_generation_mode": "prototype",
+        "prototype_term_limit": 2,
+        "prototype_variable_pool_size": null,
+        "prototype_sample_size": 256
+      }
+    },
+    "training_config": {
+      "task_type": "regression",
+      "use_bootstrap_initialization": true,
+      "use_stagewise_pretraining": true,
+      "bootstrap": {
+        "hidden_high": 0.85,
+        "hidden_low": 0.15,
+        "gate_floor": 0.25,
+        "gate_ceiling": 0.85,
+        "decision_binary_target_clip": 0.05
+      },
+      "stagewise": {
+        "epochs_per_stage": 18,
+        "decision_epochs": 14,
+        "refinement_rounds": 1,
+        "learning_rate": 0.02,
+        "batch_size": 64,
+        "shuffle": true,
+        "rule_sparsity_weight": 0.0,
+        "concept_orthogonality_weight": 0.0,
+        "concept_binarization_weight": 0.0,
+        "membership_order_weight": 0.0,
+        "membership_min_gap": 0.0,
+        "membership_overlap_weight": 0.0,
+        "membership_max_overlap": 0.35,
+        "membership_coverage_weight": 0.0,
+        "membership_min_coverage": 0.6,
+        "classification_target_clip": 0.05
+      },
+      "fine_tuning": {
+        "max_epochs": 28,
+        "learning_rate": 0.001,
+        "batch_size": 32,
+        "patience": 8,
+        "min_delta": 0.0,
+        "weight_decay": 0.0,
+        "gradient_clip_norm": null,
+        "shuffle": true,
+        "device": null,
+        "classification_threshold": 0.5,
+        "rule_sparsity_weight": 0.0005,
+        "rule_length_weight": 0.0,
+        "concept_orthogonality_weight": 0.0005,
+        "concept_binarization_weight": 0.0,
+        "membership_order_weight": 0.0,
+        "membership_min_gap": 0.0,
+        "membership_overlap_weight": 0.0,
+        "membership_max_overlap": 0.35,
+        "membership_coverage_weight": 0.0,
+        "membership_min_coverage": 0.6,
+        "prune_after_fit": false,
+        "prune_threshold": 0.1,
+        "prune_temperature": 0.05,
+        "prune_keep_at_least": 1
+      },
+      "refinement": {
+        "cycles": 1,
+        "patience": null,
+        "min_delta": 0.0
+      }
+    },
+    "training_summary": {
+      "source": "stagewise_pretraining_plus_finetuning",
+      "epochs_ran": 27,
+      "best_epoch": 19,
+      "monitor_name": "validation_loss",
+      "best_monitor_value": 0.724826455116272,
+      "train_loss": 0.7290587425231934,
+      "train_metrics": {
+        "mse": 0.7290587425231934,
+        "mae": 0.6426743865013123,
+        "rmse": 0.8538493675837637,
+        "r2": 0.44987966885805464
+      },
+      "validation_loss": 0.724826455116272,
+      "validation_metrics": {
+        "mse": 0.724826455116272,
+        "mae": 0.6515616178512573,
+        "rmse": 0.851367403132321,
+        "r2": 0.44015672948340634
+      },
+      "history": [
+        {
+          "epoch": 1,
+          "train_loss": 0.7425762178648474,
+          "train_metrics": {
+            "mse": 0.7425762414932251,
+            "mae": 0.65333491563797,
+            "rmse": 0.8617286356465271,
+            "r2": 0.43967990071799823
+          },
+          "validation_loss": 0.7413821220397949,
+          "validation_metrics": {
+            "mse": 0.7413821220397949,
+            "mae": 0.6549473404884338,
+            "rmse": 0.8610354940650211,
+            "r2": 0.4273694308549246
+          }
+        },
+        {
+          "epoch": 2,
+          "train_loss": 0.7398410316740152,
+          "train_metrics": {
+            "mse": 0.739841103553772,
+            "mae": 0.6501786112785339,
+            "rmse": 0.8601401650625158,
+            "r2": 0.44174372713284693
+          },
+          "validation_loss": 0.743010401725769,
+          "validation_metrics": {
+            "mse": 0.743010401725769,
+            "mae": 0.6519670486450195,
+            "rmse": 0.8619805112215525,
+            "r2": 0.426111779842403
+          }
+        },
+        {
+          "epoch": 3,
+          "train_loss": 0.7406723061663667,
+          "train_metrics": {
+            "mse": 0.7406722903251648,
+            "mae": 0.6489744782447815,
+            "rmse": 0.8606231988072159,
+            "r2": 0.4411164997333432
+          },
+          "validation_loss": 0.7386789917945862,
+          "validation_metrics": {
+            "mse": 0.7386789917945862,
+            "mae": 0.6531360149383545,
+            "rmse": 0.8594643633069298,
+            "r2": 0.42945728464805855
+          }
+        },
+        {
+          "epoch": 4,
+          "train_loss": 0.738072536306552,
+          "train_metrics": {
+            "mse": 0.7380725145339966,
+            "mae": 0.6510557532310486,
+            "rmse": 0.8591114680494008,
+            "r2": 0.4430782114184201
+          },
+          "validation_loss": 0.7388285398483276,
+          "validation_metrics": {
+            "mse": 0.7388285398483276,
+            "mae": 0.6524726748466492,
+            "rmse": 0.8595513596338078,
+            "r2": 0.4293417596545974
+          }
+        },
+        {
+          "epoch": 5,
+          "train_loss": 0.7383720497071962,
+          "train_metrics": {
+            "mse": 0.7383720874786377,
+            "mae": 0.6475436091423035,
+            "rmse": 0.8592858008128831,
+            "r2": 0.44285215043665704
+          },
+          "validation_loss": 0.7396650910377502,
+          "validation_metrics": {
+            "mse": 0.7396650910377502,
+            "mae": 0.6496517658233643,
+            "rmse": 0.8600378427939961,
+            "r2": 0.4286956370578857
+          }
+        },
+        {
+          "epoch": 6,
+          "train_loss": 0.7377770368675415,
+          "train_metrics": {
+            "mse": 0.737777054309845,
+            "mae": 0.6441439390182495,
+            "rmse": 0.8589394939748929,
+            "r2": 0.4433011148157422
+          },
+          "validation_loss": 0.7355911731719971,
+          "validation_metrics": {
+            "mse": 0.7355911731719971,
+            "mae": 0.6550105214118958,
+            "rmse": 0.8576661198694963,
+            "r2": 0.4318422684941302
+          }
+        },
+        {
+          "epoch": 7,
+          "train_loss": 0.7359727592452736,
+          "train_metrics": {
+            "mse": 0.7359727621078491,
+            "mae": 0.6468245387077332,
+            "rmse": 0.8578885487683404,
+            "r2": 0.4446626326855342
+          },
+          "validation_loss": 0.7372886538505554,
+          "validation_metrics": {
+            "mse": 0.7372886538505554,
+            "mae": 0.6615133285522461,
+            "rmse": 0.8586551425633899,
+            "r2": 0.43053114328184505
+          }
+        },
+        {
+          "epoch": 8,
+          "train_loss": 0.7353833211016548,
+          "train_metrics": {
+            "mse": 0.7353833317756653,
+            "mae": 0.6476898789405823,
+            "rmse": 0.8575449444639419,
+            "r2": 0.4451073192065509
+          },
+          "validation_loss": 0.7348573207855225,
+          "validation_metrics": {
+            "mse": 0.7348573207855225,
+            "mae": 0.653883695602417,
+            "rmse": 0.8572381937276957,
+            "r2": 0.43240907198721
+          }
+        },
+        {
+          "epoch": 9,
+          "train_loss": 0.7352545093752574,
+          "train_metrics": {
+            "mse": 0.7352545261383057,
+            "mae": 0.6454461812973022,
+            "rmse": 0.8574698397834793,
+            "r2": 0.4452045689394951
+          },
+          "validation_loss": 0.7339401245117188,
+          "validation_metrics": {
+            "mse": 0.7339401245117188,
+            "mae": 0.6513392329216003,
+            "rmse": 0.8567030550381612,
+            "r2": 0.43311747562175174
+          }
+        },
+        {
+          "epoch": 10,
+          "train_loss": 0.7342016442209227,
+          "train_metrics": {
+            "mse": 0.7342016100883484,
+            "mae": 0.6465864777565002,
+            "rmse": 0.8568556530060056,
+            "r2": 0.4459991079196092
+          },
+          "validation_loss": 0.732377827167511,
+          "validation_metrics": {
+            "mse": 0.732377827167511,
+            "mae": 0.6523328423500061,
+            "rmse": 0.8557907613239997,
+            "r2": 0.43432418511996684
+          }
+        },
+        {
+          "epoch": 11,
+          "train_loss": 0.7337730351773325,
+          "train_metrics": {
+            "mse": 0.7337730526924133,
+            "mae": 0.6443492770195007,
+            "rmse": 0.8566055408952322,
+            "r2": 0.44632240216036756
+          },
+          "validation_loss": 0.7323892116546631,
+          "validation_metrics": {
+            "mse": 0.7323892116546631,
+            "mae": 0.6499671339988708,
+            "rmse": 0.8557974127412767,
+            "r2": 0.43431537828190037
+          }
+        },
+        {
+          "epoch": 12,
+          "train_loss": 0.732278277221908,
+          "train_metrics": {
+            "mse": 0.7322782874107361,
+            "mae": 0.6426471471786499,
+            "rmse": 0.8557326027508454,
+            "r2": 0.4474503278834302
+          },
+          "validation_loss": 0.7352096438407898,
+          "validation_metrics": {
+            "mse": 0.7352096438407898,
+            "mae": 0.6656925678253174,
+            "rmse": 0.857443668027696,
+            "r2": 0.432136923422644
+          }
+        },
+        {
+          "epoch": 13,
+          "train_loss": 0.736514145807857,
+          "train_metrics": {
+            "mse": 0.736514151096344,
+            "mae": 0.6490193605422974,
+            "rmse": 0.8582040264973965,
+            "r2": 0.44425411861805975
+          },
+          "validation_loss": 0.728508710861206,
+          "validation_metrics": {
+            "mse": 0.728508710861206,
+            "mae": 0.6517806649208069,
+            "rmse": 0.8535272174109072,
+            "r2": 0.4373126388372124
+          }
+        },
+        {
+          "epoch": 14,
+          "train_loss": 0.7317932539710098,
+          "train_metrics": {
+            "mse": 0.731793224811554,
+            "mae": 0.643974781036377,
+            "rmse": 0.855449136308848,
+            "r2": 0.4478163297959523
+          },
+          "validation_loss": 0.7321901321411133,
+          "validation_metrics": {
+            "mse": 0.7321901321411133,
+            "mae": 0.6464660167694092,
+            "rmse": 0.855681092546232,
+            "r2": 0.43446918136238266
+          }
+        },
+        {
+          "epoch": 15,
+          "train_loss": 0.7320871024923592,
+          "train_metrics": {
+            "mse": 0.7320870757102966,
+            "mae": 0.6419605016708374,
+            "rmse": 0.8556208714788909,
+            "r2": 0.44759462178502785
+          },
+          "validation_loss": 0.7307655215263367,
+          "validation_metrics": {
+            "mse": 0.7307655215263367,
+            "mae": 0.6513627171516418,
+            "rmse": 0.8548482447348984,
+            "r2": 0.435569518071402
+          }
+        },
+        {
+          "epoch": 16,
+          "train_loss": 0.732353533095444,
+          "train_metrics": {
+            "mse": 0.7323535680770874,
+            "mae": 0.6415478587150574,
+            "rmse": 0.8557765877126385,
+            "r2": 0.44739353254414194
+          },
+          "validation_loss": 0.7306962013244629,
+          "validation_metrics": {
+            "mse": 0.7306962013244629,
+            "mae": 0.6627230644226074,
+            "rmse": 0.8548076984471202,
+            "r2": 0.43562304983219857
+          }
+        },
+        {
+          "epoch": 17,
+          "train_loss": 0.7313999371602373,
+          "train_metrics": {
+            "mse": 0.7313999533653259,
+            "mae": 0.64378422498703,
+            "rmse": 0.8552192428642645,
+            "r2": 0.4481130901298175
+          },
+          "validation_loss": 0.7308923602104187,
+          "validation_metrics": {
+            "mse": 0.7308923602104187,
+            "mae": 0.6560655236244202,
+            "rmse": 0.8549224293527564,
+            "r2": 0.4354715491930409
+          }
+        },
+        {
+          "epoch": 18,
+          "train_loss": 0.7312532784155727,
+          "train_metrics": {
+            "mse": 0.7312532663345337,
+            "mae": 0.641904354095459,
+            "rmse": 0.8551334786654852,
+            "r2": 0.44822379418058844
+          },
+          "validation_loss": 0.7293606996536255,
+          "validation_metrics": {
+            "mse": 0.7293606996536255,
+            "mae": 0.6541824340820312,
+            "rmse": 0.8540261703564039,
+            "r2": 0.43665454354561273
+          }
+        },
+        {
+          "epoch": 19,
+          "train_loss": 0.7304026801070888,
+          "train_metrics": {
+            "mse": 0.7304026484489441,
+            "mae": 0.6434284448623657,
+            "rmse": 0.8546359742305165,
+            "r2": 0.4488656002588819
+          },
+          "validation_loss": 0.724826455116272,
+          "validation_metrics": {
+            "mse": 0.724826455116272,
+            "mae": 0.6515616178512573,
+            "rmse": 0.851367403132321,
+            "r2": 0.44015672948340634
+          }
+        },
+        {
+          "epoch": 20,
+          "train_loss": 0.7303788068336251,
+          "train_metrics": {
+            "mse": 0.7303788661956787,
+            "mae": 0.6406689286231995,
+            "rmse": 0.8546220604429063,
+            "r2": 0.448883557333152
+          },
+          "validation_loss": 0.7254277467727661,
+          "validation_metrics": {
+            "mse": 0.7254277467727661,
+            "mae": 0.6488800048828125,
+            "rmse": 0.8517204628120462,
+            "r2": 0.43969232706823747
+          }
+        },
+        {
+          "epoch": 21,
+          "train_loss": 0.7299406868100506,
+          "train_metrics": {
+            "mse": 0.7299407124519348,
+            "mae": 0.6443448662757874,
+            "rmse": 0.8543656784140704,
+            "r2": 0.44921416993855323
+          },
+          "validation_loss": 0.7274143099784851,
+          "validation_metrics": {
+            "mse": 0.7274143099784851,
+            "mae": 0.6483520865440369,
+            "rmse": 0.8528858716021066,
+            "r2": 0.4381579226085007
+          }
+        },
+        {
+          "epoch": 22,
+          "train_loss": 0.7286537776257286,
+          "train_metrics": {
+            "mse": 0.7286537885665894,
+            "mae": 0.6406694054603577,
+            "rmse": 0.8536122003384145,
+            "r2": 0.4501852390300273
+          },
+          "validation_loss": 0.7316153049468994,
+          "validation_metrics": {
+            "mse": 0.7316153049468994,
+            "mae": 0.6514315009117126,
+            "rmse": 0.8553451379103639,
+            "r2": 0.43491314961079586
+          }
+        },
+        {
+          "epoch": 23,
+          "train_loss": 0.7329816574190611,
+          "train_metrics": {
+            "mse": 0.7329816222190857,
+            "mae": 0.6429355144500732,
+            "rmse": 0.8561434589010686,
+            "r2": 0.4469196007426358
+          },
+          "validation_loss": 0.7336923480033875,
+          "validation_metrics": {
+            "mse": 0.7336923480033875,
+            "mae": 0.6484046578407288,
+            "rmse": 0.8565584323345299,
+            "r2": 0.4333088660568579
+          }
+        },
+        {
+          "epoch": 24,
+          "train_loss": 0.7293367784198921,
+          "train_metrics": {
+            "mse": 0.7293367981910706,
+            "mae": 0.64028400182724,
+            "rmse": 0.8540121768400439,
+            "r2": 0.4496698409827853
+          },
+          "validation_loss": 0.729160726070404,
+          "validation_metrics": {
+            "mse": 0.729160726070404,
+            "mae": 0.655080258846283,
+            "rmse": 0.8539090853658861,
+            "r2": 0.4368090373584924
+          }
+        },
+        {
+          "epoch": 25,
+          "train_loss": 0.7286628181001836,
+          "train_metrics": {
+            "mse": 0.7286627888679504,
+            "mae": 0.6408030986785889,
+            "rmse": 0.853617472213374,
+            "r2": 0.4501784123560877
+          },
+          "validation_loss": 0.7302764654159546,
+          "validation_metrics": {
+            "mse": 0.7302764654159546,
+            "mae": 0.6503638625144958,
+            "rmse": 0.8545621483636837,
+            "r2": 0.4359472335707002
+          }
+        },
+        {
+          "epoch": 26,
+          "train_loss": 0.7291813447289124,
+          "train_metrics": {
+            "mse": 0.7291813492774963,
+            "mae": 0.6403777599334717,
+            "rmse": 0.8539211610432759,
+            "r2": 0.44978714304876366
+          },
+          "validation_loss": 0.727314829826355,
+          "validation_metrics": {
+            "mse": 0.727314829826355,
+            "mae": 0.6534856557846069,
+            "rmse": 0.8528275498753279,
+            "r2": 0.43823476658770877
+          }
+        },
+        {
+          "epoch": 27,
+          "train_loss": 0.7277507957861004,
+          "train_metrics": {
+            "mse": 0.7277507185935974,
+            "mae": 0.6432515382766724,
+            "rmse": 0.8530830666433354,
+            "r2": 0.4508666706354676
+          },
+          "validation_loss": 0.7329124212265015,
+          "validation_metrics": {
+            "mse": 0.7329124212265015,
+            "mae": 0.6410838961601257,
+            "rmse": 0.8561030435797442,
+            "r2": 0.43391129982943566
+          }
+        }
+      ],
+      "refinement_cycles": []
+    },
+    "preprocessing": {
+      "mode": "standard",
+      "feature_columns": [
+        "MedInc",
+        "HouseAge",
+        "AveRooms",
+        "AveBedrms",
+        "Population",
+        "AveOccup",
+        "Latitude",
+        "Longitude"
+      ],
+      "center": [
+        3.7920778184778143,
+        28.90761090761091,
+        5.334854515224156,
+        1.086376815569897,
+        1416.8595848595849,
+        2.9161324442506182,
+        35.59576719576724,
+        -119.52488400488392
+      ],
+      "scale": [
+        1.839867829871609,
+        12.62063526707661,
+        1.9232030454808842,
+        0.3287288777344443,
+        1100.1104500283645,
+        0.764537105522125,
+        2.136156345202795,
+        1.995042817915446
+      ],
+      "minimum": null,
+      "maximum": null
+    },
+    "test_metrics": {
+      "mse": 0.6172649614987826,
+      "mae": 0.6054294114552939,
+      "rmse": 0.785662116624432,
+      "r2": 0.5115131227296597
+    },
+    "dataset_source_path": null,
+    "notes": {
+      "experiment_history": [
+        {
+          "timestamp_utc": "2026-04-13T10:33:27.530900+00:00",
+          "model_kind": "deep_fuzzy_feature_learning",
+          "training_source": "stagewise_pretraining_plus_finetuning",
+          "epochs_ran": 27,
+          "best_epoch": 19,
+          "train_metrics": {
+            "mse": 0.7290587425231934,
+            "mae": 0.6426743865013123,
+            "rmse": 0.8538493675837637,
+            "r2": 0.44987966885805464
+          },
+          "validation_metrics": {
+            "mse": 0.724826455116272,
+            "mae": 0.6515616178512573,
+            "rmse": 0.851367403132321,
+            "r2": 0.44015672948340634
+          },
+          "test_metrics": {
+            "mse": 0.6172649614987826,
+            "mae": 0.6054294114552939,
+            "rmse": 0.785662116624432,
+            "r2": 0.5115131227296597
+          },
+          "manual_rule_targets": 0,
+          "feature_names": [
+            "MedInc",
+            "HouseAge",
+            "AveRooms",
+            "AveBedrms",
+            "Population",
+            "AveOccup",
+            "Latitude",
+            "Longitude"
+          ]
+        }
+      ]
+    }
+  },
+  "project_summary": {
+    "name": "california_housing_regression-deep_research",
+    "task_type": "regression",
+    "model_kind": "deep_fuzzy_feature_learning",
+    "target_name": "MedHouseVal",
+    "feature_count": 8,
+    "variable_count": 8,
+    "variable_roles": {
+      "input": 8
+    },
+    "dataset_rows": 4096,
+    "dataset_columns": 9,
+    "has_model": true,
+    "has_training_summary": true,
+    "experiment_count": 1,
+    "study_run_count": 0,
+    "manual_rule_targets": 0,
+    "test_metrics": {
+      "mse": 0.6172649614987826,
+      "mae": 0.6054294114552939,
+      "rmse": 0.785662116624432,
+      "r2": 0.5115131227296597
+    }
+  },
+  "dataset_summary": {
+    "rows": 4096,
+    "columns": [
+      "MedInc",
+      "HouseAge",
+      "AveRooms",
+      "AveBedrms",
+      "Population",
+      "AveOccup",
+      "Latitude",
+      "Longitude",
+      "MedHouseVal"
+    ],
+    "numeric_columns": [
+      "MedInc",
+      "HouseAge",
+      "AveRooms",
+      "AveBedrms",
+      "Population",
+      "AveOccup",
+      "Latitude",
+      "Longitude",
+      "MedHouseVal"
+    ],
+    "missing_values": {
+      "MedInc": 0,
+      "HouseAge": 0,
+      "AveRooms": 0,
+      "AveBedrms": 0,
+      "Population": 0,
+      "AveOccup": 0,
+      "Latitude": 0,
+      "Longitude": 0,
+      "MedHouseVal": 0
+    },
+    "target_name": "MedHouseVal"
+  },
+  "variable_catalog": {
+    "MedInc": {
+      "name": "MedInc",
+      "membership": {
+        "kind": "generalized_bell",
+        "term_names": [
+          "term_1",
+          "term_2",
+          "term_3",
+          "term_4"
+        ],
+        "centers": [
+          0.4999,
+          5.3333,
+          10.1667,
+          15.0001
+        ],
+        "widths": [
+          3.62505,
+          3.62505,
+          3.62505,
+          3.62505
+        ],
+        "slopes": [
+          2.0,
+          2.0,
+          2.0,
+          2.0
+        ],
+        "min_width": 0.001,
+        "min_slope": 0.01
+      },
+      "value_range": [
+        0.4999,
+        15.0001
+      ],
+      "data_type": "continuous",
+      "role": "input",
+      "normalization": "standard"
+    },
+    "HouseAge": {
+      "name": "HouseAge",
+      "membership": {
+        "kind": "generalized_bell",
+        "term_names": [
+          "term_1",
+          "term_2",
+          "term_3",
+          "term_4"
+        ],
+        "centers": [
+          1.0,
+          18.0,
+          35.0,
+          52.0
+        ],
+        "widths": [
+          12.75,
+          12.75,
+          12.75,
+          12.75
+        ],
+        "slopes": [
+          2.0,
+          2.0,
+          2.0,
+          2.0
+        ],
+        "min_width": 0.001,
+        "min_slope": 0.01
+      },
+      "value_range": [
+        1.0,
+        52.0
+      ],
+      "data_type": "continuous",
+      "role": "input",
+      "normalization": "standard"
+    },
+    "AveRooms": {
+      "name": "AveRooms",
+      "membership": {
+        "kind": "generalized_bell",
+        "term_names": [
+          "term_1",
+          "term_2",
+          "term_3",
+          "term_4"
+        ],
+        "centers": [
+          0.8461538461538461,
+          44.741880341880346,
+          88.63760683760684,
+          132.53333333333333
+        ],
+        "widths": [
+          32.92179487179487,
+          32.92179487179487,
+          32.92179487179487,
+          32.92179487179487
+        ],
+        "slopes": [
+          2.0,
+          2.0,
+          2.0,
+          2.0
+        ],
+        "min_width": 0.001,
+        "min_slope": 0.01
+      },
+      "value_range": [
+        0.8461538461538461,
+        132.53333333333333
+      ],
+      "data_type": "continuous",
+      "role": "input",
+      "normalization": "standard"
+    },
+    "AveBedrms": {
+      "name": "AveBedrms",
+      "membership": {
+        "kind": "generalized_bell",
+        "term_names": [
+          "term_1",
+          "term_2",
+          "term_3",
+          "term_4"
+        ],
+        "centers": [
+          0.5,
+          11.68888888888889,
+          22.87777777777778,
+          34.06666666666667
+        ],
+        "widths": [
+          8.391666666666667,
+          8.391666666666667,
+          8.391666666666667,
+          8.391666666666667
+        ],
+        "slopes": [
+          2.0,
+          2.0,
+          2.0,
+          2.0
+        ],
+        "min_width": 0.001,
+        "min_slope": 0.01
+      },
+      "value_range": [
+        0.5,
+        34.06666666666667
+      ],
+      "data_type": "continuous",
+      "role": "input",
+      "normalization": "standard"
+    },
+    "Population": {
+      "name": "Population",
+      "membership": {
+        "kind": "generalized_bell",
+        "term_names": [
+          "term_1",
+          "term_2",
+          "term_3",
+          "term_4"
+        ],
+        "centers": [
+          8.0,
+          5379.333333333333,
+          10750.666666666666,
+          16122.0
+        ],
+        "widths": [
+          4028.5,
+          4028.5,
+          4028.5,
+          4028.5
+        ],
+        "slopes": [
+          2.0,
+          2.0,
+          2.0,
+          2.0
+        ],
+        "min_width": 0.001,
+        "min_slope": 0.01
+      },
+      "value_range": [
+        8.0,
+        16122.0
+      ],
+      "data_type": "continuous",
+      "role": "input",
+      "normalization": "standard"
+    },
+    "AveOccup": {
+      "name": "AveOccup",
+      "membership": {
+        "kind": "generalized_bell",
+        "term_names": [
+          "term_1",
+          "term_2",
+          "term_3",
+          "term_4"
+        ],
+        "centers": [
+          1.2635658914728682,
+          28.56618678479144,
+          55.86880767811001,
+          83.17142857142858
+        ],
+        "widths": [
+          20.476965669988928,
+          20.476965669988928,
+          20.476965669988928,
+          20.476965669988928
+        ],
+        "slopes": [
+          2.0,
+          2.0,
+          2.0,
+          2.0
+        ],
+        "min_width": 0.001,
+        "min_slope": 0.01
+      },
+      "value_range": [
+        1.2635658914728682,
+        83.17142857142858
+      ],
+      "data_type": "continuous",
+      "role": "input",
+      "normalization": "standard"
+    },
+    "Latitude": {
+      "name": "Latitude",
+      "membership": {
+        "kind": "generalized_bell",
+        "term_names": [
+          "term_1",
+          "term_2",
+          "term_3",
+          "term_4"
+        ],
+        "centers": [
+          32.54,
+          35.63,
+          38.72,
+          41.81
+        ],
+        "widths": [
+          2.317500000000001,
+          2.317500000000001,
+          2.317500000000001,
+          2.317500000000001
+        ],
+        "slopes": [
+          2.0,
+          2.0,
+          2.0,
+          2.0
+        ],
+        "min_width": 0.001,
+        "min_slope": 0.01
+      },
+      "value_range": [
+        32.54,
+        41.81
+      ],
+      "data_type": "continuous",
+      "role": "input",
+      "normalization": "standard"
+    },
+    "Longitude": {
+      "name": "Longitude",
+      "membership": {
+        "kind": "generalized_bell",
+        "term_names": [
+          "term_1",
+          "term_2",
+          "term_3",
+          "term_4"
+        ],
+        "centers": [
+          -124.19,
+          -120.98666666666666,
+          -117.78333333333333,
+          -114.58
+        ],
+        "widths": [
+          2.4025,
+          2.4025,
+          2.4025,
+          2.4025
+        ],
+        "slopes": [
+          2.0,
+          2.0,
+          2.0,
+          2.0
+        ],
+        "min_width": 0.001,
+        "min_slope": 0.01
+      },
+      "value_range": [
+        -124.19,
+        -114.58
+      ],
+      "data_type": "continuous",
+      "role": "input",
+      "normalization": "standard"
+    }
+  },
+  "rule_base_catalog": {
+    "stage_1::stage_1_block_1": null,
+    "stage_1::stage_1_block_2": null,
+    "stage_1::stage_1_block_3": null,
+    "stage_2::stage_2_block_1": null,
+    "stage_2::stage_2_block_2": null,
+    "stage_2::stage_2_block_3": null,
+    "stage_3::stage_3_block_1": null,
+    "stage_3::stage_3_block_2": null,
+    "stage_3::stage_3_block_3": null,
+    "decision::deep_decision": null
+  },
+  "model_preset": {
+    "name": "california_housing_regression-deep_research",
+    "description": null,
+    "task_type": "regression",
+    "feature_names": [
+      "MedInc",
+      "HouseAge",
+      "AveRooms",
+      "AveBedrms",
+      "Population",
+      "AveOccup",
+      "Latitude",
+      "Longitude"
+    ],
+    "target_name": "MedHouseVal",
+    "variables": [
+      {
+        "name": "MedInc",
+        "membership": {
+          "kind": "generalized_bell",
+          "term_names": [
+            "term_1",
+            "term_2",
+            "term_3",
+            "term_4"
+          ],
+          "centers": [
+            0.4999,
+            5.3333,
+            10.1667,
+            15.0001
+          ],
+          "widths": [
+            3.62505,
+            3.62505,
+            3.62505,
+            3.62505
+          ],
+          "slopes": [
+            2.0,
+            2.0,
+            2.0,
+            2.0
+          ],
+          "min_width": 0.001,
+          "min_slope": 0.01
+        },
+        "value_range": [
+          0.4999,
+          15.0001
+        ],
+        "data_type": "continuous",
+        "role": "input",
+        "normalization": "standard"
+      },
+      {
+        "name": "HouseAge",
+        "membership": {
+          "kind": "generalized_bell",
+          "term_names": [
+            "term_1",
+            "term_2",
+            "term_3",
+            "term_4"
+          ],
+          "centers": [
+            1.0,
+            18.0,
+            35.0,
+            52.0
+          ],
+          "widths": [
+            12.75,
+            12.75,
+            12.75,
+            12.75
+          ],
+          "slopes": [
+            2.0,
+            2.0,
+            2.0,
+            2.0
+          ],
+          "min_width": 0.001,
+          "min_slope": 0.01
+        },
+        "value_range": [
+          1.0,
+          52.0
+        ],
+        "data_type": "continuous",
+        "role": "input",
+        "normalization": "standard"
+      },
+      {
+        "name": "AveRooms",
+        "membership": {
+          "kind": "generalized_bell",
+          "term_names": [
+            "term_1",
+            "term_2",
+            "term_3",
+            "term_4"
+          ],
+          "centers": [
+            0.8461538461538461,
+            44.741880341880346,
+            88.63760683760684,
+            132.53333333333333
+          ],
+          "widths": [
+            32.92179487179487,
+            32.92179487179487,
+            32.92179487179487,
+            32.92179487179487
+          ],
+          "slopes": [
+            2.0,
+            2.0,
+            2.0,
+            2.0
+          ],
+          "min_width": 0.001,
+          "min_slope": 0.01
+        },
+        "value_range": [
+          0.8461538461538461,
+          132.53333333333333
+        ],
+        "data_type": "continuous",
+        "role": "input",
+        "normalization": "standard"
+      },
+      {
+        "name": "AveBedrms",
+        "membership": {
+          "kind": "generalized_bell",
+          "term_names": [
+            "term_1",
+            "term_2",
+            "term_3",
+            "term_4"
+          ],
+          "centers": [
+            0.5,
+            11.68888888888889,
+            22.87777777777778,
+            34.06666666666667
+          ],
+          "widths": [
+            8.391666666666667,
+            8.391666666666667,
+            8.391666666666667,
+            8.391666666666667
+          ],
+          "slopes": [
+            2.0,
+            2.0,
+            2.0,
+            2.0
+          ],
+          "min_width": 0.001,
+          "min_slope": 0.01
+        },
+        "value_range": [
+          0.5,
+          34.06666666666667
+        ],
+        "data_type": "continuous",
+        "role": "input",
+        "normalization": "standard"
+      },
+      {
+        "name": "Population",
+        "membership": {
+          "kind": "generalized_bell",
+          "term_names": [
+            "term_1",
+            "term_2",
+            "term_3",
+            "term_4"
+          ],
+          "centers": [
+            8.0,
+            5379.333333333333,
+            10750.666666666666,
+            16122.0
+          ],
+          "widths": [
+            4028.5,
+            4028.5,
+            4028.5,
+            4028.5
+          ],
+          "slopes": [
+            2.0,
+            2.0,
+            2.0,
+            2.0
+          ],
+          "min_width": 0.001,
+          "min_slope": 0.01
+        },
+        "value_range": [
+          8.0,
+          16122.0
+        ],
+        "data_type": "continuous",
+        "role": "input",
+        "normalization": "standard"
+      },
+      {
+        "name": "AveOccup",
+        "membership": {
+          "kind": "generalized_bell",
+          "term_names": [
+            "term_1",
+            "term_2",
+            "term_3",
+            "term_4"
+          ],
+          "centers": [
+            1.2635658914728682,
+            28.56618678479144,
+            55.86880767811001,
+            83.17142857142858
+          ],
+          "widths": [
+            20.476965669988928,
+            20.476965669988928,
+            20.476965669988928,
+            20.476965669988928
+          ],
+          "slopes": [
+            2.0,
+            2.0,
+            2.0,
+            2.0
+          ],
+          "min_width": 0.001,
+          "min_slope": 0.01
+        },
+        "value_range": [
+          1.2635658914728682,
+          83.17142857142858
+        ],
+        "data_type": "continuous",
+        "role": "input",
+        "normalization": "standard"
+      },
+      {
+        "name": "Latitude",
+        "membership": {
+          "kind": "generalized_bell",
+          "term_names": [
+            "term_1",
+            "term_2",
+            "term_3",
+            "term_4"
+          ],
+          "centers": [
+            32.54,
+            35.63,
+            38.72,
+            41.81
+          ],
+          "widths": [
+            2.317500000000001,
+            2.317500000000001,
+            2.317500000000001,
+            2.317500000000001
+          ],
+          "slopes": [
+            2.0,
+            2.0,
+            2.0,
+            2.0
+          ],
+          "min_width": 0.001,
+          "min_slope": 0.01
+        },
+        "value_range": [
+          32.54,
+          41.81
+        ],
+        "data_type": "continuous",
+        "role": "input",
+        "normalization": "standard"
+      },
+      {
+        "name": "Longitude",
+        "membership": {
+          "kind": "generalized_bell",
+          "term_names": [
+            "term_1",
+            "term_2",
+            "term_3",
+            "term_4"
+          ],
+          "centers": [
+            -124.19,
+            -120.98666666666666,
+            -117.78333333333333,
+            -114.58
+          ],
+          "widths": [
+            2.4025,
+            2.4025,
+            2.4025,
+            2.4025
+          ],
+          "slopes": [
+            2.0,
+            2.0,
+            2.0,
+            2.0
+          ],
+          "min_width": 0.001,
+          "min_slope": 0.01
+        },
+        "value_range": [
+          -124.19,
+          -114.58
+        ],
+        "data_type": "continuous",
+        "role": "input",
+        "normalization": "standard"
+      }
+    ],
+    "model_kind": "deep_fuzzy_feature_learning",
+    "model_spec": {
+      "kind": "deep_fuzzy_feature_learning",
+      "input_dim": 8,
+      "stages": [
+        {
+          "name": "stage_1",
+          "blocks": [
+            {
+              "name": "stage_1_block_1",
+              "input_indices": [
+                0,
+                1,
+                2
+              ],
+              "variables": [
+                {
+                  "name": "MedInc",
+                  "membership": {
+                    "kind": "generalized_bell",
+                    "term_names": [
+                      "term_1",
+                      "term_2",
+                      "term_3",
+                      "term_4"
+                    ],
+                    "centers": [
+                      0.4999,
+                      5.3333,
+                      10.1667,
+                      15.0001
+                    ],
+                    "widths": [
+                      3.62505,
+                      3.62505,
+                      3.62505,
+                      3.62505
+                    ],
+                    "slopes": [
+                      2.0,
+                      2.0,
+                      2.0,
+                      2.0
+                    ],
+                    "min_width": 0.001,
+                    "min_slope": 0.01
+                  },
+                  "value_range": [
+                    0.4999,
+                    15.0001
+                  ],
+                  "data_type": "continuous",
+                  "role": "input",
+                  "normalization": "standard"
+                },
+                {
+                  "name": "HouseAge",
+                  "membership": {
+                    "kind": "generalized_bell",
+                    "term_names": [
+                      "term_1",
+                      "term_2",
+                      "term_3",
+                      "term_4"
+                    ],
+                    "centers": [
+                      1.0,
+                      18.0,
+                      35.0,
+                      52.0
+                    ],
+                    "widths": [
+                      12.75,
+                      12.75,
+                      12.75,
+                      12.75
+                    ],
+                    "slopes": [
+                      2.0,
+                      2.0,
+                      2.0,
+                      2.0
+                    ],
+                    "min_width": 0.001,
+                    "min_slope": 0.01
+                  },
+                  "value_range": [
+                    1.0,
+                    52.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "input",
+                  "normalization": "standard"
+                },
+                {
+                  "name": "AveRooms",
+                  "membership": {
+                    "kind": "generalized_bell",
+                    "term_names": [
+                      "term_1",
+                      "term_2",
+                      "term_3",
+                      "term_4"
+                    ],
+                    "centers": [
+                      0.8461538461538461,
+                      44.741880341880346,
+                      88.63760683760684,
+                      132.53333333333333
+                    ],
+                    "widths": [
+                      32.92179487179487,
+                      32.92179487179487,
+                      32.92179487179487,
+                      32.92179487179487
+                    ],
+                    "slopes": [
+                      2.0,
+                      2.0,
+                      2.0,
+                      2.0
+                    ],
+                    "min_width": 0.001,
+                    "min_slope": 0.01
+                  },
+                  "value_range": [
+                    0.8461538461538461,
+                    132.53333333333333
+                  ],
+                  "data_type": "continuous",
+                  "role": "input",
+                  "normalization": "standard"
+                }
+              ],
+              "n_concepts": 3,
+              "concept_names": [
+                "stage_1_block_1_concept_1",
+                "stage_1_block_1_concept_2",
+                "stage_1_block_1_concept_3"
+              ],
+              "max_rule_arity": 2,
+              "max_rules": 6,
+              "gate_init": 0.0,
+              "rule_base": null,
+              "rule_generation_mode": "prototype",
+              "prototype_term_limit": 2,
+              "prototype_variable_pool_size": null,
+              "prototype_sample_size": 256
+            },
+            {
+              "name": "stage_1_block_2",
+              "input_indices": [
+                3,
+                4,
+                5
+              ],
+              "variables": [
+                {
+                  "name": "AveBedrms",
+                  "membership": {
+                    "kind": "generalized_bell",
+                    "term_names": [
+                      "term_1",
+                      "term_2",
+                      "term_3",
+                      "term_4"
+                    ],
+                    "centers": [
+                      0.5,
+                      11.68888888888889,
+                      22.87777777777778,
+                      34.06666666666667
+                    ],
+                    "widths": [
+                      8.391666666666667,
+                      8.391666666666667,
+                      8.391666666666667,
+                      8.391666666666667
+                    ],
+                    "slopes": [
+                      2.0,
+                      2.0,
+                      2.0,
+                      2.0
+                    ],
+                    "min_width": 0.001,
+                    "min_slope": 0.01
+                  },
+                  "value_range": [
+                    0.5,
+                    34.06666666666667
+                  ],
+                  "data_type": "continuous",
+                  "role": "input",
+                  "normalization": "standard"
+                },
+                {
+                  "name": "Population",
+                  "membership": {
+                    "kind": "generalized_bell",
+                    "term_names": [
+                      "term_1",
+                      "term_2",
+                      "term_3",
+                      "term_4"
+                    ],
+                    "centers": [
+                      8.0,
+                      5379.333333333333,
+                      10750.666666666666,
+                      16122.0
+                    ],
+                    "widths": [
+                      4028.5,
+                      4028.5,
+                      4028.5,
+                      4028.5
+                    ],
+                    "slopes": [
+                      2.0,
+                      2.0,
+                      2.0,
+                      2.0
+                    ],
+                    "min_width": 0.001,
+                    "min_slope": 0.01
+                  },
+                  "value_range": [
+                    8.0,
+                    16122.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "input",
+                  "normalization": "standard"
+                },
+                {
+                  "name": "AveOccup",
+                  "membership": {
+                    "kind": "generalized_bell",
+                    "term_names": [
+                      "term_1",
+                      "term_2",
+                      "term_3",
+                      "term_4"
+                    ],
+                    "centers": [
+                      1.2635658914728682,
+                      28.56618678479144,
+                      55.86880767811001,
+                      83.17142857142858
+                    ],
+                    "widths": [
+                      20.476965669988928,
+                      20.476965669988928,
+                      20.476965669988928,
+                      20.476965669988928
+                    ],
+                    "slopes": [
+                      2.0,
+                      2.0,
+                      2.0,
+                      2.0
+                    ],
+                    "min_width": 0.001,
+                    "min_slope": 0.01
+                  },
+                  "value_range": [
+                    1.2635658914728682,
+                    83.17142857142858
+                  ],
+                  "data_type": "continuous",
+                  "role": "input",
+                  "normalization": "standard"
+                }
+              ],
+              "n_concepts": 3,
+              "concept_names": [
+                "stage_1_block_2_concept_1",
+                "stage_1_block_2_concept_2",
+                "stage_1_block_2_concept_3"
+              ],
+              "max_rule_arity": 2,
+              "max_rules": 6,
+              "gate_init": 0.0,
+              "rule_base": null,
+              "rule_generation_mode": "prototype",
+              "prototype_term_limit": 2,
+              "prototype_variable_pool_size": null,
+              "prototype_sample_size": 256
+            },
+            {
+              "name": "stage_1_block_3",
+              "input_indices": [
+                6,
+                7
+              ],
+              "variables": [
+                {
+                  "name": "Latitude",
+                  "membership": {
+                    "kind": "generalized_bell",
+                    "term_names": [
+                      "term_1",
+                      "term_2",
+                      "term_3",
+                      "term_4"
+                    ],
+                    "centers": [
+                      32.54,
+                      35.63,
+                      38.72,
+                      41.81
+                    ],
+                    "widths": [
+                      2.317500000000001,
+                      2.317500000000001,
+                      2.317500000000001,
+                      2.317500000000001
+                    ],
+                    "slopes": [
+                      2.0,
+                      2.0,
+                      2.0,
+                      2.0
+                    ],
+                    "min_width": 0.001,
+                    "min_slope": 0.01
+                  },
+                  "value_range": [
+                    32.54,
+                    41.81
+                  ],
+                  "data_type": "continuous",
+                  "role": "input",
+                  "normalization": "standard"
+                },
+                {
+                  "name": "Longitude",
+                  "membership": {
+                    "kind": "generalized_bell",
+                    "term_names": [
+                      "term_1",
+                      "term_2",
+                      "term_3",
+                      "term_4"
+                    ],
+                    "centers": [
+                      -124.19,
+                      -120.98666666666666,
+                      -117.78333333333333,
+                      -114.58
+                    ],
+                    "widths": [
+                      2.4025,
+                      2.4025,
+                      2.4025,
+                      2.4025
+                    ],
+                    "slopes": [
+                      2.0,
+                      2.0,
+                      2.0,
+                      2.0
+                    ],
+                    "min_width": 0.001,
+                    "min_slope": 0.01
+                  },
+                  "value_range": [
+                    -124.19,
+                    -114.58
+                  ],
+                  "data_type": "continuous",
+                  "role": "input",
+                  "normalization": "standard"
+                }
+              ],
+              "n_concepts": 3,
+              "concept_names": [
+                "stage_1_block_3_concept_1",
+                "stage_1_block_3_concept_2",
+                "stage_1_block_3_concept_3"
+              ],
+              "max_rule_arity": 2,
+              "max_rules": 6,
+              "gate_init": 0.0,
+              "rule_base": null,
+              "rule_generation_mode": "prototype",
+              "prototype_term_limit": 2,
+              "prototype_variable_pool_size": null,
+              "prototype_sample_size": 256
+            }
+          ]
+        },
+        {
+          "name": "stage_2",
+          "blocks": [
+            {
+              "name": "stage_2_block_1",
+              "input_indices": [
+                0,
+                1,
+                2
+              ],
+              "variables": [
+                {
+                  "name": "stage_1_block_1_concept_1",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "low",
+                      "high"
+                    ],
+                    "centers": [
+                      0.25,
+                      0.75
+                    ],
+                    "spreads": [
+                      0.2,
+                      0.2
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    1.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "hidden_concept",
+                  "normalization": "none"
+                },
+                {
+                  "name": "stage_1_block_1_concept_2",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "low",
+                      "high"
+                    ],
+                    "centers": [
+                      0.25,
+                      0.75
+                    ],
+                    "spreads": [
+                      0.2,
+                      0.2
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    1.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "hidden_concept",
+                  "normalization": "none"
+                },
+                {
+                  "name": "stage_1_block_1_concept_3",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "low",
+                      "high"
+                    ],
+                    "centers": [
+                      0.25,
+                      0.75
+                    ],
+                    "spreads": [
+                      0.2,
+                      0.2
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    1.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "hidden_concept",
+                  "normalization": "none"
+                }
+              ],
+              "n_concepts": 3,
+              "concept_names": [
+                "stage_2_block_1_concept_1",
+                "stage_2_block_1_concept_2",
+                "stage_2_block_1_concept_3"
+              ],
+              "max_rule_arity": 2,
+              "max_rules": 6,
+              "gate_init": 0.0,
+              "rule_base": null,
+              "rule_generation_mode": "prototype",
+              "prototype_term_limit": 2,
+              "prototype_variable_pool_size": null,
+              "prototype_sample_size": 256
+            },
+            {
+              "name": "stage_2_block_2",
+              "input_indices": [
+                3,
+                4,
+                5
+              ],
+              "variables": [
+                {
+                  "name": "stage_1_block_2_concept_1",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "low",
+                      "high"
+                    ],
+                    "centers": [
+                      0.25,
+                      0.75
+                    ],
+                    "spreads": [
+                      0.2,
+                      0.2
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    1.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "hidden_concept",
+                  "normalization": "none"
+                },
+                {
+                  "name": "stage_1_block_2_concept_2",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "low",
+                      "high"
+                    ],
+                    "centers": [
+                      0.25,
+                      0.75
+                    ],
+                    "spreads": [
+                      0.2,
+                      0.2
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    1.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "hidden_concept",
+                  "normalization": "none"
+                },
+                {
+                  "name": "stage_1_block_2_concept_3",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "low",
+                      "high"
+                    ],
+                    "centers": [
+                      0.25,
+                      0.75
+                    ],
+                    "spreads": [
+                      0.2,
+                      0.2
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    1.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "hidden_concept",
+                  "normalization": "none"
+                }
+              ],
+              "n_concepts": 3,
+              "concept_names": [
+                "stage_2_block_2_concept_1",
+                "stage_2_block_2_concept_2",
+                "stage_2_block_2_concept_3"
+              ],
+              "max_rule_arity": 2,
+              "max_rules": 6,
+              "gate_init": 0.0,
+              "rule_base": null,
+              "rule_generation_mode": "prototype",
+              "prototype_term_limit": 2,
+              "prototype_variable_pool_size": null,
+              "prototype_sample_size": 256
+            },
+            {
+              "name": "stage_2_block_3",
+              "input_indices": [
+                6,
+                7,
+                8
+              ],
+              "variables": [
+                {
+                  "name": "stage_1_block_3_concept_1",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "low",
+                      "high"
+                    ],
+                    "centers": [
+                      0.25,
+                      0.75
+                    ],
+                    "spreads": [
+                      0.2,
+                      0.2
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    1.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "hidden_concept",
+                  "normalization": "none"
+                },
+                {
+                  "name": "stage_1_block_3_concept_2",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "low",
+                      "high"
+                    ],
+                    "centers": [
+                      0.25,
+                      0.75
+                    ],
+                    "spreads": [
+                      0.2,
+                      0.2
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    1.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "hidden_concept",
+                  "normalization": "none"
+                },
+                {
+                  "name": "stage_1_block_3_concept_3",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "low",
+                      "high"
+                    ],
+                    "centers": [
+                      0.25,
+                      0.75
+                    ],
+                    "spreads": [
+                      0.2,
+                      0.2
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    1.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "hidden_concept",
+                  "normalization": "none"
+                }
+              ],
+              "n_concepts": 3,
+              "concept_names": [
+                "stage_2_block_3_concept_1",
+                "stage_2_block_3_concept_2",
+                "stage_2_block_3_concept_3"
+              ],
+              "max_rule_arity": 2,
+              "max_rules": 6,
+              "gate_init": 0.0,
+              "rule_base": null,
+              "rule_generation_mode": "prototype",
+              "prototype_term_limit": 2,
+              "prototype_variable_pool_size": null,
+              "prototype_sample_size": 256
+            }
+          ]
+        },
+        {
+          "name": "stage_3",
+          "blocks": [
+            {
+              "name": "stage_3_block_1",
+              "input_indices": [
+                0,
+                1,
+                2
+              ],
+              "variables": [
+                {
+                  "name": "stage_2_block_1_concept_1",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "low",
+                      "high"
+                    ],
+                    "centers": [
+                      0.25,
+                      0.75
+                    ],
+                    "spreads": [
+                      0.2,
+                      0.2
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    1.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "hidden_concept",
+                  "normalization": "none"
+                },
+                {
+                  "name": "stage_2_block_1_concept_2",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "low",
+                      "high"
+                    ],
+                    "centers": [
+                      0.25,
+                      0.75
+                    ],
+                    "spreads": [
+                      0.2,
+                      0.2
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    1.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "hidden_concept",
+                  "normalization": "none"
+                },
+                {
+                  "name": "stage_2_block_1_concept_3",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "low",
+                      "high"
+                    ],
+                    "centers": [
+                      0.25,
+                      0.75
+                    ],
+                    "spreads": [
+                      0.2,
+                      0.2
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    1.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "hidden_concept",
+                  "normalization": "none"
+                }
+              ],
+              "n_concepts": 3,
+              "concept_names": [
+                "stage_3_block_1_concept_1",
+                "stage_3_block_1_concept_2",
+                "stage_3_block_1_concept_3"
+              ],
+              "max_rule_arity": 2,
+              "max_rules": 6,
+              "gate_init": 0.0,
+              "rule_base": null,
+              "rule_generation_mode": "prototype",
+              "prototype_term_limit": 2,
+              "prototype_variable_pool_size": null,
+              "prototype_sample_size": 256
+            },
+            {
+              "name": "stage_3_block_2",
+              "input_indices": [
+                3,
+                4,
+                5
+              ],
+              "variables": [
+                {
+                  "name": "stage_2_block_2_concept_1",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "low",
+                      "high"
+                    ],
+                    "centers": [
+                      0.25,
+                      0.75
+                    ],
+                    "spreads": [
+                      0.2,
+                      0.2
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    1.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "hidden_concept",
+                  "normalization": "none"
+                },
+                {
+                  "name": "stage_2_block_2_concept_2",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "low",
+                      "high"
+                    ],
+                    "centers": [
+                      0.25,
+                      0.75
+                    ],
+                    "spreads": [
+                      0.2,
+                      0.2
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    1.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "hidden_concept",
+                  "normalization": "none"
+                },
+                {
+                  "name": "stage_2_block_2_concept_3",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "low",
+                      "high"
+                    ],
+                    "centers": [
+                      0.25,
+                      0.75
+                    ],
+                    "spreads": [
+                      0.2,
+                      0.2
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    1.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "hidden_concept",
+                  "normalization": "none"
+                }
+              ],
+              "n_concepts": 3,
+              "concept_names": [
+                "stage_3_block_2_concept_1",
+                "stage_3_block_2_concept_2",
+                "stage_3_block_2_concept_3"
+              ],
+              "max_rule_arity": 2,
+              "max_rules": 6,
+              "gate_init": 0.0,
+              "rule_base": null,
+              "rule_generation_mode": "prototype",
+              "prototype_term_limit": 2,
+              "prototype_variable_pool_size": null,
+              "prototype_sample_size": 256
+            },
+            {
+              "name": "stage_3_block_3",
+              "input_indices": [
+                6,
+                7,
+                8
+              ],
+              "variables": [
+                {
+                  "name": "stage_2_block_3_concept_1",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "low",
+                      "high"
+                    ],
+                    "centers": [
+                      0.25,
+                      0.75
+                    ],
+                    "spreads": [
+                      0.2,
+                      0.2
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    1.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "hidden_concept",
+                  "normalization": "none"
+                },
+                {
+                  "name": "stage_2_block_3_concept_2",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "low",
+                      "high"
+                    ],
+                    "centers": [
+                      0.25,
+                      0.75
+                    ],
+                    "spreads": [
+                      0.2,
+                      0.2
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    1.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "hidden_concept",
+                  "normalization": "none"
+                },
+                {
+                  "name": "stage_2_block_3_concept_3",
+                  "membership": {
+                    "kind": "gaussian",
+                    "term_names": [
+                      "low",
+                      "high"
+                    ],
+                    "centers": [
+                      0.25,
+                      0.75
+                    ],
+                    "spreads": [
+                      0.2,
+                      0.2
+                    ],
+                    "min_spread": 0.001
+                  },
+                  "value_range": [
+                    0.0,
+                    1.0
+                  ],
+                  "data_type": "continuous",
+                  "role": "hidden_concept",
+                  "normalization": "none"
+                }
+              ],
+              "n_concepts": 3,
+              "concept_names": [
+                "stage_3_block_3_concept_1",
+                "stage_3_block_3_concept_2",
+                "stage_3_block_3_concept_3"
+              ],
+              "max_rule_arity": 2,
+              "max_rules": 6,
+              "gate_init": 0.0,
+              "rule_base": null,
+              "rule_generation_mode": "prototype",
+              "prototype_term_limit": 2,
+              "prototype_variable_pool_size": null,
+              "prototype_sample_size": 256
+            }
+          ]
+        }
+      ],
+      "decision_layer": {
+        "name": "deep_decision",
+        "variables": [
+          {
+            "name": "stage_3_block_1_concept_1",
+            "membership": {
+              "kind": "gaussian",
+              "term_names": [
+                "low",
+                "high"
+              ],
+              "centers": [
+                0.25,
+                0.75
+              ],
+              "spreads": [
+                0.2,
+                0.2
+              ],
+              "min_spread": 0.001
+            },
+            "value_range": [
+              0.0,
+              1.0
+            ],
+            "data_type": "continuous",
+            "role": "hidden_concept",
+            "normalization": "none"
+          },
+          {
+            "name": "stage_3_block_1_concept_2",
+            "membership": {
+              "kind": "gaussian",
+              "term_names": [
+                "low",
+                "high"
+              ],
+              "centers": [
+                0.25,
+                0.75
+              ],
+              "spreads": [
+                0.2,
+                0.2
+              ],
+              "min_spread": 0.001
+            },
+            "value_range": [
+              0.0,
+              1.0
+            ],
+            "data_type": "continuous",
+            "role": "hidden_concept",
+            "normalization": "none"
+          },
+          {
+            "name": "stage_3_block_1_concept_3",
+            "membership": {
+              "kind": "gaussian",
+              "term_names": [
+                "low",
+                "high"
+              ],
+              "centers": [
+                0.25,
+                0.75
+              ],
+              "spreads": [
+                0.2,
+                0.2
+              ],
+              "min_spread": 0.001
+            },
+            "value_range": [
+              0.0,
+              1.0
+            ],
+            "data_type": "continuous",
+            "role": "hidden_concept",
+            "normalization": "none"
+          },
+          {
+            "name": "stage_3_block_2_concept_1",
+            "membership": {
+              "kind": "gaussian",
+              "term_names": [
+                "low",
+                "high"
+              ],
+              "centers": [
+                0.25,
+                0.75
+              ],
+              "spreads": [
+                0.2,
+                0.2
+              ],
+              "min_spread": 0.001
+            },
+            "value_range": [
+              0.0,
+              1.0
+            ],
+            "data_type": "continuous",
+            "role": "hidden_concept",
+            "normalization": "none"
+          },
+          {
+            "name": "stage_3_block_2_concept_2",
+            "membership": {
+              "kind": "gaussian",
+              "term_names": [
+                "low",
+                "high"
+              ],
+              "centers": [
+                0.25,
+                0.75
+              ],
+              "spreads": [
+                0.2,
+                0.2
+              ],
+              "min_spread": 0.001
+            },
+            "value_range": [
+              0.0,
+              1.0
+            ],
+            "data_type": "continuous",
+            "role": "hidden_concept",
+            "normalization": "none"
+          },
+          {
+            "name": "stage_3_block_2_concept_3",
+            "membership": {
+              "kind": "gaussian",
+              "term_names": [
+                "low",
+                "high"
+              ],
+              "centers": [
+                0.25,
+                0.75
+              ],
+              "spreads": [
+                0.2,
+                0.2
+              ],
+              "min_spread": 0.001
+            },
+            "value_range": [
+              0.0,
+              1.0
+            ],
+            "data_type": "continuous",
+            "role": "hidden_concept",
+            "normalization": "none"
+          },
+          {
+            "name": "stage_3_block_3_concept_1",
+            "membership": {
+              "kind": "gaussian",
+              "term_names": [
+                "low",
+                "high"
+              ],
+              "centers": [
+                0.25,
+                0.75
+              ],
+              "spreads": [
+                0.2,
+                0.2
+              ],
+              "min_spread": 0.001
+            },
+            "value_range": [
+              0.0,
+              1.0
+            ],
+            "data_type": "continuous",
+            "role": "hidden_concept",
+            "normalization": "none"
+          },
+          {
+            "name": "stage_3_block_3_concept_2",
+            "membership": {
+              "kind": "gaussian",
+              "term_names": [
+                "low",
+                "high"
+              ],
+              "centers": [
+                0.25,
+                0.75
+              ],
+              "spreads": [
+                0.2,
+                0.2
+              ],
+              "min_spread": 0.001
+            },
+            "value_range": [
+              0.0,
+              1.0
+            ],
+            "data_type": "continuous",
+            "role": "hidden_concept",
+            "normalization": "none"
+          },
+          {
+            "name": "stage_3_block_3_concept_3",
+            "membership": {
+              "kind": "gaussian",
+              "term_names": [
+                "low",
+                "high"
+              ],
+              "centers": [
+                0.25,
+                0.75
+              ],
+              "spreads": [
+                0.2,
+                0.2
+              ],
+              "min_spread": 0.001
+            },
+            "value_range": [
+              0.0,
+              1.0
+            ],
+            "data_type": "continuous",
+            "role": "hidden_concept",
+            "normalization": "none"
+          }
+        ],
+        "output_dim": 1,
+        "output_names": [
+          "target"
+        ],
+        "max_rule_arity": 2,
+        "max_rules": 6,
+        "gate_init": 0.0,
+        "rule_base": null,
+        "rule_generation_mode": "prototype",
+        "prototype_term_limit": 2,
+        "prototype_variable_pool_size": null,
+        "prototype_sample_size": 256
+      }
+    }
+  },
+  "project_report": "PROJECT REPORT\nname: california_housing_regression-deep_research\ntask_type: regression\nmodel_kind: deep_fuzzy_feature_learning\ndataset_rows: 4096\ndataset_columns: 9\ntraining_source: stagewise_pretraining_plus_finetuning\ntrain_metrics: {'mse': 0.7290587425231934, 'mae': 0.6426743865013123, 'rmse': 0.8538493675837637, 'r2': 0.44987966885805464}\nvalidation_metrics: {'mse': 0.724826455116272, 'mae': 0.6515616178512573, 'rmse': 0.851367403132321, 'r2': 0.44015672948340634}\ntest_metrics: {'mse': 0.6172649614987826, 'mae': 0.6054294114552939, 'rmse': 0.785662116624432, 'r2': 0.5115131227296597}\n\nMODEL REPORT\nInput dimension: 8\n\nSTAGE 0: stage_1\nOutput dimension: 9\n  BLOCK 0: stage_1_block_1\n    Inputs: [0, 1, 2]\n    Outputs: [stage_1_block_1_concept_1, stage_1_block_1_concept_2, stage_1_block_1_concept_3]\n    RULE 0 (stage_1_block_1_0): IF MedInc IS term_1 AND AveRooms IS term_1 THEN stage_1_block_1_concept_1=0.401, stage_1_block_1_concept_2=0.012, stage_1_block_1_concept_3=0.012 [gate=0.790]\n    RULE 1 (stage_1_block_1_1): IF HouseAge IS term_1 AND AveRooms IS term_1 THEN stage_1_block_1_concept_1=0.899, stage_1_block_1_concept_2=0.195, stage_1_block_1_concept_3=0.171 [gate=0.182]\n    RULE 2 (stage_1_block_1_2): IF MedInc IS term_1 AND HouseAge IS term_1 THEN stage_1_block_1_concept_1=0.415, stage_1_block_1_concept_2=0.012, stage_1_block_1_concept_3=0.012 [gate=0.772]\n    RULE 3 (stage_1_block_1_3): IF MedInc IS term_2 AND HouseAge IS term_1 THEN stage_1_block_1_concept_1=0.960, stage_1_block_1_concept_2=0.978, stage_1_block_1_concept_3=0.994 [gate=0.813]\n    RULE 4 (stage_1_block_1_4): IF MedInc IS term_2 AND AveRooms IS term_1 THEN stage_1_block_1_concept_1=0.959, stage_1_block_1_concept_2=0.978, stage_1_block_1_concept_3=0.994 [gate=0.805]\n    RULE 5 (stage_1_block_1_5): IF MedInc IS term_3 AND HouseAge IS term_1 THEN stage_1_block_1_concept_1=0.891, stage_1_block_1_concept_2=0.993, stage_1_block_1_concept_3=0.872 [gate=0.217]\n  BLOCK 1: stage_1_block_2\n    Inputs: [3, 4, 5]\n    Outputs: [stage_1_block_2_concept_1, stage_1_block_2_concept_2, stage_1_block_2_concept_3]\n    RULE 0 (stage_1_block_2_0): IF AveBedrms IS term_1 AND Population IS term_1 THEN stage_1_block_2_concept_1=0.533, stage_1_block_2_concept_2=0.134, stage_1_block_2_concept_3=0.129 [gate=0.443]\n    RULE 1 (stage_1_block_2_1): IF Population IS term_1 AND AveOccup IS term_1 THEN stage_1_block_2_concept_1=0.875, stage_1_block_2_concept_2=0.057, stage_1_block_2_concept_3=0.056 [gate=0.533]\n    RULE 2 (stage_1_block_2_2): IF AveBedrms IS term_1 AND AveOccup IS term_1 THEN stage_1_block_2_concept_1=0.889, stage_1_block_2_concept_2=0.061, stage_1_block_2_concept_3=0.059 [gate=0.464]\n    RULE 3 (stage_1_block_2_3): IF AveBedrms IS term_2 AND Population IS term_1 THEN stage_1_block_2_concept_1=0.067, stage_1_block_2_concept_2=0.950, stage_1_block_2_concept_3=0.089 [gate=0.142]\n    RULE 4 (stage_1_block_2_4): IF AveBedrms IS term_2 AND AveOccup IS term_1 THEN stage_1_block_2_concept_1=0.036, stage_1_block_2_concept_2=0.885, stage_1_block_2_concept_3=0.048 [gate=0.093]\n    RULE 5 (stage_1_block_2_5): IF Population IS term_1 AND AveOccup IS term_2 THEN stage_1_block_2_concept_1=0.035, stage_1_block_2_concept_2=0.049, stage_1_block_2_concept_3=0.894 [gate=0.090]\n  BLOCK 2: stage_1_block_3\n    Inputs: [6, 7]\n    Outputs: [stage_1_block_3_concept_1, stage_1_block_3_concept_2, stage_1_block_3_concept_3]\n    RULE 0 (stage_1_block_3_0): IF Latitude IS term_1 AND Longitude IS term_4 THEN stage_1_block_3_concept_1=0.052, stage_1_block_3_concept_2=0.916, stage_1_block_3_concept_3=0.049 [gate=0.098]\n    RULE 1 (stage_1_block_3_1): IF Latitude IS term_1 AND Longitude IS term_3 THEN stage_1_block_3_concept_1=0.052, stage_1_block_3_concept_2=0.916, stage_1_block_3_concept_3=0.049 [gate=0.098]\n    RULE 2 (stage_1_block_3_2): IF Latitude IS term_2 AND Longitude IS term_4 THEN stage_1_block_3_concept_1=0.060, stage_1_block_3_concept_2=0.065, stage_1_block_3_concept_3=0.912 [gate=0.083]\n    RULE 3 (stage_1_block_3_3): IF Latitude IS term_2 AND Longitude IS term_3 THEN stage_1_block_3_concept_1=0.060, stage_1_block_3_concept_2=0.065, stage_1_block_3_concept_3=0.912 [gate=0.084]\n    RULE 4 (stage_1_block_3_4): IF Latitude IS term_1 THEN stage_1_block_3_concept_1=0.878, stage_1_block_3_concept_2=0.064, stage_1_block_3_concept_3=0.034 [gate=0.654]\n    RULE 5 (stage_1_block_3_5): IF Latitude IS term_2 THEN stage_1_block_3_concept_1=0.922, stage_1_block_3_concept_2=0.095, stage_1_block_3_concept_3=0.050 [gate=0.231]\n\nSTAGE 1: stage_2\nOutput dimension: 9\n  BLOCK 0: stage_2_block_1\n    Inputs: [0, 1, 2]\n    Outputs: [stage_2_block_1_concept_1, stage_2_block_1_concept_2, stage_2_block_1_concept_3]\n    RULE 0 (stage_2_block_1_0): IF stage_1_block_1_concept_2 IS low AND stage_1_block_1_concept_3 IS low THEN stage_2_block_1_concept_1=0.236, stage_2_block_1_concept_2=0.022, stage_2_block_1_concept_3=0.015 [gate=0.758]\n    RULE 1 (stage_2_block_1_1): IF stage_1_block_1_concept_1 IS high AND stage_1_block_1_concept_2 IS low THEN stage_2_block_1_concept_1=0.933, stage_2_block_1_concept_2=0.111, stage_2_block_1_concept_3=0.445 [gate=0.856]\n    RULE 2 (stage_2_block_1_2): IF stage_1_block_1_concept_1 IS high AND stage_1_block_1_concept_3 IS low THEN stage_2_block_1_concept_1=0.975, stage_2_block_1_concept_2=0.807, stage_2_block_1_concept_3=0.926 [gate=0.754]\n    RULE 3 (stage_2_block_1_3): IF stage_1_block_1_concept_2 IS high AND stage_1_block_1_concept_3 IS high THEN stage_2_block_1_concept_1=0.074, stage_2_block_1_concept_2=0.930, stage_2_block_1_concept_3=0.067 [gate=0.062]\n    RULE 4 (stage_2_block_1_4): IF stage_1_block_1_concept_1 IS high AND stage_1_block_1_concept_2 IS high THEN stage_2_block_1_concept_1=0.079, stage_2_block_1_concept_2=0.043, stage_2_block_1_concept_3=0.964 [gate=0.054]\n    RULE 5 (stage_2_block_1_5): IF stage_1_block_1_concept_1 IS high AND stage_1_block_1_concept_3 IS high THEN stage_2_block_1_concept_1=0.080, stage_2_block_1_concept_2=0.043, stage_2_block_1_concept_3=0.964 [gate=0.052]\n  BLOCK 1: stage_2_block_2\n    Inputs: [3, 4, 5]\n    Outputs: [stage_2_block_2_concept_1, stage_2_block_2_concept_2, stage_2_block_2_concept_3]\n    RULE 0 (stage_2_block_2_0): IF stage_1_block_2_concept_1 IS high AND stage_1_block_2_concept_2 IS low THEN stage_2_block_2_concept_1=0.929, stage_2_block_2_concept_2=0.057, stage_2_block_2_concept_3=0.044 [gate=0.572]\n    RULE 1 (stage_2_block_2_1): IF stage_1_block_2_concept_2 IS low AND stage_1_block_2_concept_3 IS low THEN stage_2_block_2_concept_1=0.948, stage_2_block_2_concept_2=0.093, stage_2_block_2_concept_3=0.076 [gate=0.544]\n    RULE 2 (stage_2_block_2_2): IF stage_1_block_2_concept_1 IS high AND stage_1_block_2_concept_3 IS low THEN stage_2_block_2_concept_1=0.948, stage_2_block_2_concept_2=0.093, stage_2_block_2_concept_3=0.076 [gate=0.540]\n    RULE 3 (stage_2_block_2_3): IF stage_1_block_2_concept_1 IS low AND stage_1_block_2_concept_3 IS low THEN stage_2_block_2_concept_1=0.079, stage_2_block_2_concept_2=0.941, stage_2_block_2_concept_3=0.058 [gate=0.076]\n    RULE 4 (stage_2_block_2_4): IF stage_1_block_2_concept_1 IS low AND stage_1_block_2_concept_2 IS low THEN stage_2_block_2_concept_1=0.078, stage_2_block_2_concept_2=0.940, stage_2_block_2_concept_3=0.056 [gate=0.077]\n    RULE 5 (stage_2_block_2_5): IF stage_1_block_2_concept_2 IS high AND stage_1_block_2_concept_3 IS low THEN stage_2_block_2_concept_1=0.078, stage_2_block_2_concept_2=0.079, stage_2_block_2_concept_3=0.919 [gate=0.073]\n  BLOCK 2: stage_2_block_3\n    Inputs: [6, 7, 8]\n    Outputs: [stage_2_block_3_concept_1, stage_2_block_3_concept_2, stage_2_block_3_concept_3]\n    RULE 0 (stage_2_block_3_0): IF stage_1_block_3_concept_1 IS high AND stage_1_block_3_concept_2 IS low THEN stage_2_block_3_concept_1=0.930, stage_2_block_3_concept_2=0.091, stage_2_block_3_concept_3=0.067 [gate=0.408]\n    RULE 1 (stage_2_block_3_1): IF stage_1_block_3_concept_1 IS high AND stage_1_block_3_concept_3 IS low THEN stage_2_block_3_concept_1=0.931, stage_2_block_3_concept_2=0.092, stage_2_block_3_concept_3=0.068 [gate=0.277]\n    RULE 2 (stage_2_block_3_2): IF stage_1_block_3_concept_2 IS low AND stage_1_block_3_concept_3 IS low THEN stage_2_block_3_concept_1=0.927, stage_2_block_3_concept_2=0.088, stage_2_block_3_concept_3=0.063 [gate=0.238]\n    RULE 3 (stage_2_block_3_3): IF stage_1_block_3_concept_1 IS low AND stage_1_block_3_concept_2 IS low THEN stage_2_block_3_concept_1=0.046, stage_2_block_3_concept_2=0.829, stage_2_block_3_concept_3=0.039 [gate=0.145]\n    RULE 4 (stage_2_block_3_4): IF stage_1_block_3_concept_1 IS low AND stage_1_block_3_concept_3 IS low THEN stage_2_block_3_concept_1=0.057, stage_2_block_3_concept_2=0.937, stage_2_block_3_concept_3=0.056 [gate=0.139]\n    RULE 5 (stage_2_block_3_5): IF stage_1_block_3_concept_1 IS high AND stage_1_block_3_concept_2 IS high THEN stage_2_block_3_concept_1=0.056, stage_2_block_3_concept_2=0.079, stage_2_block_3_concept_3=0.913 [gate=0.070]\n\nSTAGE 2: stage_3\nOutput dimension: 9\n  BLOCK 0: stage_3_block_1\n    Inputs: [0, 1, 2]\n    Outputs: [stage_3_block_1_concept_1, stage_3_block_1_concept_2, stage_3_block_1_concept_3]\n    RULE 0 (stage_3_block_1_0): IF stage_2_block_1_concept_2 IS low AND stage_2_block_1_concept_3 IS low THEN stage_3_block_1_concept_1=0.864, stage_3_block_1_concept_2=0.034, stage_3_block_1_concept_3=0.053 [gate=0.902]\n    RULE 1 (stage_3_block_1_1): IF stage_2_block_1_concept_2 IS high AND stage_2_block_1_concept_3 IS high THEN stage_3_block_1_concept_1=0.040, stage_3_block_1_concept_2=0.963, stage_3_block_1_concept_3=0.074 [gate=0.060]\n    RULE 2 (stage_3_block_1_2): IF stage_2_block_1_concept_1 IS high AND stage_2_block_1_concept_2 IS low THEN stage_3_block_1_concept_1=0.028, stage_3_block_1_concept_2=0.887, stage_3_block_1_concept_3=0.980 [gate=0.521]\n    RULE 3 (stage_3_block_1_3): IF stage_2_block_1_concept_1 IS high AND stage_2_block_1_concept_3 IS high THEN stage_3_block_1_concept_1=0.218, stage_3_block_1_concept_2=0.866, stage_3_block_1_concept_3=0.199 [gate=0.279]\n    RULE 4 (stage_3_block_1_4): IF stage_2_block_1_concept_1 IS low AND stage_2_block_1_concept_3 IS low THEN stage_3_block_1_concept_1=0.947, stage_3_block_1_concept_2=0.016, stage_3_block_1_concept_3=0.025 [gate=0.669]\n    RULE 5 (stage_3_block_1_5): IF stage_2_block_1_concept_1 IS high AND stage_2_block_1_concept_3 IS low THEN stage_3_block_1_concept_1=0.126, stage_3_block_1_concept_2=0.063, stage_3_block_1_concept_3=0.706 [gate=0.569]\n  BLOCK 1: stage_3_block_2\n    Inputs: [3, 4, 5]\n    Outputs: [stage_3_block_2_concept_1, stage_3_block_2_concept_2, stage_3_block_2_concept_3]\n    RULE 0 (stage_3_block_2_0): IF stage_2_block_2_concept_1 IS high AND stage_2_block_2_concept_2 IS low THEN stage_3_block_2_concept_1=0.907, stage_3_block_2_concept_2=0.099, stage_3_block_2_concept_3=0.214 [gate=0.559]\n    RULE 1 (stage_3_block_2_1): IF stage_2_block_2_concept_1 IS high AND stage_2_block_2_concept_3 IS low THEN stage_3_block_2_concept_1=0.908, stage_3_block_2_concept_2=0.098, stage_3_block_2_concept_3=0.214 [gate=0.478]\n    RULE 2 (stage_3_block_2_2): IF stage_2_block_2_concept_2 IS low AND stage_2_block_2_concept_3 IS low THEN stage_3_block_2_concept_1=0.908, stage_3_block_2_concept_2=0.098, stage_3_block_2_concept_3=0.214 [gate=0.468]\n    RULE 3 (stage_3_block_2_3): IF stage_2_block_2_concept_1 IS low AND stage_2_block_2_concept_2 IS low THEN stage_3_block_2_concept_1=0.073, stage_3_block_2_concept_2=0.921, stage_3_block_2_concept_3=0.074 [gate=0.075]\n    RULE 4 (stage_3_block_2_4): IF stage_2_block_2_concept_1 IS high AND stage_2_block_2_concept_2 IS high THEN stage_3_block_2_concept_1=0.072, stage_3_block_2_concept_2=0.921, stage_3_block_2_concept_3=0.074 [gate=0.075]\n    RULE 5 (stage_3_block_2_5): IF stage_2_block_2_concept_1 IS low AND stage_2_block_2_concept_3 IS low THEN stage_3_block_2_concept_1=0.067, stage_3_block_2_concept_2=0.051, stage_3_block_2_concept_3=0.952 [gate=0.108]\n  BLOCK 2: stage_3_block_3\n    Inputs: [6, 7, 8]\n    Outputs: [stage_3_block_3_concept_1, stage_3_block_3_concept_2, stage_3_block_3_concept_3]\n    RULE 0 (stage_3_block_3_0): IF stage_2_block_3_concept_1 IS low AND stage_2_block_3_concept_2 IS high THEN stage_3_block_3_concept_1=0.910, stage_3_block_3_concept_2=0.081, stage_3_block_3_concept_3=0.056 [gate=0.439]\n    RULE 1 (stage_3_block_3_1): IF stage_2_block_3_concept_2 IS high AND stage_2_block_3_concept_3 IS low THEN stage_3_block_3_concept_1=0.096, stage_3_block_3_concept_2=0.901, stage_3_block_3_concept_3=0.144 [gate=0.552]\n    RULE 2 (stage_3_block_3_2): IF stage_2_block_3_concept_1 IS low AND stage_2_block_3_concept_3 IS low THEN stage_3_block_3_concept_1=0.094, stage_3_block_3_concept_2=0.903, stage_3_block_3_concept_3=0.136 [gate=0.415]\n    RULE 3 (stage_3_block_3_3): IF stage_2_block_3_concept_1 IS low AND stage_2_block_3_concept_2 IS low THEN stage_3_block_3_concept_1=0.053, stage_3_block_3_concept_2=0.067, stage_3_block_3_concept_3=0.923 [gate=0.107]\n    RULE 4 (stage_3_block_3_4): IF stage_2_block_3_concept_2 IS low AND stage_2_block_3_concept_3 IS low THEN stage_3_block_3_concept_1=0.915, stage_3_block_3_concept_2=0.080, stage_3_block_3_concept_3=0.055 [gate=0.074]\n    RULE 5 (stage_3_block_3_5): IF stage_2_block_3_concept_1 IS high AND stage_2_block_3_concept_2 IS high THEN stage_3_block_3_concept_1=0.045, stage_3_block_3_concept_2=0.079, stage_3_block_3_concept_3=0.939 [gate=0.075]\n\nDECISION LAYER: deep_decision\nOutput dimension: 1\n  RULE 0 (deep_decision_0): IF stage_3_block_1_concept_2 IS low AND stage_3_block_2_concept_3 IS low THEN target = 0.660 - 1.040*stage_3_block_1_concept_1 + 1.458*stage_3_block_1_concept_2 + 1.644*stage_3_block_1_concept_3 + 0.600*stage_3_block_2_concept_1 + 0.071*stage_3_block_2_concept_2 + 0.149*stage_3_block_2_concept_3 + 0.069*stage_3_block_3_concept_1 + 0.596*stage_3_block_3_concept_2 + 0.100*stage_3_block_3_concept_3 [gate=0.887]\n  RULE 1 (deep_decision_1): IF stage_3_block_1_concept_3 IS low AND stage_3_block_2_concept_3 IS low THEN target = 0.642 - 0.973*stage_3_block_1_concept_1 + 1.347*stage_3_block_1_concept_2 + 1.469*stage_3_block_1_concept_3 + 0.582*stage_3_block_2_concept_1 + 0.054*stage_3_block_2_concept_2 + 0.132*stage_3_block_2_concept_3 + 0.051*stage_3_block_3_concept_1 + 0.578*stage_3_block_3_concept_2 + 0.083*stage_3_block_3_concept_3 [gate=0.791]\n  RULE 2 (deep_decision_2): IF stage_3_block_1_concept_1 IS high AND stage_3_block_2_concept_3 IS low THEN target = 0.665 - 0.911*stage_3_block_1_concept_1 + 1.273*stage_3_block_1_concept_2 + 1.338*stage_3_block_1_concept_3 + 0.605*stage_3_block_2_concept_1 + 0.077*stage_3_block_2_concept_2 + 0.154*stage_3_block_2_concept_3 + 0.074*stage_3_block_3_concept_1 + 0.601*stage_3_block_3_concept_2 + 0.105*stage_3_block_3_concept_3 [gate=0.633]\n  RULE 3 (deep_decision_3): IF stage_3_block_1_concept_2 IS high AND stage_3_block_2_concept_3 IS low THEN target = 0.811 - 1.421*stage_3_block_1_concept_1 + 1.605*stage_3_block_1_concept_2 + 1.937*stage_3_block_1_concept_3 + 0.751*stage_3_block_2_concept_1 + 0.222*stage_3_block_2_concept_2 + 0.300*stage_3_block_2_concept_3 + 0.219*stage_3_block_3_concept_1 + 0.747*stage_3_block_3_concept_2 + 0.251*stage_3_block_3_concept_3 [gate=0.225]\n  RULE 4 (deep_decision_4): IF stage_3_block_1_concept_3 IS high AND stage_3_block_2_concept_3 IS low THEN target = 0.598 - 1.175*stage_3_block_1_concept_1 + 1.337*stage_3_block_1_concept_2 + 1.583*stage_3_block_1_concept_3 + 0.538*stage_3_block_2_concept_1 + 0.010*stage_3_block_2_concept_2 + 0.087*stage_3_block_2_concept_3 + 0.007*stage_3_block_3_concept_1 + 0.534*stage_3_block_3_concept_2 + 0.038*stage_3_block_3_concept_3 [gate=0.393]\n  RULE 5 (deep_decision_5): IF stage_3_block_1_concept_2 IS high AND stage_3_block_1_concept_3 IS high THEN target = 0.546 - 1.243*stage_3_block_1_concept_1 + 1.199*stage_3_block_1_concept_2 + 1.549*stage_3_block_1_concept_3 + 0.486*stage_3_block_2_concept_1 - 0.042*stage_3_block_2_concept_2 + 0.036*stage_3_block_2_concept_3 - 0.045*stage_3_block_3_concept_1 + 0.482*stage_3_block_3_concept_2 - 0.013*stage_3_block_3_concept_3 [gate=0.165]",
+  "model_report": "MODEL REPORT\nInput dimension: 8\n\nSTAGE 0: stage_1\nOutput dimension: 9\n  BLOCK 0: stage_1_block_1\n    Inputs: [0, 1, 2]\n    Outputs: [stage_1_block_1_concept_1, stage_1_block_1_concept_2, stage_1_block_1_concept_3]\n    RULE 0 (stage_1_block_1_0): IF MedInc IS term_1 AND AveRooms IS term_1 THEN stage_1_block_1_concept_1=0.401, stage_1_block_1_concept_2=0.012, stage_1_block_1_concept_3=0.012 [gate=0.790]\n    RULE 1 (stage_1_block_1_1): IF HouseAge IS term_1 AND AveRooms IS term_1 THEN stage_1_block_1_concept_1=0.899, stage_1_block_1_concept_2=0.195, stage_1_block_1_concept_3=0.171 [gate=0.182]\n    RULE 2 (stage_1_block_1_2): IF MedInc IS term_1 AND HouseAge IS term_1 THEN stage_1_block_1_concept_1=0.415, stage_1_block_1_concept_2=0.012, stage_1_block_1_concept_3=0.012 [gate=0.772]\n    RULE 3 (stage_1_block_1_3): IF MedInc IS term_2 AND HouseAge IS term_1 THEN stage_1_block_1_concept_1=0.960, stage_1_block_1_concept_2=0.978, stage_1_block_1_concept_3=0.994 [gate=0.813]\n    RULE 4 (stage_1_block_1_4): IF MedInc IS term_2 AND AveRooms IS term_1 THEN stage_1_block_1_concept_1=0.959, stage_1_block_1_concept_2=0.978, stage_1_block_1_concept_3=0.994 [gate=0.805]\n    RULE 5 (stage_1_block_1_5): IF MedInc IS term_3 AND HouseAge IS term_1 THEN stage_1_block_1_concept_1=0.891, stage_1_block_1_concept_2=0.993, stage_1_block_1_concept_3=0.872 [gate=0.217]\n  BLOCK 1: stage_1_block_2\n    Inputs: [3, 4, 5]\n    Outputs: [stage_1_block_2_concept_1, stage_1_block_2_concept_2, stage_1_block_2_concept_3]\n    RULE 0 (stage_1_block_2_0): IF AveBedrms IS term_1 AND Population IS term_1 THEN stage_1_block_2_concept_1=0.533, stage_1_block_2_concept_2=0.134, stage_1_block_2_concept_3=0.129 [gate=0.443]\n    RULE 1 (stage_1_block_2_1): IF Population IS term_1 AND AveOccup IS term_1 THEN stage_1_block_2_concept_1=0.875, stage_1_block_2_concept_2=0.057, stage_1_block_2_concept_3=0.056 [gate=0.533]\n    RULE 2 (stage_1_block_2_2): IF AveBedrms IS term_1 AND AveOccup IS term_1 THEN stage_1_block_2_concept_1=0.889, stage_1_block_2_concept_2=0.061, stage_1_block_2_concept_3=0.059 [gate=0.464]\n    RULE 3 (stage_1_block_2_3): IF AveBedrms IS term_2 AND Population IS term_1 THEN stage_1_block_2_concept_1=0.067, stage_1_block_2_concept_2=0.950, stage_1_block_2_concept_3=0.089 [gate=0.142]\n    RULE 4 (stage_1_block_2_4): IF AveBedrms IS term_2 AND AveOccup IS term_1 THEN stage_1_block_2_concept_1=0.036, stage_1_block_2_concept_2=0.885, stage_1_block_2_concept_3=0.048 [gate=0.093]\n    RULE 5 (stage_1_block_2_5): IF Population IS term_1 AND AveOccup IS term_2 THEN stage_1_block_2_concept_1=0.035, stage_1_block_2_concept_2=0.049, stage_1_block_2_concept_3=0.894 [gate=0.090]\n  BLOCK 2: stage_1_block_3\n    Inputs: [6, 7]\n    Outputs: [stage_1_block_3_concept_1, stage_1_block_3_concept_2, stage_1_block_3_concept_3]\n    RULE 0 (stage_1_block_3_0): IF Latitude IS term_1 AND Longitude IS term_4 THEN stage_1_block_3_concept_1=0.052, stage_1_block_3_concept_2=0.916, stage_1_block_3_concept_3=0.049 [gate=0.098]\n    RULE 1 (stage_1_block_3_1): IF Latitude IS term_1 AND Longitude IS term_3 THEN stage_1_block_3_concept_1=0.052, stage_1_block_3_concept_2=0.916, stage_1_block_3_concept_3=0.049 [gate=0.098]\n    RULE 2 (stage_1_block_3_2): IF Latitude IS term_2 AND Longitude IS term_4 THEN stage_1_block_3_concept_1=0.060, stage_1_block_3_concept_2=0.065, stage_1_block_3_concept_3=0.912 [gate=0.083]\n    RULE 3 (stage_1_block_3_3): IF Latitude IS term_2 AND Longitude IS term_3 THEN stage_1_block_3_concept_1=0.060, stage_1_block_3_concept_2=0.065, stage_1_block_3_concept_3=0.912 [gate=0.084]\n    RULE 4 (stage_1_block_3_4): IF Latitude IS term_1 THEN stage_1_block_3_concept_1=0.878, stage_1_block_3_concept_2=0.064, stage_1_block_3_concept_3=0.034 [gate=0.654]\n    RULE 5 (stage_1_block_3_5): IF Latitude IS term_2 THEN stage_1_block_3_concept_1=0.922, stage_1_block_3_concept_2=0.095, stage_1_block_3_concept_3=0.050 [gate=0.231]\n\nSTAGE 1: stage_2\nOutput dimension: 9\n  BLOCK 0: stage_2_block_1\n    Inputs: [0, 1, 2]\n    Outputs: [stage_2_block_1_concept_1, stage_2_block_1_concept_2, stage_2_block_1_concept_3]\n    RULE 0 (stage_2_block_1_0): IF stage_1_block_1_concept_2 IS low AND stage_1_block_1_concept_3 IS low THEN stage_2_block_1_concept_1=0.236, stage_2_block_1_concept_2=0.022, stage_2_block_1_concept_3=0.015 [gate=0.758]\n    RULE 1 (stage_2_block_1_1): IF stage_1_block_1_concept_1 IS high AND stage_1_block_1_concept_2 IS low THEN stage_2_block_1_concept_1=0.933, stage_2_block_1_concept_2=0.111, stage_2_block_1_concept_3=0.445 [gate=0.856]\n    RULE 2 (stage_2_block_1_2): IF stage_1_block_1_concept_1 IS high AND stage_1_block_1_concept_3 IS low THEN stage_2_block_1_concept_1=0.975, stage_2_block_1_concept_2=0.807, stage_2_block_1_concept_3=0.926 [gate=0.754]\n    RULE 3 (stage_2_block_1_3): IF stage_1_block_1_concept_2 IS high AND stage_1_block_1_concept_3 IS high THEN stage_2_block_1_concept_1=0.074, stage_2_block_1_concept_2=0.930, stage_2_block_1_concept_3=0.067 [gate=0.062]\n    RULE 4 (stage_2_block_1_4): IF stage_1_block_1_concept_1 IS high AND stage_1_block_1_concept_2 IS high THEN stage_2_block_1_concept_1=0.079, stage_2_block_1_concept_2=0.043, stage_2_block_1_concept_3=0.964 [gate=0.054]\n    RULE 5 (stage_2_block_1_5): IF stage_1_block_1_concept_1 IS high AND stage_1_block_1_concept_3 IS high THEN stage_2_block_1_concept_1=0.080, stage_2_block_1_concept_2=0.043, stage_2_block_1_concept_3=0.964 [gate=0.052]\n  BLOCK 1: stage_2_block_2\n    Inputs: [3, 4, 5]\n    Outputs: [stage_2_block_2_concept_1, stage_2_block_2_concept_2, stage_2_block_2_concept_3]\n    RULE 0 (stage_2_block_2_0): IF stage_1_block_2_concept_1 IS high AND stage_1_block_2_concept_2 IS low THEN stage_2_block_2_concept_1=0.929, stage_2_block_2_concept_2=0.057, stage_2_block_2_concept_3=0.044 [gate=0.572]\n    RULE 1 (stage_2_block_2_1): IF stage_1_block_2_concept_2 IS low AND stage_1_block_2_concept_3 IS low THEN stage_2_block_2_concept_1=0.948, stage_2_block_2_concept_2=0.093, stage_2_block_2_concept_3=0.076 [gate=0.544]\n    RULE 2 (stage_2_block_2_2): IF stage_1_block_2_concept_1 IS high AND stage_1_block_2_concept_3 IS low THEN stage_2_block_2_concept_1=0.948, stage_2_block_2_concept_2=0.093, stage_2_block_2_concept_3=0.076 [gate=0.540]\n    RULE 3 (stage_2_block_2_3): IF stage_1_block_2_concept_1 IS low AND stage_1_block_2_concept_3 IS low THEN stage_2_block_2_concept_1=0.079, stage_2_block_2_concept_2=0.941, stage_2_block_2_concept_3=0.058 [gate=0.076]\n    RULE 4 (stage_2_block_2_4): IF stage_1_block_2_concept_1 IS low AND stage_1_block_2_concept_2 IS low THEN stage_2_block_2_concept_1=0.078, stage_2_block_2_concept_2=0.940, stage_2_block_2_concept_3=0.056 [gate=0.077]\n    RULE 5 (stage_2_block_2_5): IF stage_1_block_2_concept_2 IS high AND stage_1_block_2_concept_3 IS low THEN stage_2_block_2_concept_1=0.078, stage_2_block_2_concept_2=0.079, stage_2_block_2_concept_3=0.919 [gate=0.073]\n  BLOCK 2: stage_2_block_3\n    Inputs: [6, 7, 8]\n    Outputs: [stage_2_block_3_concept_1, stage_2_block_3_concept_2, stage_2_block_3_concept_3]\n    RULE 0 (stage_2_block_3_0): IF stage_1_block_3_concept_1 IS high AND stage_1_block_3_concept_2 IS low THEN stage_2_block_3_concept_1=0.930, stage_2_block_3_concept_2=0.091, stage_2_block_3_concept_3=0.067 [gate=0.408]\n    RULE 1 (stage_2_block_3_1): IF stage_1_block_3_concept_1 IS high AND stage_1_block_3_concept_3 IS low THEN stage_2_block_3_concept_1=0.931, stage_2_block_3_concept_2=0.092, stage_2_block_3_concept_3=0.068 [gate=0.277]\n    RULE 2 (stage_2_block_3_2): IF stage_1_block_3_concept_2 IS low AND stage_1_block_3_concept_3 IS low THEN stage_2_block_3_concept_1=0.927, stage_2_block_3_concept_2=0.088, stage_2_block_3_concept_3=0.063 [gate=0.238]\n    RULE 3 (stage_2_block_3_3): IF stage_1_block_3_concept_1 IS low AND stage_1_block_3_concept_2 IS low THEN stage_2_block_3_concept_1=0.046, stage_2_block_3_concept_2=0.829, stage_2_block_3_concept_3=0.039 [gate=0.145]\n    RULE 4 (stage_2_block_3_4): IF stage_1_block_3_concept_1 IS low AND stage_1_block_3_concept_3 IS low THEN stage_2_block_3_concept_1=0.057, stage_2_block_3_concept_2=0.937, stage_2_block_3_concept_3=0.056 [gate=0.139]\n    RULE 5 (stage_2_block_3_5): IF stage_1_block_3_concept_1 IS high AND stage_1_block_3_concept_2 IS high THEN stage_2_block_3_concept_1=0.056, stage_2_block_3_concept_2=0.079, stage_2_block_3_concept_3=0.913 [gate=0.070]\n\nSTAGE 2: stage_3\nOutput dimension: 9\n  BLOCK 0: stage_3_block_1\n    Inputs: [0, 1, 2]\n    Outputs: [stage_3_block_1_concept_1, stage_3_block_1_concept_2, stage_3_block_1_concept_3]\n    RULE 0 (stage_3_block_1_0): IF stage_2_block_1_concept_2 IS low AND stage_2_block_1_concept_3 IS low THEN stage_3_block_1_concept_1=0.864, stage_3_block_1_concept_2=0.034, stage_3_block_1_concept_3=0.053 [gate=0.902]\n    RULE 1 (stage_3_block_1_1): IF stage_2_block_1_concept_2 IS high AND stage_2_block_1_concept_3 IS high THEN stage_3_block_1_concept_1=0.040, stage_3_block_1_concept_2=0.963, stage_3_block_1_concept_3=0.074 [gate=0.060]\n    RULE 2 (stage_3_block_1_2): IF stage_2_block_1_concept_1 IS high AND stage_2_block_1_concept_2 IS low THEN stage_3_block_1_concept_1=0.028, stage_3_block_1_concept_2=0.887, stage_3_block_1_concept_3=0.980 [gate=0.521]\n    RULE 3 (stage_3_block_1_3): IF stage_2_block_1_concept_1 IS high AND stage_2_block_1_concept_3 IS high THEN stage_3_block_1_concept_1=0.218, stage_3_block_1_concept_2=0.866, stage_3_block_1_concept_3=0.199 [gate=0.279]\n    RULE 4 (stage_3_block_1_4): IF stage_2_block_1_concept_1 IS low AND stage_2_block_1_concept_3 IS low THEN stage_3_block_1_concept_1=0.947, stage_3_block_1_concept_2=0.016, stage_3_block_1_concept_3=0.025 [gate=0.669]\n    RULE 5 (stage_3_block_1_5): IF stage_2_block_1_concept_1 IS high AND stage_2_block_1_concept_3 IS low THEN stage_3_block_1_concept_1=0.126, stage_3_block_1_concept_2=0.063, stage_3_block_1_concept_3=0.706 [gate=0.569]\n  BLOCK 1: stage_3_block_2\n    Inputs: [3, 4, 5]\n    Outputs: [stage_3_block_2_concept_1, stage_3_block_2_concept_2, stage_3_block_2_concept_3]\n    RULE 0 (stage_3_block_2_0): IF stage_2_block_2_concept_1 IS high AND stage_2_block_2_concept_2 IS low THEN stage_3_block_2_concept_1=0.907, stage_3_block_2_concept_2=0.099, stage_3_block_2_concept_3=0.214 [gate=0.559]\n    RULE 1 (stage_3_block_2_1): IF stage_2_block_2_concept_1 IS high AND stage_2_block_2_concept_3 IS low THEN stage_3_block_2_concept_1=0.908, stage_3_block_2_concept_2=0.098, stage_3_block_2_concept_3=0.214 [gate=0.478]\n    RULE 2 (stage_3_block_2_2): IF stage_2_block_2_concept_2 IS low AND stage_2_block_2_concept_3 IS low THEN stage_3_block_2_concept_1=0.908, stage_3_block_2_concept_2=0.098, stage_3_block_2_concept_3=0.214 [gate=0.468]\n    RULE 3 (stage_3_block_2_3): IF stage_2_block_2_concept_1 IS low AND stage_2_block_2_concept_2 IS low THEN stage_3_block_2_concept_1=0.073, stage_3_block_2_concept_2=0.921, stage_3_block_2_concept_3=0.074 [gate=0.075]\n    RULE 4 (stage_3_block_2_4): IF stage_2_block_2_concept_1 IS high AND stage_2_block_2_concept_2 IS high THEN stage_3_block_2_concept_1=0.072, stage_3_block_2_concept_2=0.921, stage_3_block_2_concept_3=0.074 [gate=0.075]\n    RULE 5 (stage_3_block_2_5): IF stage_2_block_2_concept_1 IS low AND stage_2_block_2_concept_3 IS low THEN stage_3_block_2_concept_1=0.067, stage_3_block_2_concept_2=0.051, stage_3_block_2_concept_3=0.952 [gate=0.108]\n  BLOCK 2: stage_3_block_3\n    Inputs: [6, 7, 8]\n    Outputs: [stage_3_block_3_concept_1, stage_3_block_3_concept_2, stage_3_block_3_concept_3]\n    RULE 0 (stage_3_block_3_0): IF stage_2_block_3_concept_1 IS low AND stage_2_block_3_concept_2 IS high THEN stage_3_block_3_concept_1=0.910, stage_3_block_3_concept_2=0.081, stage_3_block_3_concept_3=0.056 [gate=0.439]\n    RULE 1 (stage_3_block_3_1): IF stage_2_block_3_concept_2 IS high AND stage_2_block_3_concept_3 IS low THEN stage_3_block_3_concept_1=0.096, stage_3_block_3_concept_2=0.901, stage_3_block_3_concept_3=0.144 [gate=0.552]\n    RULE 2 (stage_3_block_3_2): IF stage_2_block_3_concept_1 IS low AND stage_2_block_3_concept_3 IS low THEN stage_3_block_3_concept_1=0.094, stage_3_block_3_concept_2=0.903, stage_3_block_3_concept_3=0.136 [gate=0.415]\n    RULE 3 (stage_3_block_3_3): IF stage_2_block_3_concept_1 IS low AND stage_2_block_3_concept_2 IS low THEN stage_3_block_3_concept_1=0.053, stage_3_block_3_concept_2=0.067, stage_3_block_3_concept_3=0.923 [gate=0.107]\n    RULE 4 (stage_3_block_3_4): IF stage_2_block_3_concept_2 IS low AND stage_2_block_3_concept_3 IS low THEN stage_3_block_3_concept_1=0.915, stage_3_block_3_concept_2=0.080, stage_3_block_3_concept_3=0.055 [gate=0.074]\n    RULE 5 (stage_3_block_3_5): IF stage_2_block_3_concept_1 IS high AND stage_2_block_3_concept_2 IS high THEN stage_3_block_3_concept_1=0.045, stage_3_block_3_concept_2=0.079, stage_3_block_3_concept_3=0.939 [gate=0.075]\n\nDECISION LAYER: deep_decision\nOutput dimension: 1\n  RULE 0 (deep_decision_0): IF stage_3_block_1_concept_2 IS low AND stage_3_block_2_concept_3 IS low THEN target = 0.660 - 1.040*stage_3_block_1_concept_1 + 1.458*stage_3_block_1_concept_2 + 1.644*stage_3_block_1_concept_3 + 0.600*stage_3_block_2_concept_1 + 0.071*stage_3_block_2_concept_2 + 0.149*stage_3_block_2_concept_3 + 0.069*stage_3_block_3_concept_1 + 0.596*stage_3_block_3_concept_2 + 0.100*stage_3_block_3_concept_3 [gate=0.887]\n  RULE 1 (deep_decision_1): IF stage_3_block_1_concept_3 IS low AND stage_3_block_2_concept_3 IS low THEN target = 0.642 - 0.973*stage_3_block_1_concept_1 + 1.347*stage_3_block_1_concept_2 + 1.469*stage_3_block_1_concept_3 + 0.582*stage_3_block_2_concept_1 + 0.054*stage_3_block_2_concept_2 + 0.132*stage_3_block_2_concept_3 + 0.051*stage_3_block_3_concept_1 + 0.578*stage_3_block_3_concept_2 + 0.083*stage_3_block_3_concept_3 [gate=0.791]\n  RULE 2 (deep_decision_2): IF stage_3_block_1_concept_1 IS high AND stage_3_block_2_concept_3 IS low THEN target = 0.665 - 0.911*stage_3_block_1_concept_1 + 1.273*stage_3_block_1_concept_2 + 1.338*stage_3_block_1_concept_3 + 0.605*stage_3_block_2_concept_1 + 0.077*stage_3_block_2_concept_2 + 0.154*stage_3_block_2_concept_3 + 0.074*stage_3_block_3_concept_1 + 0.601*stage_3_block_3_concept_2 + 0.105*stage_3_block_3_concept_3 [gate=0.633]\n  RULE 3 (deep_decision_3): IF stage_3_block_1_concept_2 IS high AND stage_3_block_2_concept_3 IS low THEN target = 0.811 - 1.421*stage_3_block_1_concept_1 + 1.605*stage_3_block_1_concept_2 + 1.937*stage_3_block_1_concept_3 + 0.751*stage_3_block_2_concept_1 + 0.222*stage_3_block_2_concept_2 + 0.300*stage_3_block_2_concept_3 + 0.219*stage_3_block_3_concept_1 + 0.747*stage_3_block_3_concept_2 + 0.251*stage_3_block_3_concept_3 [gate=0.225]\n  RULE 4 (deep_decision_4): IF stage_3_block_1_concept_3 IS high AND stage_3_block_2_concept_3 IS low THEN target = 0.598 - 1.175*stage_3_block_1_concept_1 + 1.337*stage_3_block_1_concept_2 + 1.583*stage_3_block_1_concept_3 + 0.538*stage_3_block_2_concept_1 + 0.010*stage_3_block_2_concept_2 + 0.087*stage_3_block_2_concept_3 + 0.007*stage_3_block_3_concept_1 + 0.534*stage_3_block_3_concept_2 + 0.038*stage_3_block_3_concept_3 [gate=0.393]\n  RULE 5 (deep_decision_5): IF stage_3_block_1_concept_2 IS high AND stage_3_block_1_concept_3 IS high THEN target = 0.546 - 1.243*stage_3_block_1_concept_1 + 1.199*stage_3_block_1_concept_2 + 1.549*stage_3_block_1_concept_3 + 0.486*stage_3_block_2_concept_1 - 0.042*stage_3_block_2_concept_2 + 0.036*stage_3_block_2_concept_3 - 0.045*stage_3_block_3_concept_1 + 0.482*stage_3_block_3_concept_2 - 0.013*stage_3_block_3_concept_3 [gate=0.165]",
+  "study_pipeline": "deep_research_study",
+  "article_role": "extended_deep_model"
+}

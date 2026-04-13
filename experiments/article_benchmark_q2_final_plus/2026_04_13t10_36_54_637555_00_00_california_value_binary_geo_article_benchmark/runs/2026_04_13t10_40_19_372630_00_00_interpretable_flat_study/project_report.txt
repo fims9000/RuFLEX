@@ -1,0 +1,30 @@
+PROJECT REPORT
+name: california_value_binary_geo-flat_interpretable
+task_type: binary_classification
+model_kind: flat_neuro_fuzzy
+dataset_rows: 4096
+dataset_columns: 9
+training_source: bootstrap_plus_finetuning
+train_metrics: {'accuracy': 0.7391127347946167, 'precision': 0.7181952662721889, 'recall': 0.7887896019496339, 'f1': 0.7518389469603987}
+validation_metrics: {'accuracy': 0.7435897588729858, 'precision': 0.7071583514099767, 'recall': 0.8129675810473794, 'f1': 0.7563805104403358}
+test_metrics: {'accuracy': 0.7219512195121951, 'precision': 0.6991525423728798, 'recall': 0.7932692307692288, 'f1': 0.7432432432427434}
+
+MODEL REPORT
+Input dimension: 8
+
+STAGE 0: flat_stage
+Output dimension: 2
+  BLOCK 0: flat_feature_block
+    Inputs: [0, 1, 2, 3, 4, 5, 6, 7]
+    Outputs: [flat_concept_1, flat_concept_2]
+    RULE 0 (flat_feature_block_0): IF Population IS term_1 AND AveOccup IS term_1 THEN flat_concept_1=0.840, flat_concept_2=0.159 [gate=0.799]
+    RULE 1 (flat_feature_block_1): IF MedInc IS term_1 AND Population IS term_1 THEN flat_concept_1=0.885, flat_concept_2=0.113 [gate=0.275]
+    RULE 2 (flat_feature_block_2): IF MedInc IS term_1 AND AveOccup IS term_1 THEN flat_concept_1=0.885, flat_concept_2=0.113 [gate=0.275]
+    RULE 3 (flat_feature_block_3): IF AveBedrms IS term_1 AND Population IS term_1 THEN flat_concept_1=0.136, flat_concept_2=0.861 [gate=0.289]
+
+DECISION LAYER: flat_decision
+Output dimension: 1
+  RULE 0 (flat_decision_0): IF flat_concept_1 IS high AND flat_concept_2 IS low THEN target = 1.688 - 4.872*flat_concept_1 + 6.550*flat_concept_2 [gate=0.240]
+  RULE 1 (flat_decision_1): IF flat_concept_1 IS high AND flat_concept_2 IS high THEN target = 1.754 - 4.815*flat_concept_1 + 6.640*flat_concept_2 [gate=0.052]
+  RULE 2 (flat_decision_2): IF flat_concept_1 IS low AND flat_concept_2 IS low THEN target = 1.753 - 4.816*flat_concept_1 + 6.639*flat_concept_2 [gate=0.052]
+  RULE 3 (flat_decision_3): IF flat_concept_1 IS low AND flat_concept_2 IS high THEN target = 1.860 - 4.716*flat_concept_1 + 6.762*flat_concept_2 [gate=0.047]

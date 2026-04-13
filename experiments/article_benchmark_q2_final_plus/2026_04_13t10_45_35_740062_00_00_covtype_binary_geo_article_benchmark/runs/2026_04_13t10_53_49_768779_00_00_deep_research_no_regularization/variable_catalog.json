@@ -1,0 +1,392 @@
+{
+  "Elevation": {
+    "name": "Elevation",
+    "membership": {
+      "kind": "generalized_bell",
+      "term_names": [
+        "term_1",
+        "term_2",
+        "term_3",
+        "term_4"
+      ],
+      "centers": [
+        2184.0,
+        2678.3333333333335,
+        3172.6666666666665,
+        3667.0
+      ],
+      "widths": [
+        370.75,
+        370.75,
+        370.75,
+        370.75
+      ],
+      "slopes": [
+        2.0,
+        2.0,
+        2.0,
+        2.0
+      ],
+      "min_width": 0.001,
+      "min_slope": 0.01
+    },
+    "value_range": [
+      2184.0,
+      3667.0
+    ],
+    "data_type": "continuous",
+    "role": "input",
+    "normalization": "standard"
+  },
+  "Aspect": {
+    "name": "Aspect",
+    "membership": {
+      "kind": "generalized_bell",
+      "term_names": [
+        "term_1",
+        "term_2",
+        "term_3",
+        "term_4"
+      ],
+      "centers": [
+        0.0,
+        119.66666666666667,
+        239.33333333333334,
+        359.0
+      ],
+      "widths": [
+        89.75,
+        89.75,
+        89.75,
+        89.75
+      ],
+      "slopes": [
+        2.0,
+        2.0,
+        2.0,
+        2.0
+      ],
+      "min_width": 0.001,
+      "min_slope": 0.01
+    },
+    "value_range": [
+      0.0,
+      359.0
+    ],
+    "data_type": "continuous",
+    "role": "input",
+    "normalization": "standard"
+  },
+  "Slope": {
+    "name": "Slope",
+    "membership": {
+      "kind": "generalized_bell",
+      "term_names": [
+        "term_1",
+        "term_2",
+        "term_3",
+        "term_4"
+      ],
+      "centers": [
+        0.0,
+        17.0,
+        34.0,
+        51.0
+      ],
+      "widths": [
+        12.75,
+        12.75,
+        12.75,
+        12.75
+      ],
+      "slopes": [
+        2.0,
+        2.0,
+        2.0,
+        2.0
+      ],
+      "min_width": 0.001,
+      "min_slope": 0.01
+    },
+    "value_range": [
+      0.0,
+      51.0
+    ],
+    "data_type": "continuous",
+    "role": "input",
+    "normalization": "standard"
+  },
+  "Horizontal_Distance_To_Hydrology": {
+    "name": "Horizontal_Distance_To_Hydrology",
+    "membership": {
+      "kind": "generalized_bell",
+      "term_names": [
+        "term_1",
+        "term_2",
+        "term_3",
+        "term_4"
+      ],
+      "centers": [
+        0.0,
+        456.0,
+        912.0,
+        1368.0
+      ],
+      "widths": [
+        342.0,
+        342.0,
+        342.0,
+        342.0
+      ],
+      "slopes": [
+        2.0,
+        2.0,
+        2.0,
+        2.0
+      ],
+      "min_width": 0.001,
+      "min_slope": 0.01
+    },
+    "value_range": [
+      0.0,
+      1368.0
+    ],
+    "data_type": "continuous",
+    "role": "input",
+    "normalization": "standard"
+  },
+  "Vertical_Distance_To_Hydrology": {
+    "name": "Vertical_Distance_To_Hydrology",
+    "membership": {
+      "kind": "generalized_bell",
+      "term_names": [
+        "term_1",
+        "term_2",
+        "term_3",
+        "term_4"
+      ],
+      "centers": [
+        -153.0,
+        79.0,
+        311.0,
+        543.0
+      ],
+      "widths": [
+        174.0,
+        174.0,
+        174.0,
+        174.0
+      ],
+      "slopes": [
+        2.0,
+        2.0,
+        2.0,
+        2.0
+      ],
+      "min_width": 0.001,
+      "min_slope": 0.01
+    },
+    "value_range": [
+      -153.0,
+      543.0
+    ],
+    "data_type": "continuous",
+    "role": "input",
+    "normalization": "standard"
+  },
+  "Horizontal_Distance_To_Roadways": {
+    "name": "Horizontal_Distance_To_Roadways",
+    "membership": {
+      "kind": "generalized_bell",
+      "term_names": [
+        "term_1",
+        "term_2",
+        "term_3",
+        "term_4"
+      ],
+      "centers": [
+        30.0,
+        2331.6666666666665,
+        4633.333333333333,
+        6935.0
+      ],
+      "widths": [
+        1726.25,
+        1726.25,
+        1726.25,
+        1726.25
+      ],
+      "slopes": [
+        2.0,
+        2.0,
+        2.0,
+        2.0
+      ],
+      "min_width": 0.001,
+      "min_slope": 0.01
+    },
+    "value_range": [
+      30.0,
+      6935.0
+    ],
+    "data_type": "continuous",
+    "role": "input",
+    "normalization": "standard"
+  },
+  "Hillshade_9am": {
+    "name": "Hillshade_9am",
+    "membership": {
+      "kind": "generalized_bell",
+      "term_names": [
+        "term_1",
+        "term_2",
+        "term_3",
+        "term_4"
+      ],
+      "centers": [
+        56.0,
+        122.0,
+        188.0,
+        254.0
+      ],
+      "widths": [
+        49.5,
+        49.5,
+        49.5,
+        49.5
+      ],
+      "slopes": [
+        2.0,
+        2.0,
+        2.0,
+        2.0
+      ],
+      "min_width": 0.001,
+      "min_slope": 0.01
+    },
+    "value_range": [
+      56.0,
+      254.0
+    ],
+    "data_type": "continuous",
+    "role": "input",
+    "normalization": "standard"
+  },
+  "Hillshade_Noon": {
+    "name": "Hillshade_Noon",
+    "membership": {
+      "kind": "generalized_bell",
+      "term_names": [
+        "term_1",
+        "term_2",
+        "term_3",
+        "term_4"
+      ],
+      "centers": [
+        100.0,
+        151.33333333333334,
+        202.66666666666669,
+        254.0
+      ],
+      "widths": [
+        38.5,
+        38.5,
+        38.5,
+        38.5
+      ],
+      "slopes": [
+        2.0,
+        2.0,
+        2.0,
+        2.0
+      ],
+      "min_width": 0.001,
+      "min_slope": 0.01
+    },
+    "value_range": [
+      100.0,
+      254.0
+    ],
+    "data_type": "continuous",
+    "role": "input",
+    "normalization": "standard"
+  },
+  "Hillshade_3pm": {
+    "name": "Hillshade_3pm",
+    "membership": {
+      "kind": "generalized_bell",
+      "term_names": [
+        "term_1",
+        "term_2",
+        "term_3",
+        "term_4"
+      ],
+      "centers": [
+        0.0,
+        82.0,
+        164.0,
+        246.0
+      ],
+      "widths": [
+        61.5,
+        61.5,
+        61.5,
+        61.5
+      ],
+      "slopes": [
+        2.0,
+        2.0,
+        2.0,
+        2.0
+      ],
+      "min_width": 0.001,
+      "min_slope": 0.01
+    },
+    "value_range": [
+      0.0,
+      246.0
+    ],
+    "data_type": "continuous",
+    "role": "input",
+    "normalization": "standard"
+  },
+  "Horizontal_Distance_To_Fire_Points": {
+    "name": "Horizontal_Distance_To_Fire_Points",
+    "membership": {
+      "kind": "generalized_bell",
+      "term_names": [
+        "term_1",
+        "term_2",
+        "term_3",
+        "term_4"
+      ],
+      "centers": [
+        30.0,
+        2380.0,
+        4730.0,
+        7080.0
+      ],
+      "widths": [
+        1762.5,
+        1762.5,
+        1762.5,
+        1762.5
+      ],
+      "slopes": [
+        2.0,
+        2.0,
+        2.0,
+        2.0
+      ],
+      "min_width": 0.001,
+      "min_slope": 0.01
+    },
+    "value_range": [
+      30.0,
+      7080.0
+    ],
+    "data_type": "continuous",
+    "role": "input",
+    "normalization": "standard"
+  }
+}

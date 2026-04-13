@@ -1,0 +1,24 @@
+{
+  "name": "california_value_binary_geo-flat_baseline",
+  "task_type": "binary_classification",
+  "model_kind": "flat_neuro_fuzzy",
+  "target_name": "HighValue",
+  "feature_count": 8,
+  "variable_count": 8,
+  "variable_roles": {
+    "input": 8
+  },
+  "dataset_rows": 4096,
+  "dataset_columns": 9,
+  "has_model": true,
+  "has_training_summary": true,
+  "experiment_count": 1,
+  "study_run_count": 0,
+  "manual_rule_targets": 0,
+  "test_metrics": {
+    "accuracy": 0.7292682926829268,
+    "precision": 0.7389162561576336,
+    "recall": 0.7211538461538444,
+    "f1": 0.7299270072987682
+  }
+}

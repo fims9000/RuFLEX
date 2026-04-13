@@ -1,0 +1,22 @@
+{
+  "training_source": "stagewise_pretraining_plus_finetuning",
+  "epochs_ran": 28,
+  "train_metrics": {
+    "accuracy": 0.7370777130126953,
+    "precision": 0.7464195450716086,
+    "recall": 0.7197400487408605,
+    "f1": 0.7328370554172
+  },
+  "validation_metrics": {
+    "accuracy": 0.7643467783927917,
+    "precision": 0.7587064676616896,
+    "recall": 0.7605985037406464,
+    "f1": 0.7596513075960111
+  },
+  "test_metrics": {
+    "accuracy": 0.7353658536585366,
+    "precision": 0.7363420427553427,
+    "recall": 0.7451923076923058,
+    "f1": 0.7407407407402389
+  }
+}

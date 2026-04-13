@@ -1,0 +1,22 @@
+{
+  "training_source": "bootstrap_plus_finetuning",
+  "epochs_ran": 36,
+  "train_metrics": {
+    "accuracy": 0.7358567118644714,
+    "precision": 0.8209944751381206,
+    "recall": 0.604065040650406,
+    "f1": 0.6960187353625086
+  },
+  "validation_metrics": {
+    "accuracy": 0.7484737634658813,
+    "precision": 0.8283828382838256,
+    "recall": 0.6197530864197516,
+    "f1": 0.7090395480221072
+  },
+  "test_metrics": {
+    "accuracy": 0.7426829268292683,
+    "precision": 0.8435374149659834,
+    "recall": 0.6004842615012091,
+    "f1": 0.7015558698722135
+  }
+}

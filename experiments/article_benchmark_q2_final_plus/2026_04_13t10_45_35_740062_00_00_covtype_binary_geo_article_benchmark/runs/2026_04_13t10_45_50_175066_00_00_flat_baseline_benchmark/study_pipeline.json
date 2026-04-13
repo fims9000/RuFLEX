@@ -1,0 +1,11 @@
+{
+  "name": "flat_baseline_benchmark",
+  "label": "Flat Baseline Benchmark",
+  "description": "Reference flat neuro-fuzzy baseline with balanced training.",
+  "workspace_template": "flat_baseline",
+  "training_preset": "balanced",
+  "outputs": [
+    "project_report",
+    "model_report"
+  ]
+}
