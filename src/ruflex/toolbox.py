@@ -307,12 +307,14 @@ def run_article_benchmark(
     output_root: str | Path = "experiments/article_benchmark",
     variant_names: tuple[str, ...] | list[str] | None = None,
     training_preset_override: str | None = None,
+    seeds: tuple[int, ...] | list[int] | None = None,
 ) -> dict[str, Any]:
     return _run_article_benchmark(
         project,
         output_root=output_root,
         variant_names=variant_names,
         training_preset_override=training_preset_override,
+        seeds=seeds,
     )
 
 

@@ -18,9 +18,12 @@
   "sample_size": 4096,
   "random_state": 42,
   "default_enabled": true,
+  "base_recipe_name": "california_value_binary_geo",
+  "base_recipe_label": "California Value Binary Geo",
   "sampling": {
     "kind": "balanced_threshold_subsample",
     "sample_size": 4096,
+    "max_balanced_sample_size": 20630,
     "original_row_count": 20640,
     "threshold": 1.797,
     "random_state": 42

@@ -29,6 +29,7 @@ Binary cartographic classification benchmark derived from the Forest CoverType d
 
 - kind: balanced_binary_subsample
 - sample_size: 6000
+- max_balanced_sample_size: 423680
 - original_row_count: 581012
 - eligible_binary_row_count: 495141
 - random_state: 42

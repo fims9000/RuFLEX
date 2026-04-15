@@ -18,9 +18,12 @@
   "sample_size": 4096,
   "random_state": 42,
   "default_enabled": true,
+  "base_recipe_name": "california_housing_regression",
+  "base_recipe_label": "California Housing Regression",
   "sampling": {
     "kind": "random_subsample",
     "sample_size": 4096,
+    "requested_sample_size": 4096,
     "original_row_count": 20640,
     "random_state": 42
   },

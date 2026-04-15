@@ -27,6 +27,7 @@ Geo-oriented tabular regression benchmark based on California Housing with latit
 
 - kind: random_subsample
 - sample_size: 4096
+- requested_sample_size: 4096
 - original_row_count: 20640
 - random_state: 42
 

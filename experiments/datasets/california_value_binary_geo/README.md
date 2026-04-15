@@ -27,6 +27,7 @@ Balanced spatially informed binary classification benchmark derived from Califor
 
 - kind: balanced_threshold_subsample
 - sample_size: 4096
+- max_balanced_sample_size: 20630
 - original_row_count: 20640
 - threshold: 1.797
 - random_state: 42

@@ -432,23 +432,36 @@ def test_article_benchmark_runner(tmp_path):
         output_root=tmp_path / "article_benchmark",
         variant_names=("flat_baseline", "deep_article_demo"),
         training_preset_override="fast_debug",
+        seeds=(11, 13),
     )
     benchmark_dir = Path(benchmark["benchmark_dir"])
     assert benchmark_dir.exists()
-    assert len(benchmark["results"]) == 2
+    assert benchmark["seed_count"] == 2
+    assert benchmark["seeds"] == [11, 13]
+    assert len(benchmark["results"]) >= 5
     assert (benchmark_dir / "benchmark_plan.json").exists()
     assert (benchmark_dir / "benchmark_results.json").exists()
     assert (benchmark_dir / "benchmark_results.csv").exists()
+    assert (benchmark_dir / "benchmark_per_seed_results.csv").exists()
     assert (benchmark_dir / "benchmark_report.md").exists()
-    assert all(Path(row["export_dir"]).exists() for row in benchmark["results"])
+    assert any(row["family"] == "sklearn" for row in benchmark["results"])
+    assert any(row["family"] == "ruflex" for row in benchmark["results"])
+    assert all(
+        Path(row["export_dir"]).exists()
+        for row in benchmark["results"]
+        if row["family"] == "ruflex"
+    )
 
     listed_runs = list_article_benchmark_runs(tmp_path / "article_benchmark")
     assert len(listed_runs) == 1
     assert listed_runs[0]["directory_name"] == benchmark_dir.name
+    assert listed_runs[0]["seed_count"] == 2
 
     loaded_benchmark = load_article_benchmark(benchmark_dir)
     assert loaded_benchmark["source_project"]["name"] == "article-benchmark"
-    assert len(loaded_benchmark["results"]) == 2
+    assert loaded_benchmark["seed_count"] == 2
+    assert len(loaded_benchmark["results"]) >= 5
+    assert loaded_benchmark["per_seed_results"]
 
     materials = prepare_article_materials(benchmark_dir, output_root=tmp_path / "article_assets")
     materials_dir = Path(materials["output_dir"])
@@ -456,6 +469,7 @@ def test_article_benchmark_runner(tmp_path):
     assert (materials_dir / "benchmark_results.json").exists()
     assert (materials_dir / "results_table.csv").exists()
     assert (materials_dir / "results_table.md").exists()
+    assert (materials_dir / "per_seed_results_table.csv").exists()
     assert (materials_dir / "artifact_index.json").exists()
     assert (materials_dir / "article_summary.md").exists()
     assert (materials_dir / "results_overview.png").exists()
