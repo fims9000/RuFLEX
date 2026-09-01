@@ -39,10 +39,12 @@ import {
   SliceAnalysis,
   TrainingRun,
   TrainingStudy,
+  StudyStabilityAnalysis,
+  StabilityGatePolicy,
   studioApi,
 } from "../api";
 import { StudioTheme } from "../design/tokens";
-import { BuildWorkspace } from "../features/build/BuildWorkspace";
+import { BuildWorkspace } from "../features/modelbuild/BuildWorkspace";
 import { EvidenceWorkspace } from "../features/evidence/EvidenceWorkspace";
 import { ExperimentWorkspace } from "../features/training/ExperimentWorkspace";
 import { EvaluationWorkspace } from "../features/training/EvaluationWorkspace";
@@ -95,6 +97,8 @@ export function App() {
   const [trainingRun, setTrainingRun] = useState<TrainingRun | null>(null);
   const [trainingRuns, setTrainingRuns] = useState<TrainingRun[]>([]);
   const [trainingStudy, setTrainingStudy] = useState<TrainingStudy | null>(null);
+  const [stabilityAnalysis, setStabilityAnalysis] = useState<StudyStabilityAnalysis | null>(null);
+  const [stabilityGatePolicy, setStabilityGatePolicy] = useState<StabilityGatePolicy | null>(null);
   const [analysisEvaluation, setAnalysisEvaluation] = useState<AnalysisEvaluation | null>(null);
   const [analysisComparison, setAnalysisComparison] = useState<AnalysisComparison | null>(null);
   const [calibrationTransform, setCalibrationTransform] = useState<CalibrationTransform | null>(null);
@@ -185,6 +189,8 @@ export function App() {
       .then(setTrainingRun)
       .catch(() => setTrainingRun(null));
     studioApi.getTrainingRuns(project.session_id).then(setTrainingRuns).catch(() => setTrainingRuns([]));
+    studioApi.listStudyStabilityAnalyses(project.session_id).then((items) => setStabilityAnalysis(items.at(-1) ?? null)).catch(() => setStabilityAnalysis(null));
+    studioApi.listStabilityGatePolicies(project.session_id).then((items) => setStabilityGatePolicy(items.at(-1) ?? null)).catch(() => setStabilityGatePolicy(null));
     studioApi
       .getLatestTrainingStudy(project.session_id)
       .then(setTrainingStudy)
@@ -245,6 +251,10 @@ export function App() {
     generalization?.contract.contract_id,
     generalization?.contract.frozen_at,
   ]);
+  useEffect(() => {
+    if (!project || active !== "ANALYSES") return;
+    studioApi.listStabilityGatePolicies(project.session_id).then((items) => setStabilityGatePolicy(items.at(-1) ?? null)).catch(() => undefined);
+  }, [active, project?.session_id]);
   async function openLineageNode(node: LineageNode) {
     if (!project) return;
     const objectId = node.object_id;
@@ -557,6 +567,8 @@ export function App() {
       fis={fis}
       trainingRun={trainingRun}
       trainingStudy={trainingStudy}
+      stabilityAnalysis={stabilityAnalysis}
+      stabilityGatePolicy={stabilityGatePolicy}
       evaluation={fisEvaluation}
       analysisEvaluation={analysisEvaluation}
       analysisComparison={analysisComparison}
@@ -978,7 +990,7 @@ export function App() {
           onStudy={setTrainingStudy}
         />
       ) : active === "ANALYSES" ? (
-        <EvaluationWorkspace project={project} dataset={datasetState} fis={fis} run={trainingRun} runs={trainingRuns} study={trainingStudy} evaluation={analysisEvaluation} calibrationTransform={calibrationTransform} decisionThreshold={decisionThreshold} finalTestEvaluation={finalTestEvaluation} comparison={analysisComparison} sliceAnalysis={sliceAnalysis} selectivePolicy={selectivePolicy} theme={theme} onEvaluation={setAnalysisEvaluation} onCalibration={setCalibrationTransform} onThreshold={setDecisionThreshold} onSelectivePolicy={setSelectivePolicy} onFinalTest={setFinalTestEvaluation} onComparison={setAnalysisComparison} onSliceAnalysis={setSliceAnalysis} />
+        <EvaluationWorkspace project={project} dataset={datasetState} fis={fis} run={trainingRun} runs={trainingRuns} study={trainingStudy} evaluation={analysisEvaluation} calibrationTransform={calibrationTransform} decisionThreshold={decisionThreshold} finalTestEvaluation={finalTestEvaluation} comparison={analysisComparison} sliceAnalysis={sliceAnalysis} selectivePolicy={selectivePolicy} stabilityGatePolicy={stabilityGatePolicy} theme={theme} onEvaluation={setAnalysisEvaluation} onCalibration={setCalibrationTransform} onThreshold={setDecisionThreshold} onSelectivePolicy={setSelectivePolicy} onFinalTest={setFinalTestEvaluation} onComparison={setAnalysisComparison} onSliceAnalysis={setSliceAnalysis} />
       ) : active === "EVIDENCE" ? (
         <EvidenceWorkspace
           project={project}

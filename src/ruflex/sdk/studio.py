@@ -10,6 +10,7 @@ from ruflex.application.exhaustive import load_latest_exhaustive
 from ruflex.application.assurance import load_latest_assurance_case
 from ruflex.application.behavior import list_behavior_results, list_behavior_specs, load_latest_behavior_result
 from ruflex.application.selective import load_latest_selective_policy
+from ruflex.application.stability import list_stability_gate_policies, list_study_stability_analyses, load_stability_gate_policy, load_study_stability_analysis
 from ruflex.domain.behavior import BehaviorSpec, BehaviorSpecResult
 from ruflex.application.expert_correction import load_expert_correction
 from ruflex.application.fis import load_fis, list_fis_revisions
@@ -33,6 +34,7 @@ from ruflex.domain.evidence import ExplanationCheck, ExplanationContract, Explan
 from ruflex.domain.exhaustive import ExhaustiveLabResult
 from ruflex.domain.assurance import AssuranceCase
 from ruflex.domain.selective import SelectivePredictionPolicy
+from ruflex.domain.stability import StabilityGatePolicy, StudyStabilityAnalysis
 from ruflex.domain.expert_correction import ExpertCorrectionRevision
 from ruflex.domain.lineage import LineageGraph
 from ruflex.domain.training import (
@@ -112,6 +114,18 @@ class StudioProjectView:
 
     def latest_selective_policy(self) -> SelectivePredictionPolicy:
         return load_latest_selective_policy(self.root)
+
+    def stability_analysis(self, analysis_id: UUID | str) -> StudyStabilityAnalysis:
+        return load_study_stability_analysis(self.root, UUID(str(analysis_id)))
+
+    def stability_analyses(self) -> list[StudyStabilityAnalysis]:
+        return list_study_stability_analyses(self.root)
+
+    def stability_gate_policy(self, policy_id: UUID | str) -> StabilityGatePolicy:
+        return load_stability_gate_policy(self.root, UUID(str(policy_id)))
+
+    def stability_gate_policies(self) -> list[StabilityGatePolicy]:
+        return list_stability_gate_policies(self.root)
 
     def behavior_specs(self) -> list[BehaviorSpec]:
         return list_behavior_specs(self.root)

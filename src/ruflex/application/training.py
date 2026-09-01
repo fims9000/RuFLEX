@@ -50,6 +50,45 @@ def _atomic_write_text(path: Path, text: str) -> None:
         temp_path.unlink(missing_ok=True)
 
 
+def _resolve_randomness(
+    *, seed: int | None = None, split_seed: int | None = None, training_seed: int | None = None,
+) -> tuple[int, int, str]:
+    """Resolve explicit randomness without changing legacy one-seed projects.
+
+    A legacy caller that supplies only ``seed`` intentionally retains its old
+    coupled behaviour.  New callers supply both values and the split is then
+    independent from stochastic model fitting.
+    """
+    legacy = seed if seed is not None else 42
+    resolved_split = legacy if split_seed is None else split_seed
+    resolved_training = legacy if training_seed is None else training_seed
+    protocol = "LEGACY_COMBINED" if split_seed is None and training_seed is None else "SINGLE_RUN_EXPLICIT"
+    return int(resolved_split), int(resolved_training), protocol
+
+
+def _split_identity(dataset_fingerprint: str | None, split) -> str:
+    payload = {
+        "dataset_fingerprint": dataset_fingerprint,
+        "train_source_rows": [int(value) for value in split.train_indices],
+        "validation_source_rows": [int(value) for value in split.validation_indices],
+        "test_source_rows": [int(value) for value in split.test_indices],
+    }
+    return hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+
+
+def _provenance(contract, split, *, split_seed: int, validation_fraction: float, test_fraction: float) -> SplitProvenance:
+    return SplitProvenance(
+        seed=split_seed,
+        split_seed=split_seed,
+        split_identity=_split_identity(contract.dataset_fingerprint, split),
+        validation_fraction=validation_fraction,
+        test_fraction=test_fraction,
+        train_count=int(split.train_features.shape[0]),
+        validation_count=int(split.validation_features.shape[0]),
+        test_count=int(split.test_features.shape[0]),
+    )
+
+
 def _runs_root(project_root: Path) -> Path:
     root = Path(project_root).resolve() / "runs"
     root.mkdir(parents=True, exist_ok=True)
@@ -374,7 +413,9 @@ def train_linear_baseline(
     project_root: Path,
     *,
     kind: str,
-    seed: int = 42,
+    seed: int | None = None,
+    split_seed: int | None = None,
+    training_seed: int | None = None,
     validation_fraction: float = 0.2,
     test_fraction: float = 0.2,
 ) -> TrainingRun:
@@ -391,11 +432,14 @@ def train_linear_baseline(
     feature_columns = list(contract.feature_columns)
     if not feature_columns or any(not pd.api.types.is_numeric_dtype(frame[column].dropna()) for column in feature_columns):
         raise TrainingError("Linear baselines require one or more numeric DatasetContract feature columns.")
-    _seed_everything(seed)
+    resolved_split_seed, resolved_training_seed, randomness_protocol = _resolve_randomness(
+        seed=seed, split_seed=split_seed, training_seed=training_seed,
+    )
+    _seed_everything(resolved_training_seed)
     split = TabularDataset.from_dataframe(frame).split(DatasetConfig(
         target_column=contract.target, feature_columns=tuple(feature_columns),
         validation_fraction=validation_fraction, test_fraction=test_fraction,
-        normalization=NormalizationMode.STANDARD, fill_missing="median", random_state=seed,
+        normalization=NormalizationMode.STANDARD, fill_missing="median", random_state=resolved_split_seed,
     ))
     if split.validation_features.shape[0] == 0:
         raise TrainingError("The resolved validation split is empty.")
@@ -403,7 +447,7 @@ def train_linear_baseline(
         train_targets = np.asarray(split.train_targets, dtype=float).reshape(-1)
         if set(np.unique(train_targets)) - {0.0, 1.0}:
             raise TrainingError("Logistic regression requires binary target values encoded as 0 and 1.")
-        estimator = LogisticRegression(random_state=seed, max_iter=1000)
+        estimator = LogisticRegression(random_state=resolved_training_seed, max_iter=1000)
         estimator.fit(split.train_features, train_targets.astype(int))
         raw_validation = estimator.decision_function(split.validation_features)
         coefficients = np.asarray(estimator.coef_).reshape(-1)
@@ -420,7 +464,8 @@ def train_linear_baseline(
         "format": "ruflex.declarative-linear-baseline/v1", "model_kind": kind,
         "task": contract.task, "target": contract.target, "feature_columns": feature_columns,
         "coefficients": [float(value) for value in coefficients], "intercept": intercept,
-        "normalization": _normalization_dict(split.normalization), "split_seed": seed,
+        "normalization": _normalization_dict(split.normalization), "split_seed": resolved_split_seed,
+        "training_seed": resolved_training_seed,
     }
     model_ref = ArtifactStore(project_root).ingest_bytes(
         json.dumps(artifact_payload, sort_keys=True, separators=(",", ":")).encode("utf-8"),
@@ -430,8 +475,9 @@ def train_linear_baseline(
     summary = {"source": kind, "epochs_ran": 1, "best_epoch": 1, "monitor_name": "validation_loss", "best_monitor_value": loss, "train_loss": loss, "train_metrics": {}, "validation_loss": loss, "validation_metrics": metrics, "history": []}
     run = TrainingRun(
         model_kind=kind, task=contract.task, target=contract.target, dataset_fingerprint=contract.dataset_fingerprint, dataset_artifact_sha256=contract.source_artifact_sha256, feature_columns=feature_columns,
-        seed=seed, max_epochs=1, learning_rate=0.0, batch_size=int(split.train_features.shape[0]), patience=None,
-        split=SplitProvenance(seed=seed, validation_fraction=validation_fraction, test_fraction=test_fraction, train_count=int(split.train_features.shape[0]), validation_count=int(split.validation_features.shape[0]), test_count=int(split.test_features.shape[0])),
+        seed=resolved_training_seed, split_seed=resolved_split_seed, training_seed=resolved_training_seed, randomness_protocol=randomness_protocol,
+        max_epochs=1, learning_rate=0.0, batch_size=int(split.train_features.shape[0]), patience=None,
+        split=_provenance(contract, split, split_seed=resolved_split_seed, validation_fraction=validation_fraction, test_fraction=test_fraction),
         model_spec={"model_kind": kind, "coefficients": artifact_payload["coefficients"], "intercept": intercept}, normalization=_normalization_dict(split.normalization), training_summary=summary,
         trajectory=[EpochPoint(epoch=0, train_loss=loss, validation_loss=loss, train_metrics={}, validation_metrics=metrics), EpochPoint(epoch=1, train_loss=loss, validation_loss=loss, train_metrics={}, validation_metrics=metrics)],
         validation_metrics=metrics, prediction_preview=preview, confusion_matrix=confusion, calibration=calibration, model_artifact_sha256=model_ref.sha256,
@@ -440,7 +486,7 @@ def train_linear_baseline(
     return run
 
 
-def _tree_payload(estimator, *, kind: str, task: str, target: str, feature_columns: list[str], normalization: dict, seed: int) -> dict:
+def _tree_payload(estimator, *, kind: str, task: str, target: str, feature_columns: list[str], normalization: dict, split_seed: int, training_seed: int) -> dict:
     tree = estimator.tree_
     return {
         "format": "ruflex.declarative-decision-tree/v1", "model_kind": kind,
@@ -454,12 +500,12 @@ def _tree_payload(estimator, *, kind: str, task: str, target: str, feature_colum
             "impurity": [float(value) for value in tree.impurity], "samples": [int(value) for value in tree.n_node_samples],
             "values": np.asarray(tree.value, dtype=float).reshape(tree.node_count, -1).tolist(),
         },
-        "normalization": normalization, "split_seed": seed,
+        "normalization": normalization, "split_seed": split_seed, "training_seed": training_seed,
     }
 
 
 def train_decision_tree(
-    project_root: Path, *, seed: int = 42, validation_fraction: float = 0.2,
+    project_root: Path, *, seed: int | None = None, split_seed: int | None = None, training_seed: int | None = None, validation_fraction: float = 0.2,
     test_fraction: float = 0.2, max_depth: int | None = None,
 ) -> TrainingRun:
     """Train and persist an executable tree as inspectable JSON, never pickle."""
@@ -468,10 +514,11 @@ def train_decision_tree(
     feature_columns = list(contract.feature_columns)
     if not feature_columns or any(not pd.api.types.is_numeric_dtype(frame[column].dropna()) for column in feature_columns):
         raise TrainingError("Decision Tree requires numeric DatasetContract feature columns.")
-    _seed_everything(seed)
+    resolved_split_seed, resolved_training_seed, randomness_protocol = _resolve_randomness(seed=seed, split_seed=split_seed, training_seed=training_seed)
+    _seed_everything(resolved_training_seed)
     split = TabularDataset.from_dataframe(frame).split(DatasetConfig(
         target_column=contract.target, feature_columns=tuple(feature_columns), validation_fraction=validation_fraction,
-        test_fraction=test_fraction, normalization=NormalizationMode.STANDARD, fill_missing="median", random_state=seed,
+        test_fraction=test_fraction, normalization=NormalizationMode.STANDARD, fill_missing="median", random_state=resolved_split_seed,
     ))
     if split.validation_features.shape[0] == 0:
         raise TrainingError("The resolved validation split is empty.")
@@ -479,29 +526,29 @@ def train_decision_tree(
         target_values = np.asarray(split.train_targets, dtype=float).reshape(-1)
         if set(np.unique(target_values)) - {0.0, 1.0}:
             raise TrainingError("DecisionTreeClassifier currently requires binary target values encoded as 0 and 1.")
-        estimator = DecisionTreeClassifier(random_state=seed, max_depth=max_depth)
+        estimator = DecisionTreeClassifier(random_state=resolved_training_seed, max_depth=max_depth)
         estimator.fit(split.train_features, target_values.astype(int))
         probabilities = estimator.predict_proba(split.validation_features)[:, 1]
         raw_validation = np.log(np.clip(probabilities, 1e-12, 1 - 1e-12) / np.clip(1 - probabilities, 1e-12, 1))
     elif contract.task == TaskType.REGRESSION.value:
-        estimator = DecisionTreeRegressor(random_state=seed, max_depth=max_depth)
+        estimator = DecisionTreeRegressor(random_state=resolved_training_seed, max_depth=max_depth)
         estimator.fit(split.train_features, np.asarray(split.train_targets, dtype=float).reshape(-1))
         raw_validation = estimator.predict(split.validation_features)
     else:
         raise TrainingError(f"Unsupported task {contract.task!r} for Decision Tree.")
     preview, confusion, calibration = _validation_payload(contract.task, split.validation_targets, raw_validation, source_rows=split.validation_indices)
     metrics = _baseline_metrics(contract.task, split.validation_targets, raw_validation)
-    payload = _tree_payload(estimator, kind="decision_tree", task=contract.task, target=contract.target, feature_columns=feature_columns, normalization=_normalization_dict(split.normalization), seed=seed)
+    payload = _tree_payload(estimator, kind="decision_tree", task=contract.task, target=contract.target, feature_columns=feature_columns, normalization=_normalization_dict(split.normalization), split_seed=resolved_split_seed, training_seed=resolved_training_seed)
     ref = ArtifactStore(project_root).ingest_bytes(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8"), metadata=ArtifactMetadata(media_type="application/vnd.ruflex.declarative-decision-tree+json", source_kind="generated", original_name="decision-tree.json", parent_artifacts=[contract.source_artifact_sha256], producer={"component": "ruflex.application.training", "version": "1"}))
     loss = metrics["mse"] if contract.task == TaskType.REGRESSION.value else 1 - metrics["accuracy"]
     summary = {"source": "decision_tree", "epochs_ran": 1, "best_epoch": 1, "monitor_name": "validation_loss", "best_monitor_value": loss, "train_loss": loss, "train_metrics": {}, "validation_loss": loss, "validation_metrics": metrics, "history": []}
-    run = TrainingRun(model_kind="decision_tree", task=contract.task, target=contract.target, dataset_fingerprint=contract.dataset_fingerprint, dataset_artifact_sha256=contract.source_artifact_sha256, feature_columns=feature_columns, seed=seed, max_epochs=1, learning_rate=0.0, batch_size=int(split.train_features.shape[0]), patience=None, split=SplitProvenance(seed=seed, validation_fraction=validation_fraction, test_fraction=test_fraction, train_count=int(split.train_features.shape[0]), validation_count=int(split.validation_features.shape[0]), test_count=int(split.test_features.shape[0])), model_spec={"model_kind": "decision_tree", "node_count": payload["tree"]["node_count"], "max_depth": payload["tree"]["max_depth"], "leaf_count": sum(1 for value in payload["tree"]["children_left"] if value == -1)}, normalization=_normalization_dict(split.normalization), training_summary=summary, trajectory=[EpochPoint(epoch=0, train_loss=loss, validation_loss=loss, train_metrics={}, validation_metrics=metrics), EpochPoint(epoch=1, train_loss=loss, validation_loss=loss, train_metrics={}, validation_metrics=metrics)], validation_metrics=metrics, prediction_preview=preview, confusion_matrix=confusion, calibration=calibration, model_artifact_sha256=ref.sha256)
+    run = TrainingRun(model_kind="decision_tree", task=contract.task, target=contract.target, dataset_fingerprint=contract.dataset_fingerprint, dataset_artifact_sha256=contract.source_artifact_sha256, feature_columns=feature_columns, seed=resolved_training_seed, split_seed=resolved_split_seed, training_seed=resolved_training_seed, randomness_protocol=randomness_protocol, max_epochs=1, learning_rate=0.0, batch_size=int(split.train_features.shape[0]), patience=None, split=_provenance(contract, split, split_seed=resolved_split_seed, validation_fraction=validation_fraction, test_fraction=test_fraction), model_spec={"model_kind": "decision_tree", "node_count": payload["tree"]["node_count"], "max_depth": payload["tree"]["max_depth"], "leaf_count": sum(1 for value in payload["tree"]["children_left"] if value == -1)}, normalization=_normalization_dict(split.normalization), training_summary=summary, trajectory=[EpochPoint(epoch=0, train_loss=loss, validation_loss=loss, train_metrics={}, validation_metrics=metrics), EpochPoint(epoch=1, train_loss=loss, validation_loss=loss, train_metrics={}, validation_metrics=metrics)], validation_metrics=metrics, prediction_preview=preview, confusion_matrix=confusion, calibration=calibration, model_artifact_sha256=ref.sha256)
     persist_training_run(project_root, run)
     return run
 
 
 def train_random_forest(
-    project_root: Path, *, seed: int = 42, validation_fraction: float = 0.2,
+    project_root: Path, *, seed: int | None = None, split_seed: int | None = None, training_seed: int | None = None, validation_fraction: float = 0.2,
     test_fraction: float = 0.2, n_estimators: int = 25, max_depth: int | None = None,
 ) -> TrainingRun:
     """Train a real forest while retaining every constituent tree declaratively."""
@@ -509,53 +556,55 @@ def train_random_forest(
     columns = list(contract.feature_columns)
     if not columns or any(not pd.api.types.is_numeric_dtype(frame[column].dropna()) for column in columns):
         raise TrainingError("Random Forest requires numeric DatasetContract feature columns.")
-    _seed_everything(seed)
-    split = TabularDataset.from_dataframe(frame).split(DatasetConfig(target_column=contract.target, feature_columns=tuple(columns), validation_fraction=validation_fraction, test_fraction=test_fraction, normalization=NormalizationMode.STANDARD, fill_missing="median", random_state=seed))
+    resolved_split_seed, resolved_training_seed, randomness_protocol = _resolve_randomness(seed=seed, split_seed=split_seed, training_seed=training_seed)
+    _seed_everything(resolved_training_seed)
+    split = TabularDataset.from_dataframe(frame).split(DatasetConfig(target_column=contract.target, feature_columns=tuple(columns), validation_fraction=validation_fraction, test_fraction=test_fraction, normalization=NormalizationMode.STANDARD, fill_missing="median", random_state=resolved_split_seed))
     if contract.task == TaskType.BINARY_CLASSIFICATION.value:
-        estimator = RandomForestClassifier(n_estimators=n_estimators, random_state=seed, max_depth=max_depth)
+        estimator = RandomForestClassifier(n_estimators=n_estimators, random_state=resolved_training_seed, max_depth=max_depth)
         estimator.fit(split.train_features, np.asarray(split.train_targets).reshape(-1).astype(int))
         probabilities = estimator.predict_proba(split.validation_features)[:, 1]
         raw = np.log(np.clip(probabilities, 1e-12, 1 - 1e-12) / np.clip(1 - probabilities, 1e-12, 1))
     elif contract.task == TaskType.REGRESSION.value:
-        estimator = RandomForestRegressor(n_estimators=n_estimators, random_state=seed, max_depth=max_depth)
+        estimator = RandomForestRegressor(n_estimators=n_estimators, random_state=resolved_training_seed, max_depth=max_depth)
         estimator.fit(split.train_features, np.asarray(split.train_targets).reshape(-1))
         raw = estimator.predict(split.validation_features)
     else:
         raise TrainingError(f"Unsupported task {contract.task!r} for Random Forest.")
     preview, confusion, calibration = _validation_payload(contract.task, split.validation_targets, raw, source_rows=split.validation_indices); metrics = _baseline_metrics(contract.task, split.validation_targets, raw)
     normalization = _normalization_dict(split.normalization)
-    trees = [_tree_payload(tree, kind="decision_tree", task=contract.task, target=contract.target, feature_columns=columns, normalization=normalization, seed=seed)["tree"] for tree in estimator.estimators_]
-    payload = {"format": "ruflex.declarative-random-forest/v1", "model_kind": "random_forest", "task": contract.task, "target": contract.target, "feature_columns": columns, "parameters": {"n_estimators": n_estimators, "max_depth": max_depth, "random_state": seed}, "normalization": normalization, "trees": trees, "ensemble_semantics": "aggregate constituent tree predictions; no single tree path is the exact explanation of the ensemble"}
+    trees = [_tree_payload(tree, kind="decision_tree", task=contract.task, target=contract.target, feature_columns=columns, normalization=normalization, split_seed=resolved_split_seed, training_seed=resolved_training_seed)["tree"] for tree in estimator.estimators_]
+    payload = {"format": "ruflex.declarative-random-forest/v1", "model_kind": "random_forest", "task": contract.task, "target": contract.target, "feature_columns": columns, "parameters": {"n_estimators": n_estimators, "max_depth": max_depth, "random_state": resolved_training_seed}, "split_seed": resolved_split_seed, "training_seed": resolved_training_seed, "normalization": normalization, "trees": trees, "ensemble_semantics": "aggregate constituent tree predictions; no single tree path is the exact explanation of the ensemble"}
     ref = ArtifactStore(project_root).ingest_bytes(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode(), metadata=ArtifactMetadata(media_type="application/vnd.ruflex.declarative-random-forest+json", source_kind="generated", original_name="random-forest.json", parent_artifacts=[contract.source_artifact_sha256], producer={"component": "ruflex.application.training", "version": "1"}))
     loss = metrics["mse"] if contract.task == TaskType.REGRESSION.value else 1 - metrics["accuracy"]
-    run = TrainingRun(model_kind="random_forest", task=contract.task, target=contract.target, dataset_fingerprint=contract.dataset_fingerprint, dataset_artifact_sha256=contract.source_artifact_sha256, feature_columns=columns, seed=seed, max_epochs=1, learning_rate=0., batch_size=int(split.train_features.shape[0]), patience=None, split=SplitProvenance(seed=seed, validation_fraction=validation_fraction, test_fraction=test_fraction, train_count=int(split.train_features.shape[0]), validation_count=int(split.validation_features.shape[0]), test_count=int(split.test_features.shape[0])), model_spec={"model_kind": "random_forest", "tree_count": n_estimators, "node_count": sum(tree["node_count"] for tree in trees), "max_depth": max(tree["max_depth"] for tree in trees), "leaf_count": sum(sum(1 for node in tree["children_left"] if node == -1) for tree in trees)}, normalization=normalization, training_summary={"source": "random_forest", "epochs_ran": 1, "best_epoch": 1, "monitor_name": "validation_loss", "best_monitor_value": loss, "train_loss": loss, "train_metrics": {}, "validation_loss": loss, "validation_metrics": metrics, "history": []}, trajectory=[EpochPoint(epoch=0, train_loss=loss, validation_loss=loss, train_metrics={}, validation_metrics=metrics), EpochPoint(epoch=1, train_loss=loss, validation_loss=loss, train_metrics={}, validation_metrics=metrics)], validation_metrics=metrics, prediction_preview=preview, confusion_matrix=confusion, calibration=calibration, model_artifact_sha256=ref.sha256)
+    run = TrainingRun(model_kind="random_forest", task=contract.task, target=contract.target, dataset_fingerprint=contract.dataset_fingerprint, dataset_artifact_sha256=contract.source_artifact_sha256, feature_columns=columns, seed=resolved_training_seed, split_seed=resolved_split_seed, training_seed=resolved_training_seed, randomness_protocol=randomness_protocol, max_epochs=1, learning_rate=0., batch_size=int(split.train_features.shape[0]), patience=None, split=_provenance(contract, split, split_seed=resolved_split_seed, validation_fraction=validation_fraction, test_fraction=test_fraction), model_spec={"model_kind": "random_forest", "tree_count": n_estimators, "node_count": sum(tree["node_count"] for tree in trees), "max_depth": max(tree["max_depth"] for tree in trees), "leaf_count": sum(sum(1 for node in tree["children_left"] if node == -1) for tree in trees)}, normalization=normalization, training_summary={"source": "random_forest", "epochs_ran": 1, "best_epoch": 1, "monitor_name": "validation_loss", "best_monitor_value": loss, "train_loss": loss, "train_metrics": {}, "validation_loss": loss, "validation_metrics": metrics, "history": []}, trajectory=[EpochPoint(epoch=0, train_loss=loss, validation_loss=loss, train_metrics={}, validation_metrics=metrics), EpochPoint(epoch=1, train_loss=loss, validation_loss=loss, train_metrics={}, validation_metrics=metrics)], validation_metrics=metrics, prediction_preview=preview, confusion_matrix=confusion, calibration=calibration, model_artifact_sha256=ref.sha256)
     persist_training_run(project_root, run); return run
 
 
-def train_gradient_boosting(project_root: Path, *, seed: int = 42, validation_fraction: float = .2, test_fraction: float = .2, n_estimators: int = 50, learning_rate: float = .1, max_depth: int = 3) -> TrainingRun:
+def train_gradient_boosting(project_root: Path, *, seed: int | None = None, split_seed: int | None = None, training_seed: int | None = None, validation_fraction: float = .2, test_fraction: float = .2, n_estimators: int = 50, learning_rate: float = .1, max_depth: int = 3) -> TrainingRun:
     """Train gradient boosting and retain its fitted regression trees declaratively."""
     contract = load_dataset_contract(project_root); frame = load_dataset_frame(project_root); columns = list(contract.feature_columns)
     if not columns or any(not pd.api.types.is_numeric_dtype(frame[column].dropna()) for column in columns): raise TrainingError("Gradient Boosting requires numeric DatasetContract feature columns.")
-    _seed_everything(seed)
-    split = TabularDataset.from_dataframe(frame).split(DatasetConfig(target_column=contract.target, feature_columns=tuple(columns), validation_fraction=validation_fraction, test_fraction=test_fraction, normalization=NormalizationMode.STANDARD, fill_missing="median", random_state=seed))
+    resolved_split_seed, resolved_training_seed, randomness_protocol = _resolve_randomness(seed=seed, split_seed=split_seed, training_seed=training_seed)
+    _seed_everything(resolved_training_seed)
+    split = TabularDataset.from_dataframe(frame).split(DatasetConfig(target_column=contract.target, feature_columns=tuple(columns), validation_fraction=validation_fraction, test_fraction=test_fraction, normalization=NormalizationMode.STANDARD, fill_missing="median", random_state=resolved_split_seed))
     if contract.task == TaskType.BINARY_CLASSIFICATION.value:
-        estimator = GradientBoostingClassifier(n_estimators=n_estimators, learning_rate=learning_rate, max_depth=max_depth, random_state=seed)
+        estimator = GradientBoostingClassifier(n_estimators=n_estimators, learning_rate=learning_rate, max_depth=max_depth, random_state=resolved_training_seed)
         estimator.fit(split.train_features, np.asarray(split.train_targets).reshape(-1).astype(int)); probabilities = estimator.predict_proba(split.validation_features)[:, 1]; raw = estimator.decision_function(split.validation_features)
     elif contract.task == TaskType.REGRESSION.value:
-        estimator = GradientBoostingRegressor(n_estimators=n_estimators, learning_rate=learning_rate, max_depth=max_depth, random_state=seed)
+        estimator = GradientBoostingRegressor(n_estimators=n_estimators, learning_rate=learning_rate, max_depth=max_depth, random_state=resolved_training_seed)
         estimator.fit(split.train_features, np.asarray(split.train_targets).reshape(-1)); raw = estimator.predict(split.validation_features)
     else: raise TrainingError(f"Unsupported task {contract.task!r} for Gradient Boosting.")
     preview, confusion, calibration = _validation_payload(contract.task, split.validation_targets, raw, source_rows=split.validation_indices); metrics = _baseline_metrics(contract.task, split.validation_targets, raw); normalization = _normalization_dict(split.normalization)
     tree_estimators = np.asarray(estimator.estimators_, dtype=object).reshape(-1).tolist()
-    trees = [_tree_payload(tree, kind="decision_tree", task=contract.task, target=contract.target, feature_columns=columns, normalization=normalization, seed=seed)["tree"] for tree in tree_estimators]
+    trees = [_tree_payload(tree, kind="decision_tree", task=contract.task, target=contract.target, feature_columns=columns, normalization=normalization, split_seed=resolved_split_seed, training_seed=resolved_training_seed)["tree"] for tree in tree_estimators]
     # Persist the fitted base score as part of the declarative ensemble semantics.
     # Without it a Gradient Boosting artifact cannot be replayed exactly enough for
     # local evidence after the original sklearn estimator has gone out of memory.
     initial_raw_prediction = float(np.asarray(estimator._raw_predict_init(split.train_features[:1]), dtype=float).reshape(-1)[0])
-    payload = {"format": "ruflex.declarative-gradient-boosting/v1", "model_kind": "gradient_boosting", "task": contract.task, "target": contract.target, "feature_columns": columns, "parameters": {"n_estimators": n_estimators, "learning_rate": learning_rate, "max_depth": max_depth, "random_state": seed}, "normalization": normalization, "initial_raw_prediction": initial_raw_prediction, "trees": trees, "ensemble_semantics": "stagewise weighted aggregation; no single constituent path is the exact explanation of the ensemble"}
+    payload = {"format": "ruflex.declarative-gradient-boosting/v1", "model_kind": "gradient_boosting", "task": contract.task, "target": contract.target, "feature_columns": columns, "parameters": {"n_estimators": n_estimators, "learning_rate": learning_rate, "max_depth": max_depth, "random_state": resolved_training_seed}, "split_seed": resolved_split_seed, "training_seed": resolved_training_seed, "normalization": normalization, "initial_raw_prediction": initial_raw_prediction, "trees": trees, "ensemble_semantics": "stagewise weighted aggregation; no single constituent path is the exact explanation of the ensemble"}
     ref = ArtifactStore(project_root).ingest_bytes(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode(), metadata=ArtifactMetadata(media_type="application/vnd.ruflex.declarative-gradient-boosting+json", source_kind="generated", original_name="gradient-boosting.json", parent_artifacts=[contract.source_artifact_sha256], producer={"component": "ruflex.application.training", "version": "1"}))
     loss = metrics["mse"] if contract.task == TaskType.REGRESSION.value else 1-metrics["accuracy"]
-    run = TrainingRun(model_kind="gradient_boosting", task=contract.task, target=contract.target, dataset_fingerprint=contract.dataset_fingerprint, dataset_artifact_sha256=contract.source_artifact_sha256, feature_columns=columns, seed=seed, max_epochs=n_estimators, learning_rate=learning_rate, batch_size=int(split.train_features.shape[0]), patience=None, split=SplitProvenance(seed=seed, validation_fraction=validation_fraction, test_fraction=test_fraction, train_count=int(split.train_features.shape[0]), validation_count=int(split.validation_features.shape[0]), test_count=int(split.test_features.shape[0])), model_spec={"model_kind":"gradient_boosting","tree_count":len(trees),"node_count":sum(tree["node_count"] for tree in trees),"max_depth":max(tree["max_depth"] for tree in trees),"leaf_count":sum(sum(1 for node in tree["children_left"] if node==-1) for tree in trees)}, normalization=normalization, training_summary={"source":"gradient_boosting","epochs_ran":n_estimators,"best_epoch":n_estimators,"monitor_name":"validation_loss","best_monitor_value":loss,"train_loss":loss,"train_metrics":{},"validation_loss":loss,"validation_metrics":metrics,"history":[]}, trajectory=[EpochPoint(epoch=0, train_loss=loss, validation_loss=loss, train_metrics={}, validation_metrics=metrics),EpochPoint(epoch=n_estimators, train_loss=loss, validation_loss=loss, train_metrics={}, validation_metrics=metrics)], validation_metrics=metrics,prediction_preview=preview,confusion_matrix=confusion,calibration=calibration,model_artifact_sha256=ref.sha256)
+    run = TrainingRun(model_kind="gradient_boosting", task=contract.task, target=contract.target, dataset_fingerprint=contract.dataset_fingerprint, dataset_artifact_sha256=contract.source_artifact_sha256, feature_columns=columns, seed=resolved_training_seed, split_seed=resolved_split_seed, training_seed=resolved_training_seed, randomness_protocol=randomness_protocol, max_epochs=n_estimators, learning_rate=learning_rate, batch_size=int(split.train_features.shape[0]), patience=None, split=_provenance(contract, split, split_seed=resolved_split_seed, validation_fraction=validation_fraction, test_fraction=test_fraction), model_spec={"model_kind":"gradient_boosting","tree_count":len(trees),"node_count":sum(tree["node_count"] for tree in trees),"max_depth":max(tree["max_depth"] for tree in trees),"leaf_count":sum(sum(1 for node in tree["children_left"] if node==-1) for tree in trees)}, normalization=normalization, training_summary={"source":"gradient_boosting","epochs_ran":n_estimators,"best_epoch":n_estimators,"monitor_name":"validation_loss","best_monitor_value":loss,"train_loss":loss,"train_metrics":{},"validation_loss":loss,"validation_metrics":metrics,"history":[]}, trajectory=[EpochPoint(epoch=0, train_loss=loss, validation_loss=loss, train_metrics={}, validation_metrics=metrics),EpochPoint(epoch=n_estimators, train_loss=loss, validation_loss=loss, train_metrics={}, validation_metrics=metrics)], validation_metrics=metrics,prediction_preview=preview,confusion_matrix=confusion,calibration=calibration,model_artifact_sha256=ref.sha256)
     persist_training_run(project_root, run); return run
 
 
@@ -610,7 +659,9 @@ def _normalization_dict(normalization: NormalizationArtifact) -> dict:
 def train_flat_neuro_fuzzy(
     project_root: Path,
     *,
-    seed: int = 42,
+    seed: int | None = None,
+    split_seed: int | None = None,
+    training_seed: int | None = None,
     max_epochs: int = 20,
     learning_rate: float = 1e-2,
     batch_size: int = 32,
@@ -650,7 +701,8 @@ def train_flat_neuro_fuzzy(
         if len(classes) != 2 or not set(classes).issubset({0.0, 1.0}):
             raise TrainingError("Binary classification currently requires target values encoded as 0 and 1.")
 
-    _seed_everything(seed)
+    resolved_split_seed, resolved_training_seed, randomness_protocol = _resolve_randomness(seed=seed, split_seed=split_seed, training_seed=training_seed)
+    _seed_everything(resolved_training_seed)
     dataset = TabularDataset.from_dataframe(frame)
     split = dataset.split(
         DatasetConfig(
@@ -660,7 +712,7 @@ def train_flat_neuro_fuzzy(
             test_fraction=test_fraction,
             normalization=NormalizationMode.STANDARD,
             fill_missing="median",
-            random_state=seed,
+            random_state=resolved_split_seed,
         )
     )
     if split.validation_features.shape[0] == 0:
@@ -702,7 +754,9 @@ def train_flat_neuro_fuzzy(
                 "task": contract.task,
                 "target": contract.target,
                 "feature_columns": feature_columns,
-                "seed": seed,
+                "seed": resolved_training_seed,
+                "split_seed": resolved_split_seed,
+                "training_seed": resolved_training_seed,
             },
         )
         model_ref = ArtifactStore(project_root).ingest_file(
@@ -724,19 +778,15 @@ def train_flat_neuro_fuzzy(
         dataset_fingerprint=contract.dataset_fingerprint,
         dataset_artifact_sha256=contract.source_artifact_sha256,
         feature_columns=feature_columns,
-        seed=seed,
+        seed=resolved_training_seed,
+        split_seed=resolved_split_seed,
+        training_seed=resolved_training_seed,
+        randomness_protocol=randomness_protocol,
         max_epochs=max_epochs,
         learning_rate=learning_rate,
         batch_size=batch_size,
         patience=patience,
-        split=SplitProvenance(
-            seed=seed,
-            validation_fraction=validation_fraction,
-            test_fraction=test_fraction,
-            train_count=int(split.train_features.shape[0]),
-            validation_count=int(split.validation_features.shape[0]),
-            test_count=int(split.test_features.shape[0]),
-        ),
+        split=_provenance(contract, split, split_seed=resolved_split_seed, validation_fraction=validation_fraction, test_fraction=test_fraction),
         model_spec=spec.to_dict(),
         normalization=_normalization_dict(split.normalization),
         training_summary=summary.to_dict(),
@@ -797,34 +847,37 @@ def train_model(project_root: Path, *, model_kind: str, **config) -> TrainingRun
     constraints as a single Studio training run.
     """
     started = time.perf_counter()
+    config = dict(config)
+    # Preserve old API callers while allowing the explicit provenance contract.
+    config.setdefault("seed", None)
     if model_kind == "flat_neuro_fuzzy":
         run = train_flat_neuro_fuzzy(project_root, **config)
     elif model_kind in {"logistic_regression", "linear_regression"}:
         run = train_linear_baseline(
             project_root,
             kind=model_kind,
-            seed=config["seed"],
+            seed=config.get("seed"), split_seed=config.get("split_seed"), training_seed=config.get("training_seed"),
             validation_fraction=config["validation_fraction"],
             test_fraction=config["test_fraction"],
         )
     elif model_kind == "decision_tree":
         run = train_decision_tree(
             project_root,
-            seed=config["seed"],
+            seed=config.get("seed"), split_seed=config.get("split_seed"), training_seed=config.get("training_seed"),
             validation_fraction=config["validation_fraction"],
             test_fraction=config["test_fraction"],
         )
     elif model_kind == "random_forest":
         run = train_random_forest(
             project_root,
-            seed=config["seed"],
+            seed=config.get("seed"), split_seed=config.get("split_seed"), training_seed=config.get("training_seed"),
             validation_fraction=config["validation_fraction"],
             test_fraction=config["test_fraction"],
         )
     elif model_kind == "gradient_boosting":
         run = train_gradient_boosting(
             project_root,
-            seed=config["seed"],
+            seed=config.get("seed"), split_seed=config.get("split_seed"), training_seed=config.get("training_seed"),
             validation_fraction=config["validation_fraction"],
             test_fraction=config["test_fraction"],
             learning_rate=config["learning_rate"],
@@ -840,11 +893,27 @@ def verify_training_model_artifact(project_root: Path, run: TrainingRun) -> bool
     return ArtifactStore(project_root).verify(ArtifactRef(sha256=run.model_artifact_sha256)).valid
 
 
-def run_multi_seed_study(project_root: Path, *, name: str, model_kind: str = "flat_neuro_fuzzy", seeds: list[int], selection_metric: str = "f1", **config) -> TrainingStudy:
-    unique_seeds = list(dict.fromkeys(seeds))
-    if len(unique_seeds) < 3:
+def _study_seed_pairs(*, seeds: list[int], randomness_protocol: str, split_seed: int | None, training_seed: int | None) -> list[tuple[int, int]]:
+    unique = list(dict.fromkeys(seeds))
+    if len(unique) < 3:
         raise TrainingError("A multi-seed study requires at least three distinct seeds.")
-    runs = [train_model(project_root, model_kind=model_kind, seed=seed, **config) for seed in unique_seeds]
+    if randomness_protocol == "TRAINING_VARIABILITY":
+        return [(int(split_seed if split_seed is not None else 42), seed) for seed in unique]
+    if randomness_protocol == "SPLIT_VARIABILITY":
+        return [(seed, int(training_seed if training_seed is not None else 42)) for seed in unique]
+    if randomness_protocol == "COMBINED_VARIABILITY":
+        return [(seed, seed) for seed in unique]
+    if randomness_protocol == "LEGACY_COMBINED":
+        return [(seed, seed) for seed in unique]
+    raise TrainingError(f"Unsupported randomness protocol {randomness_protocol!r}.")
+
+
+def run_multi_seed_study(project_root: Path, *, name: str, model_kind: str = "flat_neuro_fuzzy", seeds: list[int], selection_metric: str = "f1", randomness_protocol: str = "LEGACY_COMBINED", split_seed: int | None = None, training_seed: int | None = None, **config) -> TrainingStudy:
+    pairs = _study_seed_pairs(seeds=seeds, randomness_protocol=randomness_protocol, split_seed=split_seed, training_seed=training_seed)
+    runs = [train_model(project_root, model_kind=model_kind, split_seed=current_split, training_seed=current_training, **config) for current_split, current_training in pairs]
+    for run in runs:
+        run.randomness_protocol = randomness_protocol
+        persist_training_run(project_root, run)
     if selection_metric not in {"accuracy", "precision", "recall", "f1", "mse", "mae", "rmse", "r2"}:
         raise TrainingError(f"Unsupported selection metric {selection_metric!r}.")
     values = [(run, run.validation_metrics.get(selection_metric)) for run in runs]
@@ -853,7 +922,7 @@ def run_multi_seed_study(project_root: Path, *, name: str, model_kind: str = "fl
     rule = "min" if selection_metric in {"mse", "mae", "rmse"} else "max"
     selected, value = (min if rule == "min" else max)(values, key=lambda pair: float(pair[1]))
     assert value is not None
-    study = TrainingStudy(name=name, model_kind=model_kind, task=runs[0].task, selection_metric=selection_metric, selection_rule=rule, seed_runs=runs, selected_run_id=selected.run_id, selection_reason=f"Selected {model_kind} run by declared validation {selection_metric} ({rule}) = {float(value):.6g}; locked test was not used.")
+    study = TrainingStudy(name=name, model_kind=model_kind, task=runs[0].task, selection_metric=selection_metric, selection_rule=rule, seed_runs=runs, selected_run_id=selected.run_id, selection_reason=f"Selected {model_kind} run by declared validation {selection_metric} ({rule}) = {float(value):.6g}; locked test was not used.", randomness_protocol=randomness_protocol, split_seed=(pairs[0][0] if len({pair[0] for pair in pairs}) == 1 else None), training_seeds=[pair[1] for pair in pairs])
     _atomic_write_text(_studies_root(project_root) / f"{study.study_id}.json", study.model_dump_json(indent=2))
     _atomic_write_text(_studies_root(project_root) / "active-study.json", json.dumps({"study_id": str(study.study_id)}, indent=2))
     return study
@@ -897,7 +966,9 @@ def _execute_study_job(project_root: Path, job_id: UUID, config: dict) -> None:
         state.status = "RUNNING"
         _persist_study_job(project_root, job)
         try:
-            run = train_model(project_root, model_kind=job.model_kind, seed=state.seed, **config)
+            run = train_model(project_root, model_kind=job.model_kind, split_seed=state.split_seed, training_seed=state.training_seed, **config)
+            run.randomness_protocol = job.randomness_protocol
+            persist_training_run(project_root, run)
             state.status = "SUCCEEDED"
             state.run_id = run.run_id
             state.runtime_seconds = run.runtime_seconds
@@ -918,7 +989,7 @@ def _execute_study_job(project_root: Path, job_id: UUID, config: dict) -> None:
             rule = "min" if selection_metric in {"mse", "mae", "rmse"} else "max"
             selected, value = (min if rule == "min" else max)(values, key=lambda pair: float(pair[1]))
             assert value is not None
-            created = TrainingStudy(name=job.name, model_kind=job.model_kind, task=successful_runs[0].task, selection_metric=selection_metric, selection_rule=rule, seed_runs=successful_runs, selected_run_id=selected.run_id, selection_reason=f"Selected {job.model_kind} run by declared validation {selection_metric} ({rule}) = {float(value):.6g}; locked test was not used.")
+            created = TrainingStudy(name=job.name, model_kind=job.model_kind, task=successful_runs[0].task, selection_metric=selection_metric, selection_rule=rule, seed_runs=successful_runs, selected_run_id=selected.run_id, selection_reason=f"Selected {job.model_kind} run by declared validation {selection_metric} ({rule}) = {float(value):.6g}; locked test was not used.", randomness_protocol=job.randomness_protocol, split_seed=job.split_seed, training_seeds=[run.training_seed or run.seed for run in successful_runs])
             _atomic_write_text(_studies_root(project_root) / f"{created.study_id}.json", created.model_dump_json(indent=2))
             _atomic_write_text(_studies_root(project_root) / "active-study.json", json.dumps({"study_id": str(created.study_id)}, indent=2))
             job.study_id = created.study_id
@@ -930,11 +1001,9 @@ def _execute_study_job(project_root: Path, job_id: UUID, config: dict) -> None:
     _persist_study_job(project_root, job)
 
 
-def start_study_job(project_root: Path, *, name: str, model_kind: str, seeds: list[int], selection_metric: str, **config) -> StudyJob:
-    unique_seeds = list(dict.fromkeys(seeds))
-    if len(unique_seeds) < 3:
-        raise TrainingError("A multi-seed study requires at least three distinct seeds.")
-    job = StudyJob(name=name, model_kind=model_kind, selection_metric=selection_metric, seed_states=[StudySeedState(seed=seed) for seed in unique_seeds])
+def start_study_job(project_root: Path, *, name: str, model_kind: str, seeds: list[int], selection_metric: str, randomness_protocol: str = "LEGACY_COMBINED", split_seed: int | None = None, training_seed: int | None = None, **config) -> StudyJob:
+    pairs = _study_seed_pairs(seeds=seeds, randomness_protocol=randomness_protocol, split_seed=split_seed, training_seed=training_seed)
+    job = StudyJob(name=name, model_kind=model_kind, selection_metric=selection_metric, seed_states=[StudySeedState(seed=current_training, split_seed=current_split, training_seed=current_training) for current_split, current_training in pairs], randomness_protocol=randomness_protocol, split_seed=(pairs[0][0] if len({pair[0] for pair in pairs}) == 1 else None))
     _persist_study_job(project_root, job)
     Thread(target=_execute_study_job, args=(project_root, job.job_id, config), daemon=True).start()
     return job
@@ -1291,6 +1360,7 @@ def evaluate_final_test(
     calibration_id: UUID | None = None,
     threshold_id: UUID | None = None,
     selective_policy_id: UUID | None = None,
+    stability_gate_policy_id: UUID | None = None,
 ) -> FinalTestEvaluation:
     """Explicitly evaluate the frozen final-test split without any test-time fitting.
 
@@ -1313,6 +1383,7 @@ def evaluate_final_test(
     calibration: CalibrationTransform | None = None
     threshold: DecisionThresholdPolicy | None = None
     selective_policy = None
+    stability_gate_policy = None
     if calibration_id is not None:
         calibration = load_validation_calibration(project_root, calibration_id)
         if calibration.evaluation_id != evaluation.evaluation_id or calibration.run_id != run.run_id:
@@ -1338,6 +1409,11 @@ def evaluate_final_test(
             raise TrainingError("Final-test selective policy requires its exact bound DecisionThreshold policy.")
         if selective_policy.calibration_id != (None if calibration is None else calibration.calibration_id):
             raise TrainingError("Final-test selective policy requires its exact bound calibration policy.")
+    if stability_gate_policy_id is not None:
+        from ruflex.application.stability import load_stability_gate_policy
+        stability_gate_policy = load_stability_gate_policy(project_root, stability_gate_policy_id)
+        if stability_gate_policy.evaluation_id != evaluation.evaluation_id or stability_gate_policy.selected_run_id != run.run_id:
+            raise TrainingError("Stability Gate policy does not belong to this validation Evaluation/selected TrainingRun.")
 
     if run.task == TaskType.BINARY_CLASSIFICATION.value and threshold is None:
         raise TrainingError(
@@ -1370,6 +1446,7 @@ def evaluate_final_test(
             and prior.calibration_id == (None if calibration is None else calibration.calibration_id)
             and prior.threshold_id == (None if threshold is None else threshold.threshold_id)
             and prior.selective_policy_id == (None if selective_policy is None else selective_policy.policy_id)
+            and prior.stability_gate_policy_id == (None if stability_gate_policy is None else stability_gate_policy.policy_id)
         )
         if same_policy:
             return prior
@@ -1383,7 +1460,7 @@ def evaluate_final_test(
         test_fraction=run.split.test_fraction,
         normalization=NormalizationMode(run.normalization["mode"]),
         fill_missing="median",
-        random_state=run.seed,
+        random_state=run.split.split_seed if run.split.split_seed is not None else run.seed,
     ))
     if split.test_features.shape[0] == 0:
         raise TrainingError("The frozen TrainingRun has no final-test rows to evaluate.")
@@ -1403,7 +1480,7 @@ def evaluate_final_test(
     )
     policy_frozen_at = max(
         item.created_at
-        for item in [run, evaluation, calibration, threshold, selective_policy]
+        for item in [run, evaluation, calibration, threshold, selective_policy, stability_gate_policy]
         if item is not None
     )
     if prior_final_tests:
@@ -1514,6 +1591,7 @@ def evaluate_final_test(
             "calibration_id": None if calibration is None else str(calibration.calibration_id),
             "threshold_id": None if threshold is None else str(threshold.threshold_id),
             "selective_policy_id": None if selective_policy is None else str(selective_policy.policy_id),
+            "stability_gate_policy_id": None if stability_gate_policy is None else str(stability_gate_policy.policy_id),
         },
     )
     result = FinalTestEvaluation(
@@ -1530,6 +1608,7 @@ def evaluate_final_test(
         calibration_id=None if calibration is None else calibration.calibration_id,
         threshold_id=None if threshold is None else threshold.threshold_id,
         selective_policy_id=None if selective_policy is None else selective_policy.policy_id,
+        stability_gate_policy_id=None if stability_gate_policy is None else stability_gate_policy.policy_id,
         probability_source=probability_source,
         decision_threshold=decision_threshold,
         metrics=metrics,

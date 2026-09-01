@@ -13,7 +13,7 @@ from ruflex.domain.verification import VerificationBundle
 
 _EVIDENCE_DIRS = (
     "runs", "studies", "analyses/evaluations", "analyses/calibrations", "analyses/thresholds",
-    "analyses/selective-policies", "analyses/slices", "analyses/final-tests", "analyses/comparisons",
+    "analyses/selective-policies", "analyses/stability-analyses", "analyses/stability-policies", "analyses/slices", "analyses/final-tests", "analyses/comparisons",
     "objects/protocols/generalization", "evidence/explanations", "evidence/explanation-checks",
     "evidence/explanation-reproducibility", "evidence/behavior-specs", "evidence/exhaustive-lab",
     "evidence/tree-paths", "evidence/assurance", "evidence/condition-monitoring-demo", "analyses/expert-corrections",

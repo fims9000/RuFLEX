@@ -118,6 +118,21 @@ export type ExplanationReproducibilityAnalysis = {
   explanation_agreement: Record<string, number>; pairwise: Array<{ left_run_id: string; right_run_id: string; prediction_mean_absolute_difference: number; prediction_class_agreement: number | null; explanation_spearman: number | null; explanation_sign_agreement: number; top_k_overlap: number; case_count: number }>;
   per_feature_variability: Array<{ feature: string; mean_attribution: number; standard_deviation: number; sign_agreement: number }>; warnings: string[]; scientific_note: string;
 };
+export type StudyStabilityAnalysis = {
+  analysis_id: string; study_id: string; dataset_fingerprint: string | null; split_identity: string; model_kind: string;
+  task: "binary_classification"; run_ids: string[]; training_seeds: number[]; split_seed: number; evaluation_case_identity: string;
+  selected_run_id: string; case_count: number; metric_distributions: Record<string, { mean: number; std: number; minimum: number; maximum: number; median: number; iqr: number }>;
+  cases: Array<{ case_id: string; source_row: number | null; target: number; selected_run_probability: number; selected_run_class: number; mean_probability: number; std_probability: number; min_probability: number; max_probability: number; probability_range: number; predicted_class_agreement: number; positive_vote_fraction: number; vote_entropy: number; run_probabilities: Record<string, number>; run_labels: Record<string, number> }>;
+  high_confidence_threshold: number; unstable_agreement_threshold: number; high_confidence_instability_rate: number; high_confidence_case_count: number; high_confidence_unstable_case_count: number; scientific_note: string;
+};
+export type StabilityGatePolicy = {
+  policy_id: string; study_id: string; stability_analysis_id: string; selected_run_id: string; evaluation_id: string; calibration_id: string | null; source_split: "validation"; fit_sample_identity: string;
+  min_confidence: number; min_class_agreement: number; max_probability_std: number; test_status: "LOCKED_NOT_EVALUATED";
+  decisions: Array<{ case_id: string; disposition: "ACCEPT" | "REVIEW" | "BLOCK"; reasons: Array<"LOW_CONFIDENCE" | "RUN_DISAGREEMENT" | "HIGH_DISPERSION" | "OUT_OF_SCOPE">; selected_run_probability: number; confidence: number; class_agreement: number; probability_std: number }>;
+  risk_coverage: Array<{ policy: "NO_REVIEW" | "RANDOM_REVIEW" | "CONFIDENCE_ONLY" | "STABILITY_AWARE"; coverage: number; accepted_count: number; accepted_risk: number | null }>;
+  scientific_note: string;
+};
+export type StabilityGateApplication = { policy_id: string; selected_run_id: string; disposition: "ACCEPT" | "REVIEW" | "BLOCK"; reasons: Array<"LOW_CONFIDENCE" | "RUN_DISAGREEMENT" | "HIGH_DISPERSION" | "OUT_OF_SCOPE">; selected_run_probability: number; predicted_label: number; confidence: number; class_agreement: number; probability_std: number; run_probabilities: Record<string, number> };
 export type ExhaustiveLabResult = { result_id: string; kind: "decision_tree_structure" | "fis_discrete_grid"; exactness_label: "EXACT_FINITE_STRUCTURE" | "EXACT_ON_DECLARED_DISCRETE_GRID"; run_id: string | null; fis_semantic_hash: string | null; declared_grid: Record<string, number[]>; state_count: number; state_estimate: number; max_states: number; paths: Array<Record<string, unknown>>; uncovered_states: Array<Record<string, unknown>>; dead_rules: string[]; conflict_states: Array<Record<string, unknown>>; scientific_note: string };
 export type AssuranceCase = { assurance_id: string; gates: Array<{ key: string; status: "PASS" | "WARN" | "FAIL" | "NOT_AVAILABLE"; evidence: string[]; risk: string | null }>; unresolved_risks: string[]; scientific_note: string };
 export type ConditionMonitoringDemo = { demo_id: string; policy_id: string; telemetry: Record<string, number>; predicted_class: number; probability: number; confidence: number; decision: "ACCEPT" | "REVIEW" | "OUT_OF_SCOPE"; scope_disposition: string; explanation_id: string | null; explanation_check_id: string | null; assurance_id: string | null; verification_bundle_sha256: string | null; explanation_note: string; safety_note: string };
@@ -342,6 +357,8 @@ export const studioApi = {
     config: {
       model_kind?: "flat_neuro_fuzzy" | "logistic_regression" | "linear_regression" | "decision_tree" | "random_forest" | "gradient_boosting";
       seed: number;
+      split_seed?: number | null;
+      training_seed?: number | null;
       max_epochs: number;
       learning_rate: number;
       batch_size: number;
@@ -393,6 +410,13 @@ export const studioApi = {
     request<BehaviorSpecResult[]>(`/api/projects/${sessionId}/evidence/behavior-specs/results`),
   createSelectivePolicy: (sessionId: string, evaluationId: string, confidenceCutoff: number, calibrationId: string | null, thresholdId: string | null) =>
     request<SelectivePredictionPolicy>("/api/projects/analyses/selective-policies", { session_id: sessionId, evaluation_id: evaluationId, confidence_cutoff: confidenceCutoff, calibration_id: calibrationId, threshold_id: thresholdId }),
+  createStudyStabilityAnalysis: (sessionId: string, studyId: string, highConfidenceThreshold = .9, unstableAgreementThreshold = .8) =>
+    request<StudyStabilityAnalysis>("/api/projects/analyses/stability", { session_id: sessionId, study_id: studyId, high_confidence_threshold: highConfidenceThreshold, unstable_agreement_threshold: unstableAgreementThreshold }),
+  listStudyStabilityAnalyses: (sessionId: string) => request<StudyStabilityAnalysis[]>(`/api/projects/${sessionId}/analyses/stability`),
+  createStabilityGatePolicy: (sessionId: string, analysisId: string, evaluationId: string, minConfidence: number, minAgreement: number, maxProbabilityStd: number, calibrationId: string | null = null) =>
+    request<StabilityGatePolicy>("/api/projects/analyses/stability-policies", { session_id: sessionId, analysis_id: analysisId, evaluation_id: evaluationId, min_confidence: minConfidence, min_class_agreement: minAgreement, max_probability_std: maxProbabilityStd, calibration_id: calibrationId }),
+  listStabilityGatePolicies: (sessionId: string) => request<StabilityGatePolicy[]>(`/api/projects/${sessionId}/analyses/stability-policies`),
+  applyStabilityGatePolicy: (sessionId: string, policyId: string, sample: Record<string, number>, metadata: Record<string, unknown> = {}, generalizationContractId: string | null = null) => request<StabilityGateApplication>("/api/projects/analyses/stability-policies/apply", { session_id: sessionId, policy_id: policyId, sample, metadata, generalization_contract_id: generalizationContractId }),
   getLatestSelectivePolicy: (sessionId: string) =>
     request<SelectivePredictionPolicy>(`/api/projects/${sessionId}/analyses/selective-policies/latest`),
   applySelectivePolicy: (sessionId: string, policyId: string, sample: Record<string, number>, metadata: Record<string, unknown> = {}, generalizationContractId: string | null = null) =>
@@ -414,6 +438,9 @@ export const studioApi = {
       name: string;
       model_kind: "flat_neuro_fuzzy" | "logistic_regression" | "linear_regression" | "decision_tree" | "random_forest" | "gradient_boosting";
       seeds: number[];
+      randomness_protocol?: "LEGACY_COMBINED" | "TRAINING_VARIABILITY" | "SPLIT_VARIABILITY" | "COMBINED_VARIABILITY";
+      split_seed?: number | null;
+      training_seed?: number | null;
       selection_metric: string;
       max_epochs: number;
       learning_rate: number;
@@ -432,7 +459,7 @@ export const studioApi = {
     request<TrainingStudy>(`/api/projects/${sessionId}/training/studies/latest`),
   getTrainingStudy: (sessionId: string, studyId: string) =>
     request<TrainingStudy>(`/api/projects/${sessionId}/training/studies/${studyId}`),
-  startStudyJob: (sessionId: string, config: { name: string; model_kind: "flat_neuro_fuzzy" | "logistic_regression" | "linear_regression" | "decision_tree" | "random_forest" | "gradient_boosting"; seeds: number[]; selection_metric: string; max_epochs: number; learning_rate: number; batch_size: number; patience: number | null; validation_fraction: number; test_fraction: number; max_rules: number }) =>
+  startStudyJob: (sessionId: string, config: { name: string; model_kind: "flat_neuro_fuzzy" | "logistic_regression" | "linear_regression" | "decision_tree" | "random_forest" | "gradient_boosting"; seeds: number[]; randomness_protocol?: "LEGACY_COMBINED" | "TRAINING_VARIABILITY" | "SPLIT_VARIABILITY" | "COMBINED_VARIABILITY"; split_seed?: number | null; training_seed?: number | null; selection_metric: string; max_epochs: number; learning_rate: number; batch_size: number; patience: number | null; validation_fraction: number; test_fraction: number; max_rules: number }) =>
     request<StudyJob>("/api/projects/training/study-jobs", { session_id: sessionId, ...config }),
   getStudyJob: (sessionId: string, jobId: string) =>
     request<StudyJob>(`/api/projects/${sessionId}/training/study-jobs/${jobId}`),
@@ -467,13 +494,14 @@ export const studioApi = {
     request<DecisionThresholdPolicy>(`/api/projects/${sessionId}/analyses/thresholds/latest`),
   getAnalysisThreshold: (sessionId: string, thresholdId: string) =>
     request<DecisionThresholdPolicy>(`/api/projects/${sessionId}/analyses/thresholds/${thresholdId}`),
-  evaluateFinalTest: (sessionId: string, evaluationId: string, calibrationId?: string | null, thresholdId?: string | null, selectivePolicyId?: string | null) =>
+  evaluateFinalTest: (sessionId: string, evaluationId: string, calibrationId?: string | null, thresholdId?: string | null, selectivePolicyId?: string | null, stabilityGatePolicyId?: string | null) =>
     request<FinalTestEvaluation>("/api/projects/analyses/final-test", {
       session_id: sessionId,
       evaluation_id: evaluationId,
       calibration_id: calibrationId ?? null,
       threshold_id: thresholdId ?? null,
       selective_policy_id: selectivePolicyId ?? null,
+      stability_gate_policy_id: stabilityGatePolicyId ?? null,
     }),
   getLatestFinalTestEvaluation: (sessionId: string) =>
     request<FinalTestEvaluation>(`/api/projects/${sessionId}/analyses/final-test/latest`),
@@ -515,6 +543,9 @@ export type TrainingStudy = {
   seed_runs: TrainingRun[];
   selected_run_id: string;
   selection_reason: string;
+  randomness_protocol: "LEGACY_COMBINED" | "TRAINING_VARIABILITY" | "SPLIT_VARIABILITY" | "COMBINED_VARIABILITY";
+  split_seed: number | null;
+  training_seeds: number[];
 };
 
 export type StudyJob = {
@@ -633,6 +664,7 @@ export type FinalTestEvaluation = {
   calibration_id: string | null;
   threshold_id: string | null;
   selective_policy_id: string | null;
+  stability_gate_policy_id: string | null;
   probability_source: "not_applicable" | "raw" | "calibrated";
   decision_threshold: number | null;
   metrics: Record<string, number>;
@@ -931,6 +963,9 @@ export type TrainingRun = {
   dataset_artifact_sha256: string | null;
   feature_columns: string[];
   seed: number;
+  split_seed: number | null;
+  training_seed: number | null;
+  randomness_protocol: string;
   max_epochs: number;
   learning_rate: number;
   batch_size: number;
@@ -938,6 +973,8 @@ export type TrainingRun = {
   split: {
     family: "random_holdout";
     seed: number;
+    split_seed: number | null;
+    split_identity: string | null;
     validation_fraction: number;
     test_fraction: number;
     train_count: number;

@@ -29,6 +29,7 @@ from ruflex.domain.evidence import ExplanationCheck, ExplanationContract
 from ruflex.domain.evidence import ExplanationReproducibilityAnalysis
 from ruflex.domain.behavior import BehaviorSpec, BehaviorSpecResult
 from ruflex.domain.selective import SelectiveDecision, SelectivePredictionPolicy
+from ruflex.domain.stability import StabilityGateApplication, StabilityGatePolicy, StudyStabilityAnalysis
 from ruflex.domain.demo import ConditionMonitoringDemo
 from ruflex.domain.exhaustive import ExhaustiveLabResult
 from ruflex.domain.assurance import AssuranceCase
@@ -185,6 +186,8 @@ class ResponseSurfaceRequest(SessionRequest):
 class TrainModelRequest(SessionRequest):
     model_kind: Literal["flat_neuro_fuzzy", "logistic_regression", "linear_regression", "decision_tree", "random_forest", "gradient_boosting"] = "flat_neuro_fuzzy"
     seed: int = 42
+    split_seed: int | None = None
+    training_seed: int | None = None
     max_epochs: int = Field(default=20, ge=1, le=2000)
     learning_rate: float = Field(default=0.01, gt=0.0, le=1.0)
     batch_size: int = Field(default=32, ge=1, le=100000)
@@ -198,6 +201,7 @@ class MultiSeedStudyRequest(TrainModelRequest):
     name: str = Field(default="Multi-seed study", min_length=1, max_length=200)
     seeds: list[int] = Field(min_length=3, max_length=32)
     selection_metric: str = Field(default="f1")
+    randomness_protocol: Literal["LEGACY_COMBINED", "TRAINING_VARIABILITY", "SPLIT_VARIABILITY", "COMBINED_VARIABILITY"] = "LEGACY_COMBINED"
 
 
 class CreateAnalysisEvaluationRequest(SessionRequest):
@@ -226,6 +230,28 @@ class CreateSelectivePolicyRequest(SessionRequest):
     threshold_id: UUID | None = None
 
 
+class CreateStudyStabilityAnalysisRequest(SessionRequest):
+    study_id: UUID
+    high_confidence_threshold: float = Field(default=0.9, ge=0.5, le=1.0)
+    unstable_agreement_threshold: float = Field(default=0.8, gt=0.0, le=1.0)
+
+
+class CreateStabilityGatePolicyRequest(SessionRequest):
+    analysis_id: UUID
+    evaluation_id: UUID
+    calibration_id: UUID | None = None
+    min_confidence: float = Field(default=0.9, ge=0.5, le=1.0)
+    min_class_agreement: float = Field(default=0.8, gt=0.0, le=1.0)
+    max_probability_std: float = Field(default=0.15, ge=0.0)
+
+
+class ApplyStabilityGatePolicyRequest(SessionRequest):
+    policy_id: UUID
+    sample: dict[str, float] = Field(min_length=1)
+    metadata: dict[str, object] = Field(default_factory=dict)
+    generalization_contract_id: UUID | None = None
+
+
 class ApplySelectivePolicyRequest(SessionRequest):
     policy_id: UUID
     sample: dict[str, float] = Field(min_length=1)
@@ -244,6 +270,7 @@ class EvaluateFinalTestRequest(SessionRequest):
     calibration_id: UUID | None = None
     threshold_id: UUID | None = None
     selective_policy_id: UUID | None = None
+    stability_gate_policy_id: UUID | None = None
 
 
 class TreePathTraceRequest(SessionRequest):
@@ -745,7 +772,7 @@ def run_training(request: TrainModelRequest) -> TrainingRun:
         if session.project.read_only:
             raise ProjectReadOnlyError("Project was opened read-only and cannot start a training run.")
         return train_model(
-            session.project.root, model_kind=request.model_kind, seed=request.seed,
+            session.project.root, model_kind=request.model_kind, seed=request.seed, split_seed=request.split_seed, training_seed=request.training_seed,
             max_epochs=request.max_epochs, learning_rate=request.learning_rate,
             batch_size=request.batch_size, patience=request.patience,
             validation_fraction=request.validation_fraction, test_fraction=request.test_fraction,
@@ -1094,7 +1121,7 @@ def run_multi_seed_training_study(request: MultiSeedStudyRequest) -> TrainingStu
         if session.project.read_only:
             raise ProjectReadOnlyError("Project was opened read-only and cannot start a study.")
         return run_multi_seed_study(
-            session.project.root, name=request.name, model_kind=request.model_kind, seeds=request.seeds,
+            session.project.root, name=request.name, model_kind=request.model_kind, seeds=request.seeds, randomness_protocol=request.randomness_protocol, split_seed=request.split_seed, training_seed=request.training_seed,
             selection_metric=request.selection_metric, max_epochs=request.max_epochs,
             learning_rate=request.learning_rate, batch_size=request.batch_size,
             patience=request.patience, validation_fraction=request.validation_fraction,
@@ -1113,7 +1140,7 @@ def start_multi_seed_study_job(request: MultiSeedStudyRequest) -> StudyJob:
         session = service.get(request.session_id)
         if session.project.read_only:
             raise ProjectReadOnlyError("Project was opened read-only and cannot start a study.")
-        return start_study_job(session.project.root, name=request.name, model_kind=request.model_kind, seeds=request.seeds, selection_metric=request.selection_metric, max_epochs=request.max_epochs, learning_rate=request.learning_rate, batch_size=request.batch_size, patience=request.patience, validation_fraction=request.validation_fraction, test_fraction=request.test_fraction, max_rules=request.max_rules)
+        return start_study_job(session.project.root, name=request.name, model_kind=request.model_kind, seeds=request.seeds, selection_metric=request.selection_metric, randomness_protocol=request.randomness_protocol, split_seed=request.split_seed, training_seed=request.training_seed, max_epochs=request.max_epochs, learning_rate=request.learning_rate, batch_size=request.batch_size, patience=request.patience, validation_fraction=request.validation_fraction, test_fraction=request.test_fraction, max_rules=request.max_rules)
     except ProjectError as error:
         raise _project_error(error) from error
     except (TrainingError, ValueError, OSError) as error:
@@ -1165,6 +1192,77 @@ def get_training_study(session_id: UUID, study_id: UUID) -> TrainingStudy:
         if isinstance(error, ProjectError):
             raise _project_error(error) from error
         raise HTTPException(status_code=404, detail=f"Training study not found: {study_id}") from error
+
+
+@app.post("/api/projects/analyses/stability", response_model=StudyStabilityAnalysis, status_code=201)
+def create_study_stability_analysis_route(request: CreateStudyStabilityAnalysisRequest) -> StudyStabilityAnalysis:
+    from ruflex.application.stability import create_study_stability_analysis
+    from ruflex.application.training import TrainingError
+    try:
+        session = service.get(request.session_id)
+        if session.project.read_only:
+            raise ProjectReadOnlyError("Project was opened read-only and cannot create stability evidence.")
+        return create_study_stability_analysis(session.project.root, request.study_id, high_confidence_threshold=request.high_confidence_threshold, unstable_agreement_threshold=request.unstable_agreement_threshold)
+    except ProjectError as error:
+        raise _project_error(error) from error
+    except (TrainingError, FileNotFoundError, ValueError, OSError) as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+
+
+@app.get("/api/projects/{session_id}/analyses/stability", response_model=list[StudyStabilityAnalysis])
+def list_study_stability_analyses_route(session_id: UUID) -> list[StudyStabilityAnalysis]:
+    from ruflex.application.stability import list_study_stability_analyses
+    try:
+        return list_study_stability_analyses(service.get(session_id).project.root)
+    except ProjectError as error:
+        raise _project_error(error) from error
+
+
+@app.get("/api/projects/{session_id}/analyses/stability/{analysis_id}", response_model=StudyStabilityAnalysis)
+def get_study_stability_analysis_route(session_id: UUID, analysis_id: UUID) -> StudyStabilityAnalysis:
+    from ruflex.application.stability import load_study_stability_analysis
+    try:
+        return load_study_stability_analysis(service.get(session_id).project.root, analysis_id)
+    except ProjectError as error:
+        raise _project_error(error) from error
+    except FileNotFoundError as error:
+        raise HTTPException(status_code=404, detail="Study Stability Analysis not found.") from error
+
+
+@app.post("/api/projects/analyses/stability-policies", response_model=StabilityGatePolicy, status_code=201)
+def create_stability_gate_policy_route(request: CreateStabilityGatePolicyRequest) -> StabilityGatePolicy:
+    from ruflex.application.stability import create_stability_gate_policy
+    from ruflex.application.training import TrainingError
+    try:
+        session = service.get(request.session_id)
+        if session.project.read_only:
+            raise ProjectReadOnlyError("Project was opened read-only and cannot create a Stability Gate policy.")
+        return create_stability_gate_policy(session.project.root, request.analysis_id, request.evaluation_id, min_confidence=request.min_confidence, min_class_agreement=request.min_class_agreement, max_probability_std=request.max_probability_std, calibration_id=request.calibration_id)
+    except ProjectError as error:
+        raise _project_error(error) from error
+    except (TrainingError, FileNotFoundError, ValueError, OSError) as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+
+
+@app.get("/api/projects/{session_id}/analyses/stability-policies", response_model=list[StabilityGatePolicy])
+def list_stability_gate_policies_route(session_id: UUID) -> list[StabilityGatePolicy]:
+    from ruflex.application.stability import list_stability_gate_policies
+    try:
+        return list_stability_gate_policies(service.get(session_id).project.root)
+    except ProjectError as error:
+        raise _project_error(error) from error
+
+
+@app.post("/api/projects/analyses/stability-policies/apply", response_model=StabilityGateApplication)
+def apply_stability_gate_policy_route(request: ApplyStabilityGatePolicyRequest) -> StabilityGateApplication:
+    from ruflex.application.stability import apply_stability_gate_policy
+    from ruflex.application.training import TrainingError
+    try:
+        return apply_stability_gate_policy(service.get(request.session_id).project.root, request.policy_id, request.sample, metadata=request.metadata, generalization_contract_id=request.generalization_contract_id)
+    except ProjectError as error:
+        raise _project_error(error) from error
+    except (TrainingError, FileNotFoundError, ValueError, OSError) as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
 
 
 @app.post("/api/projects/analyses/evaluations", response_model=AnalysisEvaluation, status_code=201)
@@ -1355,6 +1453,7 @@ def evaluate_analysis_final_test(request: EvaluateFinalTestRequest) -> FinalTest
             calibration_id=request.calibration_id,
             threshold_id=request.threshold_id,
             selective_policy_id=request.selective_policy_id,
+            stability_gate_policy_id=request.stability_gate_policy_id,
         )
     except (TrainingError, ProjectError) as error:
         raise _project_error(error) from error

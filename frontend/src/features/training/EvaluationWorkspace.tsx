@@ -11,6 +11,7 @@ import {
   ProjectSummary,
   SliceAnalysis,
   SelectivePredictionPolicy,
+  StabilityGatePolicy,
   SliceDefinition,
   TrainingRun,
   TrainingStudy,
@@ -84,6 +85,7 @@ type Props = {
   comparison: AnalysisComparison | null;
   sliceAnalysis: SliceAnalysis | null;
   selectivePolicy: SelectivePredictionPolicy | null;
+  stabilityGatePolicy: StabilityGatePolicy | null;
   theme: StudioTheme;
   onEvaluation: (evaluation: AnalysisEvaluation) => void;
   onCalibration: (calibration: CalibrationTransform | null) => void;
@@ -108,6 +110,7 @@ export function EvaluationWorkspace({
   comparison,
   sliceAnalysis,
   selectivePolicy,
+  stabilityGatePolicy,
   theme,
   onEvaluation,
   onCalibration,
@@ -258,6 +261,7 @@ export function EvaluationWorkspace({
         activeThreshold?.probability_source === "calibrated" ? activeCalibration?.calibration_id ?? null : null,
         activeThreshold?.threshold_id ?? null,
         selectivePolicy?.policy_id ?? null,
+        stabilityGatePolicy?.policy_id ?? null,
       );
       onFinalTest(result);
       setFinalTestConfirmed(false);
@@ -416,7 +420,7 @@ export function EvaluationWorkspace({
         <small className="mono">policy {activeFinalTest.policy_identity.slice(0, 36)}… · cases {(activeFinalTest.test_case_identity ?? activeFinalTest.test_sample_identity).slice(0, 36)}…</small>
         {activeFinalTest.dataset_test_unlock_at && <small className="mono">dataset test gate opened {new Date(activeFinalTest.dataset_test_unlock_at).toLocaleString()} · only policies frozen before this boundary and using the same holdout cases remain eligible</small>}
       </> : <>
-        <p>Validation remains the only evidence used for model selection, probability calibration and threshold selection. The first final-test access freezes the dataset-level eligibility boundary. Additional pre-specified policies may be evaluated only if they were already frozen and reconstruct the same holdout rows.</p>
+        <p>Validation remains the only evidence used for model selection, probability calibration and threshold selection. The first final-test access freezes the dataset-level eligibility boundary. Additional pre-specified policies may be evaluated only if they were already frozen and reconstruct the same holdout rows.</p>{stabilityGatePolicy && <small>Stability Gate {stabilityGatePolicy.policy_id.slice(0, 12)} is validation-derived and will be bound to this final-test evidence; it is not fitted on final-test data.</small>}
         <label className="final-test-confirm"><input type="checkbox" checked={finalTestConfirmed} onChange={(event) => setFinalTestConfirmed(event.target.checked)} />I confirm this policy was frozen before final-test access; final-test results will not be used to retune or create another eligible policy.</label>
         <Button view="action" disabled={project.read_only || finalTesting || !activeEvaluation || !finalTestConfirmed || (run.task === "binary_classification" && !activeThreshold)} onClick={evaluateFinalTest}>{finalTesting ? "Evaluating final test…" : "Evaluate frozen final test"}</Button>
         {run.task === "binary_classification" && !activeThreshold && <small>Select a validation-derived decision threshold first. Calibration is optional; a calibrated threshold automatically requires its persisted calibration transform.</small>}

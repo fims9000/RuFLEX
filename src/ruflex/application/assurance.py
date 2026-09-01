@@ -15,6 +15,7 @@ from ruflex.domain.behavior import BehaviorSpec, BehaviorSpecResult
 from ruflex.domain.evidence import ExplanationCheck, ExplanationContract, ExplanationReproducibilityAnalysis
 from ruflex.domain.exhaustive import ExhaustiveLabResult
 from ruflex.domain.selective import SelectivePredictionPolicy
+from ruflex.domain.stability import StabilityGatePolicy, StudyStabilityAnalysis
 from ruflex.domain.training import AnalysisEvaluation, CalibrationTransform, DecisionThresholdPolicy, FinalTestEvaluation, TrainingRun, TrainingStudy
 
 ModelT = TypeVar("ModelT", bound=BaseModel)
@@ -105,6 +106,14 @@ def create_assurance_case(root: Path) -> AssuranceCase:
     policy_ok = policies and all(x.evaluation_id in evaluation_ids and x.source_split == "validation" for x in policies)
     status, risk = _evidence_status(present=bool(policies), valid=bool(policy_ok), malformed=_has_malformed_object(policies_root, SelectivePredictionPolicy), unavailable="Selective policy is absent.", invalid="Selective policy is incompatible with validation evidence.")
     gates.append(_gate("selective_policy", status, [f"selective-policy:{x.policy_id}" for x in policies], risk))
+    stability_root = base / "analyses" / "stability-analyses"; stability = _objects(stability_root, StudyStabilityAnalysis)
+    stability_ok = stability and all(len(x.run_ids) >= 3 and x.case_count == len(x.cases) for x in stability)
+    status, risk = _evidence_status(present=bool(stability), valid=bool(stability_ok), malformed=_has_malformed_object(stability_root, StudyStabilityAnalysis), unavailable="Study Stability Analysis is absent.", invalid="Cross-run stability evidence is incomplete.")
+    gates.append(_gate("prediction_stability", status, [f"stability-analysis:{x.analysis_id}" for x in stability], risk))
+    stability_policy_root = base / "analyses" / "stability-policies"; stability_policies = _objects(stability_policy_root, StabilityGatePolicy)
+    stability_policy_ok = stability_policies and all(x.source_split == "validation" and x.stability_analysis_id in {item.analysis_id for item in stability} for x in stability_policies)
+    status, risk = _evidence_status(present=bool(stability_policies), valid=bool(stability_policy_ok), malformed=_has_malformed_object(stability_policy_root, StabilityGatePolicy), unavailable="Stability-aware review policy is absent.", invalid="Stability-aware review policy is incompatible with validation stability evidence.")
+    gates.append(_gate("stability_gate_policy", status, [f"stability-policy:{x.policy_id}" for x in stability_policies], risk))
     contracts_root = base / "objects" / "protocols" / "generalization"; contracts = _objects(contracts_root, GeneralizationContract)
     frozen = [x for x in contracts if x.frozen_at is not None]
     if _has_malformed_object(contracts_root, GeneralizationContract):

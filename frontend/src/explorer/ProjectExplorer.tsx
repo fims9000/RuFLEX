@@ -19,6 +19,8 @@ import {
   SliceAnalysis,
   TrainingRun,
   TrainingStudy,
+  StudyStabilityAnalysis,
+  StabilityGatePolicy,
   TreePathEvidence,
 } from "../api";
 
@@ -30,6 +32,8 @@ export function ProjectExplorer({
   fis,
   trainingRun,
   trainingStudy,
+  stabilityAnalysis,
+  stabilityGatePolicy,
   evaluation,
   analysisEvaluation,
   analysisComparison,
@@ -55,6 +59,8 @@ export function ProjectExplorer({
   fis: FISSpec | null;
   trainingRun: TrainingRun | null;
   trainingStudy: TrainingStudy | null;
+  stabilityAnalysis: StudyStabilityAnalysis | null;
+  stabilityGatePolicy: StabilityGatePolicy | null;
   evaluation: FISEvaluation | null;
   analysisEvaluation: AnalysisEvaluation | null;
   analysisComparison: AnalysisComparison | null;
@@ -168,6 +174,7 @@ export function ProjectExplorer({
         ) : (
           <span className="tree-empty">No studies yet</span>
         )}
+        {stabilityAnalysis && item("STUDIES", "Study Stability Analysis", `${stabilityAnalysis.case_count} validation cases · HCIR ${(stabilityAnalysis.high_confidence_instability_rate * 100).toFixed(1)}%`)}
       </section>
       <section>
         <strong>ANALYSES</strong>
@@ -178,6 +185,7 @@ export function ProjectExplorer({
         ) : (
           <span className="tree-empty">No analyses yet</span>
         )}
+        {stabilityGatePolicy && item("ANALYSES", "Stability-Aware Review Gate", `${stabilityGatePolicy.decisions.filter((item) => item.disposition === "REVIEW").length} REVIEW`)}
         {analysisComparison && item("ANALYSES", "Model comparison", `${analysisComparison.metric_rows.length} subjects`)}
         {calibrationTransform && item("ANALYSES", "Calibration transform", `${calibrationTransform.method} · validation`)}
         {decisionThreshold && item("ANALYSES", "Decision threshold", `${decisionThreshold.selected_threshold.toFixed(2)} · ${decisionThreshold.probability_source}`)}

@@ -4,6 +4,7 @@ import { DatasetState, ModelCatalogEntry, ProjectSummary, StudyJob, TrainingRun,
 import { ChartSurface } from "../../charts/ChartSurface";
 import { Button, EmptyState, StatusBadge } from "../../components/StudioPrimitives";
 import { StudioTheme } from "../../design/tokens";
+import { StabilityLab } from "./StabilityLab";
 
 function trajectoryOption(run: TrainingRun): EChartsOption {
   return {
@@ -108,6 +109,8 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
   const [patience, setPatience] = useState(8);
   const [maxRules, setMaxRules] = useState(8);
   const [seedList, setSeedList] = useState("42, 43, 44");
+  const [studyMode, setStudyMode] = useState<"TRAINING_VARIABILITY" | "SPLIT_VARIABILITY" | "COMBINED_VARIABILITY">("TRAINING_VARIABILITY");
+  const [splitSeed, setSplitSeed] = useState(42);
   const [study, setStudy] = useState<TrainingStudy | null>(restoredStudy);
   const [studyJob, setStudyJob] = useState<StudyJob | null>(null);
   const [running, setRunning] = useState(false);
@@ -160,7 +163,7 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
     setError(null);
     try {
       const selectionMetric = dataset?.contract.task === "regression" ? "rmse" : "f1";
-      let job = await studioApi.startStudyJob(project.session_id, { name: `Study ${new Date().toLocaleString()}`, model_kind: modelKind, seeds, selection_metric: selectionMetric, max_epochs: maxEpochs, learning_rate: learningRate, batch_size: batchSize, patience, validation_fraction: .2, test_fraction: .2, max_rules: maxRules });
+      let job = await studioApi.startStudyJob(project.session_id, { name: `Study ${new Date().toLocaleString()}`, model_kind: modelKind, seeds, randomness_protocol: studyMode, split_seed: splitSeed, training_seed: splitSeed, selection_metric: selectionMetric, max_epochs: maxEpochs, learning_rate: learningRate, batch_size: batchSize, patience, validation_fraction: .2, test_fraction: .2, max_rules: maxRules });
       setStudyJob(job);
       while (["QUEUED", "RUNNING"].includes(job.status)) {
         await new Promise((resolve) => window.setTimeout(resolve, 250));
@@ -217,17 +220,19 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
         <div className="training-config-grid">
           <label className="field-label">Model<select aria-label="Training model" value={modelKind} disabled={running || project.read_only} onChange={(event) => setModelKind(event.target.value as typeof modelKind)}><option value="flat_neuro_fuzzy">ANFIS / Flat neuro-fuzzy</option>{dataset.contract.task === "binary_classification" ? <option value="logistic_regression">Logistic regression baseline</option> : <option value="linear_regression">Linear regression baseline</option>}<option value="decision_tree">Decision Tree baseline</option><option value="random_forest">Random Forest baseline</option><option value="gradient_boosting">Gradient Boosting baseline</option></select></label>
           <NumberField label="Seed" value={seed} step={1} disabled={running || project.read_only} onChange={setSeed} />
+          <NumberField label="Study split seed" value={splitSeed} step={1} disabled={running || project.read_only} onChange={setSplitSeed} />
           <NumberField label="Epochs" value={maxEpochs} min={1} max={2000} step={1} disabled={running || project.read_only} onChange={setMaxEpochs} />
           <NumberField label="Learning rate" value={learningRate} min={0.000001} max={1} step={0.001} disabled={running || project.read_only} onChange={setLearningRate} />
           <NumberField label="Batch size" value={batchSize} min={1} step={1} disabled={running || project.read_only} onChange={setBatchSize} />
           <NumberField label="Patience" value={patience} min={1} step={1} disabled={running || project.read_only} onChange={setPatience} />
           <NumberField label="Max rules / layer" value={maxRules} min={1} max={128} step={1} disabled={running || project.read_only} onChange={setMaxRules} />
           <label className="field-label">Study seeds<input aria-label="Study seeds" value={seedList} disabled={running || project.read_only} onChange={(event) => setSeedList(event.target.value)} /></label>
+          <label className="field-label">Study randomness protocol<select aria-label="Study randomness protocol" value={studyMode} disabled={running || project.read_only} onChange={(event) => setStudyMode(event.target.value as typeof studyMode)}><option value="TRAINING_VARIABILITY">Training variability (fixed split)</option><option value="SPLIT_VARIABILITY">Split variability (fixed training seed)</option><option value="COMBINED_VARIABILITY">Combined variability</option></select></label>
         </div>
         <Button view="action" disabled={running || project.read_only} onClick={train}>{running ? "Training…" : "Run real training"}</Button>
         <Button view="outlined" disabled={running || project.read_only} onClick={trainStudy}>{running ? "Training…" : "Run multi-seed study"}</Button>
         {studyJob && <div className="info-message"><strong>Study job {studyJob.status}</strong> · {studyJob.seed_states.map((state) => `seed ${state.seed}: ${state.status}`).join(" · ")} {(["QUEUED", "RUNNING"].includes(studyJob.status)) && <Button view="flat" size="s" onClick={cancelStudy}>Cancel study</Button>}</div>}
-        <div className="info-message">Studies use the selected model adapter with independent train-only splits per seed; selection is validation-only and never reads the locked test split.</div>
+        <div className="info-message">Training variability fixes split membership and varies only model randomness. Split and combined modes are separate sensitivity protocols. Selection is validation-only and never reads the locked test split.</div>
         {project.read_only && <div className="info-message">Read-only projects cannot start training runs.</div>}
       </section>
 
@@ -259,6 +264,7 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
       </section>
     </div>
     <section className="comparison-card"><span className="eyebrow">MODEL CATALOG · DECLARED CAPABILITIES</span><div className="data-table-wrap"><table className="data-table"><thead><tr><th>model</th><th>family</th><th>available</th><th>capabilities</th><th>evidence boundary</th></tr></thead><tbody>{catalog.map((entry) => <tr key={entry.key}><td>{entry.label}</td><td>{entry.family}</td><td>{entry.available ? "available" : "not available"}</td><td>{Object.entries(entry.capabilities).filter(([, value]) => value).map(([key]) => key).join(", ") || "—"}</td><td>{entry.limitation ?? "—"}</td></tr>)}</tbody></table></div></section>
+    <StabilityLab project={project} study={study} theme={theme} />
     {error && <div className="error" role="alert">{error}</div>}
   </section>;
 }

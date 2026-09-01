@@ -28,6 +28,7 @@ from ruflex.domain.behavior import BehaviorSpec, BehaviorSpecResult
 from ruflex.domain.evidence import ExplanationReproducibilityAnalysis
 from ruflex.domain.exhaustive import ExhaustiveLabResult
 from ruflex.domain.selective import SelectivePredictionPolicy
+from ruflex.domain.stability import StabilityGatePolicy, StudyStabilityAnalysis
 from ruflex.domain.verification import VerificationBundle
 
 
@@ -323,6 +324,18 @@ def build_project_lineage(project_root: Path) -> LineageGraph:
         add_edge(evaluation_nodes.get(policy.evaluation_id), node, "review_policy_selected_from")
         add_edge(threshold_nodes.get(policy.class_threshold_id), node, "uses_class_threshold")
         if policy.calibration_id is not None: add_edge(calibration_nodes.get(policy.calibration_id), node, "uses_calibration")
+
+    stability = [item for item in _json_models(root / "analyses" / "stability-analyses", StudyStabilityAnalysis, exclude=("active-analysis.json",)) if isinstance(item, StudyStabilityAnalysis)]
+    stability_nodes: dict[UUID, str] = {}
+    for item in stability:
+        node = add_node(LineageNode(id=_node_id("study-stability", item.analysis_id), kind="study_stability", label="Study prediction stability", detail=f"{len(item.run_ids)} runs · {item.case_count} validation cases", target="ANALYSES", object_id=str(item.analysis_id), status="VALIDATION_ONLY"))
+        stability_nodes[item.analysis_id] = node
+        for run_id in item.run_ids: add_edge(run_nodes.get(run_id), node, "compared_for_prediction_stability")
+    stability_policies = [item for item in _json_models(root / "analyses" / "stability-policies", StabilityGatePolicy, exclude=("active-policy.json",)) if isinstance(item, StabilityGatePolicy)]
+    for policy in stability_policies:
+        node = add_node(LineageNode(id=_node_id("stability-policy", policy.policy_id), kind="stability_gate_policy", label="Stability-aware review", detail="validation-derived ACCEPT/REVIEW/BLOCK policy", target="ANALYSES", object_id=str(policy.policy_id), status=policy.test_status))
+        add_edge(stability_nodes.get(policy.stability_analysis_id), node, "policy_derived_from")
+        add_edge(evaluation_nodes.get(policy.evaluation_id), node, "policy_bound_to_validation")
 
     repro = [item for item in _json_models(root / "evidence" / "explanation-reproducibility", ExplanationReproducibilityAnalysis, exclude=("active-analysis.json",)) if isinstance(item, ExplanationReproducibilityAnalysis)]
     for item in repro:

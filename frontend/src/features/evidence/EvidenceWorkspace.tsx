@@ -19,7 +19,7 @@ import {
 } from "../../api";
 import { Button, EmptyState, StatusBadge, TextInput } from "../../components/StudioPrimitives";
 import { StudioTheme } from "../../design/tokens";
-import { TraceWorkspace } from "../build/TraceWorkspace";
+import { TraceWorkspace } from "../modelbuild/TraceWorkspace";
 
 function statusTone(status: ExplanationCheck["status"] | ExplanationCheck["checks"][number]["status"]) {
   if (status === "FAILED" || status === "FAIL") return "danger" as const;

@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Literal
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class EpochPoint(BaseModel):
@@ -21,7 +21,11 @@ class SplitProvenance(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     family: Literal["random_holdout"] = "random_holdout"
+    # `seed` is retained for RC2.1 project compatibility.  New objects record
+    # the seed that controls membership explicitly as `split_seed`.
     seed: int
+    split_seed: int | None = None
+    split_identity: str | None = None
     validation_fraction: float
     test_fraction: float
     train_count: int
@@ -29,6 +33,14 @@ class SplitProvenance(BaseModel):
     test_count: int
     preprocessing_fit_scope: Literal["train_only"] = "train_only"
     test_status: Literal["LOCKED_NOT_EVALUATED"] = "LOCKED_NOT_EVALUATED"
+
+    @model_validator(mode="before")
+    @classmethod
+    def _migrate_legacy_seed(cls, value: object) -> object:
+        if isinstance(value, dict) and value.get("split_seed") is None and value.get("seed") is not None:
+            value = dict(value)
+            value["split_seed"] = value["seed"]
+        return value
 
 
 class PredictionRow(BaseModel):
@@ -66,7 +78,7 @@ class CalibrationBin(BaseModel):
 class TrainingRun(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: int = 1
+    schema_version: int = 2
     run_id: UUID = Field(default_factory=uuid4)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     status: Literal["succeeded"] = "succeeded"
@@ -76,7 +88,11 @@ class TrainingRun(BaseModel):
     dataset_fingerprint: str | None = None
     dataset_artifact_sha256: str | None = None
     feature_columns: list[str]
+    # Legacy compatibility alias.  For new runs it equals training_seed.
     seed: int
+    split_seed: int | None = None
+    training_seed: int | None = None
+    randomness_protocol: Literal["LEGACY_COMBINED", "SINGLE_RUN_EXPLICIT", "TRAINING_VARIABILITY", "SPLIT_VARIABILITY", "COMBINED_VARIABILITY"] = "LEGACY_COMBINED"
     max_epochs: int
     learning_rate: float
     batch_size: int
@@ -97,11 +113,25 @@ class TrainingRun(BaseModel):
         "Metrics shown here are validation metrics. The held-out test split remains locked and is not used for model selection."
     )
 
+    @model_validator(mode="before")
+    @classmethod
+    def _migrate_legacy_randomness(cls, value: object) -> object:
+        if isinstance(value, dict):
+            value = dict(value)
+            legacy = value.get("seed")
+            if value.get("split_seed") is None:
+                value["split_seed"] = legacy
+            if value.get("training_seed") is None:
+                value["training_seed"] = legacy
+            if "randomness_protocol" not in value:
+                value["randomness_protocol"] = "LEGACY_COMBINED"
+        return value
+
 
 class TrainingStudy(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: int = 1
+    schema_version: int = 2
     study_id: UUID = Field(default_factory=uuid4)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     name: str
@@ -113,12 +143,17 @@ class TrainingStudy(BaseModel):
     seed_runs: list[TrainingRun]
     selected_run_id: UUID
     selection_reason: str
+    randomness_protocol: Literal["LEGACY_COMBINED", "TRAINING_VARIABILITY", "SPLIT_VARIABILITY", "COMBINED_VARIABILITY"] = "LEGACY_COMBINED"
+    split_seed: int | None = None
+    training_seeds: list[int] = Field(default_factory=list)
 
 
 class StudySeedState(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     seed: int
+    split_seed: int | None = None
+    training_seed: int | None = None
     status: Literal["QUEUED", "RUNNING", "SUCCEEDED", "FAILED", "CANCELLED"] = "QUEUED"
     run_id: UUID | None = None
     runtime_seconds: float | None = None
@@ -130,7 +165,7 @@ class StudyJob(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: int = 1
+    schema_version: int = 2
     job_id: UUID = Field(default_factory=uuid4)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     started_at: datetime | None = None
@@ -141,6 +176,8 @@ class StudyJob(BaseModel):
     status: Literal["QUEUED", "RUNNING", "SUCCEEDED", "FAILED", "CANCELLED"] = "QUEUED"
     cancel_requested: bool = False
     seed_states: list[StudySeedState]
+    randomness_protocol: Literal["LEGACY_COMBINED", "TRAINING_VARIABILITY", "SPLIT_VARIABILITY", "COMBINED_VARIABILITY"] = "LEGACY_COMBINED"
+    split_seed: int | None = None
     study_id: UUID | None = None
     error: str | None = None
 
@@ -308,6 +345,7 @@ class FinalTestEvaluation(BaseModel):
     calibration_id: UUID | None = None
     threshold_id: UUID | None = None
     selective_policy_id: UUID | None = None
+    stability_gate_policy_id: UUID | None = None
     probability_source: Literal["not_applicable", "raw", "calibrated"] = "not_applicable"
     decision_threshold: float | None = Field(default=None, ge=0.0, le=1.0)
     metrics: dict[str, float]
