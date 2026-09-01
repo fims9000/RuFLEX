@@ -1,10 +1,10 @@
 # Stability Lab RC1 source-release QA
 
-Status: PASS, subject to the archive smoke recorded below.
+Status: PASS.
 
 ## Source subject
 
-- Final HEAD: `PENDING_FINAL_COMMIT`
+- Source QA HEAD before this receipt-only update: `a006ade83194f27b7f84604f7d8350bbcf652da4`.
 - Direct Stability Lab parent commits: `0331ab3 Add Stability Lab and split seed provenance`; `5a758c0 Add A01 stability review pre-freeze plan`.
 - Hardening commit: `1d45b28 Harden Stability Lab evidence and review gate`.
 - Visual baseline refresh: `e45c6ea Refresh verified Studio visual baselines`.
@@ -29,7 +29,14 @@ Status: PASS, subject to the archive smoke recorded below.
 
 ## Archive smoke
 
-The final archive is created with `git archive --format=zip HEAD` and tested only after its final commit. This section is completed in the final source receipt.
+The tracked-source ZIP was created with `git archive --format=zip HEAD -o release/RuFLEX_STABILITY_LAB_RC1_SOURCE.zip`, unpacked to a new temporary directory with no `.git` and no inherited `frontend/node_modules`, then verified there.
+
+- `PYTHONPATH=src /home/lebedeffson/Code/venv/bin/python -m pytest -q tests/test_stability_lab.py`: PASS — 4 tests.
+- `npm ci`: PASS — 260 packages, 0 vulnerabilities. The package manager reported the existing blocked `esbuild` postinstall policy; the subsequent production build passed.
+- `npm run build`: PASS.
+- With an explicit external `RUFLEX_PYTHON=/home/lebedeffson/Code/venv/bin/python` and the project-local browser cache, `e2e/product-golden-route.spec.ts`: PASS and `e2e/stability-lab.spec.ts`: PASS. They were run separately because an initial combined archive invocation produced a transient UI-server timeout; each focused real browser route then passed from the same clean extraction.
+
+The final delivery checksum is reported alongside the final archive artifact. It is intentionally not embedded into this tracked source receipt because the receipt itself changes the `git archive HEAD` byte stream.
 
 ## Known limitations
 
