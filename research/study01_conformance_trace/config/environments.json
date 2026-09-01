@@ -1,0 +1,45 @@
+{
+  "matlab_engine": {
+    "reason": "No installed licensed MATLAB engine.",
+    "status": "NOT_AVAILABLE"
+  },
+  "pyfuzzylite": {
+    "captured_runtime": {
+      "executable_basename": "python",
+      "fuzzylite_import_version": "8.0.6",
+      "implementation": "CPython",
+      "installed_packages": {
+        "annotated-types": "0.8.0",
+        "iniconfig": "2.3.0",
+        "numpy": "1.26.4",
+        "packaging": "26.3",
+        "pandas": "2.3.3",
+        "pluggy": "1.6.0",
+        "pydantic": "2.12.5",
+        "pydantic_core": "2.41.5",
+        "pyfuzzylite": "8.0.6",
+        "pygments": "2.21.0",
+        "pytest": "9.0.2",
+        "python-dateutil": "2.9.0.post0",
+        "pytz": "2026.3.post1",
+        "pyyaml": "6.0.3",
+        "six": "1.17.0",
+        "typing-inspection": "0.4.4",
+        "typing_extensions": "4.16.0",
+        "tzdata": "2026.3"
+      },
+      "locked_requirements_sha256": "7d9c2996bc4708d1abda678c8fd85cd8e0a12c5f9170770ab55b7070a950a65a",
+      "numpy": "1.26.4",
+      "python": "3.12.12"
+    },
+    "import_name": "fuzzylite",
+    "package": "pyfuzzylite",
+    "status": "PINNED_REFERENCE_READY",
+    "version": "8.0.6",
+    "wheel_sha256": "4c8276357dbea495c6ef36d5e273829b5695f7c4212e53b805898b5e86dfbb34"
+  },
+  "schema_version": 1,
+  "subject": {
+    "archive_sha256": "772270a076e77b9c36d07e51bae8e45f5a3b1eddd69045176e63dc83834a3224"
+  }
+}

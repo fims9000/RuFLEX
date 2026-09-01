@@ -1,0 +1,15 @@
+# Product V1 Golden Route
+
+The persisted Golden Route is exercised by the Product browser routes and integrated backend journey.
+
+1. Create a project, import telemetry CSV/XLSX, inspect audit findings and confirm `DatasetContract`.
+2. Create/edit a FIS, execute exact FIS trace, compare revisions, and preserve the expert correction lineage.
+3. Train ANFIS, Decision Tree and ordinary baselines; create a multi-seed Study and select by validation only.
+4. Persist validation Evaluation, calibration, class threshold, compatible comparison, GeneralizationContract and slices.
+5. Generate capability-compatible explanation evidence/checks. For compatible repeated cases, run cross-run reproducibility; prediction and explanation agreement remain separate.
+6. Execute revision-bound BehaviorSpecs and a validation-only ACCEPT/REVIEW selective policy.
+7. Use Exhaustive Lab only for `EXACT_FINITE_STRUCTURE` Decision Tree paths or `EXACT_ON_DECLARED_DISCRETE_GRID` FIS states.
+8. Freeze policy and explicitly evaluate the final test. Later selective-policy tuning is blocked.
+9. Build Lineage, AssuranceCase and the inspection-first VerificationBundle; close and reopen the project.
+
+The safe condition-monitoring demonstration is executable in Evidence: it persists telemetry decision evidence, an occlusion explanation/check, AssuranceCase and VerificationBundle without emitting any actuator or targeting command.

@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "status": "PRE_FREEZE_DRAFT",
+  "classes": {
+    "ALGEBRAIC": {"atol": 1e-12, "rtol": 1e-12, "justification": "closed-form arithmetic micro-oracles"},
+    "TRACE_RECONSTRUCTION": {"atol": 1e-12, "rtol": 1e-12, "justification": "same declared discrete arrays reconstructed independently"},
+    "SUGENO_CROSS_ENGINE": {"atol": 1e-10, "rtol": 1e-10, "justification": "weighted-average arithmetic after DEV adapter verification"},
+    "MAMDANI_DEFUZZIFICATION": {"atol": 1e-10, "rtol": 1e-10, "justification": "only after identical 401-node discrete centroid semantics are demonstrated"}
+  }
+}

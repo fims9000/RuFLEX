@@ -1,0 +1,37 @@
+{
+  "figures": [
+    {
+      "derived_from": "locked_outcomes.jsonl",
+      "id": "F01",
+      "path": "artifacts/result_freeze/figures/F01_study_design.svg"
+    },
+    {
+      "derived_from": "locked_outcomes.jsonl",
+      "id": "F02",
+      "path": "artifacts/result_freeze/figures/F02_prevention_by_family.svg"
+    },
+    {
+      "derived_from": "locked_outcomes.jsonl",
+      "id": "F03",
+      "path": "artifacts/result_freeze/figures/F03_clean_control_specificity.svg"
+    },
+    {
+      "derived_from": "locked_outcomes.jsonl",
+      "id": "F04",
+      "path": "artifacts/result_freeze/figures/F04_interface_mechanism.svg"
+    },
+    {
+      "derived_from": "locked_outcomes.jsonl",
+      "id": "F05",
+      "path": "artifacts/result_freeze/figures/F05_persistence_lifecycle.svg"
+    },
+    {
+      "derived_from": "locked_outcomes.jsonl",
+      "id": "F06",
+      "path": "artifacts/result_freeze/figures/F06_negative_failure_evidence.svg"
+    }
+  ],
+  "schema_version": 1,
+  "source_execution_plan_sha256": "c0ecc52380d5058fc62dfa40f8a20c41f883c10ba490589b1439e98aad63c2ab",
+  "source_raw_sha256": "92caf554d39bcfaf05d32bd34b5248249ac924e2a8052c15aa7d5dca4a089448"
+}

@@ -104,6 +104,9 @@ class DataSplit:
     test_features: np.ndarray
     test_targets: np.ndarray
     normalization: NormalizationArtifact
+    train_indices: np.ndarray
+    validation_indices: np.ndarray
+    test_indices: np.ndarray
 
 
 class TabularDataset:
@@ -133,16 +136,15 @@ class TabularDataset:
             raise ValueError("No numeric feature columns were found for the dataset.")
 
         cleaned = self.frame.loc[:, list(feature_columns) + [config.target_column]].copy()
-        if config.fill_missing == "median":
-            for column in feature_columns:
-                cleaned[column] = cleaned[column].fillna(cleaned[column].median())
-        elif config.fill_missing == "drop":
-            cleaned = cleaned.dropna()
-        else:
-            raise ValueError(f"Unsupported fill_missing mode: {config.fill_missing!r}.")
-
         cleaned = cleaned.dropna(subset=[config.target_column])
-        features = cleaned.loc[:, list(feature_columns)].to_numpy(dtype=float)
+        if config.fill_missing == "drop":
+            cleaned = cleaned.dropna(subset=list(feature_columns))
+        elif config.fill_missing != "median":
+            raise ValueError(f"Unsupported fill_missing mode: {config.fill_missing!r}.")
+        if cleaned.empty:
+            raise ValueError("No rows remain after target/missing-value filtering.")
+
+        source_indices = cleaned.index.to_numpy(dtype=int)
         targets = cleaned.loc[:, config.target_column].to_numpy(dtype=float).reshape(-1, 1)
 
         test_fraction = float(config.test_fraction)
@@ -154,36 +156,75 @@ class TabularDataset:
         if validation_fraction + test_fraction >= 1.0:
             raise ValueError("validation_fraction + test_fraction must be < 1.0.")
 
-        train_features, test_features, train_targets, test_targets = train_test_split(
-            features,
-            targets,
-            test_size=test_fraction,
-            random_state=config.random_state,
-        )
+        if test_fraction > 0.0:
+            train_indices, test_indices, train_targets, test_targets = train_test_split(
+                source_indices, targets, test_size=test_fraction, random_state=config.random_state
+            )
+        else:
+            train_indices = source_indices.copy()
+            train_targets = targets.copy()
+            test_indices = np.empty((0,), dtype=int)
+            test_targets = np.empty((0, 1), dtype=float)
 
         effective_validation = validation_fraction / max(1.0 - test_fraction, 1e-12)
         if effective_validation > 0.0:
-            train_features, validation_features, train_targets, validation_targets = train_test_split(
-                train_features,
+            train_indices, validation_indices, train_targets, validation_targets = train_test_split(
+                train_indices,
                 train_targets,
                 test_size=effective_validation,
                 random_state=config.random_state,
             )
         else:
-            validation_features = np.empty((0, len(feature_columns)), dtype=float)
+            validation_indices = np.empty((0,), dtype=int)
             validation_targets = np.empty((0, 1), dtype=float)
 
-        normalization = self._fit_normalization(train_features, feature_columns, config.normalization)
+        def feature_frame(indices: np.ndarray) -> pd.DataFrame:
+            if len(indices) == 0:
+                return pd.DataFrame(columns=list(feature_columns), dtype=float)
+            return cleaned.loc[list(indices), list(feature_columns)].copy()
+
+        train_frame = feature_frame(np.asarray(train_indices, dtype=int))
+        validation_frame = feature_frame(np.asarray(validation_indices, dtype=int))
+        test_frame = feature_frame(np.asarray(test_indices, dtype=int))
+
+        # Missing-value statistics are learned from TRAIN only. This is part of
+        # the Test Firewall just like normalization and model fitting.
+        if config.fill_missing == "median":
+            train_medians = train_frame.median(axis=0, skipna=True)
+            missing_medians = [column for column in feature_columns if not np.isfinite(float(train_medians[column]))]
+            if missing_medians:
+                raise ValueError(
+                    "Cannot fit train-only median imputation because these TRAIN features contain no finite values: "
+                    + ", ".join(missing_medians)
+                )
+            train_frame = train_frame.fillna(train_medians)
+            validation_frame = validation_frame.fillna(train_medians)
+            test_frame = test_frame.fillna(train_medians)
+
+        train_features = train_frame.to_numpy(dtype=float)
+        validation_features = validation_frame.to_numpy(dtype=float)
+        test_features = test_frame.to_numpy(dtype=float)
+        if not np.all(np.isfinite(train_features)):
+            raise ValueError("TRAIN features contain non-finite values after preprocessing.")
+        if len(validation_features) and not np.all(np.isfinite(validation_features)):
+            raise ValueError("VALIDATION features contain non-finite values after train-derived preprocessing.")
+        if len(test_features) and not np.all(np.isfinite(test_features)):
+            raise ValueError("TEST features contain non-finite values after train-derived preprocessing.")
+
+        normalization = self._fit_normalization(train_features, tuple(feature_columns), config.normalization)
         return DataSplit(
             feature_columns=tuple(feature_columns),
             target_name=config.target_column,
             train_features=normalization.transform_array(train_features),
-            train_targets=train_targets,
+            train_targets=np.asarray(train_targets, dtype=float),
             validation_features=normalization.transform_array(validation_features),
-            validation_targets=validation_targets,
+            validation_targets=np.asarray(validation_targets, dtype=float),
             test_features=normalization.transform_array(test_features),
-            test_targets=test_targets,
+            test_targets=np.asarray(test_targets, dtype=float),
             normalization=normalization,
+            train_indices=np.asarray(train_indices, dtype=int),
+            validation_indices=np.asarray(validation_indices, dtype=int),
+            test_indices=np.asarray(test_indices, dtype=int),
         )
 
     @staticmethod

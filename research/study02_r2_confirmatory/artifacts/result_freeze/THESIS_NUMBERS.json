@@ -1,0 +1,56 @@
+{
+  "clean_false_blocks": 0,
+  "clean_false_warnings": 0,
+  "comparative_baseline": "NOT_APPLICABLE_R2_NO_COMPARATIVE_BASELINE_CLAIM",
+  "distinct_base_inputs": 40,
+  "distinct_data_content": 40,
+  "exception_taxonomy": {
+    "FileNotFoundError": 40,
+    "NONE": 40
+  },
+  "execution_plan_sha": "c0ecc52380d5058fc62dfa40f8a20c41f883c10ba490589b1439e98aad63c2ab",
+  "families": [
+    {
+      "clean": 20,
+      "clean_allowed": 20,
+      "clean_false_blocks": 0,
+      "corrupt": 20,
+      "corrupt_other": 0,
+      "corrupt_prevented": 20,
+      "family": "V06",
+      "pairs": 20,
+      "reopen_pass": 40
+    },
+    {
+      "clean": 20,
+      "clean_allowed": 20,
+      "clean_false_blocks": 0,
+      "corrupt": 20,
+      "corrupt_other": 0,
+      "corrupt_prevented": 20,
+      "family": "V07",
+      "pairs": 20,
+      "reopen_pass": 40
+    }
+  ],
+  "locked_pairs": 40,
+  "manifest_id": "c6d892f648728684a9c4f48f112c8bea12b9bae9b961c80baf68b5b1c4ba1544",
+  "outcomes": {
+    "ALLOWED_VALID": 40,
+    "PREVENTED_BY_VALIDATION_ONLY_ARTIFACT_INTERFACE": 40
+  },
+  "persistence_reopen": {
+    "PASS": 80
+  },
+  "product_sha": "772270a076e77b9c36d07e51bae8e45f5a3b1eddd69045176e63dc83834a3224",
+  "protocol_sha": "8f0e56371343a454a6af83830c5af6fdae481059e4cf5bfef746ff732af67440",
+  "raw_artifact": "artifacts/raw/locked_outcomes.jsonl",
+  "raw_sha256": "92caf554d39bcfaf05d32bd34b5248249ac924e2a8052c15aa7d5dca4a089448",
+  "schema_version": 1,
+  "study": "Study 02 R2 \u2014 confirmatory validation-only artifact interface",
+  "total_clean": 40,
+  "total_corrupt": 40,
+  "total_executions": 80,
+  "total_missed": 0,
+  "total_prevented": 40
+}

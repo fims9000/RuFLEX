@@ -1,0 +1,10 @@
+import { EChartsOption } from "echarts";
+
+const axis = { type: "value" as const, splitLine: { show: true } };
+export const chartFixtures: Array<{ name: string; option: EChartsOption }> = [
+  { name: "Learning curves", option: { tooltip: { trigger: "axis" }, legend: { data: ["Train loss", "Validation loss"] }, grid: { left: 40, right: 16, top: 36, bottom: 28 }, xAxis: { type: "category", data: ["0", "10", "20", "30", "40", "50"] }, yAxis: axis, series: [{ name: "Train loss", type: "line", smooth: true, data: [.94, .62, .39, .28, .21, .18] }, { name: "Validation loss", type: "line", smooth: true, data: [1.02, .68, .44, .35, .32, .33] }] } },
+  { name: "Seed distribution", option: { grid: { left: 38, right: 12, top: 12, bottom: 28 }, xAxis: { type: "category", data: ["ANFIS"] }, yAxis: { ...axis, min: .82, max: .96 }, series: [{ type: "boxplot", data: [[.85, .88, .905, .92, .94]] }, { type: "scatter", data: [[0, .85], [0, .87], [0, .89], [0, .91], [0, .93]] }] } },
+  { name: "Reliability", option: { grid: { left: 38, right: 14, top: 14, bottom: 28 }, xAxis: { type: "value", min: 0, max: 1 }, yAxis: { type: "value", min: 0, max: 1 }, series: [{ type: "line", data: [[0, 0], [1, 1]], lineStyle: { type: "dashed" }, symbol: "none" }, { type: "line", data: [[.1, .08], [.3, .26], [.5, .43], [.7, .61], [.9, .78]], symbolSize: 7 }] } },
+  { name: "Attribution", option: { grid: { left: 80, right: 14, top: 12, bottom: 20 }, xAxis: axis, yAxis: { type: "category", data: ["Temperature", "Vibration", "Pressure", "Wear"] }, series: [{ type: "bar", data: [.31, -.18, .12, .27], itemStyle: { borderRadius: [0, 3, 3, 0] } }] } },
+  { name: "Evidence heatmap", option: { grid: { left: 62, right: 14, top: 12, bottom: 44 }, xAxis: { type: "category", data: ["MF-1", "MF-2", "MF-3"] }, yAxis: { type: "category", data: ["Rule 1", "Rule 2", "Rule 3", "Rule 4"] }, visualMap: { min: 0, max: 1, show: false }, series: [{ type: "heatmap", data: [[0,0,.91],[1,0,.33],[2,0,.12],[0,1,.2],[1,1,.8],[2,1,.5],[0,2,.1],[1,2,.4],[2,2,.9],[0,3,.7],[1,3,.3],[2,3,.6]] }] } },
+];

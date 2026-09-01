@@ -1,0 +1,12 @@
+semantic_id,ruflex,reference,status,included_in_primary_claim,reason
+mf.triangle,"triangular(a,b,c)","Triangle(left,top,right)",MATCH,True,same piecewise-linear term parameters; DEV boundary checks required
+mf.trapezoid,"trapezoidal(a,b,c,d)","Trapezoid(bottom_left,top_left,top_right,bottom_right)",MATCH,True,same ordered piecewise-linear parameters; DEV checks required
+operator.and.min,min,Minimum,MATCH,True,minimum t-norm
+operator.or.max,max,Maximum,MATCH,True,maximum s-norm
+operator.implication.min,min,Minimum,MATCH,True,minimum implication
+operator.aggregation.max,max,Maximum,MATCH,True,maximum aggregation
+mamdani.centroid.midpoint_cells.401,explicit midpoint-cell discrete centroid,Centroid(401),MATCH,True,"DEV M01 at x=0.25, 0.5, and 0.75 agrees exactly with pinned pyfuzzylite 8.0.6; both use 401 midpoint cells."
+mamdani.centroid.inclusive_nodes.401,explicit inclusive endpoint-node discrete centroid (legacy RC2.1 migration mode),Centroid(401),PARTIAL,False,"NUMERICAL_DISCRETIZATION_DIFFERENCE: M01 x=0.25 differs by 0.0003390613606902848 because pyfuzzylite uses midpoint cells. This legacy mode is documented, not a MATCH claim."
+sugeno.weighted_average.zero_order,weighted firing average with constant consequents,WeightedAverage with Constant terms,MATCH,True,"DEV S01 verifies identical outputs at x=0.25, 0.5, and 0.75 under explicit min/max operators; linear mapping remains outside the initial primary matrix."
+operator.lukasiewicz,"max(0,a+b-1)",BoundedDifference,UNSUPPORTED,False,not in the initial primary mapping until adapter-specific verification
+mf.sigmoid,"parameters(slope,center)","Sigmoid(inflection,slope)",AMBIGUOUS,False,parameter order differs and must not enter the primary matrix before explicit mapping

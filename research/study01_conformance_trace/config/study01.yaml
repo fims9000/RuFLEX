@@ -1,0 +1,18 @@
+study_id: study01_conformance_trace
+subject_archive: release/RuFLEX_PRODUCT_V1_0_1_SOURCE.zip
+subject_sha256: 772270a076e77b9c36d07e51bae8e45f5a3b1eddd69045176e63dc83834a3224
+supersedes:
+  protocol_sha256: f24a6aac4e7958e6796a223f13779b80cf522427a88ea322f388e8ae14ee5891
+  locked_manifest_sha256: db186ba643899386810ebbf05c7faa4c027deb2d888d83495a155857f91f0f50
+development:
+  mamdani_grid_size: 401
+  one_dimensional_grid_points: 101
+  two_dimensional_grid_points: 21
+locked_suite:
+  curated_ids: [M01, M02, M03, M04, M05, M06, S01, S02, S03, S04, S05, S06]
+  generated_mamdani_seed: 20260831
+  generated_sugeno_seed: 20260901
+  generated_per_family: 20
+  one_dimensional_grid_points: 10001
+  two_dimensional_grid_points: 201
+  state: NOT_UNLOCKED

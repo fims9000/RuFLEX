@@ -1,0 +1,3 @@
+exception_type,count
+NONE,40
+FileNotFoundError,40

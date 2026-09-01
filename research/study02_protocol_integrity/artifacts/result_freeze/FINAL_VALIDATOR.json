@@ -1,0 +1,14 @@
+{
+  "figure_provenance_complete": true,
+  "frozen_identities_match": true,
+  "pairs_by_family": {
+    "V01": 20,
+    "V06": 20,
+    "V07": 20
+  },
+  "raw_rows": 120,
+  "raw_sha256": "5e217b593051cbd509ba7a20e25da66ac3b49d0b752ec535931b18687af4ba0e",
+  "status": "PASS",
+  "unique_base_inputs": 60,
+  "unique_scenarios": 120
+}

@@ -1,0 +1,119 @@
+{
+  "expected_reference_support": "PENDING_SEMANTIC_INTERSECTION",
+  "fixture_hash": "16075115c6ec5a7ab378dec30f5b9a380a65cbaf96bcf209ba361e74e1141172",
+  "fixture_id": "M01",
+  "model": {
+    "fis_id": "00000000-0000-0000-0000-000000000101",
+    "inputs": [
+      {
+        "dataset_feature": null,
+        "locked": false,
+        "maximum": 1.0,
+        "minimum": 0.0,
+        "name": "x",
+        "role": "input",
+        "terms": [
+          {
+            "kind": "triangular",
+            "locked": false,
+            "name": "low",
+            "parameters": [
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "kind": "triangular",
+            "locked": false,
+            "name": "high",
+            "parameters": [
+              0.0,
+              1.0,
+              1.0
+            ]
+          }
+        ],
+        "units": null
+      }
+    ],
+    "name": "DEV M01 symmetric Mamdani",
+    "operators": {
+      "aggregation": "max",
+      "and_operator": "min",
+      "centroid_resolution": 401,
+      "centroid_sampling": "midpoint_cells",
+      "defuzzification": "centroid",
+      "implication": "min",
+      "or_operator": "max"
+    },
+    "output": {
+      "dataset_feature": null,
+      "locked": false,
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "name": "y",
+      "role": "output",
+      "terms": [
+        {
+          "kind": "triangular",
+          "locked": false,
+          "name": "low",
+          "parameters": [
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        {
+          "kind": "triangular",
+          "locked": false,
+          "name": "high",
+          "parameters": [
+            0.0,
+            1.0,
+            1.0
+          ]
+        }
+      ],
+      "units": null
+    },
+    "rules": [
+      {
+        "clauses": [
+          {
+            "term": "low",
+            "variable": "x"
+          }
+        ],
+        "connector": "and",
+        "enabled": true,
+        "name": "low to low",
+        "output_term": "low",
+        "rule_id": "00000000-0000-0000-0000-000000001101",
+        "sugeno_consequent": null,
+        "weight": 1.0
+      },
+      {
+        "clauses": [
+          {
+            "term": "high",
+            "variable": "x"
+          }
+        ],
+        "connector": "and",
+        "enabled": true,
+        "name": "high to high",
+        "output_term": "high",
+        "rule_id": "00000000-0000-0000-0000-000000001102",
+        "sugeno_consequent": null,
+        "weight": 1.0
+      }
+    ],
+    "schema_version": 2,
+    "semantic_hash": "3184c4bc07d0b91215be22593fe7bbfc10643e69a069c6ec6f5fead60b315c06",
+    "system_type": "mamdani"
+  },
+  "provenance": "curated protocol fixture",
+  "schema_version": 1
+}

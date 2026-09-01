@@ -10,6 +10,7 @@ from ruflex.visualization.plots import Visualizer
 
 from .project import Project
 from .services import Evaluator, Trainer
+from .studio import StudioProjectView, open_studio_project
 
 __all__ = [
     "DecisionLayerSpec",
@@ -31,4 +32,6 @@ __all__ = [
     "TransparentBlockSpec",
     "VariableSpec",
     "Visualizer",
+    "StudioProjectView",
+    "open_studio_project",
 ]

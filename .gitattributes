@@ -1,0 +1,4 @@
+# Frozen research tables retain their original CRLF bytes as evidence artifacts.
+research/study01_conformance_trace/tables/*.csv -text whitespace=-trailing-space
+research/study02_protocol_integrity/artifacts/result_freeze/tables/*.csv -text whitespace=-trailing-space
+research/study02_r2_confirmatory/artifacts/result_freeze/tables/*.csv -text whitespace=-trailing-space

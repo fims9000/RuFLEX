@@ -1,5 +1,128 @@
 # RuFLEX
 
+RuFLEX is a local-first scientific workbench for fuzzy, neuro-fuzzy and classical ML model engineering. The current Product V1 Studio is object-centric: a project owns Data, Models, Studies, Analyses and Evidence, and the UI opens capability-appropriate workbenches rather than forcing a fixed linear wizard.
+
+## Product V1 Studio
+
+The active product path is:
+
+```text
+React + TypeScript Studio
+        |
+        v
+FastAPI application layer
+        |
+        v
+Canonical persisted project objects
+        |
+        +-- FIS / exact traces / revisions
+        +-- training runs / studies / seed runs
+        +-- evaluations / calibration / thresholds / final-test evidence
+        +-- comparisons / slices / generalization contracts
+        +-- explanations / explanation checks
+        +-- lineage / expert corrections
+```
+
+Core Product V1 capabilities include:
+
+- editable Type-1 Mamdani and Sugeno FIS with canonical variables, membership functions, rules and operators;
+- exact fuzzy computation traces, response surfaces and semantic FIS revisions;
+- CSV/XLSX data contracts and MATLAB `.fis` interoperability;
+- real ANFIS/FlatNeuroFuzzy training plus logistic/linear, Decision Tree, Random Forest and Gradient Boosting baselines;
+- persistent multi-seed Studies with validation-only selection provenance;
+- validation Evaluation objects, Platt calibration, validation-derived decision thresholds and an explicit frozen-policy final-test gate;
+- persisted comparisons that distinguish aligned and non-aligned validation cases;
+- exact Decision Tree execution paths and capability-compatible post-hoc evidence (TreeSHAP, SHAP, Integrated Gradients, GradientSHAP and Occlusion);
+- explanation contracts/checks, GeneralizationContract, Slice Lab, provenance lineage and expert FIS correction;
+- revision-bound BehaviorSpecs, validation-derived ACCEPT/REVIEW policies, cross-run explanation reproducibility and bounded Exhaustive Lab evidence;
+- semantic AssuranceCase gates and portable VerificationBundles with declarative evidence checksums (never a scalar trust score);
+- a read-only Python escape hatch over the same canonical Studio objects.
+
+### Scientific safeguards
+
+RuFLEX keeps these states separate by construction:
+
+```text
+TRAIN          fits preprocessing and model parameters
+VALIDATION     model selection / analysis
+CALIBRATION    probability and decision-policy fitting when explicitly used
+TEST           locked until explicit frozen-policy final evaluation
+```
+
+The final-test action persists a separate evidence object. For one dataset revision, re-running the identical frozen policy is idempotent. Additional policies are eligible only if they were already frozen before the first final-test access and reconstruct the same holdout rows; post-unlock policies are blocked. Exact computation/structural traces are also kept distinct from post-hoc attribution.
+
+## Install and run Studio
+
+Python 3.11+ is required. From the repository root:
+
+```bash
+python -m venv .venv
+.venv/bin/python -m pip install -U pip
+.venv/bin/python -m pip install -e '.[dev,studio]'
+```
+
+Start the API:
+
+```bash
+PYTHONPATH=src .venv/bin/python -m uvicorn ruflex.api.main:app --host 127.0.0.1 --port 8010
+```
+
+In another shell:
+
+```bash
+cd frontend
+npm install
+VITE_RUFLEX_API_URL=http://127.0.0.1:8010 npm run dev
+```
+
+Open the Vite address printed by the frontend (normally `http://127.0.0.1:5173`).
+
+### Browser product routes
+
+Playwright is configured to prefer the repository venv and a project-local browser cache. Install its Chromium revision once:
+
+```bash
+cd frontend
+PLAYWRIGHT_BROWSERS_PATH=../.playwright-browsers npx playwright install chromium
+```
+
+Then:
+
+```bash
+npm run test:e2e
+```
+
+`RUFLEX_PYTHON` and `PLAYWRIGHT_CHROMIUM_EXECUTABLE` can override interpreter/browser discovery when needed.
+
+## Python access to a Studio project
+
+```python
+from ruflex.sdk import open_studio_project
+
+project = open_studio_project('/path/to/project')
+print(project.dataset_contract())
+print(project.training_runs())
+print(project.lineage())
+```
+
+See [`docs/PYTHON_ACCESS.md`](docs/PYTHON_ACCESS.md) for the persisted analysis/evidence objects available through the read-only SDK.
+
+## Repository layout
+
+```text
+frontend/        React/TypeScript Studio
+src/ruflex/      canonical domain, application services, API and SDK
+src/ruanfis/     vendored neuro-fuzzy backend
+tests/           Product V1 and backend tests
+docs/            product, research and upstream documentation
+```
+
+---
+
+## Historical / research tooling
+
+The material below documents older toolbox, article and Streamlit-oriented workflows that remain in the repository for compatibility and research use. They are not the primary Product V1 Studio entrypoint.
+
 RuFLEX is a research-oriented platform for hybrid deep fuzzy learning.
 
 Recommended repository naming:
