@@ -17,9 +17,9 @@ test("Stability Lab persists fixed-split multi-run evidence and its validation-o
   await expect(page.getByText("Validation f1 across seeds", { exact: true })).toBeVisible({ timeout: 60_000 });
   await expect(page.getByText(/Training variability fixes split membership/)).toBeVisible();
   await page.getByRole("button", { name: "Create Study Stability Analysis", exact: true }).click();
-  await expect(page.getByText("Case Stability Map · red = high-confidence unstable", { exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText("Case Stability Map · selected-run agreement; red = high-confidence unstable", { exact: true })).toBeVisible({ timeout: 30_000 });
   await page.getByRole("button", { name: "Freeze Stability Gate", exact: true }).click();
   await expect(page.getByText("Risk–coverage comparison (same coverage)", { exact: true })).toBeVisible({ timeout: 30_000 });
   await page.getByRole("button", { name: "Close", exact: true }).click(); await page.getByLabel("Project path").fill(root); await page.getByRole("button", { name: "Open project", exact: true }).click(); await page.getByRole("button", { name: "S", exact: true }).click();
-  await expect(page.getByText("Case Stability Map · red = high-confidence unstable", { exact: true })).toBeVisible();
+  await expect(page.getByText("Case Stability Map · selected-run agreement; red = high-confidence unstable", { exact: true })).toBeVisible();
 });

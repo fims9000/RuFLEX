@@ -26,7 +26,7 @@ from ruflex.core.enums import NormalizationMode, TaskType, VariableRole
 from ruflex.core.membership import GaussianMembershipSpec
 from ruflex.core.variables import VariableSpec
 from ruflex.data.datasets import DatasetConfig, NormalizationArtifact, TabularDataset
-from ruflex.domain.training import AnalysisComparison, AnalysisEvaluation, FinalTestEvaluation, CalibratedPrediction, CalibrationBin, CalibrationProvenance, CalibrationTransform, ConfusionMatrix, DecisionThresholdPolicy, EpochPoint, PredictionRow, SplitProvenance, StudyJob, StudySeedState, ThresholdDecision, ThresholdProvenance, TrainingRun, TrainingStudy, TreePathEvidence, TreePathStep
+from ruflex.domain.training import AnalysisComparison, AnalysisEvaluation, FinalTestEvaluation, FinalTestStabilityCase, FinalTestStabilityEvidence, CalibratedPrediction, CalibrationBin, CalibrationProvenance, CalibrationTransform, ConfusionMatrix, DecisionThresholdPolicy, EpochPoint, PredictionRow, SplitProvenance, StudyJob, StudySeedState, ThresholdDecision, ThresholdProvenance, TrainingRun, TrainingStudy, TreePathEvidence, TreePathStep
 from ruflex.models.flat_nf.model import FlatNeuroFuzzyModel
 from ruflex.models.specs import DecisionLayerSpec, ShallowModelSpec, TransparentBlockSpec
 from ruflex.training.config import FineTuningOptions, ModelTrainingConfig, RefinementOptions, StagewiseOptions
@@ -1414,6 +1414,8 @@ def evaluate_final_test(
         stability_gate_policy = load_stability_gate_policy(project_root, stability_gate_policy_id)
         if stability_gate_policy.evaluation_id != evaluation.evaluation_id or stability_gate_policy.selected_run_id != run.run_id:
             raise TrainingError("Stability Gate policy does not belong to this validation Evaluation/selected TrainingRun.")
+        if threshold is None or stability_gate_policy.class_threshold_id != threshold.threshold_id or stability_gate_policy.decision_threshold != threshold.selected_threshold or threshold.probability_source != "raw":
+            raise TrainingError("Final-test Stability Gate requires its exact raw validation-derived DecisionThreshold policy.")
         stability_analysis = load_study_stability_analysis(project_root, stability_gate_policy.stability_analysis_id)
         if stability_analysis.applicability != "APPLICABLE" or stability_analysis.validation_alignment_status != "EXACT_MATCH":
             raise TrainingError("Final-test binding requires applicable fixed-split Stability Gate evidence.")
@@ -1570,6 +1572,31 @@ def evaluate_final_test(
         ]
         probability_source = threshold.probability_source
         decision_threshold = threshold.selected_threshold
+        stability_evidence = None
+        if stability_gate_policy is not None:
+            from ruflex.application.stability import evaluate_frozen_stability_probabilities
+            gate_runs = [load_training_run(project_root, run_id) for run_id in stability_gate_policy.run_ids]
+            if any(item.split.split_identity != run.split.split_identity or item.dataset_fingerprint != run.dataset_fingerprint for item in gate_runs):
+                raise TrainingError("Stability Gate runs do not reconstruct the frozen selected-run final-test split.")
+            if any(_stable_identity("preprocessing", item.normalization) != expected_preprocessing for item in gate_runs):
+                raise TrainingError("Stability Gate runs do not share the selected-run frozen preprocessing identity.")
+            all_probabilities = {
+                str(item.run_id): 1.0 / (1.0 + np.exp(-np.clip(_predict_persisted_run_normalized(project_root, item, split.test_features), -60.0, 60.0)))
+                for item in gate_runs
+            }
+            gate_cases = []
+            for index, source_row in enumerate(source_rows):
+                application = evaluate_frozen_stability_probabilities(stability_gate_policy, {run_id: float(values[index]) for run_id, values in all_probabilities.items()})
+                gate_cases.append(FinalTestStabilityCase(case_id=f"source:{int(source_row)}", source_row=int(source_row), target=int(truth[index]), selected_run_probability=application.selected_run_probability, selected_run_class=application.predicted_label, majority_class_agreement=application.majority_class_agreement, selected_run_agreement=application.selected_run_agreement, probability_std=application.probability_std, disposition=application.disposition, reasons=application.reasons))
+            accepted = [case for case in gate_cases if case.disposition == "ACCEPT"]
+            reviews = [case for case in gate_cases if case.disposition == "REVIEW"]
+            blocks = [case for case in gate_cases if case.disposition == "BLOCK"]
+            accepted_error = None if not accepted else float(np.mean([case.selected_run_class != case.target for case in accepted]))
+            accepted_fn = sum(case.selected_run_class == 0 and case.target == 1 for case in accepted)
+            accepted_positives = sum(case.target == 1 for case in accepted)
+            confidence_only = sorted(gate_cases, key=lambda case: max(case.selected_run_probability, 1.0 - case.selected_run_probability), reverse=True)[:len(accepted)]
+            confidence_error = None if not confidence_only else float(np.mean([case.selected_run_class != case.target for case in confidence_only]))
+            stability_evidence = FinalTestStabilityEvidence(policy_id=stability_gate_policy.policy_id, class_threshold_id=stability_gate_policy.class_threshold_id, decision_threshold=stability_gate_policy.decision_threshold, run_ids=stability_gate_policy.run_ids, cases=gate_cases, accepted_count=len(accepted), review_count=len(reviews), block_count=len(blocks), coverage=len(accepted) / len(gate_cases), accepted_error=accepted_error, accepted_false_negative_count=accepted_fn, accepted_false_negative_rate=None if accepted_positives == 0 else accepted_fn / accepted_positives, confidence_only_accepted_error=confidence_error, confidence_only_accepted_count=len(confidence_only))
     else:
         metrics = _baseline_metrics(run.task, targets, raw_predictions)
         confusion = None
@@ -1588,6 +1615,7 @@ def evaluate_final_test(
         ]
         probability_source = "not_applicable"
         decision_threshold = None
+        stability_evidence = None
 
     test_sample_identity = _stable_identity(
         "final-test-samples",
@@ -1625,6 +1653,7 @@ def evaluate_final_test(
         threshold_id=None if threshold is None else threshold.threshold_id,
         selective_policy_id=None if selective_policy is None else selective_policy.policy_id,
         stability_gate_policy_id=None if stability_gate_policy is None else stability_gate_policy.policy_id,
+        stability_gate_evidence=stability_evidence,
         probability_source=probability_source,
         decision_threshold=decision_threshold,
         metrics=metrics,

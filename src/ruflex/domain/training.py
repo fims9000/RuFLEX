@@ -328,7 +328,7 @@ class FinalTestEvaluation(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: int = 1
+    schema_version: int = 2
     final_test_id: UUID = Field(default_factory=uuid4)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     run_id: UUID
@@ -346,6 +346,7 @@ class FinalTestEvaluation(BaseModel):
     threshold_id: UUID | None = None
     selective_policy_id: UUID | None = None
     stability_gate_policy_id: UUID | None = None
+    stability_gate_evidence: "FinalTestStabilityEvidence | None" = None
     probability_source: Literal["not_applicable", "raw", "calibrated"] = "not_applicable"
     decision_threshold: float | None = Field(default=None, ge=0.0, le=1.0)
     metrics: dict[str, float]
@@ -363,6 +364,43 @@ class FinalTestEvaluation(BaseModel):
         "No fitting, calibration fitting, threshold selection, or model selection is performed on final-test data. "
         "Additional pre-frozen policies may be evaluated only on the same frozen final-test cases; policies created after first access are blocked."
     )
+
+
+class FinalTestStabilityCase(BaseModel):
+    """Frozen, non-tuning application of one Stability Gate final-test case."""
+
+    model_config = ConfigDict(extra="forbid")
+    case_id: str
+    source_row: int
+    target: int
+    selected_run_probability: float
+    selected_run_class: int
+    majority_class_agreement: float = Field(ge=0.0, le=1.0)
+    selected_run_agreement: float = Field(ge=0.0, le=1.0)
+    probability_std: float = Field(ge=0.0)
+    disposition: Literal["ACCEPT", "REVIEW", "BLOCK"]
+    reasons: list[Literal["LOW_CONFIDENCE", "RUN_DISAGREEMENT", "HIGH_DISPERSION", "OUT_OF_SCOPE", "INSUFFICIENT_RUN_SUPPORT"]] = Field(default_factory=list)
+
+
+class FinalTestStabilityEvidence(BaseModel):
+    """Evaluation-only evidence from a policy frozen before test unlock."""
+
+    model_config = ConfigDict(extra="forbid")
+    policy_id: UUID
+    class_threshold_id: UUID
+    decision_threshold: float = Field(ge=0.0, le=1.0)
+    run_ids: list[UUID] = Field(min_length=3)
+    cases: list[FinalTestStabilityCase]
+    accepted_count: int = Field(ge=0)
+    review_count: int = Field(ge=0)
+    block_count: int = Field(ge=0)
+    coverage: float = Field(ge=0.0, le=1.0)
+    accepted_error: float | None = None
+    accepted_false_negative_count: int = Field(ge=0)
+    accepted_false_negative_rate: float | None = None
+    confidence_only_accepted_error: float | None = None
+    confidence_only_accepted_count: int = Field(ge=0)
+    scientific_note: str = "Frozen policy application only; no final-test fitting, selection, or threshold adjustment occurred."
 
 
 class AnalysisComparison(BaseModel):

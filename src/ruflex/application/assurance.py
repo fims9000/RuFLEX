@@ -134,11 +134,20 @@ def create_assurance_case(root: Path) -> AssuranceCase:
         and item.probability_source == "raw"
         and item.stability_analysis_id in stability_by_id
         and item.evaluation_id in evaluation_by_id
+        and item.class_threshold_id in {threshold.threshold_id for threshold in thresholds}
         and item.selected_run_id in run_by_id
         and item.run_ids == stability_by_id[item.stability_analysis_id].run_ids
         and item.dataset_fingerprint == stability_by_id[item.stability_analysis_id].dataset_fingerprint
         and evaluation_by_id[item.evaluation_id].run_id == item.selected_run_id
         and evaluation_by_id[item.evaluation_id].split == "validation"
+        and next(threshold for threshold in thresholds if threshold.threshold_id == item.class_threshold_id).evaluation_id == item.evaluation_id
+        and next(threshold for threshold in thresholds if threshold.threshold_id == item.class_threshold_id).run_id == item.selected_run_id
+        and next(threshold for threshold in thresholds if threshold.threshold_id == item.class_threshold_id).source_split == "validation"
+        and next(threshold for threshold in thresholds if threshold.threshold_id == item.class_threshold_id).probability_source == "raw"
+        and next(threshold for threshold in thresholds if threshold.threshold_id == item.class_threshold_id).calibration_id is None
+        and next(threshold for threshold in thresholds if threshold.threshold_id == item.class_threshold_id).selected_threshold == item.decision_threshold
+        and stability_by_id[item.stability_analysis_id].class_threshold_id == item.class_threshold_id
+        and stability_by_id[item.stability_analysis_id].decision_threshold == item.decision_threshold
         and item.fit_sample_identity == stability_by_id[item.stability_analysis_id].evaluation_case_identity
         and len(item.decisions) == stability_by_id[item.stability_analysis_id].case_count
         for item in stability_policies

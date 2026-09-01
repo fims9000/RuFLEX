@@ -232,6 +232,8 @@ class CreateSelectivePolicyRequest(SessionRequest):
 
 class CreateStudyStabilityAnalysisRequest(SessionRequest):
     study_id: UUID
+    evaluation_id: UUID | None = None
+    threshold_id: UUID | None = None
     high_confidence_threshold: float = Field(default=0.9, ge=0.5, le=1.0)
     unstable_agreement_threshold: float = Field(default=0.8, gt=0.0, le=1.0)
 
@@ -1202,7 +1204,7 @@ def create_study_stability_analysis_route(request: CreateStudyStabilityAnalysisR
         session = service.get(request.session_id)
         if session.project.read_only:
             raise ProjectReadOnlyError("Project was opened read-only and cannot create stability evidence.")
-        return create_study_stability_analysis(session.project.root, request.study_id, high_confidence_threshold=request.high_confidence_threshold, unstable_agreement_threshold=request.unstable_agreement_threshold)
+        return create_study_stability_analysis(session.project.root, request.study_id, evaluation_id=request.evaluation_id, threshold_id=request.threshold_id, high_confidence_threshold=request.high_confidence_threshold, unstable_agreement_threshold=request.unstable_agreement_threshold)
     except ProjectError as error:
         raise _project_error(error) from error
     except (TrainingError, FileNotFoundError, ValueError, OSError) as error:

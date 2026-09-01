@@ -337,9 +337,11 @@ def build_project_lineage(project_root: Path) -> LineageGraph:
             add_edge(dataset_node, node, "validation_stability_for")
     stability_policies = [item for item in _json_models(root / "analyses" / "stability-policies", StabilityGatePolicy, exclude=("active-policy.json",)) if isinstance(item, StabilityGatePolicy)]
     for policy in stability_policies:
-        node = add_node(LineageNode(id=_node_id("stability-policy", policy.policy_id), kind="stability_gate_policy", label="Stability-aware review", detail="validation-derived ACCEPT/REVIEW/BLOCK policy", target="ANALYSES", object_id=str(policy.policy_id), status=policy.test_status))
+        threshold_detail = "legacy threshold unavailable" if policy.decision_threshold is None else f"validation-derived raw threshold {policy.decision_threshold:.4g}"
+        node = add_node(LineageNode(id=_node_id("stability-policy", policy.policy_id), kind="stability_gate_policy", label="Stability-aware review", detail=f"{threshold_detail} · ACCEPT/REVIEW/BLOCK", target="ANALYSES", object_id=str(policy.policy_id), status=policy.test_status))
         add_edge(stability_nodes.get(policy.stability_analysis_id), node, "policy_derived_from")
         add_edge(evaluation_nodes.get(policy.evaluation_id), node, "policy_bound_to_validation")
+        add_edge(threshold_nodes.get(policy.class_threshold_id), node, "uses_frozen_class_threshold")
 
     repro = [item for item in _json_models(root / "evidence" / "explanation-reproducibility", ExplanationReproducibilityAnalysis, exclude=("active-analysis.json",)) if isinstance(item, ExplanationReproducibilityAnalysis)]
     for item in repro:

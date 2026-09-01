@@ -25,15 +25,17 @@ class CaseStability(BaseModel):
     run_support_fraction: float = Field(ge=0.0, le=1.0)
     target: int
     selected_run_probability: float
-    selected_run_class: int
+    selected_run_class: int | None = None
     mean_probability: float
     std_probability: float
     min_probability: float
     max_probability: float
     probability_range: float
-    predicted_class_agreement: float = Field(ge=0.0, le=1.0)
-    positive_vote_fraction: float = Field(ge=0.0, le=1.0)
-    vote_entropy: float = Field(ge=0.0)
+    majority_class: int | None = None
+    majority_class_agreement: float | None = Field(default=None, ge=0.0, le=1.0)
+    selected_run_agreement: float | None = Field(default=None, ge=0.0, le=1.0)
+    positive_vote_fraction: float | None = Field(default=None, ge=0.0, le=1.0)
+    vote_entropy: float | None = Field(default=None, ge=0.0)
     run_probabilities: dict[str, float]
     run_labels: dict[str, int]
 
@@ -45,6 +47,12 @@ class CaseStability(BaseModel):
             count = len(value.get("run_probabilities", {}))
             value["run_support_count"] = count
             value["run_support_fraction"] = 1.0
+        if isinstance(value, dict) and "majority_class_agreement" not in value:
+            value = dict(value)
+            legacy = value.pop("predicted_class_agreement", None)
+            value["majority_class_agreement"] = legacy
+            value["selected_run_agreement"] = legacy
+            value.setdefault("majority_class", None)
         return value
 
 
@@ -60,7 +68,7 @@ class StudyStabilityAnalysis(BaseModel):
     """Persisted, validation-only cross-run prediction-stability evidence."""
 
     model_config = ConfigDict(extra="forbid")
-    schema_version: int = 2
+    schema_version: int = 3
     analysis_id: UUID = Field(default_factory=uuid4)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     study_id: UUID
@@ -75,6 +83,9 @@ class StudyStabilityAnalysis(BaseModel):
     training_seeds: list[int] = Field(min_length=3)
     split_seed: int | None = None
     evaluation_case_identity: str | None = None
+    evaluation_id: UUID | None = None
+    class_threshold_id: UUID | None = None
+    decision_threshold: float | None = Field(default=None, ge=0.0, le=1.0)
     validation_alignment_status: Literal["EXACT_MATCH", "MIXED_CASE_IDENTITIES", "NOT_APPLICABLE"]
     applicability: Literal["APPLICABLE", "NOT_APPLICABLE"] = "APPLICABLE"
     applicability_reason: str | None = None
@@ -110,6 +121,9 @@ class StudyStabilityAnalysis(BaseModel):
         value.setdefault("case_support_requirement", 3)
         value.setdefault("probability_source", "raw")
         value.setdefault("warnings", [])
+        value.setdefault("evaluation_id", None)
+        value.setdefault("class_threshold_id", None)
+        value.setdefault("decision_threshold", None)
         return value
 
 
@@ -120,7 +134,8 @@ class StabilityGateDecision(BaseModel):
     reasons: list[Literal["LOW_CONFIDENCE", "RUN_DISAGREEMENT", "HIGH_DISPERSION", "OUT_OF_SCOPE", "INSUFFICIENT_RUN_SUPPORT"]] = Field(default_factory=list)
     selected_run_probability: float
     confidence: float
-    class_agreement: float
+    majority_class_agreement: float
+    selected_run_agreement: float
     probability_std: float
     run_support_count: int = Field(ge=0)
 
@@ -130,6 +145,11 @@ class StabilityGateDecision(BaseModel):
         if isinstance(value, dict) and "run_support_count" not in value:
             value = dict(value)
             value["run_support_count"] = 0
+        if isinstance(value, dict) and "selected_run_agreement" not in value:
+            value = dict(value)
+            legacy = value.pop("class_agreement", 0.0)
+            value["majority_class_agreement"] = legacy
+            value["selected_run_agreement"] = legacy
         return value
 
 
@@ -137,7 +157,7 @@ class StabilityGatePolicy(BaseModel):
     """A validation-derived decision gate; no explanation statistic is a gate input."""
 
     model_config = ConfigDict(extra="forbid")
-    schema_version: int = 2
+    schema_version: int = 3
     policy_id: UUID = Field(default_factory=uuid4)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     frozen_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -145,6 +165,10 @@ class StabilityGatePolicy(BaseModel):
     stability_analysis_id: UUID
     selected_run_id: UUID
     evaluation_id: UUID
+    # Older persisted gates remain inspectable, but cannot be applied because
+    # they did not record an explicit frozen decision-threshold provenance.
+    class_threshold_id: UUID | None = None
+    decision_threshold: float | None = Field(default=None, ge=0.0, le=1.0)
     dataset_fingerprint: str | None = None
     dataset_artifact_sha256: str | None = None
     model_kind: str
@@ -181,6 +205,10 @@ class StabilityGatePolicy(BaseModel):
         value.setdefault("required_run_support", 3)
         value.setdefault("probability_source", "raw")
         value.setdefault("analysis_schema_version", 1)
+        # Old gates lacked an explicit threshold and are preserved for
+        # inspection only; they cannot satisfy current assurance provenance.
+        value.setdefault("class_threshold_id", value.get("threshold_id", None))
+        value.setdefault("decision_threshold", None)
         return value
 
 
@@ -195,7 +223,8 @@ class StabilityGateApplication(BaseModel):
     selected_run_probability: float
     predicted_label: int
     confidence: float
-    class_agreement: float
+    majority_class_agreement: float
+    selected_run_agreement: float
     probability_std: float
     run_support_count: int = Field(ge=0)
     run_probabilities: dict[str, float]
@@ -206,4 +235,9 @@ class StabilityGateApplication(BaseModel):
         if isinstance(value, dict) and "run_support_count" not in value:
             value = dict(value)
             value["run_support_count"] = len(value.get("run_probabilities", {}))
+        if isinstance(value, dict) and "selected_run_agreement" not in value:
+            value = dict(value)
+            legacy = value.pop("class_agreement", 0.0)
+            value["majority_class_agreement"] = legacy
+            value["selected_run_agreement"] = legacy
         return value

@@ -13,8 +13,8 @@ The primary mode is `TRAINING_VARIABILITY`: one persisted `split_seed` determine
 ## Frozen definitions before final-test unlock
 
 - High confidence: selected-run confidence >= 0.90.
-- Prediction instability: cross-run predicted-class agreement < 0.80.
-- HCIR: proportion of high-confidence validation cases that are prediction-unstable.
+- Prediction instability: selected-run agreement (not majority consensus) < 0.80, using the exact frozen validation-derived raw DecisionThresholdPolicy.
+- HCIR: proportion of high-confidence validation cases whose selected-run agreement is below 0.80; it is undefined when no validation case meets the high-confidence criterion.
 - Stability Gate: `BLOCK` for declared out-of-scope cases; otherwise `REVIEW` for low confidence, run disagreement, or probability dispersion above the validation-derived frozen limit; otherwise `ACCEPT`.
 - Explanation reproducibility is a separate evidence channel and is not an operational review criterion.
 - Primary model-level metric: validation F1 (with ROC-AUC, PR-AUC, Brier and ECE reported descriptively when defined). For AI4I, false-negative rate among accepted cases is also reported.
