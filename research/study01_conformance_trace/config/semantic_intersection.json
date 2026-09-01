@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "reference": "pyfuzzylite 8.0.6",
+  "elements": [
+    {"semantic_id": "mf.triangle", "ruflex": "triangular(a,b,c)", "reference": "Triangle(left,top,right)", "status": "MATCH", "reason": "same piecewise-linear term parameters; DEV boundary checks required", "source": "RuFLEX application.fis; pyfuzzylite 8.0.6 API"},
+    {"semantic_id": "mf.trapezoid", "ruflex": "trapezoidal(a,b,c,d)", "reference": "Trapezoid(bottom_left,top_left,top_right,bottom_right)", "status": "MATCH", "reason": "same ordered piecewise-linear parameters; DEV checks required", "source": "RuFLEX application.fis; pyfuzzylite 8.0.6 API"},
+    {"semantic_id": "operator.and.min", "ruflex": "min", "reference": "Minimum", "status": "MATCH", "reason": "minimum t-norm", "source": "RuFLEX application.fis; pyfuzzylite 8.0.6"},
+    {"semantic_id": "operator.or.max", "ruflex": "max", "reference": "Maximum", "status": "MATCH", "reason": "maximum s-norm", "source": "RuFLEX application.fis; pyfuzzylite 8.0.6"},
+    {"semantic_id": "operator.implication.min", "ruflex": "min", "reference": "Minimum", "status": "MATCH", "reason": "minimum implication", "source": "RuFLEX application.fis; pyfuzzylite 8.0.6"},
+    {"semantic_id": "operator.aggregation.max", "ruflex": "max", "reference": "Maximum", "status": "MATCH", "reason": "maximum aggregation", "source": "RuFLEX application.fis; pyfuzzylite 8.0.6"},
+    {"semantic_id": "mamdani.centroid.midpoint_cells.401", "ruflex": "explicit midpoint-cell discrete centroid", "reference": "Centroid(401)", "status": "MATCH", "reason": "DEV M01 at x=0.25, 0.5, and 0.75 agrees exactly with pinned pyfuzzylite 8.0.6; both use 401 midpoint cells.", "source": "RuFLEX V1.0.1 application.fis; pyfuzzylite 8.0.6; artifacts/raw/dev_vertical_slice.json"},
+    {"semantic_id": "mamdani.centroid.inclusive_nodes.401", "ruflex": "explicit inclusive endpoint-node discrete centroid (legacy RC2.1 migration mode)", "reference": "Centroid(401)", "status": "PARTIAL", "reason": "NUMERICAL_DISCRETIZATION_DIFFERENCE: M01 x=0.25 differs by 0.0003390613606902848 because pyfuzzylite uses midpoint cells. This legacy mode is documented, not a MATCH claim.", "source": "artifacts/failures/legacy_mamdani_centroid_diagnosis.json"},
+    {"semantic_id": "sugeno.weighted_average.zero_order", "ruflex": "weighted firing average with constant consequents", "reference": "WeightedAverage with Constant terms", "status": "MATCH", "reason": "DEV S01 verifies identical outputs at x=0.25, 0.5, and 0.75 under explicit min/max operators; linear mapping remains outside the initial primary matrix.", "source": "RuFLEX application.fis; pyfuzzylite 8.0.6 API; artifacts/raw/dev_vertical_slice.json"},
+    {"semantic_id": "operator.lukasiewicz", "ruflex": "max(0,a+b-1)", "reference": "BoundedDifference", "status": "UNSUPPORTED", "reason": "not in the initial primary mapping until adapter-specific verification", "source": "semantic audit"},
+    {"semantic_id": "mf.sigmoid", "ruflex": "parameters(slope,center)", "reference": "Sigmoid(inflection,slope)", "status": "AMBIGUOUS", "reason": "parameter order differs and must not enter the primary matrix before explicit mapping", "source": "RuFLEX application.fis; pyfuzzylite 8.0.6 API"}
+  ]
+}

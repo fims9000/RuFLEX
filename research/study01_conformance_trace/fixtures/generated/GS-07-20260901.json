@@ -1,0 +1,129 @@
+{
+  "expected_reference_support": "PENDING_SEMANTIC_INTERSECTION",
+  "fixture_hash": "58aa9a86a2027ddb32f5ca81cbba1bdb81a05860d06163350c492a36fc91f849",
+  "fixture_id": "GS-07-20260901",
+  "model": {
+    "fis_id": "a3f75181-4d93-59a0-9f79-a99c47738e81",
+    "inputs": [
+      {
+        "dataset_feature": null,
+        "locked": false,
+        "maximum": 1.0,
+        "minimum": 0.0,
+        "name": "x",
+        "role": "input",
+        "terms": [
+          {
+            "kind": "triangular",
+            "locked": false,
+            "name": "x_low",
+            "parameters": [
+              0.0,
+              0.0,
+              0.47467
+            ]
+          },
+          {
+            "kind": "triangular",
+            "locked": false,
+            "name": "x_high",
+            "parameters": [
+              0.47467,
+              1.0,
+              1.0
+            ]
+          }
+        ],
+        "units": null
+      }
+    ],
+    "name": "GS-07-20260901",
+    "operators": {
+      "aggregation": "max",
+      "and_operator": "min",
+      "centroid_resolution": 401,
+      "centroid_sampling": "midpoint_cells",
+      "defuzzification": "centroid",
+      "implication": "min",
+      "or_operator": "max"
+    },
+    "output": {
+      "dataset_feature": null,
+      "locked": false,
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "name": "y",
+      "role": "output",
+      "terms": [
+        {
+          "kind": "triangular",
+          "locked": false,
+          "name": "y_low",
+          "parameters": [
+            0.0,
+            0.0,
+            0.5
+          ]
+        },
+        {
+          "kind": "triangular",
+          "locked": false,
+          "name": "y_high",
+          "parameters": [
+            0.5,
+            1.0,
+            1.0
+          ]
+        }
+      ],
+      "units": null
+    },
+    "rules": [
+      {
+        "clauses": [
+          {
+            "term": "x_low",
+            "variable": "x"
+          }
+        ],
+        "connector": "and",
+        "enabled": true,
+        "name": "x_low rule",
+        "output_term": "y_low",
+        "rule_id": "640efc61-4e7c-5c48-9296-76c24c246f9c",
+        "sugeno_consequent": {
+          "coefficients": {},
+          "constant": 0.2,
+          "intercept": 0.0,
+          "kind": "constant"
+        },
+        "weight": 0.690588
+      },
+      {
+        "clauses": [
+          {
+            "term": "x_high",
+            "variable": "x"
+          }
+        ],
+        "connector": "and",
+        "enabled": true,
+        "name": "x_high rule",
+        "output_term": "y_high",
+        "rule_id": "05689d6e-b4c0-5a58-a0ff-fdb4c1aab1e0",
+        "sugeno_consequent": {
+          "coefficients": {},
+          "constant": 0.8,
+          "intercept": 0.0,
+          "kind": "constant"
+        },
+        "weight": 0.690588
+      }
+    ],
+    "schema_version": 2,
+    "semantic_hash": "8e4d06ea56244292b3273756117cbda2dd945f707fca37eb0c5ec85a48250198",
+    "system_type": "sugeno"
+  },
+  "provenance": "deterministic seed 20260901",
+  "schema_version": 1
+}

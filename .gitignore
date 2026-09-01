@@ -13,3 +13,15 @@ artifacts/
 reports/
 tmp/
 
+# Local browser/build outputs and externally retained release evidence.
+.playwright-browsers/
+node_modules/
+frontend/storybook-static/
+frontend/test-results/
+frontend/playwright-report/
+frontend/*.tsbuildinfo
+release/
+research/**/artifacts/raw/
+research/**/artifacts/diagnostics/
+research/**/artifacts/manifests/
+research/**/artifacts/aggregated/

@@ -1,0 +1,23 @@
+{
+  "authorization_external": true,
+  "authorization_record_path": ".agent-state/STUDY02_R2_TEST_AUTHORIZATION.json",
+  "families": [
+    "V06",
+    "V07"
+  ],
+  "file_hashes": {
+    "DECISIONS.md": "369ff2936cad18e06923ae91b9fcbf158185693480cebda9e953cf776c0670a1",
+    "PROTOCOL.md": "78f24b0b8d35316f4305b386011a8efba0d3b26efd5cb584e1731ac5280a95a6",
+    "config/locked_execution_plan.jsonl": "c0ecc52380d5058fc62dfa40f8a20c41f883c10ba490589b1439e98aad63c2ab",
+    "core.py": "853ad20e3b021f84e4a9abf45c566e2ac5fb8f6650dd3392a565cb6f43dfd0f4",
+    "scripts.py": "e5901d63306deee63dff4b6ae4392caaa37d1c8d63170a7d1b6fd7e05664afe0"
+  },
+  "manifest_id": "c6d892f648728684a9c4f48f112c8bea12b9bae9b961c80baf68b5b1c4ba1544",
+  "pairs": 40,
+  "plan_sha": "c0ecc52380d5058fc62dfa40f8a20c41f883c10ba490589b1439e98aad63c2ab",
+  "product_sha": "772270a076e77b9c36d07e51bae8e45f5a3b1eddd69045176e63dc83834a3224",
+  "protocol_sha": "8f0e56371343a454a6af83830c5af6fdae481059e4cf5bfef746ff732af67440",
+  "scenarios": 80,
+  "schema_version": 2,
+  "study": "Study 02 R2 confirmatory"
+}

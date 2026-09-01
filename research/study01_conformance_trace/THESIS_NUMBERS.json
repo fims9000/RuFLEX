@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "study": "Study 01 computational conformance and trace reconstruction",
+  "status": "RESULT_FREEZE",
+  "product_baseline_sha256": "772270a076e77b9c36d07e51bae8e45f5a3b1eddd69045176e63dc83834a3224",
+  "protocol_sha256": "fca2df2dc95318486c4c596905242d96d5fd5540311bfe4a7853e25d290e6838",
+  "locked_manifest_hash": "ec75f178661cd32e8c418461ac782ece3708fb5641fed51baf9b850cf4b18580",
+  "systems": 52,
+  "cases": 764098,
+  "mamdani_cases": 382049,
+  "sugeno_cases": 382049,
+  "defined_output_cases": 760042,
+  "defined_output_cross_engine_pass_fraction": 1.0,
+  "defined_output_trace_reconstruction_pass_fraction": 1.0,
+  "defined_output_roundtrip_pass_fraction": 1.0,
+  "maximum_absolute_cross_engine_error_defined_output": 0.0,
+  "subject_undefined_reference_nonfinite": 3254,
+  "subject_undefined_reference_finite": 802,
+  "system_level_conformance_bootstrap_95pct_ci": [0.9961197603118044, 0.9995221155002454]
+}

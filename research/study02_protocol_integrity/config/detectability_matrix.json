@@ -1,0 +1,12 @@
+[
+ {"id":"V01","name":"preprocessing_leakage","status":"SUPPORTED_PREVENTABLE","stage":"PREPROCESSING","entry_point":"ruflex.application.training.train_model","reason":"canonical training fits preprocessing from the train partition; API exposes no train+holdout fitting operation."},
+ {"id":"V02","name":"group_entity_leakage","status":"UNSUPPORTED","stage":"SPLIT","entry_point":null,"reason":"V1.0.1 split provenance has no group-disjoint split/audit service."},
+ {"id":"V03","name":"temporal_future_leakage","status":"PARTIAL","stage":"SPLIT","reason":"chronology can be audited only when temporal provenance is declared."},
+ {"id":"V04","name":"target_derived_feature","status":"UNSUPPORTED","stage":"DATA_LINEAGE","entry_point":null,"reason":"V1.0.1 has no persisted feature-transformation lineage object for this audit."},
+ {"id":"V05","name":"final_test_model_selection","status":"PARTIAL","stage":"MODEL_SELECTION","entry_point":"ruflex.application.training.evaluate_final_test","reason":"final-test policy provenance/firewall is real, but no product audit identifies model selection across independently trained candidates."},
+ {"id":"V06","name":"threshold_final_test_tuning","status":"SUPPORTED_PREVENTABLE","stage":"DECISION_POLICY","entry_point":"ruflex.application.training.select_validation_threshold","reason":"canonical function receives only validation Evaluation and persists source_split=validation."},
+ {"id":"V07","name":"calibration_final_test_tuning","status":"SUPPORTED_PREVENTABLE","stage":"CALIBRATION","entry_point":"ruflex.application.training.fit_validation_calibration","reason":"canonical function fits only validation Evaluation and persists source_split=validation."},
+ {"id":"V08","name":"best_seed_reporting","status":"UNSUPPORTED","stage":"STUDY_SELECTION","entry_point":null,"reason":"no V1.0.1 retrospective audit of final-test-driven reporting selection."},
+ {"id":"V09","name":"stale_evidence_revision","status":"PARTIAL","stage":"EVIDENCE_LINEAGE","entry_point":"ruflex.application.training.evaluate_final_test","reason":"selected evaluation/run provenance is checked by canonical final-test service, but no general imported-evidence audit exists."},
+ {"id":"V10","name":"wrong_sample_identity","status":"UNSUPPORTED","stage":"EVIDENCE_LINEAGE","entry_point":null,"reason":"no generic product audit validates a presented evidence object against an arbitrary requested sample."}
+]

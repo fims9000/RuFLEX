@@ -1,0 +1,16 @@
+{
+  "clean": 40,
+  "corrupt": 40,
+  "distinct_base_inputs": 40,
+  "distinct_data_content": 40,
+  "families": {
+    "V06": 40,
+    "V07": 40
+  },
+  "figure_provenance_complete": true,
+  "frozen_identities_match": true,
+  "raw_rows": 80,
+  "raw_sha256": "92caf554d39bcfaf05d32bd34b5248249ac924e2a8052c15aa7d5dca4a089448",
+  "status": "PASS",
+  "unique_scenarios": 80
+}

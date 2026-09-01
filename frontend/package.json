@@ -1,0 +1,32 @@
+{
+  "name": "ruflex-studio",
+  "private": true,
+  "version": "1.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "test": "node --test tests/api-client.test.mjs",
+    "test:e2e": "playwright test",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
+  },
+  "dependencies": {
+    "@gravity-ui/icons": "^2.22.0",
+    "@gravity-ui/uikit": "^7.48.3",
+    "@vitejs/plugin-react": "^6.1.1",
+    "@xyflow/react": "^12.11.5",
+    "echarts": "^6.1.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "vite": "^8.2.2"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.1",
+    "@storybook/react-vite": "^10.5.10",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.5",
+    "storybook": "^10.5.10",
+    "typescript": "^7.0.2"
+  }
+}

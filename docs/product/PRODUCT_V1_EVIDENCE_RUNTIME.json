@@ -1,0 +1,32 @@
+{
+  "project_path": "/tmp/ruflex-product-evidence-1788277179632-d8025513ce4018",
+  "object_types": [
+    "DatasetContract",
+    "FIS revision",
+    "TrainingRun",
+    "TrainingStudy",
+    "Evaluation",
+    "CalibrationTransform",
+    "DecisionThresholdPolicy",
+    "SelectivePredictionPolicy",
+    "GeneralizationContract",
+    "SliceAnalysis",
+    "Explanation",
+    "ExplanationCheck",
+    "ExplanationReproducibilityAnalysis",
+    "BehaviorSpec",
+    "BehaviorSpecResult",
+    "ExhaustiveLabResult",
+    "ExpertCorrectionRevision",
+    "FinalTestEvaluation",
+    "AssuranceCase",
+    "VerificationBundle"
+  ],
+  "fis_revision": {
+    "fis_id": "0b6d28c5-042b-414d-8f17-e01386a2c4d0",
+    "semantic_hash": "7fc97d5c1ca3fb28d1b1eff3bc522819bd4b168f75965cc1f9970aa8f1cdfb50"
+  },
+  "fis_behavior_spec": "5736001a-7c85-4da0-a987-0b4632c252b3",
+  "fis_behavior_result": "81f5244d-1fec-4b3d-9d2c-30f748702ef7",
+  "reopen_session": "25c8f0a6-ebca-4409-b8d8-10f92ea2c1f3"
+}

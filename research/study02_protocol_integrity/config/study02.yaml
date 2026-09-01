@@ -1,0 +1,6 @@
+study_id: STUDY02_PROTOCOL_INTEGRITY
+product_archive: release/RuFLEX_PRODUCT_V1_0_1_SOURCE.zip
+product_sha256: 772270a076e77b9c36d07e51bae8e45f5a3b1eddd69045176e63dc83834a3224
+master_seed: 20260902
+locked_pairs_per_supported_family: 20
+test_unlock: FORBIDDEN_PENDING_PROTOCOL_REVIEW

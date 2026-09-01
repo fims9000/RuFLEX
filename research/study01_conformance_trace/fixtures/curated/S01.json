@@ -1,0 +1,119 @@
+{
+  "expected_reference_support": "PENDING_SEMANTIC_INTERSECTION",
+  "fixture_hash": "81709b232cc01a1ddaabe021bea9151f612d03f9bd77fbbc733e47007c06753f",
+  "fixture_id": "S01",
+  "model": {
+    "fis_id": "00000000-0000-0000-0000-000000000201",
+    "inputs": [
+      {
+        "dataset_feature": null,
+        "locked": false,
+        "maximum": 1.0,
+        "minimum": 0.0,
+        "name": "x",
+        "role": "input",
+        "terms": [
+          {
+            "kind": "triangular",
+            "locked": false,
+            "name": "low",
+            "parameters": [
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "kind": "triangular",
+            "locked": false,
+            "name": "high",
+            "parameters": [
+              0.0,
+              1.0,
+              1.0
+            ]
+          }
+        ],
+        "units": null
+      }
+    ],
+    "name": "DEV S01 zero-order Sugeno",
+    "operators": {
+      "aggregation": "max",
+      "and_operator": "min",
+      "centroid_resolution": 401,
+      "centroid_sampling": "midpoint_cells",
+      "defuzzification": "centroid",
+      "implication": "min",
+      "or_operator": "max"
+    },
+    "output": {
+      "dataset_feature": null,
+      "locked": false,
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "name": "y",
+      "role": "output",
+      "terms": [
+        {
+          "kind": "triangular",
+          "locked": false,
+          "name": "constant",
+          "parameters": [
+            0.0,
+            0.5,
+            1.0
+          ]
+        }
+      ],
+      "units": null
+    },
+    "rules": [
+      {
+        "clauses": [
+          {
+            "term": "low",
+            "variable": "x"
+          }
+        ],
+        "connector": "and",
+        "enabled": true,
+        "name": "low to 0.2",
+        "output_term": "constant",
+        "rule_id": "00000000-0000-0000-0000-000000002101",
+        "sugeno_consequent": {
+          "coefficients": {},
+          "constant": 0.2,
+          "intercept": 0.0,
+          "kind": "constant"
+        },
+        "weight": 1.0
+      },
+      {
+        "clauses": [
+          {
+            "term": "high",
+            "variable": "x"
+          }
+        ],
+        "connector": "and",
+        "enabled": true,
+        "name": "high to 0.8",
+        "output_term": "constant",
+        "rule_id": "00000000-0000-0000-0000-000000002102",
+        "sugeno_consequent": {
+          "coefficients": {},
+          "constant": 0.8,
+          "intercept": 0.0,
+          "kind": "constant"
+        },
+        "weight": 1.0
+      }
+    ],
+    "schema_version": 2,
+    "semantic_hash": "dfc740011a4ff649b6e0490a96b7191e706882dc3d1a8595faf41e586373e4fc",
+    "system_type": "sugeno"
+  },
+  "provenance": "curated protocol fixture",
+  "schema_version": 1
+}

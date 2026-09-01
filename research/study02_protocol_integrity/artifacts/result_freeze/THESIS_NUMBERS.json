@@ -1,0 +1,59 @@
+{
+  "baseline": {
+    "clean_alerts": 0,
+    "corrupt_alerts": 60
+  },
+  "clean_false_blocks": 0,
+  "clean_false_warnings": 0,
+  "distinct_base_inputs": 60,
+  "execution_plan_sha": "fede3ee5e914099b6f65df7343a8bc0d2d6b62d83da7f5d8564e08e44e8a0b4c",
+  "failure_taxonomy": {
+    "NONE": 120
+  },
+  "families": [
+    {
+      "clean": 20,
+      "corrupt": 20,
+      "false_blocks": 0,
+      "false_warnings": 0,
+      "family": "V01",
+      "missed": 0,
+      "pairs": 20,
+      "prevented": 20
+    },
+    {
+      "clean": 20,
+      "corrupt": 20,
+      "false_blocks": 0,
+      "false_warnings": 0,
+      "family": "V06",
+      "missed": 0,
+      "pairs": 20,
+      "prevented": 20
+    },
+    {
+      "clean": 20,
+      "corrupt": 20,
+      "false_blocks": 0,
+      "false_warnings": 0,
+      "family": "V07",
+      "missed": 0,
+      "pairs": 20,
+      "prevented": 20
+    }
+  ],
+  "locked_pairs": 60,
+  "manifest_id": "59eb5ae15fa84b810e20c16437ca641fd89d5afcd1de3ba5028ae54fa47faf95",
+  "persistence": {
+    "PASS/PASS": 120
+  },
+  "product_sha": "772270a076e77b9c36d07e51bae8e45f5a3b1eddd69045176e63dc83834a3224",
+  "protocol_sha": "b2a15c5084e54afdc6f076625e1de85ea681ad171c8c8f53422f48ccd9139a54",
+  "raw_sha256": "5e217b593051cbd509ba7a20e25da66ac3b49d0b752ec535931b18687af4ba0e",
+  "study": "Study 02 \u2014 Protocol Integrity",
+  "total_clean": 60,
+  "total_corrupt": 60,
+  "total_executions": 120,
+  "total_missed": 0,
+  "total_prevented": 60
+}

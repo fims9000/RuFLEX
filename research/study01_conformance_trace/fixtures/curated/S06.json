@@ -1,0 +1,216 @@
+{
+  "expected_reference_support": "PENDING_SEMANTIC_INTERSECTION",
+  "fixture_hash": "676f696770fc740f91a3fbfb4b02679b6ed698e05428274007e49a11e76d1665",
+  "fixture_id": "S06",
+  "model": {
+    "fis_id": "fff35632-8914-57e8-8064-019822801c30",
+    "inputs": [
+      {
+        "dataset_feature": null,
+        "locked": false,
+        "maximum": 1.0,
+        "minimum": 0.0,
+        "name": "x",
+        "role": "input",
+        "terms": [
+          {
+            "kind": "triangular",
+            "locked": false,
+            "name": "x_low",
+            "parameters": [
+              0.0,
+              0.0,
+              0.59
+            ]
+          },
+          {
+            "kind": "triangular",
+            "locked": false,
+            "name": "x_high",
+            "parameters": [
+              0.59,
+              1.0,
+              1.0
+            ]
+          }
+        ],
+        "units": null
+      },
+      {
+        "dataset_feature": null,
+        "locked": false,
+        "maximum": 1.0,
+        "minimum": 0.0,
+        "name": "z",
+        "role": "input",
+        "terms": [
+          {
+            "kind": "triangular",
+            "locked": false,
+            "name": "z_low",
+            "parameters": [
+              0.0,
+              0.0,
+              0.7050000000000001
+            ]
+          },
+          {
+            "kind": "triangular",
+            "locked": false,
+            "name": "z_high",
+            "parameters": [
+              0.7050000000000001,
+              1.0,
+              1.0
+            ]
+          }
+        ],
+        "units": null
+      }
+    ],
+    "name": "S06",
+    "operators": {
+      "aggregation": "max",
+      "and_operator": "min",
+      "centroid_resolution": 401,
+      "centroid_sampling": "midpoint_cells",
+      "defuzzification": "centroid",
+      "implication": "min",
+      "or_operator": "max"
+    },
+    "output": {
+      "dataset_feature": null,
+      "locked": false,
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "name": "y",
+      "role": "output",
+      "terms": [
+        {
+          "kind": "triangular",
+          "locked": false,
+          "name": "y_low",
+          "parameters": [
+            0.0,
+            0.0,
+            0.5
+          ]
+        },
+        {
+          "kind": "triangular",
+          "locked": false,
+          "name": "y_high",
+          "parameters": [
+            0.5,
+            1.0,
+            1.0
+          ]
+        }
+      ],
+      "units": null
+    },
+    "rules": [
+      {
+        "clauses": [
+          {
+            "term": "x_low",
+            "variable": "x"
+          },
+          {
+            "term": "z_low",
+            "variable": "z"
+          }
+        ],
+        "connector": "and",
+        "enabled": true,
+        "name": "x_low and z_low",
+        "output_term": "y_low",
+        "rule_id": "8834dc72-6267-5d43-91b2-f2fc828a340d",
+        "sugeno_consequent": {
+          "coefficients": {},
+          "constant": 0.1,
+          "intercept": 0.0,
+          "kind": "constant"
+        },
+        "weight": 1.0
+      },
+      {
+        "clauses": [
+          {
+            "term": "x_low",
+            "variable": "x"
+          },
+          {
+            "term": "z_high",
+            "variable": "z"
+          }
+        ],
+        "connector": "and",
+        "enabled": true,
+        "name": "x_low and z_high",
+        "output_term": "y_low",
+        "rule_id": "a8fec4ed-9ef1-5e4a-bd40-579eaf53529e",
+        "sugeno_consequent": {
+          "coefficients": {},
+          "constant": 0.35,
+          "intercept": 0.0,
+          "kind": "constant"
+        },
+        "weight": 1.0
+      },
+      {
+        "clauses": [
+          {
+            "term": "x_high",
+            "variable": "x"
+          },
+          {
+            "term": "z_low",
+            "variable": "z"
+          }
+        ],
+        "connector": "and",
+        "enabled": true,
+        "name": "x_high and z_low",
+        "output_term": "y_high",
+        "rule_id": "66a704a0-dbb5-5a55-8181-fcdf01041742",
+        "sugeno_consequent": {
+          "coefficients": {},
+          "constant": 0.65,
+          "intercept": 0.0,
+          "kind": "constant"
+        },
+        "weight": 1.0
+      },
+      {
+        "clauses": [
+          {
+            "term": "x_high",
+            "variable": "x"
+          },
+          {
+            "term": "z_high",
+            "variable": "z"
+          }
+        ],
+        "connector": "and",
+        "enabled": true,
+        "name": "x_high and z_high",
+        "output_term": "y_high",
+        "rule_id": "e3f461fb-e957-57de-9a23-7e61e992b117",
+        "sugeno_consequent": {
+          "coefficients": {},
+          "constant": 0.9,
+          "intercept": 0.0,
+          "kind": "constant"
+        },
+        "weight": 1.0
+      }
+    ],
+    "schema_version": 2,
+    "semantic_hash": "5895402ebf6282ed31f243f051c8a1cebc4a97d51201619fdeff24e4add6ee8c",
+    "system_type": "sugeno"
+  },
+  "provenance": "curated protocol fixture",
+  "schema_version": 1
+}

@@ -125,6 +125,35 @@ class TrainingSummary:
             refinement_cycles=cycles,
         )
 
+    def with_epoch_zero(
+        self,
+        *,
+        train_loss: float,
+        train_metrics: dict[str, float],
+        validation_loss: float | None,
+        validation_metrics: dict[str, float] | None,
+    ) -> "TrainingSummary":
+        epoch_zero = EpochSummary(
+            epoch=0,
+            train_loss=float(train_loss),
+            train_metrics=dict(train_metrics),
+            validation_loss=None if validation_loss is None else float(validation_loss),
+            validation_metrics=None if validation_metrics is None else dict(validation_metrics),
+        )
+        return TrainingSummary(
+            source=self.source,
+            epochs_ran=self.epochs_ran,
+            best_epoch=self.best_epoch,
+            monitor_name=self.monitor_name,
+            best_monitor_value=self.best_monitor_value,
+            train_loss=self.train_loss,
+            train_metrics=dict(self.train_metrics),
+            validation_loss=self.validation_loss,
+            validation_metrics=None if self.validation_metrics is None else dict(self.validation_metrics),
+            history=(epoch_zero, *self.history),
+            refinement_cycles=self.refinement_cycles,
+        )
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "source": self.source,
@@ -253,6 +282,12 @@ class RuFLEXModel(ABC):
                 model,
                 training_config.fine_tuning.to_backend(backend, training_config.task_type),
             )
+            epoch_zero_train = trainer.evaluate(train_inputs, train_targets)
+            epoch_zero_validation = (
+                trainer.evaluate(validation_inputs, validation_targets)
+                if validation_inputs is not None and validation_targets is not None
+                else None
+            )
             training_result = trainer.fit(
                 train_inputs,
                 train_targets,
@@ -265,7 +300,12 @@ class RuFLEXModel(ABC):
                 if training_config.use_bootstrap_initialization or training_config.use_stagewise_pretraining
                 else "manual_rule_base_finetuning"
             )
-            self.training_summary = TrainingSummary.from_backend_training_result(training_result, source=source)
+            self.training_summary = TrainingSummary.from_backend_training_result(training_result, source=source).with_epoch_zero(
+                train_loss=epoch_zero_train.loss,
+                train_metrics=epoch_zero_train.metrics,
+                validation_loss=None if epoch_zero_validation is None else epoch_zero_validation.loss,
+                validation_metrics=None if epoch_zero_validation is None else epoch_zero_validation.metrics,
+            )
             return self.training_summary
 
         backend_config = self._to_backend_config(backend)
@@ -309,6 +349,12 @@ class RuFLEXModel(ABC):
             source = "plain_build_plus_finetuning"
 
         trainer = backend.FuzzyTrainer(model, training_config.fine_tuning.to_backend(backend, training_config.task_type))
+        epoch_zero_train = trainer.evaluate(train_inputs, train_targets)
+        epoch_zero_validation = (
+            trainer.evaluate(validation_inputs, validation_targets)
+            if validation_inputs is not None and validation_targets is not None
+            else None
+        )
         training_result = trainer.fit(
             train_inputs,
             train_targets,
@@ -316,7 +362,12 @@ class RuFLEXModel(ABC):
             validation_targets=validation_targets,
         )
         self.backend_model = model
-        self.training_summary = TrainingSummary.from_backend_training_result(training_result, source=source)
+        self.training_summary = TrainingSummary.from_backend_training_result(training_result, source=source).with_epoch_zero(
+            train_loss=epoch_zero_train.loss,
+            train_metrics=epoch_zero_train.metrics,
+            validation_loss=None if epoch_zero_validation is None else epoch_zero_validation.loss,
+            validation_metrics=None if epoch_zero_validation is None else epoch_zero_validation.metrics,
+        )
         return self.training_summary
 
     def predict(self, features: np.ndarray) -> np.ndarray:
