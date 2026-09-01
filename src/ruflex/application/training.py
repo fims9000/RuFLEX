@@ -1410,10 +1410,17 @@ def evaluate_final_test(
         if selective_policy.calibration_id != (None if calibration is None else calibration.calibration_id):
             raise TrainingError("Final-test selective policy requires its exact bound calibration policy.")
     if stability_gate_policy_id is not None:
-        from ruflex.application.stability import load_stability_gate_policy
+        from ruflex.application.stability import load_stability_gate_policy, load_study_stability_analysis
         stability_gate_policy = load_stability_gate_policy(project_root, stability_gate_policy_id)
         if stability_gate_policy.evaluation_id != evaluation.evaluation_id or stability_gate_policy.selected_run_id != run.run_id:
             raise TrainingError("Stability Gate policy does not belong to this validation Evaluation/selected TrainingRun.")
+        stability_analysis = load_study_stability_analysis(project_root, stability_gate_policy.stability_analysis_id)
+        if stability_analysis.applicability != "APPLICABLE" or stability_analysis.validation_alignment_status != "EXACT_MATCH":
+            raise TrainingError("Final-test binding requires applicable fixed-split Stability Gate evidence.")
+        if stability_gate_policy.run_ids != stability_analysis.run_ids or stability_gate_policy.dataset_fingerprint != run.dataset_fingerprint:
+            raise TrainingError("Stability Gate provenance does not match its frozen study/dataset evidence.")
+        if run.run_id not in stability_gate_policy.run_ids:
+            raise TrainingError("Selected TrainingRun is not one of the frozen Stability Gate study runs.")
 
     if run.task == TaskType.BINARY_CLASSIFICATION.value and threshold is None:
         raise TrainingError(
@@ -1493,6 +1500,15 @@ def evaluate_final_test(
                 "Final test has already been opened for this dataset revision. "
                 "This model/evaluation/calibration/threshold policy was created after first test access and cannot be evaluated on the holdout."
             )
+        if stability_gate_policy is not None:
+            # A test-time gate evaluation may use several models, but all of
+            # them must have been frozen before this dataset's first holdout
+            # access.  This prevents adding a freshly trained "supporting"
+            # run after seeing final-test outcomes.
+            for study_run_id in stability_gate_policy.run_ids:
+                study_run = load_training_run(project_root, study_run_id)
+                if study_run.created_at > dataset_test_unlock_at:
+                    raise TrainingError("A Stability Gate study run was created after final-test access and cannot be applied to the holdout.")
         for prior in prior_final_tests:
             prior_case_identity = prior.test_case_identity
             if prior_case_identity is None:

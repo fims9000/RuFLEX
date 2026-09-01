@@ -5,6 +5,7 @@ The persisted Golden Route is exercised by the Product browser routes and integr
 1. Create a project, import telemetry CSV/XLSX, inspect audit findings and confirm `DatasetContract`.
 2. Create/edit a FIS, execute exact FIS trace, compare revisions, and preserve the expert correction lineage.
 3. Train ANFIS, Decision Tree and ordinary baselines; create a multi-seed Study and select by validation only.
+4. For a fixed-split `TRAINING_VARIABILITY` Study, create persisted Stability Lab evidence, inspect HCIR and a case-level disagreement, then freeze a validation-derived Stability Gate before final-test access. `SPLIT_VARIABILITY` and `COMBINED_VARIABILITY` remain separate aggregate-sensitivity protocols and do not claim fully matched case-level evidence.
 4. Persist validation Evaluation, calibration, class threshold, compatible comparison, GeneralizationContract and slices.
 5. Generate capability-compatible explanation evidence/checks. For compatible repeated cases, run cross-run reproducibility; prediction and explanation agreement remain separate.
 6. Execute revision-bound BehaviorSpecs and a validation-only ACCEPT/REVIEW selective policy.

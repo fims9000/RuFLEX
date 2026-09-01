@@ -17,6 +17,9 @@ The primary mode is `TRAINING_VARIABILITY`: one persisted `split_seed` determine
 - HCIR: proportion of high-confidence validation cases that are prediction-unstable.
 - Stability Gate: `BLOCK` for declared out-of-scope cases; otherwise `REVIEW` for low confidence, run disagreement, or probability dispersion above the validation-derived frozen limit; otherwise `ACCEPT`.
 - Explanation reproducibility is a separate evidence channel and is not an operational review criterion.
+- Primary model-level metric: validation F1 (with ROC-AUC, PR-AUC, Brier and ECE reported descriptively when defined). For AI4I, false-negative rate among accepted cases is also reported.
+- Risk–coverage comparison: no review, confidence-only review, and Stability Gate are compared at the same accepted coverage; a deterministic random-review reference is descriptive only.
+- Exclusions/failures: a run that cannot produce the declared validation evidence is recorded and excluded only under a predeclared execution-failure rule; the study reports the run count, reason, and any resulting loss of required support. No dataset, seed, model family or threshold is replaced after validation or final-test inspection.
 
 ## Primary hypotheses
 

@@ -173,7 +173,7 @@ def _training_background_normalized(project_root: Path, run, *, maximum: int = 3
         test_fraction=run.split.test_fraction,
         normalization=NormalizationMode.STANDARD,
         fill_missing="median",
-        random_state=run.seed,
+        random_state=run.split.split_seed if run.split.split_seed is not None else run.seed,
     ))
     values = np.asarray(split.train_features, dtype=np.float32)
     if len(values) <= maximum:

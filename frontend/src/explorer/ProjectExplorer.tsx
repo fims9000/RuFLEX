@@ -174,7 +174,7 @@ export function ProjectExplorer({
         ) : (
           <span className="tree-empty">No studies yet</span>
         )}
-        {stabilityAnalysis && item("STUDIES", "Study Stability Analysis", `${stabilityAnalysis.case_count} validation cases · HCIR ${(stabilityAnalysis.high_confidence_instability_rate * 100).toFixed(1)}%`)}
+        {stabilityAnalysis && item("STUDIES", "Study Stability Analysis", `${stabilityAnalysis.case_count} validation cases · HCIR ${stabilityAnalysis.high_confidence_instability_rate === null ? "N/A" : `${(stabilityAnalysis.high_confidence_instability_rate * 100).toFixed(1)}%`}`)}
       </section>
       <section>
         <strong>ANALYSES</strong>

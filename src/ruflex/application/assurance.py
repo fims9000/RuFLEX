@@ -107,11 +107,42 @@ def create_assurance_case(root: Path) -> AssuranceCase:
     status, risk = _evidence_status(present=bool(policies), valid=bool(policy_ok), malformed=_has_malformed_object(policies_root, SelectivePredictionPolicy), unavailable="Selective policy is absent.", invalid="Selective policy is incompatible with validation evidence.")
     gates.append(_gate("selective_policy", status, [f"selective-policy:{x.policy_id}" for x in policies], risk))
     stability_root = base / "analyses" / "stability-analyses"; stability = _objects(stability_root, StudyStabilityAnalysis)
-    stability_ok = stability and all(len(x.run_ids) >= 3 and x.case_count == len(x.cases) for x in stability)
+    run_by_id = {item.run_id: item for item in runs}
+    study_by_id = {item.study_id: item for item in studies}
+    stability_ok = stability and all(
+        item.applicability == "APPLICABLE"
+        and item.validation_alignment_status == "EXACT_MATCH"
+        and item.mode == "TRAINING_VARIABILITY"
+        and len(item.run_ids) >= 3
+        and item.case_count == len(item.cases)
+        and item.case_count > 0
+        and item.evaluation_case_identity is not None
+        and all(case.run_support_count == len(item.run_ids) for case in item.cases)
+        and item.study_id in study_by_id
+        and set(item.run_ids) == {run.run_id for run in study_by_id[item.study_id].seed_runs}
+        and all(run_id in run_by_id and run_by_id[run_id].dataset_fingerprint == item.dataset_fingerprint for run_id in item.run_ids)
+        for item in stability
+    )
     status, risk = _evidence_status(present=bool(stability), valid=bool(stability_ok), malformed=_has_malformed_object(stability_root, StudyStabilityAnalysis), unavailable="Study Stability Analysis is absent.", invalid="Cross-run stability evidence is incomplete.")
     gates.append(_gate("prediction_stability", status, [f"stability-analysis:{x.analysis_id}" for x in stability], risk))
     stability_policy_root = base / "analyses" / "stability-policies"; stability_policies = _objects(stability_policy_root, StabilityGatePolicy)
-    stability_policy_ok = stability_policies and all(x.source_split == "validation" and x.stability_analysis_id in {item.analysis_id for item in stability} for x in stability_policies)
+    stability_by_id = {item.analysis_id: item for item in stability}
+    evaluation_by_id = {item.evaluation_id: item for item in evaluations}
+    stability_policy_ok = stability_policies and all(
+        item.source_split == "validation"
+        and item.frozen_at is not None
+        and item.probability_source == "raw"
+        and item.stability_analysis_id in stability_by_id
+        and item.evaluation_id in evaluation_by_id
+        and item.selected_run_id in run_by_id
+        and item.run_ids == stability_by_id[item.stability_analysis_id].run_ids
+        and item.dataset_fingerprint == stability_by_id[item.stability_analysis_id].dataset_fingerprint
+        and evaluation_by_id[item.evaluation_id].run_id == item.selected_run_id
+        and evaluation_by_id[item.evaluation_id].split == "validation"
+        and item.fit_sample_identity == stability_by_id[item.stability_analysis_id].evaluation_case_identity
+        and len(item.decisions) == stability_by_id[item.stability_analysis_id].case_count
+        for item in stability_policies
+    )
     status, risk = _evidence_status(present=bool(stability_policies), valid=bool(stability_policy_ok), malformed=_has_malformed_object(stability_policy_root, StabilityGatePolicy), unavailable="Stability-aware review policy is absent.", invalid="Stability-aware review policy is incompatible with validation stability evidence.")
     gates.append(_gate("stability_gate_policy", status, [f"stability-policy:{x.policy_id}" for x in stability_policies], risk))
     contracts_root = base / "objects" / "protocols" / "generalization"; contracts = _objects(contracts_root, GeneralizationContract)

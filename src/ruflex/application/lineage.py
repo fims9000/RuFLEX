@@ -328,9 +328,13 @@ def build_project_lineage(project_root: Path) -> LineageGraph:
     stability = [item for item in _json_models(root / "analyses" / "stability-analyses", StudyStabilityAnalysis, exclude=("active-analysis.json",)) if isinstance(item, StudyStabilityAnalysis)]
     stability_nodes: dict[UUID, str] = {}
     for item in stability:
-        node = add_node(LineageNode(id=_node_id("study-stability", item.analysis_id), kind="study_stability", label="Study prediction stability", detail=f"{len(item.run_ids)} runs · {item.case_count} validation cases", target="ANALYSES", object_id=str(item.analysis_id), status="VALIDATION_ONLY"))
+        status = "VALIDATION_ONLY" if item.applicability == "APPLICABLE" else "NOT_APPLICABLE"
+        node = add_node(LineageNode(id=_node_id("study-stability", item.analysis_id), kind="study_stability", label="Study prediction stability", detail=f"{item.mode} · {len(item.run_ids)} runs · {item.case_count} matched validation cases", target="ANALYSES", object_id=str(item.analysis_id), status=status))
         stability_nodes[item.analysis_id] = node
         for run_id in item.run_ids: add_edge(run_nodes.get(run_id), node, "compared_for_prediction_stability")
+        add_edge(study_nodes.get(item.study_id), node, "stability_analysis_of")
+        if dataset_node and contract is not None and item.dataset_fingerprint == contract.dataset_fingerprint:
+            add_edge(dataset_node, node, "validation_stability_for")
     stability_policies = [item for item in _json_models(root / "analyses" / "stability-policies", StabilityGatePolicy, exclude=("active-policy.json",)) if isinstance(item, StabilityGatePolicy)]
     for policy in stability_policies:
         node = add_node(LineageNode(id=_node_id("stability-policy", policy.policy_id), kind="stability_gate_policy", label="Stability-aware review", detail="validation-derived ACCEPT/REVIEW/BLOCK policy", target="ANALYSES", object_id=str(policy.policy_id), status=policy.test_status))
