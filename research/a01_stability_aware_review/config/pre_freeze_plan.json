@@ -1,0 +1,17 @@
+{
+  "study": "A01 — Stability-Aware Selective Review",
+  "status": "PRE_FREEZE_NO_FINAL_TEST_ACCESS",
+  "primary_protocol": "TRAINING_VARIABILITY",
+  "split_seed": 42,
+  "training_seeds": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19],
+  "models": ["logistic_regression", "decision_tree", "random_forest", "gradient_boosting", "flat_neuro_fuzzy"],
+  "datasets": [
+    {"id": "ai4i_2020", "role": "primary_engineering", "target": "Machine failure", "claim_boundary": "predictive-maintenance benchmark only"},
+    {"id": "uci_bank_marketing", "role": "generality", "target": "y", "claim_boundary": "benchmark only"},
+    {"id": "wisconsin_diagnostic", "role": "generality", "target": "diagnosis", "claim_boundary": "benchmark only; no clinical validation"}
+  ],
+  "validation_only_policy": {"min_confidence": 0.9, "min_class_agreement": 0.8, "max_probability_std": 0.15},
+  "hcir": {"high_confidence": 0.9, "unstable_agreement": 0.8},
+  "final_test": "FORBIDDEN_UNTIL_POLICY_AND_PROTOCOL_FREEZE",
+  "ablation": {"protocol": "SPLIT_VARIABILITY", "training_seed": 42, "split_seeds": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]}
+}
