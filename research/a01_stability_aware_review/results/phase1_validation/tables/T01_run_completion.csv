@@ -1,0 +1,16 @@
+dataset_id,model_family,declared_runs,successful_runs,status
+ai4i_2020,logistic_regression,20,20,VALIDATION_FROZEN
+ai4i_2020,decision_tree,20,20,VALIDATION_FROZEN
+ai4i_2020,random_forest,20,20,VALIDATION_FROZEN
+ai4i_2020,gradient_boosting,20,20,VALIDATION_FROZEN
+ai4i_2020,flat_neuro_fuzzy,20,20,VALIDATION_FROZEN
+uci_bank_marketing,logistic_regression,20,20,VALIDATION_FROZEN
+uci_bank_marketing,decision_tree,20,20,VALIDATION_FROZEN
+uci_bank_marketing,random_forest,20,20,VALIDATION_FROZEN
+uci_bank_marketing,gradient_boosting,20,20,VALIDATION_FROZEN
+uci_bank_marketing,flat_neuro_fuzzy,20,20,VALIDATION_FROZEN
+wisconsin_diagnostic,logistic_regression,20,20,VALIDATION_FROZEN
+wisconsin_diagnostic,decision_tree,20,20,VALIDATION_FROZEN
+wisconsin_diagnostic,random_forest,20,20,VALIDATION_FROZEN
+wisconsin_diagnostic,gradient_boosting,20,20,VALIDATION_FROZEN
+wisconsin_diagnostic,flat_neuro_fuzzy,20,20,VALIDATION_FROZEN

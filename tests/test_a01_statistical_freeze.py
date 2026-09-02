@@ -23,7 +23,7 @@ SOURCE = Path(__file__).resolve().parents[1] / "research" / "a01_stability_aware
 
 def _copy_protocol(tmp_path: Path) -> Path:
     target = tmp_path / "a01"
-    shutil.copytree(SOURCE, target, ignore=shutil.ignore_patterns("artifacts", "__pycache__"))
+    shutil.copytree(SOURCE, target, ignore=shutil.ignore_patterns("artifacts", "results", "__pycache__"))
     return target
 
 
@@ -44,8 +44,8 @@ def _mutated_plan_fails(tmp_path: Path, name: str, mutate) -> None:
     assert validate(root), name
 
 
-def test_complete_phase0_5_statistical_freeze_passes() -> None:
-    assert validate(SOURCE) == []
+def test_complete_phase0_5_statistical_freeze_passes(tmp_path: Path) -> None:
+    assert validate(_copy_protocol(tmp_path)) == []
 
 
 def test_phase0_identity_change_fails(tmp_path: Path) -> None:

@@ -18,7 +18,10 @@ SOURCE = Path(__file__).resolve().parents[1] / "research" / "a01_stability_aware
 
 def _copy_protocol(tmp_path: Path) -> Path:
     target = tmp_path / "a01"
-    shutil.copytree(SOURCE, target, ignore=shutil.ignore_patterns("artifacts", "__pycache__"))
+    # Phase 0 validators are historical: Phase 1 evidence intentionally makes
+    # them fail in the live research tree.  Reconstruct the pre-execution
+    # source state when testing that historical validator.
+    shutil.copytree(SOURCE, target, ignore=shutil.ignore_patterns("artifacts", "results", "__pycache__"))
     return target
 
 
@@ -30,8 +33,8 @@ def _write(path: Path, value: dict) -> None:
     path.write_text(json.dumps(value, sort_keys=True, indent=2) + "\n", encoding="utf-8")
 
 
-def test_complete_a01_locked_protocol_passes() -> None:
-    assert validate(SOURCE) == []
+def test_complete_a01_locked_protocol_passes(tmp_path: Path) -> None:
+    assert validate(_copy_protocol(tmp_path)) == []
 
 
 def test_missing_dataset_and_changed_hash_fail_closed(tmp_path: Path) -> None:
