@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "clean_generation_parameters": {
+    "occlusion": {"route": "deterministic_exact", "low_fidelity_applicability": "NOT_APPLICABLE"},
+    "integrated_gradients": {"steps": 64, "minimum_steps": 8},
+    "gradient_shap": {"background_count": 24, "minimum_background_count": 8},
+    "permutation_shap": {"background_count": 24, "max_evals": "max(2*n_features+1,12*n_features+1)", "minimum_background_count": 8},
+    "tree_shap": {"background_count": 32, "minimum_background_count": 8}
+  },
+  "l1": {"execution": "fresh_product_native_explainer_call", "budget_formula": "max(method_minimum, round(clean_budget * (1 - severity)))", "severity": {"LOW": 0.05, "MEDIUM": 0.25, "HIGH": 0.75}}
+}

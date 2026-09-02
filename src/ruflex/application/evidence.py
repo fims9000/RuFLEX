@@ -251,6 +251,7 @@ def _build_occlusion_explanation(project_root: Path, run_id: UUID, sample: dict[
         model_artifact_sha256=run.model_artifact_sha256,
         sample={name: float(sample[name]) for name in run.feature_columns},
         target=run.target,
+        generation_parameters={"route": "deterministic_exact"},
         prediction=prediction,
         reference_definition="Per-feature train-derived preprocessing reference (training mean for standardization).",
         assumptions=[
@@ -316,6 +317,7 @@ def _build_integrated_gradients_explanation(
         model_artifact_sha256=run.model_artifact_sha256,
         sample={name: float(sample[name]) for name in run.feature_columns},
         target=run.target,
+        generation_parameters={"steps": steps},
         family="integrated_gradients",
         method="integrated_gradients_train_reference",
         prediction=prediction,
@@ -385,6 +387,7 @@ def _build_gradient_shap_explanation(
         model_artifact_sha256=run.model_artifact_sha256,
         sample={name: float(sample[name]) for name in run.feature_columns},
         target=run.target,
+        generation_parameters={"background_count": background_count},
         family="gradient_shap",
         method="gradient_shap_train_background",
         prediction=prediction,
@@ -565,6 +568,7 @@ def _build_tree_shap_explanation(
         model_artifact_sha256=run.model_artifact_sha256,
         sample={name: float(sample[name]) for name in run.feature_columns},
         target=run.target,
+        generation_parameters={"background_count": background_count},
         family="tree_shap",
         method="tree_shap_train_background",
         prediction=prediction,
@@ -612,6 +616,7 @@ def _build_permutation_shap_explanation(
     sample: dict[str, float],
     *,
     background_count: int = 24,
+    max_evals: int | None = None,
 ) -> ExplanationContract:
     try:
         import shap
@@ -630,7 +635,9 @@ def _build_permutation_shap_explanation(
         algorithm="permutation",
         seed=run.seed,
     )
-    max_evals = max(2 * len(run.feature_columns) + 1, 12 * len(run.feature_columns) + 1)
+    max_evals = max_evals if max_evals is not None else max(2 * len(run.feature_columns) + 1, 12 * len(run.feature_columns) + 1)
+    if max_evals < 2 * len(run.feature_columns) + 1:
+        raise EvidenceError("Permutation SHAP max_evals must support every feature.")
     result = explainer(x, max_evals=max_evals, silent=True)
     values = np.asarray(result.values, dtype=float).reshape(-1)
     base_value = float(np.asarray(result.base_values, dtype=float).reshape(-1)[0])
@@ -652,6 +659,7 @@ def _build_permutation_shap_explanation(
         model_artifact_sha256=run.model_artifact_sha256,
         sample={name: float(sample[name]) for name in run.feature_columns},
         target=run.target,
+        generation_parameters={"background_count": background_count, "max_evals": max_evals},
         family="shap",
         method="permutation_shap_train_background",
         prediction=prediction,
@@ -672,14 +680,15 @@ def _build_permutation_shap_explanation(
     )
 
 
-def create_permutation_shap_explanation(project_root: Path, run_id: UUID, sample: dict[str, float], *, background_count: int = 24) -> ExplanationContract:
-    return _persist_explanation(project_root, _build_permutation_shap_explanation(project_root, run_id, sample, background_count=background_count))
+def create_permutation_shap_explanation(project_root: Path, run_id: UUID, sample: dict[str, float], *, background_count: int = 24, max_evals: int | None = None) -> ExplanationContract:
+    return _persist_explanation(project_root, _build_permutation_shap_explanation(project_root, run_id, sample, background_count=background_count, max_evals=max_evals))
 
 
 def _persist_explanation(project_root: Path, explanation: ExplanationContract) -> ExplanationContract:
     run = load_training_run(project_root, explanation.run_id)
     explanation = explanation.model_copy(update={
         "preprocessing_identity": explanation.preprocessing_identity or _stable_identity("preprocessing", run.normalization),
+        "feature_order_identity": explanation.feature_order_identity or _stable_identity("feature-order", list(run.feature_columns)),
         "sample_identity": explanation.sample_identity or _stable_identity(
             "explanation-sample",
             {"run_id": str(run.run_id), "sample": explanation.sample, "target": explanation.target},
@@ -735,6 +744,16 @@ def check_explanation(project_root: Path, explanation_id: UUID) -> ExplanationCh
             else "Persisted preprocessing identity does not match the TrainingRun."
         ),
     ))
+    expected_feature_order = _stable_identity("feature-order", list(run.feature_columns))
+    checks.append(ExplanationCheckItem(
+        name="feature_order_identity",
+        status="WARN" if explanation.feature_order_identity is None else ("PASS" if explanation.feature_order_identity == expected_feature_order else "FAIL"),
+        detail=(
+            "Legacy explanation predates persisted feature-order identity." if explanation.feature_order_identity is None
+            else "Persisted feature order matches the TrainingRun." if explanation.feature_order_identity == expected_feature_order
+            else "Persisted feature order does not match the TrainingRun."
+        ),
+    ))
     expected_sample = _stable_identity(
         "explanation-sample",
         {"run_id": str(run.run_id), "sample": explanation.sample, "target": explanation.target},
@@ -761,16 +780,17 @@ def check_explanation(project_root: Path, explanation_id: UUID) -> ExplanationCh
             else "Reference/background declaration changed after the explanation was persisted."
         ),
     ))
+    params = explanation.generation_parameters
     if explanation.method == "train_reference_occlusion":
         replay = _build_occlusion_explanation(project_root, explanation.run_id, explanation.sample)
     elif explanation.method == "integrated_gradients_train_reference":
-        replay = _build_integrated_gradients_explanation(project_root, explanation.run_id, explanation.sample)
+        replay = _build_integrated_gradients_explanation(project_root, explanation.run_id, explanation.sample, steps=int(params.get("steps", 64)))
     elif explanation.method == "gradient_shap_train_background":
-        replay = _build_gradient_shap_explanation(project_root, explanation.run_id, explanation.sample)
+        replay = _build_gradient_shap_explanation(project_root, explanation.run_id, explanation.sample, background_count=int(params.get("background_count", 24)))
     elif explanation.method == "permutation_shap_train_background":
-        replay = _build_permutation_shap_explanation(project_root, explanation.run_id, explanation.sample)
+        replay = _build_permutation_shap_explanation(project_root, explanation.run_id, explanation.sample, background_count=int(params.get("background_count", 24)), max_evals=int(params["max_evals"]) if "max_evals" in params else None)
     elif explanation.method == "tree_shap_train_background":
-        replay = _build_tree_shap_explanation(project_root, explanation.run_id, explanation.sample)
+        replay = _build_tree_shap_explanation(project_root, explanation.run_id, explanation.sample, background_count=int(params.get("background_count", 32)))
     else:
         raise EvidenceError(f"No validation replay is registered for explanation method {explanation.method!r}.")
     same_prediction = math.isclose(replay.prediction, explanation.prediction, rel_tol=1e-7, abs_tol=1e-7)

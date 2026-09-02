@@ -22,15 +22,20 @@ class ExplanationContract(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: int = 1
+    # Version 2 adds identities that are required to replay a persisted
+    # post-hoc explanation exactly.  Both fields remain optional so version-1
+    # project evidence remains readable and is reported as legacy provenance.
+    schema_version: int = 2
     explanation_id: UUID = Field(default_factory=uuid4)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     run_id: UUID
     model_kind: str
     model_artifact_sha256: str
     preprocessing_identity: str | None = None
+    feature_order_identity: str | None = None
     sample_identity: str | None = None
     reference_identity: str | None = None
+    generation_parameters: dict[str, int | float | str | bool] = Field(default_factory=dict)
     sample: dict[str, float]
     target: str
     scope: Literal["local_sample"] = "local_sample"

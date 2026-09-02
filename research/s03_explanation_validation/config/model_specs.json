@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "purpose": "S03 single declared model fit per dataset/model; no selection or HPO",
+  "training_seed": 3003,
+  "split_seed": 3003,
+  "split_fractions": {"train": 0.6, "validation": 0.2, "final_test": 0.2},
+  "preprocessing": {"fit_scope": "TRAIN_ONLY", "numeric_normalization": "standardization", "missing_value_policy": "median_train_only", "feature_order": "DatasetContract order"},
+  "models": {
+    "logistic_regression": {"adapter": "train_linear_baseline", "kind": "logistic_regression", "random_state": "training_seed", "solver": "lbfgs", "penalty": "l2", "C": 1.0, "max_iter": 1000, "fit_intercept": true, "max_epochs": 1, "learning_rate": 0.0, "batch_size": "train_count", "patience": null},
+    "decision_tree": {"adapter": "train_decision_tree", "random_state": "training_seed", "criterion": "gini", "splitter": "best", "max_depth": null, "min_samples_split": 2, "min_samples_leaf": 1, "max_features": null},
+    "random_forest": {"adapter": "train_random_forest", "random_state": "training_seed", "n_estimators": 25, "criterion": "gini", "max_depth": null, "min_samples_split": 2, "min_samples_leaf": 1, "max_features": "sqrt", "bootstrap": true},
+    "gradient_boosting": {"adapter": "train_gradient_boosting", "random_state": "training_seed", "n_estimators": 50, "learning_rate": 0.1, "max_depth": 3, "subsample": 1.0, "loss": "log_loss", "criterion": "friedman_mse"},
+    "flat_neuro_fuzzy": {"adapter": "train_flat_neuro_fuzzy", "random_state": "training_seed", "max_epochs": 20, "learning_rate": 0.01, "batch_size": 32, "patience": 8, "max_rules": 8, "architecture": "flat_anfis", "bootstrap_initialization": true, "shuffle": true, "classification_threshold": 0.5}
+  },
+  "alternate_run_mapping": {"rule": "next declared model family in lexical cycle for same dataset; resolved only from existing Phase 1 TrainingRun IDs", "post_outcome_selection": false}
+}

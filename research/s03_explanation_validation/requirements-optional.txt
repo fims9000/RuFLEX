@@ -1,0 +1,2 @@
+# Research-only optional external metric baseline; never imported by product runtime.
+quantus==0.6.0

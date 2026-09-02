@@ -83,6 +83,7 @@ def test_posthoc_occlusion_is_persisted_checked_and_not_mislabeled_exact(tmp_pat
     assert check["status"] == "PASSED_AVAILABLE_CHECKS"
     statuses = {item["name"]: item["status"] for item in check["checks"]}
     assert statuses["model_identity"] == "PASS"
+    assert statuses["feature_order_identity"] == "PASS"
     assert statuses["repeatability"] == "PASS"
     assert statuses["causal_validity"] == "N/A"
 
@@ -169,6 +170,7 @@ def test_anfis_gradient_explainers_are_posthoc_train_referenced_and_checkable(tm
         assert explanation["epistemic_category"] == "POST-HOC ATTRIBUTION"
         assert explanation["base_value"] is not None
         assert explanation["completeness_error"] is not None
+        assert explanation["generation_parameters"]
         assert len(explanation["attributions"]) == len(run["feature_columns"])
         checked = client.post(
             "/api/projects/evidence/explanation-checks",
@@ -199,6 +201,8 @@ def test_permutation_shap_uses_train_background_and_persists_additivity_evidence
     assert "train-partition" in explanation["reference_definition"]
     assert explanation["base_value"] is not None
     assert explanation["completeness_error"] < 1e-5
+    assert explanation["generation_parameters"]["background_count"] == 24
+    assert "max_evals" in explanation["generation_parameters"]
     checked = client.post(
         "/api/projects/evidence/explanation-checks",
         json={"session_id": session_id, "explanation_id": explanation["explanation_id"]},
@@ -227,6 +231,7 @@ def test_tree_shap_replays_declarative_tree_models_without_mislabeling_exact_tra
         assert explanation["exactness"] == "post_hoc"
         assert "train-partition" in explanation["reference_definition"]
         assert explanation["completeness_error"] < 1e-4
+        assert explanation["generation_parameters"]["background_count"] == 32
         assert len(explanation["attributions"]) == len(run["feature_columns"])
         if model_kind in {"decision_tree", "random_forest"}:
             assert explanation["output_space"] == "probability"

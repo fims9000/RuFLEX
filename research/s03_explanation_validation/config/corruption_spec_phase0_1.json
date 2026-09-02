@@ -1,0 +1,14 @@
+{
+  "schema_version": 2,
+  "one_violation_invariant": "Exactly declared fields differ, excluding explanation_id and created_at.",
+  "severity": {"LOW": 0.05, "MEDIUM": 0.25, "HIGH": 0.75},
+  "families": {
+    "M1_MODEL_MISMATCH": {"subtypes": {"artifact_sha_swap": {"changed_fields": ["model_artifact_sha256"]}, "run_identity_swap": {"changed_fields": ["run_id"], "alternate_run": "deterministic existing alternate TrainingRun"}}},
+    "P1_PREPROCESSING_MISMATCH": {"subtypes": {"preprocessing_identity_swap": {"changed_fields": ["preprocessing_identity"]}, "feature_order_identity_swap": {"changed_fields": ["feature_order_identity"]}}},
+    "S1_SAMPLE_TARGET_MISMATCH": {"subtypes": {"sample_identity_swap": {"changed_fields": ["sample_identity"]}, "target_identity_swap": {"changed_fields": ["target"]}}},
+    "R1_REFERENCE_BACKGROUND_MISMATCH": {"subtypes": {"reference_identity_swap": {"changed_fields": ["reference_identity"], "requires_meaningful_reference": true}}},
+    "A1_ATTRIBUTION_MUTATION": {"subtypes": {"additive_noise": {"changed_fields": ["attributions"], "formula": "Rademacher(seed) * severity * max(max_abs_attribution,1e-12)"}, "sign_flip": {"changed_fields": ["attributions"], "formula": "flip deterministic top-k by abs attribution; k=max(1,ceil(severity*n_features))"}, "permutation": {"changed_fields": ["attributions"], "formula": "rotate attribution values across deterministic top-k feature records"}}, "severity_levels": ["LOW", "MEDIUM", "HIGH"]},
+    "L1_LOW_FIDELITY": {"subtypes": {"reduced_budget": {"execution": "fresh_product_native_explainer_call", "not_contract_mutation": true}}, "severity_levels": ["LOW", "MEDIUM", "HIGH"]},
+    "ADV_EXPLAINER_AWARE": {"subtypes": {"structurally_valid_attribution_permutation": {"changed_fields": ["attributions"], "preserves": ["feature identities", "model/run/sample/reference identities", "prediction", "base_value", "attribution sum"]}}, "severity_levels": ["LOW", "MEDIUM", "HIGH"]}
+  }
+}
