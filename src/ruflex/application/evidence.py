@@ -780,30 +780,41 @@ def check_explanation(project_root: Path, explanation_id: UUID) -> ExplanationCh
             else "Reference/background declaration changed after the explanation was persisted."
         ),
     ))
-    params = explanation.generation_parameters
-    if explanation.method == "train_reference_occlusion":
-        replay = _build_occlusion_explanation(project_root, explanation.run_id, explanation.sample)
-    elif explanation.method == "integrated_gradients_train_reference":
-        replay = _build_integrated_gradients_explanation(project_root, explanation.run_id, explanation.sample, steps=int(params.get("steps", 64)))
-    elif explanation.method == "gradient_shap_train_background":
-        replay = _build_gradient_shap_explanation(project_root, explanation.run_id, explanation.sample, background_count=int(params.get("background_count", 24)))
-    elif explanation.method == "permutation_shap_train_background":
-        replay = _build_permutation_shap_explanation(project_root, explanation.run_id, explanation.sample, background_count=int(params.get("background_count", 24)), max_evals=int(params["max_evals"]) if "max_evals" in params else None)
-    elif explanation.method == "tree_shap_train_background":
-        replay = _build_tree_shap_explanation(project_root, explanation.run_id, explanation.sample, background_count=int(params.get("background_count", 32)))
+    # A contract whose run/model binding already failed must not attempt a
+    # method-specific replay on an incompatible model.  Such a replay could
+    # turn a correctly localized provenance failure into an implementation
+    # exception (for example Integrated Gradients against a tree run).
+    identity_failed = any(item.status == "FAIL" for item in checks)
+    if identity_failed:
+        checks.append(ExplanationCheckItem(
+            name="repeatability", status="N/A",
+            detail="Replay was intentionally not attempted because required persisted identity/provenance checks failed.",
+        ))
     else:
-        raise EvidenceError(f"No validation replay is registered for explanation method {explanation.method!r}.")
-    same_prediction = math.isclose(replay.prediction, explanation.prediction, rel_tol=1e-7, abs_tol=1e-7)
-    replay_by_feature = {item.feature: item.attribution for item in replay.attributions}
-    same_attributions = all(
-        feature in replay_by_feature and math.isclose(item.attribution, replay_by_feature[feature], rel_tol=1e-8, abs_tol=1e-8)
-        for feature, item in ((item.feature, item) for item in explanation.attributions)
-    )
-    checks.append(ExplanationCheckItem(
-        name="repeatability",
-        status="PASS" if same_prediction and same_attributions else "FAIL",
-        detail=f"Repeated deterministic {explanation.family} computation reproduces prediction and feature effects." if same_prediction and same_attributions else f"Repeated {explanation.family} computation did not reproduce the stored explanation.",
-    ))
+        params = explanation.generation_parameters
+        if explanation.method == "train_reference_occlusion":
+            replay = _build_occlusion_explanation(project_root, explanation.run_id, explanation.sample)
+        elif explanation.method == "integrated_gradients_train_reference":
+            replay = _build_integrated_gradients_explanation(project_root, explanation.run_id, explanation.sample, steps=int(params.get("steps", 64)))
+        elif explanation.method == "gradient_shap_train_background":
+            replay = _build_gradient_shap_explanation(project_root, explanation.run_id, explanation.sample, background_count=int(params.get("background_count", 24)))
+        elif explanation.method == "permutation_shap_train_background":
+            replay = _build_permutation_shap_explanation(project_root, explanation.run_id, explanation.sample, background_count=int(params.get("background_count", 24)), max_evals=int(params["max_evals"]) if "max_evals" in params else None)
+        elif explanation.method == "tree_shap_train_background":
+            replay = _build_tree_shap_explanation(project_root, explanation.run_id, explanation.sample, background_count=int(params.get("background_count", 32)))
+        else:
+            raise EvidenceError(f"No validation replay is registered for explanation method {explanation.method!r}.")
+        same_prediction = math.isclose(replay.prediction, explanation.prediction, rel_tol=1e-7, abs_tol=1e-7)
+        replay_by_feature = {item.feature: item.attribution for item in replay.attributions}
+        same_attributions = all(
+            feature in replay_by_feature and math.isclose(item.attribution, replay_by_feature[feature], rel_tol=1e-8, abs_tol=1e-8)
+            for feature, item in ((item.feature, item) for item in explanation.attributions)
+        )
+        checks.append(ExplanationCheckItem(
+            name="repeatability",
+            status="PASS" if same_prediction and same_attributions else "FAIL",
+            detail=f"Repeated deterministic {explanation.family} computation reproduces prediction and feature effects." if same_prediction and same_attributions else f"Repeated {explanation.family} computation did not reproduce the stored explanation.",
+        ))
     if explanation.completeness_error is None:
         checks.append(ExplanationCheckItem(
             name="additivity",

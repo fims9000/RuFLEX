@@ -1,0 +1,9 @@
+{
+  "schema_version": 2,
+  "datasets": ["ai4i_2020", "uci_bank_marketing", "wisconsin_diagnostic"],
+  "models": {"logistic_regression": ["occlusion", "permutation_shap"], "decision_tree": ["occlusion", "tree_shap"], "random_forest": ["occlusion", "tree_shap"], "gradient_boosting": ["occlusion", "tree_shap"], "flat_neuro_fuzzy": ["occlusion", "integrated_gradients", "gradient_shap"]},
+  "samples_per_dataset_model": 8,
+  "sample_selection": {"seed": 3003, "strategy": "stratified_by_true_and_predicted_class_then_source_row", "strata_order": ["00", "01", "10", "11"], "per_stratum_cap": 2, "fallback": "after taking up to two lowest source_row cases per stratum in fixed order, fill remaining slots from all unused validation rows sorted ascending source_row; validation_count<8 is FAIL_CLOSED", "no_post_explanation_selection": true},
+  "validator_modes": ["IDENTITY_ONLY", "METRIC_ONLY", "COMBINED"],
+  "benchmark_execution_forbidden": true
+}

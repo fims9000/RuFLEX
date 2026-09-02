@@ -66,7 +66,11 @@ def test_s03_synthetic_conformance_covers_all_declared_families():
 
 
 def test_s03_phase0_1_validator_and_pair_matrix():
-    result = validate(); assert result["status"] == "PASS"; assert result["artifact_rows"] * 3 == result["evaluation_rows"]
+    # Phase 0.1 stays historical evidence.  The Phase 0.2 product replay
+    # hardening intentionally invalidates its frozen code identity rather than
+    # silently rewriting the old manifest.
+    with pytest.raises(AssertionError, match="Frozen identity differs"):
+        validate()
 
 
 def test_s03_quantus_preflight_is_optional_and_frozen_not_available_when_uninstalled():

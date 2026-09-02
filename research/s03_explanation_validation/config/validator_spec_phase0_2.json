@@ -1,0 +1,7 @@
+{
+  "schema_version": 2,
+  "components": {"IDENTITY": ["model_identity", "preprocessing_identity", "feature_order_identity", "sample_target_identity", "reference_identity"], "REPLAY_INTEGRITY": ["repeatability"], "NATIVE_NUMERICAL": ["numerical_completeness"], "EXTERNAL_QUANTUS": ["faithfulness_correlation", "max_sensitivity"]},
+  "native_numerical_semantics": {"numerical_completeness": {"PASS": "no_signal", "WARN": "descriptive_only_not_detector", "FAIL": "not emitted by current Product V1 check"}},
+  "modes": {"IDENTITY_ONLY": {"components": ["IDENTITY"], "detection_rule": "any applicable identity component FAIL"}, "METRIC_ONLY": {"components": ["REPLAY_INTEGRITY", "EXTERNAL_QUANTUS"], "descriptive_components": ["NATIVE_NUMERICAL"], "detection_rule": "any applicable replay integrity FAIL OR frozen Quantus paired rule signals; numerical WARN is reported but never silently counted as detection"}, "COMBINED": {"components": ["IDENTITY", "REPLAY_INTEGRITY", "EXTERNAL_QUANTUS"], "descriptive_components": ["NATIVE_NUMERICAL"], "detection_rule": "OR over all applicable declared detector components"}},
+  "repeatability_classification": "REPLAY_INTEGRITY; not generic faithfulness"
+}
