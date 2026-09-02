@@ -231,7 +231,7 @@ def test_tree_shap_replays_declarative_tree_models_without_mislabeling_exact_tra
         assert explanation["exactness"] == "post_hoc"
         assert "train-partition" in explanation["reference_definition"]
         assert explanation["completeness_error"] < 1e-4
-        assert explanation["generation_parameters"]["background_count"] == 32
+        assert explanation["generation_parameters"]["feature_perturbation"] == "tree_path_dependent"
         assert len(explanation["attributions"]) == len(run["feature_columns"])
         if model_kind in {"decision_tree", "random_forest"}:
             assert explanation["output_space"] == "probability"

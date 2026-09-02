@@ -1,5 +1,6 @@
 import base64
 from io import BytesIO
+from pathlib import Path
 
 import pandas as pd
 import pytest
@@ -21,6 +22,25 @@ def test_profile_surfaces_id_duplicates_missing_constant_and_deterministic_audit
     assert first.model_dump(mode="json") == second.model_dump(mode="json")
     assert {finding.code for finding in first.findings} >= {"DUPLICATE_ROWS", "MISSING_VALUES", "CONSTANT_COLUMN"}
     assert "entity_id" not in contract.feature_columns
+
+
+def test_id_candidate_heuristic_requires_explicit_id_token() -> None:
+    frame = pd.DataFrame({
+        "id": [1, 2], "row_id": [11, 12], "customer_id": [21, 22],
+        "job_housemaid": [0, 1], "valid": [1.0, 2.0], "paid": [3.0, 4.0], "target": [0, 1],
+    })
+    profile = inspect_dataset(frame, source_artifact_sha256="d" * 64)
+    assert set(profile.id_candidates) == {"id", "row_id", "customer_id"}
+    assert all(next(column for column in profile.columns if column.name == name).semantic_type != "id" for name in ("job_housemaid", "valid", "paid"))
+
+
+def test_bank_marketing_frozen_contract_keeps_job_housemaid() -> None:
+    root = Path(__file__).resolve().parents[1]
+    frame = pd.read_csv(root / "research/a01_stability_aware_review/artifacts/phase1-data/materialized/uci_bank_marketing/canonical.csv")
+    profile = inspect_dataset(frame, source_artifact_sha256="e" * 64)
+    contract = build_dataset_contract(profile, target="y", task="binary_classification", id_columns=["source_row_id"])
+    assert len(contract.feature_columns) == 62
+    assert "job_housemaid" in contract.feature_columns
 
 
 def test_target_requires_explicit_confirmation_and_schema_mismatch_is_detected() -> None:

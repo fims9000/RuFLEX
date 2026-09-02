@@ -461,6 +461,7 @@ def _build_tree_shap_explanation(
     sample: dict[str, float],
     *,
     background_count: int = 32,
+    feature_perturbation: str = "tree_path_dependent",
 ) -> ExplanationContract:
     """Compute model-specific TreeSHAP from RuFLEX declarative tree artifacts.
 
@@ -477,11 +478,11 @@ def _build_tree_shap_explanation(
     if run.model_kind not in {"decision_tree", "random_forest", "gradient_boosting"}:
         raise EvidenceError("TreeSHAP is available only for persisted tree-model artifacts.")
     x = _normalized_vector(run, sample).astype(float)
-    background = _training_background_normalized(
-        project_root, run, maximum=max(8, min(background_count, 64))
-    ).astype(float)
-    if len(background) == 0:
-        raise EvidenceError("TreeSHAP requires a non-empty train-partition background.")
+    if feature_perturbation != "tree_path_dependent":
+        raise EvidenceError(
+            "Declarative TreeSHAP supports only tree_path_dependent perturbation. "
+            "The interventional multi-output route does not preserve the persisted classifier output."
+        )
     payload = _artifact_payload(project_root, run.model_artifact_sha256)
 
     if run.model_kind == "decision_tree":
@@ -526,8 +527,7 @@ def _build_tree_shap_explanation(
     }
     explainer = shap.TreeExplainer(
         model,
-        data=background,
-        feature_perturbation="interventional",
+        feature_perturbation=feature_perturbation,
         model_output="raw",
     )
     result = explainer(x, check_additivity=True)
@@ -568,7 +568,7 @@ def _build_tree_shap_explanation(
         model_artifact_sha256=run.model_artifact_sha256,
         sample={name: float(sample[name]) for name in run.feature_columns},
         target=run.target,
-        generation_parameters={"background_count": background_count},
+        generation_parameters={"feature_perturbation": feature_perturbation},
         family="tree_shap",
         method="tree_shap_train_background",
         prediction=prediction,
@@ -576,12 +576,12 @@ def _build_tree_shap_explanation(
         base_value=base_value,
         completeness_error=completeness_error,
         reference_definition=(
-            f"TreeSHAP uses {len(background)} deterministic train-partition samples in the persisted preprocessing representation. "
-            "The displayed per-feature reference value is the train-derived normalization center and is only a summary of that background."
+            "TreeSHAP uses the persisted train-partition tree-node frequencies with tree-path-dependent perturbation. "
+            "The displayed per-feature reference value is the train-derived normalization center and is not a finite SHAP background subset."
         ),
         assumptions=[
             "The persisted declarative tree artifact exactly represents the trained tree ensemble used for inference.",
-            "Only training-partition rows are used as the interventional TreeSHAP background.",
+            "Tree-path-dependent expectations use the persisted training-node frequencies without reading validation or test rows.",
         ],
         limitations=[
             "TreeSHAP is an additive post-hoc attribution, not a causal effect and not uncertainty estimation.",
@@ -603,11 +603,15 @@ def create_tree_shap_explanation(
     sample: dict[str, float],
     *,
     background_count: int = 32,
+    feature_perturbation: str = "tree_path_dependent",
 ) -> ExplanationContract:
-    return _persist_explanation(
+    return _persist_explanation(project_root, _build_tree_shap_explanation(
         project_root,
-        _build_tree_shap_explanation(project_root, run_id, sample, background_count=background_count),
-    )
+        run_id,
+        sample,
+        background_count=background_count,
+        feature_perturbation=feature_perturbation,
+    ))
 
 
 def _build_permutation_shap_explanation(
@@ -801,7 +805,13 @@ def check_explanation(project_root: Path, explanation_id: UUID) -> ExplanationCh
         elif explanation.method == "permutation_shap_train_background":
             replay = _build_permutation_shap_explanation(project_root, explanation.run_id, explanation.sample, background_count=int(params.get("background_count", 24)), max_evals=int(params["max_evals"]) if "max_evals" in params else None)
         elif explanation.method == "tree_shap_train_background":
-            replay = _build_tree_shap_explanation(project_root, explanation.run_id, explanation.sample, background_count=int(params.get("background_count", 32)))
+            replay = _build_tree_shap_explanation(
+                project_root,
+                explanation.run_id,
+                explanation.sample,
+                background_count=int(params.get("background_count", 32)),
+                feature_perturbation=str(params.get("feature_perturbation", "tree_path_dependent")),
+            )
         else:
             raise EvidenceError(f"No validation replay is registered for explanation method {explanation.method!r}.")
         same_prediction = math.isclose(replay.prediction, explanation.prediction, rel_tol=1e-7, abs_tol=1e-7)

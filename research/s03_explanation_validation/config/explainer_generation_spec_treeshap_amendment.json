@@ -1,0 +1,1 @@
+{"schema_version":1,"inherits":"explainer_generation_spec.json","tree_shap":{"feature_perturbation":"tree_path_dependent","reference_semantics":"persisted_train_partition_tree_node_frequencies","finite_background_count":null,"low_fidelity_applicability":"NOT_APPLICABLE"}}

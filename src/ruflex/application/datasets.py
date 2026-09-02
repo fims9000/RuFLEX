@@ -15,11 +15,15 @@ class DatasetContract(BaseModel):
   expected=set(self.feature_columns)|set(self.id_columns)|{self.target}; actual=set(frame.columns); return SchemaComparison(compatible=expected==actual,missing_columns=sorted(expected-actual),unexpected_columns=sorted(actual-expected))
 class AuditFinding(BaseModel): code:str; severity:str; scope:str; evidence:dict; remediation:str; check_version:str='1'
 class DataAuditReport(BaseModel): dataset_fingerprint:str; findings:list[AuditFinding]
+def _is_id_candidate(name: str) -> bool:
+ """Recognize explicit identifier tokens, not arbitrary names ending in ``id``."""
+ normalized=name.strip().lower()
+ return normalized=="id" or normalized.endswith("_id")
 def inspect_dataset(frame:pd.DataFrame,*,source_artifact_sha256:str)->DatasetProfile:
  columns=[]; ids=[]
  for name in frame.columns:
   s=frame[name]; kind='numeric' if pd.api.types.is_numeric_dtype(s) else 'categorical'
-  if name.lower().endswith(('id','_id')): kind='id'; ids.append(name)
+  if _is_id_candidate(str(name)): kind='id'; ids.append(name)
   categories=sorted(map(str,s.dropna().unique())) if kind=='categorical' and s.nunique(dropna=True)<=20 else None
   columns.append(FeatureSpec(name=str(name),semantic_type=kind,dtype=str(s.dtype),nullable=bool(s.isna().any()),categories=categories))
  payload=json.dumps([(c.name,c.dtype,c.semantic_type) for c in columns])+source_artifact_sha256
