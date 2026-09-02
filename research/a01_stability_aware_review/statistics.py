@@ -101,6 +101,55 @@ def paired_bootstrap_delta_risk(
     }
 
 
+def paired_bootstrap_policy_metrics(
+    truth: Iterable[int], selected_prediction: Iterable[int], stability_disposition: Iterable[str], confidence_disposition: Iterable[str],
+    *, replicates: int = 10_000, seed: int = 20_260_902,
+) -> dict[str, object]:
+    """Frozen paired percentile bootstrap for all Phase 2 policy quantities.
+
+    One deterministic index stream is used for every statistic.  Undefined
+    risks/FNRs are invalid per statistic; they are never silently coerced to
+    zero.  This is statistics-only and contains no data/model access.
+    """
+    labels = np.asarray(list(truth), dtype=int); predictions = np.asarray(list(selected_prediction), dtype=int)
+    stability = np.asarray(list(stability_disposition), dtype=object); confidence = np.asarray(list(confidence_disposition), dtype=object)
+    if not (len(labels) == len(predictions) == len(stability) == len(confidence)) or len(labels) == 0:
+        raise ValueError("Paired bootstrap requires non-empty aligned case arrays.")
+    collected: dict[str, list[float]] = {key: [] for key in ("stability_risk", "confidence_risk", "delta_risk", "delta_coverage", "stability_fnr", "confidence_fnr", "delta_fnr")}
+    invalid: dict[str, int] = {key: 0 for key in collected}
+    rng = np.random.default_rng(seed)
+    for _ in range(replicates):
+        index = rng.integers(0, len(labels), size=len(labels))
+        left = accepted_case_risk(labels[index], predictions[index], stability[index]); right = accepted_case_risk(labels[index], predictions[index], confidence[index])
+        for key, value in (("stability_risk", left.accepted_risk), ("confidence_risk", right.accepted_risk)):
+            if value is None: invalid[key] += 1
+            else: collected[key].append(float(value))
+        if left.accepted_risk is None or right.accepted_risk is None: invalid["delta_risk"] += 1
+        else: collected["delta_risk"].append(float(left.accepted_risk - right.accepted_risk))
+        collected["delta_coverage"].append(float(left.coverage - right.coverage))
+        left_fnr = accepted_case_fnr(labels[index], predictions[index], stability[index])["accepted_case_fnr"]
+        right_fnr = accepted_case_fnr(labels[index], predictions[index], confidence[index])["accepted_case_fnr"]
+        for key, value in (("stability_fnr", left_fnr), ("confidence_fnr", right_fnr)):
+            if value is None: invalid[key] += 1
+            else: collected[key].append(float(value))
+        if left_fnr is None or right_fnr is None: invalid["delta_fnr"] += 1
+        else: collected["delta_fnr"].append(float(left_fnr - right_fnr))
+    def summary(key: str) -> dict[str, object]:
+        valid = len(collected[key]); fraction = valid / replicates
+        return {"requested_replicates": replicates, "valid_replicates": valid, "invalid_replicates": invalid[key], "valid_fraction": fraction, "percentile_ci_95": None if fraction < .9 else [float(np.percentile(collected[key], 2.5)), float(np.percentile(collected[key], 97.5))], "reason_codes": ["INSUFFICIENT_VALID_BOOTSTRAPS"] if fraction < .9 else []}
+    return {"bootstrap_seed": seed, "replicates": replicates, **{key: summary(key) for key in collected}}
+
+
+def paired_bootstrap_delta_fnr(*args: object, **kwargs: object) -> dict[str, object]:
+    """Compatibility helper exposing the frozen FNR-difference bootstrap."""
+    return paired_bootstrap_policy_metrics(*args, **kwargs)["delta_fnr"]
+
+
+def paired_bootstrap_delta_coverage(*args: object, **kwargs: object) -> dict[str, object]:
+    """Compatibility helper exposing the frozen coverage-difference bootstrap."""
+    return paired_bootstrap_policy_metrics(*args, **kwargs)["delta_coverage"]
+
+
 def h3_interpretation(ci: list[float] | None) -> str:
     if ci is None:
         return "NOT_ASSESSABLE"
