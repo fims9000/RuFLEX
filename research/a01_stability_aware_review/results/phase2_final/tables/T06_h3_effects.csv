@@ -1,0 +1,16 @@
+ci_95,dataset,delta_risk,h3_status,model
+"[0.0, 0.0]",ai4i_2020,0.0,INCONCLUSIVE,logistic_regression
+"[-0.011162593902591712, -0.0037154352801115256]",ai4i_2020,-0.007180061037639875,SUPPORTS_H3,decision_tree
+"[0.0, 0.0]",ai4i_2020,0.0,INCONCLUSIVE,random_forest
+"[0.0, 0.0]",ai4i_2020,0.0,INCONCLUSIVE,gradient_boosting
+"[-0.0016677379426491708, 3.293556697437014e-05]",ai4i_2020,-0.0005379598516082398,INCONCLUSIVE,flat_neuro_fuzzy
+"[-4.3697037361572175e-05, 0.0]",uci_bank_marketing,-1.6774720043528923e-05,INCONCLUSIVE,logistic_regression
+"[0.044550364656470755, 0.055329061924305784]",uci_bank_marketing,0.04986694837585791,CONTRADICTS_H3,decision_tree
+"[-0.000467565717928101, 9.496650618482424e-05]",uci_bank_marketing,-0.00010864939190331768,INCONCLUSIVE,random_forest
+"[-5.7022971873444546e-05, 0.0]",uci_bank_marketing,-2.4743862768961122e-05,INCONCLUSIVE,gradient_boosting
+"[0.0, 0.0]",uci_bank_marketing,0.0,INCONCLUSIVE,flat_neuro_fuzzy
+"[0.0, 0.0]",wisconsin_diagnostic,0.0,INCONCLUSIVE,logistic_regression
+"[-0.02560455192034139, 0.0011853959222380278]",wisconsin_diagnostic,-0.007988721804511274,INCONCLUSIVE,decision_tree
+"[0.0, 0.0]",wisconsin_diagnostic,0.0,INCONCLUSIVE,random_forest
+"[0.0, 0.0]",wisconsin_diagnostic,0.0,INCONCLUSIVE,gradient_boosting
+"[0.0, 0.0]",wisconsin_diagnostic,0.0,INCONCLUSIVE,flat_neuro_fuzzy
