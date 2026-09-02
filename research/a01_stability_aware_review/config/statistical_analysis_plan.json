@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "study": "A01 — Stability-Aware Selective Review",
+  "status": "PHASE_0_5_PRE_EXECUTION_STATISTICAL_FREEZE",
+  "phase0_locked_identities": {
+    "protocol_sha256": "bfcb27f48f1d1aa8552cdf5465c0b89b712c3d035d58ccc9d6088dcabd500469",
+    "dataset_spec_sha256": "c5bc7d8d5842067147d28263fa96ae35374fe56afd411ff2ff7a286eace44b42",
+    "model_spec_sha256": "7368bdf6707e2c5c3179c0544bcea5aee5e9a28e61d05ccbf4f483397e5924ef",
+    "execution_plan_sha256": "5794a27071843af36aab1ce7aa179f40681b677d7d4253edfd8c19768679aa2e",
+    "phase0_manifest_id": "ac3ba69bbca49a8214156aca9cf521e0bdb517d46677b7bab027765439fe5816"
+  },
+  "analysis_units": {
+    "primary_cells": "dataset_id × model_family (3 × 5 = 15)",
+    "independent_model_fit": "TrainingRun; 20 fits per cell at training_seed 0..19",
+    "case_level": "same materialized case within fixed-split TRAINING_VARIABILITY",
+    "prohibited_inference": ["do not treat 20 runs as 20 independent datasets", "do not treat rows as independent platform-level experiments"]
+  },
+  "dataset_roles": {"ai4i_2020": "primary_engineering", "uci_bank_marketing": "secondary_generality", "wisconsin_diagnostic": "secondary_generality_no_clinical_validation"},
+  "performance_metrics": {"selection_metric": "validation_f1", "per_run": ["validation_f1", "future_final_test_f1", "roc_auc_if_defined", "pr_auc_if_defined", "brier_if_defined", "ece_if_defined"], "aggregate_summary": ["mean", "median", "std", "min", "max", "range", "iqr"]},
+  "h1": {
+    "statement": "Aggregate similarity with individual disagreement is described by observed distributions, not an arbitrary significance margin.",
+    "aggregate": ["mean_validation_f1", "median_validation_f1", "std_validation_f1", "min_validation_f1", "max_validation_f1", "range_validation_f1", "iqr_validation_f1"],
+    "individual": ["probability_std", "predicted_class_distribution", "majority_class", "majority_class_agreement", "selected_run_agreement", "proportion_selected_run_agreement_lt_1", "proportion_selected_run_agreement_lt_0_80", "pairwise_prediction_disagreement_distribution"],
+    "statuses": ["PATTERN_OBSERVED", "PATTERN_NOT_OBSERVED", "NOT_ASSESSABLE"],
+    "observed_rule": "PATTERN_OBSERVED only when compact aggregate distribution and nonzero meaningful case-level disagreement are both observed; no post-hoc numerical closeness margin is introduced."
+  },
+  "h2": {
+    "confidence_threshold": 0.9,
+    "agreement_source": "selected_run_agreement",
+    "instability_threshold": 0.8,
+    "hcir_formula": "N(selected_run_confidence >= 0.90 AND selected_run_agreement < 0.80) / N(selected_run_confidence >= 0.90)",
+    "zero_denominator": {"value": null, "display": "N/A", "reason_code": "ZERO_HIGH_CONFIDENCE_DENOMINATOR"},
+    "persist": ["denominator", "numerator", "hcir", "case_ids", "selected_run_probabilities", "selected_run_class", "selected_run_agreement", "majority_class", "majority_class_agreement", "probability_std"],
+    "statuses": {"denominator_positive_numerator_positive": "PATTERN_OBSERVED", "denominator_positive_numerator_zero": "PATTERN_NOT_OBSERVED", "denominator_zero": "NOT_ASSESSABLE"}
+  },
+  "h3": {
+    "statement": "Stability Gate versus validation-matched frozen confidence-only comparator at accepted-case risk.",
+    "primary_scope": "family-specific; AI4I primary engineering interpretation; other datasets secondary generality evidence",
+    "policy_a_stability_gate": {"probability_source": "raw", "min_confidence": 0.9, "min_selected_run_agreement": 0.8, "max_probability_std": 0.15, "class_threshold": "exact frozen raw validation DecisionThresholdPolicy", "majority_agreement_operational_input": false},
+    "policy_b_confidence_only": {"selected_run": "same", "probability_source": "raw", "class_threshold": "same exact frozen raw validation DecisionThresholdPolicy", "scope": "same applicable scope", "cross_run_information": false},
+    "validation_matched_coverage": {"source_split": "validation_only", "target": "frozen Stability Gate validation coverage", "candidates": "distinct validation selected-run confidence values", "selection": "minimize absolute coverage gap", "tie_break": ["higher confidence cutoff", "deterministic numeric ordering"], "freeze_before_final_test": true, "final_test_retuning": "FORBIDDEN"},
+    "accepted_case_risk": {"accepted_set": "disposition == ACCEPT", "formula": "N(predicted_label != true_label among accepted) / N(accepted)", "zero_accepted": {"value": null, "display": "N/A", "reason_code": "ZERO_ACCEPTED_CASES"}},
+    "effect": {"delta_risk": "R_stability - R_confidence", "interpretation": {"negative": "Stability Gate lower accepted-case risk", "zero": "equal accepted-case risk", "positive": "Stability Gate higher accepted-case risk"}, "relative_risk": "only when comparator risk is nonzero"},
+    "statuses": {"ci_fully_below_zero": "SUPPORTS_H3", "ci_fully_above_zero": "CONTRADICTS_H3", "ci_includes_zero": "INCONCLUSIVE", "risk_or_ci_undefined": "NOT_ASSESSABLE"}
+  },
+  "ai4i_secondary_endpoint": {"accepted_case_false_negative": "true_label=1 AND selected_prediction=0 among accepted", "fnr": "FN_accepted / N(true_positive among accepted)", "zero_accepted_positives": {"value": null, "display": "N/A", "reason_code": "ZERO_ACCEPTED_POSITIVES"}, "claim_boundary": "secondary benchmark endpoint, not universal safety metric"},
+  "bootstrap": {"resampling_unit": "case; paired policies on same bootstrap sample", "replicates": 10000, "rng_seed": 20260902, "ci": {"level": 0.95, "method": "two_sided_percentile"}, "primary_quantity": "delta_risk", "secondary_quantities": ["stability_accepted_case_risk", "confidence_accepted_case_risk", "coverage_difference", "ai4i_accepted_case_fnr_difference_if_defined"], "undefined_replicate": "invalid_for_that_statistic_not_zero", "minimum_valid_fraction": 0.9, "insufficient_valid_status": "UNSTABLE_OR_NOT_ESTIMABLE", "reason_code": "INSUFFICIENT_VALID_BOOTSTRAPS"},
+  "undefined_metric_policy": {
+    "no_high_confidence_cases": "ZERO_HIGH_CONFIDENCE_DENOMINATOR", "no_accepted_cases": "ZERO_ACCEPTED_CASES", "no_accepted_positive_cases": "ZERO_ACCEPTED_POSITIVES", "single_class_metric": "METRIC_UNDEFINED_SINGLE_CLASS", "zero_comparator_risk": "relative_risk_not_computed", "incomplete_run_support": "INCOMPLETE_DECLARED_RUN_SUPPORT", "final_test_closed": "FINAL_TEST_NOT_OPENED", "generality_dataset": "GENERALITY_ONLY", "pre_execution": "NO_EMPIRICAL_CLAIM", "general_rule": "undefined_is_null_na_not_zero"
+  },
+  "failed_runs": {"required_successful_runs_per_cell": 20, "failed_run": "persist reason and retain declared seed", "replacement_seed": "FORBIDDEN", "cell_status": "INCOMPLETE_DECLARED_RUN_SUPPORT", "confirmatory_hypotheses": "NOT_ASSESSABLE"},
+  "multiple_comparisons": {"primary": "family-specific effect size and paired bootstrap CI; no global RuFLEX p-value", "secondary_p_values": "Holm correction within predeclared family if calculated", "forbidden": "select any positive cell as platform-wide proof"},
+  "figures": [
+    {"id": "F01", "title": "Validation F1 distribution across 20 fits", "scope": "each model family"},
+    {"id": "F02", "title": "Selected-run agreement distribution"},
+    {"id": "F03", "title": "Confidence × selected-run agreement", "annotations": ["high-confidence stable", "high-confidence unstable"]},
+    {"id": "F04", "title": "HCIR by model family"},
+    {"id": "F05", "title": "Risk–coverage: no review, confidence-only, Stability Gate"},
+    {"id": "F06", "title": "Final-test delta accepted-case risk with 95% CI"},
+    {"id": "F07", "title": "AI4I accepted-case false-negative comparison"},
+    {"id": "F08", "title": "Deterministically selected unstable cases", "selection": "selected_run_agreement ascending; selected_run_confidence descending; case_id ascending"}
+  ],
+  "tables": ["T01 datasets/models/run completion", "T02 aggregate performance across 20 runs", "T03 stability metrics and HCIR", "T04 frozen validation-derived policies", "T05 final-test coverage and accepted-case risk", "T06 H3 effects and bootstrap CI", "T07 AI4I FN/FNR", "T08 negative/inconclusive results"],
+  "result_schema": {"h1_status": ["PATTERN_OBSERVED", "PATTERN_NOT_OBSERVED", "NOT_ASSESSABLE"], "h2_status": ["PATTERN_OBSERVED", "PATTERN_NOT_OBSERVED", "NOT_ASSESSABLE"], "h3_status": ["SUPPORTS_H3", "CONTRADICTS_H3", "INCONCLUSIVE", "NOT_ASSESSABLE"], "generic_pass_for_scientific_hypotheses": "FORBIDDEN"},
+  "allowed_claims_after_execution": "cell-level observed effects with frozen definitions and uncertainty only",
+  "forbidden_claims": ["H1/H2/H3 confirmed before execution", "Stability Gate improves risk without cell-level evidence", "universal leakage detection", "clinical validation", "platform-wide conclusion from one cell"],
+  "amendment_rule": {"path": "AMENDMENT_001.md", "required_fields": ["defect", "discovery_time", "benchmark_validation_seen", "final_test_opened", "affected_artifacts", "necessity"], "after_validation": "cannot be represented as wholly original pre-specified A01", "after_final_test": "original confirmatory A01 closes; separate R2 required"}
+}
