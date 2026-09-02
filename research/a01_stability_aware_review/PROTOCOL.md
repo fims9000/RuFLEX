@@ -1,6 +1,6 @@
 # A01 — Stability-Aware Selective Review
 
-Status: PRE-FREEZE DESIGN — no final-test data have been accessed.
+Status: PRE-FREEZE LOCK — no A01 final-test data have been accessed.
 
 ## Question
 
@@ -8,18 +8,18 @@ With the data split, preprocessing, architecture, and hyperparameters fixed, do 
 
 ## Main protocol
 
-The primary mode is `TRAINING_VARIABILITY`: one persisted `split_seed` determines the TRAIN / VALIDATION / final-test identities, while twenty `training_seed` values change only model randomness. No HPO, architecture change, preprocessing change, or final-test inspection is permitted while policies are chosen. Logistic Regression, Decision Tree, Random Forest, Gradient Boosting, and FlatNeuroFuzzy are evaluated as declared model families. AI4I 2020 predictive maintenance is the engineering scenario; UCI Bank Marketing and Wisconsin Diagnostic Breast Cancer are generality benchmarks, not clinical validation.
+The primary mode is `TRAINING_VARIABILITY`: `split_seed = 42` determines the exact 60/20/20 TRAIN / VALIDATION / final-test identities, while twenty `training_seed` values `0..19` change only model randomness. No HPO, architecture change, preprocessing change, seed replacement, or final-test inspection is permitted while policies are chosen. Logistic Regression, Decision Tree, Random Forest, Gradient Boosting, and FlatNeuroFuzzy use the explicit locked configurations in `config/model_specs.json`. AI4I 2020 predictive maintenance is the engineering scenario; UCI Bank Marketing and Wisconsin Diagnostic Breast Cancer are generality benchmarks, not clinical validation.
 
 ## Frozen definitions before final-test unlock
 
 - High confidence: selected-run confidence >= 0.90.
 - Prediction instability: selected-run agreement (not majority consensus) < 0.80, using the exact frozen validation-derived raw DecisionThresholdPolicy.
 - HCIR: proportion of high-confidence validation cases whose selected-run agreement is below 0.80; it is undefined when no validation case meets the high-confidence criterion.
-- Stability Gate: `BLOCK` for declared out-of-scope cases; otherwise `REVIEW` for low confidence, run disagreement, or probability dispersion above the validation-derived frozen limit; otherwise `ACCEPT`.
+- Stability Gate: `BLOCK` for declared out-of-scope cases; otherwise `REVIEW` for raw selected-run confidence below `0.90`, selected-run agreement below `0.80`, or raw probability standard deviation above `0.15`; otherwise `ACCEPT`. These are pre-specified pre-final-test constants, not data-driven values selected after benchmark validation inspection.
 - Explanation reproducibility is a separate evidence channel and is not an operational review criterion.
 - Primary model-level metric: validation F1 (with ROC-AUC, PR-AUC, Brier and ECE reported descriptively when defined). For AI4I, false-negative rate among accepted cases is also reported.
 - Risk–coverage comparison: no review, confidence-only review, and Stability Gate are compared at the same accepted coverage; a deterministic random-review reference is descriptive only.
-- Exclusions/failures: a run that cannot produce the declared validation evidence is recorded and excluded only under a predeclared execution-failure rule; the study reports the run count, reason, and any resulting loss of required support. No dataset, seed, model family or threshold is replaced after validation or final-test inspection.
+- Exclusions/failures: all twenty declared runs are required for each dataset/model-family primary cell. A failed run is retained with its reason and the cell is `INCOMPLETE_DECLARED_RUN_SUPPORT`; it cannot proceed to confirmatory final testing without a separate protocol decision. No dataset, seed, model family or threshold is replaced after validation or final-test inspection.
 
 ## Primary hypotheses
 
@@ -35,8 +35,8 @@ Persist `TrainingStudy`, `StudyStabilityAnalysis`, selected-run validation evalu
 
 ## Final-test firewall
 
-Calibration, class threshold, confidence cutoffs, agreement limits, and maximum probability dispersion are selected from validation objects only. The policy is frozen before one explicit final-test evaluation. Any later retuning requires a new experiment/protocol and must not be presented as an unbiased final-test estimate.
+The raw F1 `DecisionThresholdPolicy` is selected from validation evidence only. Calibration is descriptive only and cannot replace raw cross-run probabilities in the gate. The confidence, agreement and dispersion constants are pre-specified in the protocol rather than fitted from A01 data. The policy is frozen before one explicit future final-test evaluation. Any later retuning requires a new experiment/protocol and must not be presented as an unbiased final-test estimate.
 
 ## Split-variability ablation
 
-After the primary analysis, a separate `SPLIT_VARIABILITY` ablation fixes the training seed and changes only `split_seed`; `COMBINED_VARIABILITY` changes both. These are reported separately and are never described as pure training-seed effects.
+After the primary analysis, a separate `SPLIT_VARIABILITY` ablation fixes `training_seed = 42` and changes `split_seed = 0..9`; `COMBINED_VARIABILITY` changes both. These are reported separately and are never described as pure training-seed effects. Without a separately frozen case-alignment protocol, HCIR, case-level agreement and Stability Gate are `NOT_APPLICABLE` for the split ablation.

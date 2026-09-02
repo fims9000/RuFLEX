@@ -1,17 +1,19 @@
 {
   "study": "A01 — Stability-Aware Selective Review",
+  "protocol_version": "A01 Phase 0 / 1.0",
   "status": "PRE_FREEZE_NO_FINAL_TEST_ACCESS",
   "primary_protocol": "TRAINING_VARIABILITY",
   "split_seed": 42,
+  "split_fractions": {"train": 0.6, "validation": 0.2, "final_test": 0.2},
   "training_seeds": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19],
-  "models": ["logistic_regression", "decision_tree", "random_forest", "gradient_boosting", "flat_neuro_fuzzy"],
-  "datasets": [
-    {"id": "ai4i_2020", "role": "primary_engineering", "target": "Machine failure", "claim_boundary": "predictive-maintenance benchmark only"},
-    {"id": "uci_bank_marketing", "role": "generality", "target": "y", "claim_boundary": "benchmark only"},
-    {"id": "wisconsin_diagnostic", "role": "generality", "target": "diagnosis", "claim_boundary": "benchmark only; no clinical validation"}
-  ],
-  "validation_only_policy": {"min_confidence": 0.9, "min_class_agreement": 0.8, "max_probability_std": 0.15},
-  "hcir": {"high_confidence": 0.9, "unstable_agreement": 0.8},
-  "final_test": "FORBIDDEN_UNTIL_POLICY_AND_PROTOCOL_FREEZE",
-  "ablation": {"protocol": "SPLIT_VARIABILITY", "training_seed": 42, "split_seeds": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]}
+  "selected_run_rule": {"primary_metric": "validation_f1", "selection": "max", "tie_break": "lowest_training_seed"},
+  "decision_threshold": {"objective": "f1", "probability_source": "raw", "calibration_id": null, "scope": "validation_only"},
+  "validation_only_policy": {"min_confidence": 0.9, "min_class_agreement": 0.8, "max_probability_std": 0.15, "probability_source": "raw", "constants_status": "PRE_SPECIFIED_PRE_FINAL_TEST"},
+  "hcir": {"confidence_source": "selected_run_raw_probability", "high_confidence": 0.9, "agreement_source": "selected_run_agreement", "unstable_agreement": 0.8, "zero_denominator": "null_na"},
+  "calibration": {"descriptive_metrics": ["brier", "ece", "roc_auc", "pr_auc"], "operational_gate_input": false},
+  "explanation_reproducibility": {"operational_gate_input": false, "role": "separate_evidence_channel"},
+  "declared_run_support": {"required_runs_per_dataset_model": 20, "failure_status": "INCOMPLETE_DECLARED_RUN_SUPPORT", "replacement_seed": "FORBIDDEN"},
+  "final_test": "FORBIDDEN_UNTIL_SEPARATE_CONFIRMATORY_AUTHORIZATION",
+  "claim_boundaries": {"allowed_before_execution": ["A01 protocol and product-native pre-final-test harness are executable"], "forbidden_before_execution": ["A01_COMPLETE", "H1_CONFIRMED", "H2_CONFIRMED", "H3_CONFIRMED", "Stability_Gate_reduces_risk", "empirical_A01_result"]},
+  "ablation": {"protocol": "SPLIT_VARIABILITY", "training_seed": 42, "split_seeds": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], "primary_hypotheses": "NOT_APPLICABLE", "case_level_hcir": "NOT_APPLICABLE_WITHOUT_DECLARED_ALIGNMENT", "stability_gate": "FORBIDDEN"}
 }

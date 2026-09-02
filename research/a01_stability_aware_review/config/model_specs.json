@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "product_subject_revision": "c610f5740f2b26d60eabd9069a298dc6022c9548",
+  "shared_product_request": {"validation_fraction": 0.2, "test_fraction": 0.2, "preprocessing": {"normalization": "STANDARD", "fill_missing": "median", "fit_scope": "TRAIN_ONLY"}, "hpo": "FORBIDDEN"},
+  "models": [
+    {
+      "model_family": "logistic_regression",
+      "preprocessing_identity": "standard-median-train-only/v1",
+      "product_request": {"max_epochs": 1, "learning_rate": 0.0, "batch_size": "train_row_count", "patience": null, "max_rules": "not_applicable"},
+      "estimator_parameters": {"C": 1.0, "class_weight": null, "dual": false, "fit_intercept": true, "intercept_scaling": 1, "l1_ratio": null, "max_iter": 1000, "multi_class": "deprecated", "n_jobs": null, "penalty": "l2", "random_state": "training_seed", "solver": "lbfgs", "tol": 0.0001, "verbose": 0, "warm_start": false},
+      "randomness_provenance": "random_state=training_seed; split random_state=split_seed"
+    },
+    {
+      "model_family": "decision_tree",
+      "preprocessing_identity": "standard-median-train-only/v1",
+      "product_request": {"max_epochs": 1, "learning_rate": 0.0, "batch_size": "train_row_count", "patience": null, "max_rules": "not_applicable"},
+      "estimator_parameters": {"ccp_alpha": 0.0, "class_weight": null, "criterion": "gini", "max_depth": null, "max_features": null, "max_leaf_nodes": null, "min_impurity_decrease": 0.0, "min_samples_leaf": 1, "min_samples_split": 2, "min_weight_fraction_leaf": 0.0, "monotonic_cst": null, "random_state": "training_seed", "splitter": "best"},
+      "randomness_provenance": "random_state=training_seed; split random_state=split_seed"
+    },
+    {
+      "model_family": "random_forest",
+      "preprocessing_identity": "standard-median-train-only/v1",
+      "product_request": {"max_epochs": 1, "learning_rate": 0.0, "batch_size": "train_row_count", "patience": null, "max_rules": "not_applicable"},
+      "estimator_parameters": {"bootstrap": true, "ccp_alpha": 0.0, "class_weight": null, "criterion": "gini", "max_depth": null, "max_features": "sqrt", "max_leaf_nodes": null, "max_samples": null, "min_impurity_decrease": 0.0, "min_samples_leaf": 1, "min_samples_split": 2, "min_weight_fraction_leaf": 0.0, "monotonic_cst": null, "n_estimators": 25, "n_jobs": null, "oob_score": false, "random_state": "training_seed", "verbose": 0, "warm_start": false},
+      "randomness_provenance": "random_state=training_seed; split random_state=split_seed"
+    },
+    {
+      "model_family": "gradient_boosting",
+      "preprocessing_identity": "standard-median-train-only/v1",
+      "product_request": {"max_epochs": 50, "learning_rate": 0.1, "batch_size": "train_row_count", "patience": null, "max_rules": "not_applicable"},
+      "estimator_parameters": {"ccp_alpha": 0.0, "criterion": "friedman_mse", "init": null, "learning_rate": 0.1, "loss": "log_loss", "max_depth": 3, "max_features": null, "max_leaf_nodes": null, "min_impurity_decrease": 0.0, "min_samples_leaf": 1, "min_samples_split": 2, "min_weight_fraction_leaf": 0.0, "n_estimators": 50, "n_iter_no_change": null, "random_state": "training_seed", "subsample": 1.0, "tol": 0.0001, "validation_fraction": 0.1, "verbose": 0, "warm_start": false},
+      "randomness_provenance": "random_state=training_seed; split random_state=split_seed"
+    },
+    {
+      "model_family": "flat_neuro_fuzzy",
+      "preprocessing_identity": "standard-median-train-only/v1",
+      "product_request": {"max_epochs": 20, "learning_rate": 0.01, "batch_size": 32, "patience": 8, "max_rules": 8},
+      "architecture": {"engine": "FlatNeuroFuzzyModel", "membership_initialization": "training_partition_only", "bootstrap_initialization": true, "stagewise_pretraining": false, "refinement_cycles": 1, "shuffle": true, "classification_threshold": "not_operationally_used_for_A01_labels"},
+      "randomness_provenance": "all product stochastic initialization and fitting are seeded by training_seed; split random_state=split_seed"
+    }
+  ]
+}
