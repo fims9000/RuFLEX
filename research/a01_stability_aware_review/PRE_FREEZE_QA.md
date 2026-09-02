@@ -28,7 +28,7 @@ The exact values are in `config/locked_manifest.json`; the validator recomputes 
 | Declared-source materialization, SHA and split-identity recheck | PASS — three datasets; no training/evaluation |
 | `python research/a01_stability_aware_review/scripts/run_smoke.py` | PASS — product-native synthetic route through Study → Evaluation → raw Threshold → StabilityAnalysis → Gate → reopen/lineage/assurance/bundle; no final test |
 | Focused A01/Stability/Training/Lineage/Evidence pytest | PASS |
-| Full Python suite | PASS — 141 collected tests |
+| Full Python suite | PASS — 139 collected tests |
 | `compileall` for RuFLEX and A01 | PASS |
 | Frontend unit / Vite / Storybook | PASS |
 | Full Playwright including visual foundation | PASS — 25 tests |
