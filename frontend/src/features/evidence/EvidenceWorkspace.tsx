@@ -13,6 +13,7 @@ import {
   VerificationBundleValidation,
   FISEvaluation,
   ModelCatalogEntry,
+  PluginDescriptor,
   RunCapabilityNegotiation,
   ProductJob,
   ProjectSummary,
@@ -111,6 +112,7 @@ export function EvidenceWorkspace({
   const [demo, setDemo] = useState<ConditionMonitoringDemo | null>(null);
   const [explanationJob, setExplanationJob] = useState<ProductJob | null>(null);
   const [capabilityNegotiation, setCapabilityNegotiation] = useState<RunCapabilityNegotiation | null>(null);
+  const [validatorPlugins, setValidatorPlugins] = useState<PluginDescriptor[]>([]);
 
   useEffect(() => { setSample(initialSample); setComparisonSample(initialSample); }, [initialSample]);
   useEffect(() => setBehaviorResult(restoredBehaviorResult), [restoredBehaviorResult?.result_id]);
@@ -122,6 +124,7 @@ export function EvidenceWorkspace({
   useEffect(() => { if (project) studioApi.listExplanations(project.session_id).then(setPersistedExplanations).catch(() => setPersistedExplanations([])); }, [project.session_id, explanation?.explanation_id]);
   useEffect(() => {
     studioApi.getModelCatalog().then(setCatalog).catch(() => setCatalog([]));
+    studioApi.getPluginCatalog().then(setValidatorPlugins).catch(() => setValidatorPlugins([]));
   }, []);
   useEffect(() => {
     if (!run) { setCapabilityNegotiation(null); return; }
@@ -380,6 +383,7 @@ export function EvidenceWorkspace({
           {explanationCheck ? (
             <div className="trace-card">
               <div className="evidence-check-header"><strong>Check result</strong><StatusBadge tone={statusTone(explanationCheck.status)}>{explanationCheck.status}</StatusBadge></div>
+              {validatorPlugins.filter((plugin) => explanationCheck.checks.some((item) => item.validator_key === plugin.key)).map((plugin) => <p className="property-description" data-testid="validator-plugin" key={plugin.key}>Validator · {plugin.key} v{plugin.version} · {Object.entries(plugin.capabilities).filter(([, available]) => available).map(([key]) => key.replaceAll("_", " ")).join(", ")}</p>)}
               {explanationCheck.checks.map((item) => (
                 <div key={item.name}>
                   <span><strong>{item.category.replaceAll("_", " ")}</strong> · {item.name} · {item.detail}</span>

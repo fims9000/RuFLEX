@@ -44,6 +44,7 @@ test("PRODUCT-05 persists post-hoc evidence separately from exact traces", async
   await page.getByRole("button", { name: "Run explanation checks", exact: true }).click();
   await expect(page.getByText("PASSED_AVAILABLE_CHECKS", { exact: true })).toBeVisible();
   await expect(page.getByText("replay integrity", { exact: true })).toBeVisible();
+  await expect(page.getByTestId("validator-plugin")).toContainText("native_explanation_validator v1");
 
   await page.getByRole("button", { name: "Close", exact: true }).click();
   await page.getByLabel("Project path").fill(path);

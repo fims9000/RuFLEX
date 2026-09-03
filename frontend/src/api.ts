@@ -9,6 +9,7 @@ export type ProjectSummary = {
   modified_at: string;
 };
 export type ModelCatalogEntry = { key: string; label: string; family: string; available: boolean; capabilities: Record<string, boolean>; limitation: string | null };
+export type PluginDescriptor = { key: string; version: string; kind: "model_adapter" | "explainer" | "explanation_validator" | "metric" | "exporter" | "execution_backend"; capabilities: Record<string, boolean>; config_schema: Record<string, unknown>; input_schema: Record<string, unknown>; output_schema: Record<string, unknown>; trusted: boolean; scientific_note: string };
 export type RunCapabilityNegotiation = {
   schema_version: number;
   run_id: string;
@@ -220,6 +221,7 @@ async function requestText(path: string): Promise<string> {
 export const studioApi = {
   health: () => request<{ status: string }>("/api/health"),
   getModelCatalog: () => request<ModelCatalogEntry[]>("/api/model-catalog"),
+  getPluginCatalog: () => request<PluginDescriptor[]>("/api/plugins"),
   createProject: (path: string, name: string) =>
     request<ProjectSummary>("/api/projects", { path, name }),
   openProject: (path: string, readOnly = false) =>
