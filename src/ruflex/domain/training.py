@@ -48,6 +48,9 @@ class PredictionRow(BaseModel):
 
     row: int
     source_row: int | None = None
+    # New evidence carries a dataset-bound identity.  Legacy records remain
+    # readable through source_row but are explicitly less strong provenance.
+    row_identity: str | None = None
     target: float
     prediction: float
     probability: float | None = None
@@ -215,6 +218,8 @@ class CalibratedPrediction(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     row: int
+    source_row: int | None = None
+    row_identity: str | None = None
     target: float
     raw_probability: float
     calibrated_probability: float
@@ -376,6 +381,7 @@ class FinalTestStabilityCase(BaseModel):
     model_config = ConfigDict(extra="forbid")
     case_id: str
     source_row: int
+    row_identity: str | None = None
     target: int
     selected_run_probability: float
     selected_run_class: int

@@ -51,6 +51,8 @@ def test_training_variability_keeps_split_identity_and_persists_stability_gate(t
     assert analysis["split_seed"] == 42
     assert analysis["probability_source"] == "raw"
     assert all(case["run_support_count"] == 3 for case in analysis["cases"])
+    assert all(case["row_identity"] for case in analysis["cases"])
+    assert len({case["row_identity"] for case in analysis["cases"]}) == analysis["case_count"]
     policy_response = client.post("/api/projects/analyses/stability-policies", json={"session_id": session_id, "analysis_id": analysis["analysis_id"], "evaluation_id": evaluation_response.json()["evaluation_id"], "min_confidence": .9, "min_class_agreement": .8, "max_probability_std": .15})
     assert policy_response.status_code == 201, policy_response.text
     policy = policy_response.json()

@@ -5,12 +5,20 @@ from typing import Literal
 import pandas as pd
 from pydantic import BaseModel, Field
 from ruflex.application.artifacts import ArtifactMetadata, ArtifactRef, ArtifactStore
+ROW_IDENTITY_SCHEME = "dataset-fingerprint/source-row/v1"
+
+
+def row_identity(dataset_fingerprint: str, source_row: int) -> str:
+ """Stable typed identity for one materialized row in one DatasetContract."""
+ if source_row < 0: raise DatasetConfirmationError("Source row must be non-negative.")
+ payload=f"{ROW_IDENTITY_SCHEME}|{dataset_fingerprint}|{source_row}".encode()
+ return f"row:{hashlib.sha256(payload).hexdigest()}"
 class DatasetConfirmationError(ValueError): pass
 class FeatureSpec(BaseModel): name:str; semantic_type:str; dtype:str; nullable:bool; categories:list[str]|None=None
 class DatasetProfile(BaseModel): columns:list[FeatureSpec]; row_count:int; source_artifact_sha256:str; fingerprint:str; id_candidates:list[str]
 class SchemaComparison(BaseModel): compatible:bool; missing_columns:list[str]; unexpected_columns:list[str]
 class DatasetContract(BaseModel):
- dataset_fingerprint:str; source_artifact_sha256:str; target:str; task:Literal['regression','binary_classification','multiclass_classification']; feature_columns:list[str]; id_columns:list[str]=Field(default_factory=list); source_format:Literal['csv','xlsx']='csv'
+ dataset_fingerprint:str; source_artifact_sha256:str; target:str; task:Literal['regression','binary_classification','multiclass_classification']; feature_columns:list[str]; id_columns:list[str]=Field(default_factory=list); source_format:Literal['csv','xlsx']='csv'; row_identity_scheme:str=ROW_IDENTITY_SCHEME
  def compare_schema(self,frame:pd.DataFrame):
   expected=set(self.feature_columns)|set(self.id_columns)|{self.target}; actual=set(frame.columns); return SchemaComparison(compatible=expected==actual,missing_columns=sorted(expected-actual),unexpected_columns=sorted(actual-expected))
 class AuditFinding(BaseModel): code:str; severity:str; scope:str; evidence:dict; remediation:str; check_version:str='1'

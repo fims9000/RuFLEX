@@ -22,7 +22,7 @@ from sklearn.metrics import accuracy_score, average_precision_score, f1_score, m
 
 from ruflex.application.artifacts import ArtifactMetadata, ArtifactRef, ArtifactStore
 from ruflex.application.execution import local_executor
-from ruflex.application.datasets import load_dataset_contract, load_dataset_frame
+from ruflex.application.datasets import load_dataset_contract, load_dataset_frame, row_identity
 from ruflex.core.enums import NormalizationMode, TaskType, VariableRole
 from ruflex.core.membership import GaussianMembershipSpec
 from ruflex.core.variables import VariableSpec
@@ -328,6 +328,7 @@ def _validation_payload(
     predictions: np.ndarray,
     *,
     source_rows: np.ndarray | None = None,
+    dataset_fingerprint: str | None = None,
 ) -> tuple[list[PredictionRow], ConfusionMatrix | None, list[CalibrationBin]]:
     gold = np.asarray(targets, dtype=float).reshape(-1)
     raw = np.asarray(predictions, dtype=float).reshape(-1)
@@ -350,6 +351,7 @@ def _validation_payload(
                 PredictionRow(
                     row=index,
                     source_row=None if source is None else int(source[index]),
+                    row_identity=None if source is None or dataset_fingerprint is None else row_identity(dataset_fingerprint, int(source[index])),
                     target=float(target),
                     prediction=float(logit),
                     probability=float(probability),
@@ -374,6 +376,7 @@ def _validation_payload(
             PredictionRow(
                 row=index,
                 source_row=None if source is None else int(source[index]),
+                row_identity=None if source is None or dataset_fingerprint is None else row_identity(dataset_fingerprint, int(source[index])),
                 target=float(target),
                 prediction=float(prediction),
                 residual=float(prediction - target),
@@ -459,7 +462,7 @@ def train_linear_baseline(
         raw_validation = estimator.predict(split.validation_features)
         coefficients = np.asarray(estimator.coef_).reshape(-1)
         intercept = float(np.asarray(estimator.intercept_).reshape(-1)[0])
-    preview, confusion, calibration = _validation_payload(contract.task, split.validation_targets, raw_validation, source_rows=split.validation_indices)
+    preview, confusion, calibration = _validation_payload(contract.task, split.validation_targets, raw_validation, source_rows=split.validation_indices, dataset_fingerprint=contract.dataset_fingerprint)
     metrics = _baseline_metrics(contract.task, split.validation_targets, raw_validation)
     artifact_payload = {
         "format": "ruflex.declarative-linear-baseline/v1", "model_kind": kind,
@@ -537,7 +540,7 @@ def train_decision_tree(
         raw_validation = estimator.predict(split.validation_features)
     else:
         raise TrainingError(f"Unsupported task {contract.task!r} for Decision Tree.")
-    preview, confusion, calibration = _validation_payload(contract.task, split.validation_targets, raw_validation, source_rows=split.validation_indices)
+    preview, confusion, calibration = _validation_payload(contract.task, split.validation_targets, raw_validation, source_rows=split.validation_indices, dataset_fingerprint=contract.dataset_fingerprint)
     metrics = _baseline_metrics(contract.task, split.validation_targets, raw_validation)
     payload = _tree_payload(estimator, kind="decision_tree", task=contract.task, target=contract.target, feature_columns=feature_columns, normalization=_normalization_dict(split.normalization), split_seed=resolved_split_seed, training_seed=resolved_training_seed)
     ref = ArtifactStore(project_root).ingest_bytes(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8"), metadata=ArtifactMetadata(media_type="application/vnd.ruflex.declarative-decision-tree+json", source_kind="generated", original_name="decision-tree.json", parent_artifacts=[contract.source_artifact_sha256], producer={"component": "ruflex.application.training", "version": "1"}))
@@ -571,7 +574,7 @@ def train_random_forest(
         raw = estimator.predict(split.validation_features)
     else:
         raise TrainingError(f"Unsupported task {contract.task!r} for Random Forest.")
-    preview, confusion, calibration = _validation_payload(contract.task, split.validation_targets, raw, source_rows=split.validation_indices); metrics = _baseline_metrics(contract.task, split.validation_targets, raw)
+    preview, confusion, calibration = _validation_payload(contract.task, split.validation_targets, raw, source_rows=split.validation_indices, dataset_fingerprint=contract.dataset_fingerprint); metrics = _baseline_metrics(contract.task, split.validation_targets, raw)
     normalization = _normalization_dict(split.normalization)
     trees = [_tree_payload(tree, kind="decision_tree", task=contract.task, target=contract.target, feature_columns=columns, normalization=normalization, split_seed=resolved_split_seed, training_seed=resolved_training_seed)["tree"] for tree in estimator.estimators_]
     payload = {"format": "ruflex.declarative-random-forest/v1", "model_kind": "random_forest", "task": contract.task, "target": contract.target, "feature_columns": columns, "parameters": {"n_estimators": n_estimators, "max_depth": max_depth, "random_state": resolved_training_seed}, "split_seed": resolved_split_seed, "training_seed": resolved_training_seed, "normalization": normalization, "trees": trees, "ensemble_semantics": "aggregate constituent tree predictions; no single tree path is the exact explanation of the ensemble"}
@@ -595,7 +598,7 @@ def train_gradient_boosting(project_root: Path, *, seed: int | None = None, spli
         estimator = GradientBoostingRegressor(n_estimators=n_estimators, learning_rate=learning_rate, max_depth=max_depth, random_state=resolved_training_seed)
         estimator.fit(split.train_features, np.asarray(split.train_targets).reshape(-1)); raw = estimator.predict(split.validation_features)
     else: raise TrainingError(f"Unsupported task {contract.task!r} for Gradient Boosting.")
-    preview, confusion, calibration = _validation_payload(contract.task, split.validation_targets, raw, source_rows=split.validation_indices); metrics = _baseline_metrics(contract.task, split.validation_targets, raw); normalization = _normalization_dict(split.normalization)
+    preview, confusion, calibration = _validation_payload(contract.task, split.validation_targets, raw, source_rows=split.validation_indices, dataset_fingerprint=contract.dataset_fingerprint); metrics = _baseline_metrics(contract.task, split.validation_targets, raw); normalization = _normalization_dict(split.normalization)
     tree_estimators = np.asarray(estimator.estimators_, dtype=object).reshape(-1).tolist()
     trees = [_tree_payload(tree, kind="decision_tree", task=contract.task, target=contract.target, feature_columns=columns, normalization=normalization, split_seed=resolved_split_seed, training_seed=resolved_training_seed)["tree"] for tree in tree_estimators]
     # Persist the fitted base score as part of the declarative ensemble semantics.
@@ -742,7 +745,7 @@ def train_flat_neuro_fuzzy(
     )
     summary = model.fit(split, config)
     predictions = model.predict(split.validation_features)
-    preview, confusion, calibration = _validation_payload(contract.task, split.validation_targets, predictions, source_rows=split.validation_indices)
+    preview, confusion, calibration = _validation_payload(contract.task, split.validation_targets, predictions, source_rows=split.validation_indices, dataset_fingerprint=contract.dataset_fingerprint)
 
     with tempfile.NamedTemporaryFile(prefix="ruflex-model-", suffix=".pt", delete=False) as handle:
         temp_model_path = Path(handle.name)
@@ -1167,6 +1170,8 @@ def fit_validation_calibration(project_root: Path, evaluation_id: UUID) -> Calib
         predictions=[
             CalibratedPrediction(
                 row=row.row,
+                source_row=row.source_row,
+                row_identity=row.row_identity,
                 target=float(row.target),
                 raw_probability=float(raw_probability),
                 calibrated_probability=float(calibrated_probability),
@@ -1483,6 +1488,10 @@ def evaluate_final_test(
         )
     if run.task == TaskType.REGRESSION.value and (calibration is not None or threshold is not None):
         raise TrainingError("Calibration and decision-threshold policies are not applicable to regression final-test evaluation.")
+    if run.dataset_fingerprint is None:
+        raise TrainingError(
+            "Frozen TrainingRun lacks DatasetContract fingerprint; cannot establish typed final-test row identities."
+        )
 
     # Collect prior final-test evidence for this dataset revision. Repeating an
     # identical frozen policy is idempotent. Different policies are allowed only
@@ -1536,7 +1545,7 @@ def evaluate_final_test(
         "final-test-cases",
         {
             "dataset_fingerprint": run.dataset_fingerprint,
-            "source_rows": sorted(int(value) for value in np.asarray(split.test_indices, dtype=int).reshape(-1)),
+            "row_identities": sorted(row_identity(run.dataset_fingerprint, int(value)) for value in np.asarray(split.test_indices, dtype=int).reshape(-1)),
         },
     )
     policy_frozen_at = max(
@@ -1570,8 +1579,8 @@ def evaluate_final_test(
                     "final-test-cases",
                     {
                         "dataset_fingerprint": prior.dataset_fingerprint,
-                        "source_rows": sorted(
-                            int(row.source_row)
+                        "row_identities": sorted(
+                            row.row_identity or row_identity(prior.dataset_fingerprint, int(row.source_row))
                             for row in prior.prediction_rows
                             if row.source_row is not None
                         ),
@@ -1612,6 +1621,7 @@ def evaluate_final_test(
             PredictionRow(
                 row=index,
                 source_row=int(source_row),
+                row_identity=row_identity(run.dataset_fingerprint, int(source_row)),
                 target=float(target),
                 prediction=float(raw_prediction),
                 probability=float(raw_probability),
@@ -1639,7 +1649,8 @@ def evaluate_final_test(
             gate_cases = []
             for index, source_row in enumerate(source_rows):
                 application = evaluate_frozen_stability_probabilities(stability_gate_policy, {run_id: float(values[index]) for run_id, values in all_probabilities.items()})
-                gate_cases.append(FinalTestStabilityCase(case_id=f"source:{int(source_row)}", source_row=int(source_row), target=int(truth[index]), selected_run_probability=application.selected_run_probability, selected_run_class=application.predicted_label, majority_class_agreement=application.majority_class_agreement, selected_run_agreement=application.selected_run_agreement, probability_std=application.probability_std, disposition=application.disposition, reasons=application.reasons))
+                identity = row_identity(run.dataset_fingerprint, int(source_row))
+                gate_cases.append(FinalTestStabilityCase(case_id=identity, source_row=int(source_row), row_identity=identity, target=int(truth[index]), selected_run_probability=application.selected_run_probability, selected_run_class=application.predicted_label, majority_class_agreement=application.majority_class_agreement, selected_run_agreement=application.selected_run_agreement, probability_std=application.probability_std, disposition=application.disposition, reasons=application.reasons))
             accepted = [case for case in gate_cases if case.disposition == "ACCEPT"]
             reviews = [case for case in gate_cases if case.disposition == "REVIEW"]
             blocks = [case for case in gate_cases if case.disposition == "BLOCK"]
@@ -1657,6 +1668,7 @@ def evaluate_final_test(
             PredictionRow(
                 row=index,
                 source_row=int(source_row),
+                row_identity=row_identity(run.dataset_fingerprint, int(source_row)),
                 target=float(target),
                 prediction=float(prediction),
                 residual=float(target - prediction),
@@ -1745,14 +1757,17 @@ def _validation_sample_identity(run: TrainingRun) -> str | None:
     identity lets comparisons distinguish same-case evaluation from
     seed-resampled validation sets without touching the locked final test.
     """
-    if not run.prediction_preview or any(row.source_row is None for row in run.prediction_preview):
+    if run.dataset_fingerprint is None or not run.prediction_preview or any(row.source_row is None for row in run.prediction_preview):
         return None
     return _stable_identity(
         "validation-samples",
         {
             "dataset_fingerprint": run.dataset_fingerprint,
             "target": run.target,
-            "source_rows": sorted(int(row.source_row) for row in run.prediction_preview if row.source_row is not None),
+            "row_identities": sorted(
+                row.row_identity or row_identity(run.dataset_fingerprint, int(row.source_row))
+                for row in run.prediction_preview if row.source_row is not None
+            ),
         },
     )
 

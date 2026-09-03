@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "product_version": "1.0.1",
-  "active_capability": "golden_route_regression_qa",
+  "active_capability": "dataset_bound_row_identity",
   "completed_capabilities": [
     "dataset_contracts",
     "training_and_validation_evidence",
@@ -14,11 +14,11 @@
     "project_reopen_integrity"
   ],
   "active_acceptance": [
-    "Run the full product regression suite against the updated Golden Route.",
-    "Address any integrity or UI regressions before selecting the next product capability."
+    "Persist dataset-bound row identities throughout prediction, calibration, stability, and final-test evidence.",
+    "Preserve legacy reopen compatibility while ensuring new evidence is typed and immutable."
   ],
   "blockers": [],
-  "next_executable_work": "Run full backend and browser regression, then use evidence to choose the next unfinished product capability.",
+  "next_executable_work": "Verify typed row identity through backend persistence/reopen and Studio display, then choose the next P0 provenance gap.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",

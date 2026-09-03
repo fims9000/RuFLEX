@@ -30,7 +30,7 @@ def _probability(row) -> float:
 
 
 def _case_key(row) -> str:
-    return f"source:{row.source_row}" if row.source_row is not None else f"row:{row.row}"
+    return row.row_identity or (f"source:{row.source_row}" if row.source_row is not None else f"row:{row.row}")
 
 
 def _metric_distribution(values: list[float]) -> MetricDistribution:
@@ -132,7 +132,7 @@ def create_study_stability_analysis(project_root: Path, study_id: UUID, *, evalu
         selected_row = rows[str(selected.run_id)]
         selected_label = None if threshold is None else labels[str(selected.run_id)]
         selected_agreement = None if selected_label is None else float(np.mean([label == selected_label for label in labels.values()]))
-        cases.append(CaseStability(case_id=key, source_row=selected_row.source_row, run_support_count=len(rows), run_support_fraction=1.0, target=int(selected_row.target >= .5), selected_run_probability=probabilities[str(selected.run_id)], selected_run_class=selected_label, mean_probability=float(values.mean()), std_probability=float(values.std(ddof=0)), min_probability=float(values.min()), max_probability=float(values.max()), probability_range=float(values.max() - values.min()), majority_class=majority_class, majority_class_agreement=majority_agreement, selected_run_agreement=selected_agreement, positive_vote_fraction=positive_fraction, vote_entropy=entropy, run_probabilities=probabilities, run_labels=labels))
+        cases.append(CaseStability(case_id=key, source_row=selected_row.source_row, row_identity=selected_row.row_identity, run_support_count=len(rows), run_support_fraction=1.0, target=int(selected_row.target >= .5), selected_run_probability=probabilities[str(selected.run_id)], selected_run_class=selected_label, mean_probability=float(values.mean()), std_probability=float(values.std(ddof=0)), min_probability=float(values.min()), max_probability=float(values.max()), probability_range=float(values.max() - values.min()), majority_class=majority_class, majority_class_agreement=majority_agreement, selected_run_agreement=selected_agreement, positive_vote_fraction=positive_fraction, vote_entropy=entropy, run_probabilities=probabilities, run_labels=labels))
     high = [] if threshold is None else [case for case in cases if max(case.selected_run_probability, 1.0 - case.selected_run_probability) >= high_confidence_threshold]
     unstable = [] if threshold is None else [case for case in high if case.selected_run_agreement is not None and case.selected_run_agreement < unstable_agreement_threshold]
     hcir_note = "HCIR is undefined because no cases satisfied the high-confidence criterion." if threshold is not None and not high else None

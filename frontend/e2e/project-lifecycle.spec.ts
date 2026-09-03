@@ -92,6 +92,7 @@ test("E2E-08 confirms a dataset contract in Data workspace and preserves it acro
   await expect(page.getByText(/Rows: 3/)).toBeVisible();
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
   await expect(page.getByText(/Contract: target/)).toBeVisible();
+  await expect(page.getByText(/Row identity: dataset-fingerprint\/source-row\/v1/)).toBeVisible();
   await page.getByRole("button", { name: "Close", exact: true }).click();
   const reopened = await page.request.post("http://127.0.0.1:8010/api/projects/open", { data: { path } });
   expect(reopened.status()).toBe(200);

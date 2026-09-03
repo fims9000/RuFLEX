@@ -242,6 +242,9 @@ def test_validation_evaluation_is_a_persistent_run_bound_analysis_object(tmp_pat
     assert calibration["method"] == "platt_scaling"
     assert calibration["fit_sample_count"] == evaluation["validation_row_count"]
     assert len(calibration["predictions"]) == evaluation["validation_row_count"]
+    assert all(prediction["row_identity"] for prediction in calibration["predictions"])
+    assert all(prediction["source_row"] is not None for prediction in calibration["predictions"])
+    assert len({prediction["row_identity"] for prediction in calibration["predictions"]}) == evaluation["validation_row_count"]
     assert calibration["fit_sample_identity"].startswith("validation-calibration:")
 
     reopened_calibration = client.get(f"/api/projects/{session_id}/analyses/calibrations/latest")

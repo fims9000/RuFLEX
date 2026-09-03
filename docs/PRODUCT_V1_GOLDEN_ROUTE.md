@@ -2,7 +2,7 @@
 
 The persisted Golden Route is exercised by the Product browser routes and integrated backend journey.
 
-1. Create a project, import telemetry CSV/XLSX, inspect audit findings and confirm `DatasetContract`.
+1. Create a project, import telemetry CSV/XLSX, inspect audit findings and confirm `DatasetContract`. Persisted prediction evidence carries an immutable dataset-bound row identity; legacy `source_row` remains diagnostic only.
 2. Create/edit a FIS, execute exact FIS trace, compare revisions, and preserve the expert correction lineage.
 3. Train ANFIS, Decision Tree and ordinary baselines; create a multi-seed Study and select by validation only. Long Studies persist their declared request and seed lifecycle through the local executor, so an interrupted project can be reopened and explicitly resumed without replacing seeds or changing fit configuration.
 4. For a fixed-split `TRAINING_VARIABILITY` Study, create persisted Stability Lab evidence, inspect HCIR and a case-level disagreement, then freeze a validation-derived Stability Gate before final-test access. `SPLIT_VARIABILITY` and `COMBINED_VARIABILITY` remain separate aggregate-sensitivity protocols and do not claim fully matched case-level evidence.

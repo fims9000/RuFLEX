@@ -21,6 +21,7 @@ class CaseStability(BaseModel):
     model_config = ConfigDict(extra="forbid")
     case_id: str
     source_row: int | None = None
+    row_identity: str | None = None
     run_support_count: int = Field(ge=0)
     run_support_fraction: float = Field(ge=0.0, le=1.0)
     target: int

@@ -71,6 +71,8 @@ def test_final_test_replays_each_product_v1_trainable_classifier_without_refit(t
     assert 0.0 <= final_test.metrics["accuracy"] <= 1.0
     assert 0.0 <= final_test.metrics["f1"] <= 1.0
     assert all(row.source_row is not None for row in final_test.prediction_rows)
+    assert all(row.row_identity is not None for row in final_test.prediction_rows)
+    assert len({row.row_identity for row in final_test.prediction_rows}) == final_test.test_row_count
 
 
 def test_final_test_firewall_blocks_late_selective_policy_tuning(tmp_path: Path) -> None:

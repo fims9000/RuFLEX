@@ -6,7 +6,7 @@ import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
-from ruflex.application.datasets import DatasetConfirmationError, build_dataset_contract, inspect_dataset, load_dataset_contract, persist_dataset_contract, run_data_audit
+from ruflex.application.datasets import DatasetConfirmationError, build_dataset_contract, inspect_dataset, load_dataset_contract, persist_dataset_contract, row_identity, run_data_audit
 from ruflex.api.main import app
 
 
@@ -59,6 +59,14 @@ def test_contract_and_audit_persist_without_mutating_source_frame(tmp_path) -> N
     persist_dataset_contract(tmp_path, contract, run_data_audit(contract, frame))
     assert load_dataset_contract(tmp_path) == contract
     assert frame.equals(before)
+
+
+def test_row_identity_is_deterministic_and_bound_to_dataset_revision() -> None:
+    first = row_identity("a" * 64, 7)
+    assert first == row_identity("a" * 64, 7)
+    assert first != row_identity("b" * 64, 7)
+    assert first != row_identity("a" * 64, 8)
+    assert first.startswith("row:")
 
 
 def test_csv_inspect_confirm_and_reopen_contract_through_api(tmp_path) -> None:

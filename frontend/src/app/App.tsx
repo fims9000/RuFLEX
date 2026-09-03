@@ -780,6 +780,7 @@ export function App() {
           {dataset && (
             <div className="data-summary">
               Contract: {dataset.contract.target} · {dataset.contract.task}
+              <small> · Row identity: {dataset.contract.row_identity_scheme}</small>
             </div>
           )}
           {datasetState && (

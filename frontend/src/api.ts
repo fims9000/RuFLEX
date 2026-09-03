@@ -51,6 +51,7 @@ export type DatasetConfirmation = {
     feature_columns: string[];
     id_columns: string[];
     source_format: "csv" | "xlsx";
+    row_identity_scheme: string;
   };
   audit: {
     findings: Array<{
@@ -122,7 +123,7 @@ export type StudyStabilityAnalysis = {
   analysis_id: string; study_id: string; dataset_fingerprint: string | null; dataset_artifact_sha256: string | null; mode: "TRAINING_VARIABILITY" | "SPLIT_VARIABILITY" | "COMBINED_VARIABILITY" | "LEGACY_COMBINED"; split_identity: string | null; split_seeds: number[]; model_kind: string;
   task: "binary_classification"; run_ids: string[]; training_seeds: number[]; split_seed: number | null; evaluation_case_identity: string | null; evaluation_id: string | null; class_threshold_id: string | null; decision_threshold: number | null; validation_alignment_status: "EXACT_MATCH" | "MIXED_CASE_IDENTITIES" | "NOT_APPLICABLE"; applicability: "APPLICABLE" | "NOT_APPLICABLE"; applicability_reason: string | null;
   selected_run_id: string; case_count: number; case_support_requirement: number; probability_source: "raw"; metric_distributions: Record<string, { mean: number; std: number; minimum: number; maximum: number; median: number; iqr: number }>;
-  cases: Array<{ case_id: string; source_row: number | null; run_support_count: number; run_support_fraction: number; target: number; selected_run_probability: number; selected_run_class: number | null; mean_probability: number; std_probability: number; min_probability: number; max_probability: number; probability_range: number; majority_class: number | null; majority_class_agreement: number | null; selected_run_agreement: number | null; positive_vote_fraction: number | null; vote_entropy: number | null; run_probabilities: Record<string, number>; run_labels: Record<string, number> }>;
+  cases: Array<{ case_id: string; source_row: number | null; row_identity: string | null; run_support_count: number; run_support_fraction: number; target: number; selected_run_probability: number; selected_run_class: number | null; mean_probability: number; std_probability: number; min_probability: number; max_probability: number; probability_range: number; majority_class: number | null; majority_class_agreement: number | null; selected_run_agreement: number | null; positive_vote_fraction: number | null; vote_entropy: number | null; run_probabilities: Record<string, number>; run_labels: Record<string, number> }>;
   high_confidence_threshold: number; unstable_agreement_threshold: number; high_confidence_instability_rate: number | null; high_confidence_case_count: number; high_confidence_unstable_case_count: number; warnings: string[]; scientific_note: string;
 };
 export type StabilityGatePolicy = {
@@ -1013,6 +1014,8 @@ export type TrainingRun = {
   validation_metrics: Record<string, number>;
   prediction_preview: Array<{
     row: number;
+    source_row: number | null;
+    row_identity: string | null;
     target: number;
     prediction: number;
     probability: number | null;
