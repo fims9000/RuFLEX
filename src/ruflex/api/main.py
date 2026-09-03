@@ -9,8 +9,9 @@ import numpy as np
 import pandas as pd
 import yaml
 
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import PlainTextResponse
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -356,6 +357,59 @@ service = WorkspaceSessionService(project_service)
 
 class ProjectSessionSummary(ProjectSummary):
     session_id: UUID
+
+
+def _error_code(*, status_code: int, detail: object) -> str:
+    """Map HTTP failures to a stable product code without discarding detail.
+
+    The API has historically exposed human-readable ``detail`` strings.  Keep
+    those strings for compatibility, but give Studio and SDK clients a
+    machine-readable branch point for recoverable product states.
+    """
+
+    message = str(detail).lower()
+    if "test" in message and ("opened" in message or "unlock" in message):
+        return "TEST_ALREADY_OPENED"
+    if "policy" in message and ("frozen" in message or "locked" in message):
+        return "POLICY_FROZEN"
+    if "not applicable" in message:
+        return "NOT_APPLICABLE"
+    if "capability" in message and ("unavailable" in message or "unsupported" in message):
+        return "CAPABILITY_UNAVAILABLE"
+    if "hash" in message and ("mismatch" in message or "invalid" in message):
+        return "HASH_MISMATCH"
+    if "provenance" in message or "lineage" in message:
+        return "BROKEN_PROVENANCE"
+    if "artifact" in message and ("missing" in message or "not found" in message):
+        return "ARTIFACT_MISSING"
+    if status_code == 403:
+        return "PROJECT_READ_ONLY"
+    if status_code == 404:
+        return "RESOURCE_NOT_FOUND"
+    if status_code == 409:
+        return "INVALID_STATE"
+    if status_code == 422:
+        return "VALIDATION_FAILED"
+    return "PRODUCT_ERROR"
+
+
+@app.exception_handler(HTTPException)
+async def product_http_exception_handler(_: Request, error: HTTPException) -> JSONResponse:
+    """Return typed errors while retaining the legacy ``detail`` payload."""
+
+    return JSONResponse(
+        status_code=error.status_code,
+        content={"code": _error_code(status_code=error.status_code, detail=error.detail), "detail": error.detail},
+        headers=error.headers,
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def product_request_validation_handler(_: Request, error: RequestValidationError) -> JSONResponse:
+    return JSONResponse(
+        status_code=422,
+        content={"code": "REQUEST_INVALID", "detail": error.errors()},
+    )
 
 
 def _project_error(error: ProjectError) -> HTTPException:

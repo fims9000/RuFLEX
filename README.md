@@ -30,6 +30,7 @@ Core Product V1 capabilities include:
 - CSV/XLSX data contracts with advisory, user-overridable role proposals; dataset-bound row identities; and MATLAB `.fis` interoperability;
 - real ANFIS/FlatNeuroFuzzy training plus logistic/linear, Decision Tree, Random Forest and Gradient Boosting baselines, each bound to a content-addressed train-only preprocessing artifact;
 - persistent multi-seed Studies with separate split/training seed provenance, validation-only selection, durable LocalExecutor recovery without seed replacement, and Stability Lab evidence (case agreement, HCIR and frozen review gates only for fixed-split training-variability studies);
+- typed API error codes alongside human-readable error detail, so Studio and SDK callers can distinguish invalid state, unavailable capability, broken provenance, frozen policy and final-test boundary failures without parsing display text;
 - validation Evaluation objects with persisted raw ROC/precision–recall curves, Platt calibration, validation-derived decision thresholds and an explicit frozen-policy final-test gate;
 - persisted comparisons that distinguish aligned and non-aligned validation cases;
 - exact Decision Tree execution paths and capability-compatible post-hoc evidence (TreeSHAP, SHAP, Integrated Gradients, GradientSHAP and Occlusion);

@@ -146,6 +146,41 @@ export type ConditionMonitoringDemo = { demo_id: string; policy_id: string; tele
 
 const apiBase = import.meta.env.VITE_RUFLEX_API_URL ?? "http://127.0.0.1:8000";
 
+export type ProductErrorCode =
+  | "INVALID_STATE"
+  | "NOT_APPLICABLE"
+  | "BROKEN_PROVENANCE"
+  | "ARTIFACT_MISSING"
+  | "HASH_MISMATCH"
+  | "POLICY_FROZEN"
+  | "TEST_ALREADY_OPENED"
+  | "CAPABILITY_UNAVAILABLE"
+  | "PROJECT_READ_ONLY"
+  | "RESOURCE_NOT_FOUND"
+  | "VALIDATION_FAILED"
+  | "REQUEST_INVALID"
+  | "PRODUCT_ERROR";
+
+export class ProductApiError extends Error {
+  readonly code: ProductErrorCode;
+  readonly status: number;
+  readonly detail: unknown;
+
+  constructor({ code, status, detail }: { code: ProductErrorCode; status: number; detail: unknown }) {
+    super(typeof detail === "string" ? detail : code === "REQUEST_INVALID" ? "The request is incomplete or invalid." : `Request failed (${status}).`);
+    this.name = "ProductApiError";
+    this.code = code;
+    this.status = status;
+    this.detail = detail;
+  }
+}
+
+function productApiError(status: number, payload: unknown): ProductApiError {
+  const record = payload && typeof payload === "object" ? payload as { code?: unknown; detail?: unknown } : {};
+  const code = typeof record.code === "string" ? record.code as ProductErrorCode : "PRODUCT_ERROR";
+  return new ProductApiError({ code, status, detail: record.detail ?? `Request failed (${status})` });
+}
+
 async function request<T>(path: string, body?: unknown): Promise<T> {
   const response = await fetch(`${apiBase}${path}`, {
     method: body === undefined ? "GET" : "POST",
@@ -155,7 +190,7 @@ async function request<T>(path: string, body?: unknown): Promise<T> {
   });
   if (!response.ok) {
     const payload = await response.json().catch(() => ({}));
-    throw new Error(payload.detail ?? `Request failed (${response.status})`);
+    throw productApiError(response.status, payload);
   }
   return response.json() as Promise<T>;
 }
@@ -164,7 +199,7 @@ async function requestText(path: string): Promise<string> {
   const response = await fetch(`${apiBase}${path}`);
   if (!response.ok) {
     const payload = await response.json().catch(() => ({}));
-    throw new Error(payload.detail ?? `Request failed (${response.status})`);
+    throw productApiError(response.status, payload);
   }
   return response.text();
 }
