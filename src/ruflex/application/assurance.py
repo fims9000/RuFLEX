@@ -10,7 +10,7 @@ from pydantic import BaseModel, ValidationError
 from ruflex.application.datasets import load_dataset_contract
 from ruflex.application.evidence import _atomic_write_text
 from ruflex.application.generalization import GeneralizationContract, SliceAnalysis
-from ruflex.domain.assurance import AssuranceCase, AssuranceGate
+from ruflex.domain.assurance import AssuranceCase, AssuranceClaim, AssuranceGate
 from ruflex.domain.behavior import BehaviorSpec, BehaviorSpecResult
 from ruflex.domain.evidence import ExplanationCheck, ExplanationContract, ExplanationReproducibilityAnalysis
 from ruflex.domain.exhaustive import ExhaustiveLabResult
@@ -202,7 +202,17 @@ def create_assurance_case(root: Path) -> AssuranceCase:
     final_ok = final_tests and all(x.status == "FINAL_TEST_EVALUATED" and x.policy_frozen_at is not None for x in final_tests)
     status, risk = _evidence_status(present=bool(final_tests), valid=bool(final_ok), malformed=_has_malformed_object(final_root, FinalTestEvaluation), unavailable="Final-test evidence is absent.", invalid="Final-test evidence is not tied to a frozen policy.")
     gates.append(_gate("final_test", status, [f"final-test:{x.final_test_id}" for x in final_tests], risk))
-    result = AssuranceCase(gates=gates, unresolved_risks=[x.risk for x in gates if x.risk])
+    claims = [
+        AssuranceClaim(
+            statement=f"{gate.key.replace('_', ' ').capitalize()} is supported by the declared persisted evidence.",
+            status="SUPPORTED" if gate.status == "PASS" else "QUALIFIED",
+            evidence_ids=gate.evidence,
+            assumptions=["Referenced evidence remains readable and correctly bound to its recorded provenance."],
+            limitations=[gate.risk] if gate.risk else [],
+        )
+        for gate in gates if gate.evidence
+    ]
+    result = AssuranceCase(gates=gates, claims=claims, unresolved_risks=[x.risk for x in gates if x.risk])
     _atomic_write_text(_root(base) / f"{result.assurance_id}.json", result.model_dump_json(indent=2))
     _atomic_write_text(_root(base) / "active-case.json", json.dumps({"assurance_id": str(result.assurance_id)}))
     return result

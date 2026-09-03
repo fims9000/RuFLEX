@@ -3,7 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pandas as pd
+import pytest
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
 
 from ruflex.api.main import app
 
@@ -95,6 +97,12 @@ def test_posthoc_occlusion_is_persisted_checked_and_not_mislabeled_exact(tmp_pat
     latest_check = client.get(f"/api/projects/{reopened_session}/evidence/explanation-checks/latest")
     assert latest.status_code == 200 and latest.json()["explanation_id"] == explanation["explanation_id"]
     assert latest_check.status_code == 200 and latest_check.json()["check_id"] == check["check_id"]
+
+
+def test_assurance_claim_refuses_an_unbound_claim() -> None:
+    from ruflex.domain.assurance import AssuranceClaim
+    with pytest.raises(ValidationError):
+        AssuranceClaim(statement="Unbound claim", status="SUPPORTED", evidence_ids=[])
 
 
 def test_behavior_spec_is_revision_bound_persists_and_reopens(tmp_path: Path) -> None:
@@ -307,6 +315,7 @@ def test_assurance_case_is_persisted_independent_gate_evidence(tmp_path: Path) -
     created = client.post("/api/projects/evidence/assurance-cases", json={"session_id": session_id})
     assert created.status_code == 201, created.text
     case = created.json(); assert "trust" not in case and any(gate["key"] == "dataset_contract" and gate["status"] == "PASS" for gate in case["gates"])
+    assert case["claims"] and all(claim["evidence_ids"] for claim in case["claims"])
     assert any(gate["status"] == "NOT_AVAILABLE" for gate in case["gates"])
     assert client.post("/api/projects/close", json={"session_id": session_id}).status_code == 204
     reopened = client.post("/api/projects/open", json={"path": str(root), "read_only": False}).json()["session_id"]
