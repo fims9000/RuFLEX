@@ -157,8 +157,10 @@ test("PRODUCT-EVIDENCE captures the frozen V1 Studio route from persisted object
   await page.getByRole("button", { name: "Build AssuranceCase", exact: true }).click();
   await expect(page.getByTestId("assurance-case")).toBeVisible();
   await capture(page, "16_assurance_case.png", page.getByTestId("assurance-case"));
-  await page.getByRole("button", { name: "Export VerificationBundle", exact: true }).click();
+  await page.getByRole("button", { name: "Export and validate bundle", exact: true }).click();
   await expect(page.getByTestId("verification-bundle")).toBeVisible();
+  await expect(page.getByTestId("verification-bundle")).toContainText("Portable validation");
+  await expect(page.getByTestId("verification-bundle")).toContainText("PASS");
   await capture(page, "17_verification_bundle.png", page.getByTestId("verification-bundle"));
   await page.getByRole("button", { name: "Run telemetry demonstration", exact: true }).click();
   await expect(page.getByTestId("condition-monitoring-demo")).toBeVisible();

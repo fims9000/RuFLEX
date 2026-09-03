@@ -30,7 +30,7 @@ _EVIDENCE_DIRS = (
     "evidence/tree-paths", "evidence/assurance", "evidence/condition-monitoring-demo", "analyses/expert-corrections",
 )
 _DECLARATIVE_MODEL_DIRS = ("models/fis",)
-_POINTERS = {"active-training-run.json", "active-study.json", "active-evaluation.json", "active-calibration.json", "active-threshold.json", "active-policy.json", "active-slice-analysis.json", "active-final-test.json", "active-comparison.json", "active-explanation.json", "active-check.json", "active-spec.json", "active-result.json", "active-case.json", "latest.json"}
+_POINTERS = {"active-training-run.json", "active-study.json", "active-evaluation.json", "active-calibration.json", "active-threshold.json", "active-policy.json", "active-slice-analysis.json", "active-final-test.json", "active-comparison.json", "active-explanation.json", "active-check.json", "active-analysis.json", "active-spec.json", "active-result.json", "active-case.json", "active-correction.json", "active-bundle.json", "latest.json"}
 _EXCLUDED = ["raw datasets", "pickle/joblib", "untrusted executable code", "credentials", "node_modules", "caches", "temporary build products"]
 
 
@@ -92,7 +92,10 @@ def _read_bundle_entries(source: Path) -> tuple[dict[str, bytes], str | None, li
 def _validate_relationships(objects: list[BaseModel]) -> list[str]:
     by_type: dict[type[BaseModel], set[str]] = {}
     for object_ in objects:
-        identifier = next((getattr(object_, field) for field in ("run_id", "study_id", "evaluation_id", "calibration_id", "threshold_id", "policy_id", "analysis_id", "final_test_id", "explanation_id", "check_id", "spec_id", "result_id", "assurance_id") if hasattr(object_, field)), None)
+        identifier_field = {
+            TrainingRun: "run_id", TrainingStudy: "study_id", AnalysisEvaluation: "evaluation_id", CalibrationTransform: "calibration_id", DecisionThresholdPolicy: "threshold_id", SelectivePredictionPolicy: "policy_id", StudyStabilityAnalysis: "analysis_id", StabilityGatePolicy: "policy_id", FinalTestEvaluation: "final_test_id", ExplanationContract: "explanation_id", ExplanationCheck: "check_id", ExplanationReproducibilityAnalysis: "analysis_id", BehaviorSpec: "spec_id", BehaviorSpecResult: "result_id", AssuranceCase: "assurance_id",
+        }.get(type(object_))
+        identifier = getattr(object_, identifier_field) if identifier_field else None
         if identifier is not None: by_type.setdefault(type(object_), set()).add(str(identifier))
     def exists(model: type[BaseModel], value: Any) -> bool: return value is None or str(value) in by_type.get(model, set())
     errors: list[str] = []
