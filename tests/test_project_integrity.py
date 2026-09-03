@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pandas as pd
@@ -7,6 +8,27 @@ from fastapi.testclient import TestClient
 
 from ruflex.api.main import app
 from ruflex.sdk.studio import open_studio_project
+
+
+_MAMDANI = """[System]
+Name='integrity-tipper'
+Type='mamdani'
+AndMethod='min'
+OrMethod='max'
+ImpMethod='min'
+AggMethod='max'
+DefuzzMethod='centroid'
+[Input1]
+Name='service'
+Range=[0 10]
+MF1='low':'trimf',[0 0 10]
+[Output1]
+Name='tip'
+Range=[0 1]
+MF1='low':'trimf',[0 0 1]
+[Rules]
+1, 1 (1) : 1
+"""
 
 
 def _frame() -> str:
@@ -43,3 +65,18 @@ def test_project_integrity_rejects_tampered_train_only_preprocessing_artifact(tm
     report = client.get(f"/api/projects/{session_id}/integrity").json()
     assert report["status"] == "FAIL"
     assert any(issue["code"] == "PREPROCESSING_ARTIFACT_INVALID" for issue in report["issues"])
+
+
+def test_project_integrity_checks_imported_matlab_fis_provenance(tmp_path: Path) -> None:
+    client = TestClient(app); root = tmp_path / "fis-import-integrity"
+    session_id = client.post("/api/projects", json={"path": str(root), "name": "FIS import integrity"}).json()["session_id"]
+    imported = client.post("/api/projects/fis/import/matlab", json={"session_id": session_id, "source": _MAMDANI})
+    assert imported.status_code == 200, imported.text
+    assert client.get(f"/api/projects/{session_id}/integrity").json()["status"] == "PASS"
+    receipt_path = root / "models" / "fis" / "imports" / f"{imported.json()['spec']['fis_id']}.json"
+    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    receipt["semantic_hash"] = "0" * 64
+    receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+    report = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert report["status"] == "FAIL"
+    assert any(issue["code"] == "IMPORTED_FIS_SEMANTIC_MISMATCH" for issue in report["issues"])
