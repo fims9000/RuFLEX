@@ -45,6 +45,7 @@
     "evidence_jobs": "PASS: AssuranceCase and VerificationBundle export use the same persisted LocalExecutor boundary; authoritative full Golden Route browser evidence passed",
     "typed_api_errors": "PASS: typed FastAPI error payloads preserve legacy detail; Python suite, frontend unit and Vite build passed",
     "typed_capability_negotiation": "PASS: run-bound capability API, Studio evidence presentation, Python suite, frontend build, and Evidence close/reopen browser route",
-    "native_explanation_validator_adapter": "PASS: persisted validator categories and native adapter boundary, focused evidence route tests, frontend build, and Evidence browser route"
+    "native_explanation_validator_adapter": "PASS: persisted validator categories and native adapter boundary, focused evidence route tests, frontend build, and Evidence browser route",
+    "current_cycle_full_qa": "PASS: full Python suite, compileall, frontend unit/Vite/Storybook, full 25-spec Playwright suite, diff check, and fresh tracked-source archive focused backend/npm ci/Vite QA (archive SHA-256 654e23a3fbd2dc20f1ecb28ff0d44923e40697f9c31dae86bf133906c68b9b0d)"
   }
 }
