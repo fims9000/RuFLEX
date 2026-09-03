@@ -18,7 +18,7 @@ import torch
 from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn.ensemble import GradientBoostingClassifier, GradientBoostingRegressor, RandomForestClassifier, RandomForestRegressor
-from sklearn.metrics import accuracy_score, average_precision_score, f1_score, mean_absolute_error, mean_squared_error, precision_score, r2_score, recall_score, roc_auc_score
+from sklearn.metrics import accuracy_score, average_precision_score, f1_score, mean_absolute_error, mean_squared_error, precision_score, precision_recall_curve, r2_score, recall_score, roc_auc_score, roc_curve
 
 from ruflex.application.artifacts import ArtifactMetadata, ArtifactRef, ArtifactStore
 from ruflex.application.execution import local_executor
@@ -27,7 +27,7 @@ from ruflex.core.enums import NormalizationMode, TaskType, VariableRole
 from ruflex.core.membership import GaussianMembershipSpec
 from ruflex.core.variables import VariableSpec
 from ruflex.data.datasets import DatasetConfig, NormalizationArtifact, TabularDataset
-from ruflex.domain.training import AnalysisComparison, AnalysisEvaluation, FinalTestEvaluation, FinalTestStabilityCase, FinalTestStabilityEvidence, CalibratedPrediction, CalibrationBin, CalibrationProvenance, CalibrationTransform, ConfusionMatrix, DecisionThresholdPolicy, EpochPoint, PredictionRow, SplitProvenance, StudyJob, StudySeedState, ThresholdDecision, ThresholdProvenance, TrainingRun, TrainingStudy, TreePathEvidence, TreePathStep
+from ruflex.domain.training import AnalysisComparison, AnalysisEvaluation, FinalTestEvaluation, FinalTestStabilityCase, FinalTestStabilityEvidence, CalibratedPrediction, CalibrationBin, CalibrationProvenance, CalibrationTransform, ConfusionMatrix, DecisionThresholdPolicy, EpochPoint, OperatingCurvePoint, PredictionRow, SplitProvenance, StudyJob, StudySeedState, ThresholdDecision, ThresholdProvenance, TrainingRun, TrainingStudy, TreePathEvidence, TreePathStep
 from ruflex.models.flat_nf.model import FlatNeuroFuzzyModel
 from ruflex.models.specs import DecisionLayerSpec, ShallowModelSpec, TransparentBlockSpec
 from ruflex.training.config import FineTuningOptions, ModelTrainingConfig, RefinementOptions, StagewiseOptions
@@ -294,6 +294,43 @@ def _ece_from_bins(bins: list[CalibrationBin], sample_count: int) -> float:
         sum(item.count * abs(item.mean_probability - item.observed_positive_rate) for item in bins)
         / sample_count
     )
+
+
+def _operating_curves(
+    targets: np.ndarray,
+    probabilities: np.ndarray,
+) -> tuple[list[OperatingCurvePoint], list[OperatingCurvePoint]]:
+    """Persist binary operating curves when both classes are evidenced.
+
+    Curves are descriptive evaluation evidence, not a threshold-selection
+    procedure.  In particular, no final-test curve is ever used to fit a
+    policy: the caller supplies an already selected probability source.
+    """
+    truth = np.asarray(targets, dtype=int).reshape(-1)
+    probs = np.asarray(probabilities, dtype=float).reshape(-1)
+    if len(truth) == 0 or len(np.unique(truth)) != 2:
+        return [], []
+    false_positive_rate, true_positive_rate, roc_thresholds = roc_curve(truth, probs)
+    precision, recall, pr_thresholds = precision_recall_curve(truth, probs)
+    roc_points = [
+        OperatingCurvePoint(
+            x=float(fpr),
+            y=float(tpr),
+            threshold=None if not np.isfinite(threshold) else float(threshold),
+        )
+        for fpr, tpr, threshold in zip(false_positive_rate, true_positive_rate, roc_thresholds, strict=True)
+    ]
+    # sklearn returns one fewer threshold than precision/recall points; the
+    # final recall=0 endpoint therefore has no corresponding cutoff.
+    pr_points = [
+        OperatingCurvePoint(
+            x=float(recall_value),
+            y=float(precision_value),
+            threshold=float(pr_thresholds[index]) if index < len(pr_thresholds) else None,
+        )
+        for index, (precision_value, recall_value) in enumerate(zip(precision, recall, strict=True))
+    ]
+    return roc_points, pr_points
 
 
 def _classification_metrics_at_threshold(
@@ -1122,6 +1159,16 @@ def create_validation_evaluation(project_root: Path, run_id: UUID) -> AnalysisEv
     if run.dataset_fingerprint is not None and run.dataset_fingerprint != contract.dataset_fingerprint:
         raise TrainingError("The active dataset no longer matches this TrainingRun. Reopen the matching dataset revision before creating an Evaluation.")
     rows = [row.model_copy(deep=True) for row in run.prediction_preview]
+    if run.task == TaskType.BINARY_CLASSIFICATION.value:
+        curve_targets = np.asarray([int(row.target >= 0.5) for row in rows], dtype=int)
+        curve_probabilities = np.asarray([
+            float(row.probability) if row.probability is not None
+            else float(1.0 / (1.0 + np.exp(-np.clip(row.prediction, -60.0, 60.0))))
+            for row in rows
+        ], dtype=float)
+        roc_points, precision_recall_points = _operating_curves(curve_targets, curve_probabilities)
+    else:
+        roc_points, precision_recall_points = [], []
     preprocessing_identity = _stable_identity("preprocessing", run.normalization)
     evaluation = AnalysisEvaluation(
         run_id=run.run_id,
@@ -1140,6 +1187,8 @@ def create_validation_evaluation(project_root: Path, run_id: UUID) -> AnalysisEv
         confusion_matrix=run.confusion_matrix,
         calibration=CalibrationProvenance(bin_count=len(run.calibration)),
         calibration_bins=list(run.calibration),
+        roc_curve=roc_points,
+        precision_recall_curve=precision_recall_points,
         threshold=None,
     )
     _atomic_write_text(_evaluation_path(project_root, evaluation.evaluation_id), evaluation.model_dump_json(indent=2))
@@ -1660,6 +1709,7 @@ def evaluate_final_test(
         if len(np.unique(truth)) == 2:
             metrics["roc_auc"] = float(roc_auc_score(truth, probabilities))
             metrics["pr_auc"] = float(average_precision_score(truth, probabilities))
+        roc_points, precision_recall_points = _operating_curves(truth, probabilities)
         rows = [
             PredictionRow(
                 row=index,
@@ -1723,6 +1773,7 @@ def evaluate_final_test(
         probability_source = "not_applicable"
         decision_threshold = None
         stability_evidence = None
+        roc_points, precision_recall_points = [], []
 
     test_sample_identity = _stable_identity(
         "final-test-samples",
@@ -1769,6 +1820,8 @@ def evaluate_final_test(
         test_row_count=len(rows),
         confusion_matrix=confusion,
         calibration_bins=bins,
+        roc_curve=roc_points,
+        precision_recall_curve=precision_recall_points,
         test_sample_identity=test_sample_identity,
         test_case_identity=test_case_identity,
         policy_identity=policy_identity,

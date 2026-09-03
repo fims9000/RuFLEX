@@ -18,6 +18,11 @@ The Studio reports the native FIS calculation as an exact computation trace ([tr
 
 ## 5. Evaluation, calibration and policies
 
+For binary models, save the validation Evaluation to persist raw-model ROC and
+precision–recall operating curves alongside the complete validation prediction
+evidence. These curves are descriptive validation evidence; they do not choose
+a decision threshold and do not access the locked final-test split.
+
 Validation predictive metrics and calibration are separately visible ([evaluation](screenshots/06_evaluation_and_calibration.png)). A class threshold is selected from validation evidence and records its provenance while final-test data remain locked ([threshold](screenshots/07_decision_threshold.png)). The confidence cutoff for ACCEPT/REVIEW is a separate validation-derived policy ([selective review](screenshots/12_selective_review_policy.png)); it is not another class threshold.
 
 ## 6. Scope, slices, explanations and reproducibility

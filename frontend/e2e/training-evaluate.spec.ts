@@ -52,6 +52,9 @@ test("PRODUCT-02 performs real neuro-fuzzy training, validation evaluation and r
   await expect(evaluationFooter).toBeVisible();
   await expect(evaluationFooter).toContainText("test rows remain locked");
   await expect(page.getByRole("heading", { name: "Validation prediction evidence", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Save validation evidence", exact: true }).click();
+  await expect(page.getByText("Validation ROC curve · raw model", { exact: true })).toBeVisible();
+  await expect(page.getByText("Validation precision–recall curve · raw model", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Close", exact: true }).click();
   await page.getByLabel("Project path").fill(path);
@@ -62,4 +65,5 @@ test("PRODUCT-02 performs real neuro-fuzzy training, validation evaluation and r
   await expect(page.locator(".run-provenance")).toContainText("train-only preprocessing persisted");
   await page.getByRole("button", { name: "A", exact: true }).click();
   await expect(page.getByText("VALIDATION EVIDENCE", { exact: true })).toBeVisible();
+  await expect(page.getByText("Validation ROC curve · raw model", { exact: true })).toBeVisible();
 });

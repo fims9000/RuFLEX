@@ -606,6 +606,8 @@ export type AnalysisEvaluation = {
     fit_sample_identity: string | null;
   };
   calibration_bins: TrainingRun["calibration"];
+  roc_curve: Array<{ x: number; y: number; threshold: number | null }>;
+  precision_recall_curve: Array<{ x: number; y: number; threshold: number | null }>;
   threshold: { selected_threshold: number } | null;
   scientific_note: string;
 };
@@ -691,6 +693,8 @@ export type FinalTestEvaluation = {
   test_row_count: number;
   confusion_matrix: TrainingRun["confusion_matrix"];
   calibration_bins: TrainingRun["calibration"];
+  roc_curve: Array<{ x: number; y: number; threshold: number | null }>;
+  precision_recall_curve: Array<{ x: number; y: number; threshold: number | null }>;
   test_sample_identity: string;
   test_case_identity: string | null;
   policy_identity: string;

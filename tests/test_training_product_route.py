@@ -226,6 +226,10 @@ def test_validation_evaluation_is_a_persistent_run_bound_analysis_object(tmp_pat
     assert evaluation["preprocessing_artifact_sha256"] == trained.json()["preprocessing_artifact_sha256"]
     assert evaluation["preprocessing_artifact_sha256"]
     assert all(row["calibrated_probability"] is None for row in evaluation["prediction_preview"])
+    assert evaluation["roc_curve"]
+    assert evaluation["precision_recall_curve"]
+    assert evaluation["roc_curve"][0]["x"] == 0.0
+    assert evaluation["roc_curve"][-1]["x"] == 1.0
 
     reopened = client.get(f"/api/projects/{session_id}/analyses/evaluations/latest")
     assert reopened.status_code == 200, reopened.text
@@ -609,6 +613,8 @@ def test_final_test_requires_frozen_validation_policy_and_persists_separate_evid
     assert "f1" in final_test["metrics"]
     assert "brier" in final_test["metrics"]
     assert "ece" in final_test["metrics"]
+    assert final_test["roc_curve"]
+    assert final_test["precision_recall_curve"]
 
     reopened = client.get(f"/api/projects/{session_id}/analyses/final-test/latest")
     assert reopened.status_code == 200, reopened.text

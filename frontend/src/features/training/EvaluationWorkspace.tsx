@@ -54,6 +54,24 @@ function regressionOption(run: TrainingRun): EChartsOption {
   };
 }
 
+function operatingCurveOption(
+  points: Array<{ x: number; y: number; threshold: number | null }>,
+  xName: string,
+  yName: string,
+  ideal: boolean,
+): EChartsOption {
+  return {
+    tooltip: { trigger: "axis" },
+    grid: { left: 58, right: 20, top: 24, bottom: 42 },
+    xAxis: { type: "value", min: 0, max: 1, name: xName },
+    yAxis: { type: "value", min: 0, max: 1, name: yName },
+    series: [
+      { name: "persisted evidence", type: "line", showSymbol: false, data: points.map((point) => [point.x, point.y]) },
+      ...(ideal ? [{ name: "chance", type: "line" as const, showSymbol: false, lineStyle: { type: "dashed" as const }, data: [[0, 0], [1, 1]] }] : []),
+    ],
+  };
+}
+
 function comparisonOption(comparison: AnalysisComparison): EChartsOption {
   const taskMetrics = comparison.task === "binary_classification"
     ? ["accuracy", "precision", "recall", "f1", "roc_auc", "pr_auc", "brier", "ece", "calibrated_brier", "calibrated_ece"]
@@ -378,6 +396,11 @@ export function EvaluationWorkspace({
         </div>
       </section> : <section className="confusion-card"><span className="eyebrow">REGRESSION</span><h3>Residual evidence</h3><p>Complete validation predictions are persisted; the table below shows the first rows.</p></section>}
     </div>
+
+    {run.task === "binary_classification" && activeEvaluation && <div className="evaluation-grid">
+      <ChartSurface title="Validation ROC curve · raw model" option={operatingCurveOption(activeEvaluation.roc_curve, "false positive rate", "true positive rate", true)} theme={theme} />
+      <ChartSurface title="Validation precision–recall curve · raw model" option={operatingCurveOption(activeEvaluation.precision_recall_curve, "recall", "precision", false)} theme={theme} />
+    </div>}
 
     {run.task === "binary_classification" && <section className="comparison-card">
       <span className="eyebrow">DECISION PROVENANCE · VALIDATION ONLY</span>

@@ -78,6 +78,16 @@ class CalibrationBin(BaseModel):
     observed_positive_rate: float
 
 
+class OperatingCurvePoint(BaseModel):
+    """One persisted point on a binary-classification operating curve."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    x: float = Field(ge=0.0, le=1.0)
+    y: float = Field(ge=0.0, le=1.0)
+    threshold: float | None = Field(default=None, ge=0.0, le=1.0)
+
+
 class TrainingRun(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -326,6 +336,8 @@ class AnalysisEvaluation(BaseModel):
     confusion_matrix: ConfusionMatrix | None = None
     calibration: CalibrationProvenance
     calibration_bins: list[CalibrationBin] = Field(default_factory=list)
+    roc_curve: list[OperatingCurvePoint] = Field(default_factory=list)
+    precision_recall_curve: list[OperatingCurvePoint] = Field(default_factory=list)
     threshold: ThresholdProvenance | None = None
     scientific_note: str = (
         "This is a validation analysis object. The held-out final test split remains locked and was not used for selection."
@@ -368,6 +380,8 @@ class FinalTestEvaluation(BaseModel):
     test_row_count: int = Field(ge=1)
     confusion_matrix: ConfusionMatrix | None = None
     calibration_bins: list[CalibrationBin] = Field(default_factory=list)
+    roc_curve: list[OperatingCurvePoint] = Field(default_factory=list)
+    precision_recall_curve: list[OperatingCurvePoint] = Field(default_factory=list)
     test_sample_identity: str
     test_case_identity: str | None = None
     policy_identity: str

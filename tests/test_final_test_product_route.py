@@ -73,6 +73,8 @@ def test_final_test_replays_each_product_v1_trainable_classifier_without_refit(t
     assert all(row.source_row is not None for row in final_test.prediction_rows)
     assert all(row.row_identity is not None for row in final_test.prediction_rows)
     assert len({row.row_identity for row in final_test.prediction_rows}) == final_test.test_row_count
+    assert final_test.roc_curve
+    assert final_test.precision_recall_curve
 
 
 def test_final_test_firewall_blocks_late_selective_policy_tuning(tmp_path: Path) -> None:
@@ -124,3 +126,5 @@ def test_final_test_replays_product_v1_regressors_without_decision_policy(tmp_pa
     assert "rmse" in final_test.metrics
     assert "mae" in final_test.metrics
     assert all(row.residual is not None for row in final_test.prediction_rows)
+    assert final_test.roc_curve == []
+    assert final_test.precision_recall_curve == []
