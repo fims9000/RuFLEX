@@ -730,7 +730,28 @@ def load_latest_explanation(project_root: Path) -> ExplanationContract:
     return load_explanation(project_root, UUID(pointer["explanation_id"]))
 
 
+class NativeExplanationValidatorAdapter:
+    """Product-native validator with explicit applicability and provenance."""
+
+    key = "native_explanation_validator"
+    version = "1"
+
+    def applicability(self, explanation: ExplanationContract) -> tuple[str, str | None]:
+        if explanation.exactness != "post_hoc":
+            return "NOT_APPLICABLE", "Native post-hoc checks require a post-hoc ExplanationContract."
+        return "APPLICABLE", None
+
+    def validate(self, project_root: Path, explanation_id: UUID) -> ExplanationCheck:
+        return _native_check_explanation(project_root, explanation_id, validator_key=self.key)
+
+
 def check_explanation(project_root: Path, explanation_id: UUID) -> ExplanationCheck:
+    """Run the registered product-native validator through the adapter boundary."""
+
+    return NativeExplanationValidatorAdapter().validate(project_root, explanation_id)
+
+
+def _native_check_explanation(project_root: Path, explanation_id: UUID, *, validator_key: str) -> ExplanationCheck:
     explanation = load_explanation(project_root, explanation_id)
     run = load_training_run(project_root, explanation.run_id)
     checks: list[ExplanationCheckItem] = []
@@ -859,7 +880,14 @@ def check_explanation(project_root: Path, explanation_id: UUID) -> ExplanationCh
         status = "WARNING"
     else:
         status = "PASSED_AVAILABLE_CHECKS"
-    result = ExplanationCheck(explanation_id=explanation.explanation_id, run_id=explanation.run_id, status=status, checks=checks)
+    categories = {
+        "repeatability": "replay_integrity",
+        "additivity": "quantitative_quality",
+        "numerical_completeness": "quantitative_quality",
+        "causal_validity": "claim_boundary",
+    }
+    checks = [item.model_copy(update={"category": categories.get(item.name, "provenance_identity"), "validator_key": validator_key}) for item in checks]
+    result = ExplanationCheck(schema_version=2, explanation_id=explanation.explanation_id, run_id=explanation.run_id, status=status, checks=checks)
     _atomic_write_text(_checks_root(project_root) / f"{result.check_id}.json", result.model_dump_json(indent=2))
     _atomic_write_text(_checks_root(project_root) / "active-check.json", json.dumps({"check_id": str(result.check_id)}, indent=2))
     return result

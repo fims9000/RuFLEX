@@ -287,6 +287,8 @@ def test_permutation_shap_uses_train_background_and_persists_additivity_evidence
     )
     assert checked.status_code == 201, checked.text
     assert any(item["name"] == "numerical_completeness" for item in checked.json()["checks"])
+    assert {item["category"] for item in checked.json()["checks"]} >= {"provenance_identity", "replay_integrity", "quantitative_quality", "claim_boundary"}
+    assert {item["validator_key"] for item in checked.json()["checks"]} == {"native_explanation_validator"}
 
 
 def test_tree_shap_replays_declarative_tree_models_without_mislabeling_exact_trace(tmp_path: Path) -> None:

@@ -43,6 +43,7 @@ test("PRODUCT-05 persists post-hoc evidence separately from exact traces", async
   await expect(page.getByText(/not a causal effect/i).first()).toBeVisible();
   await page.getByRole("button", { name: "Run explanation checks", exact: true }).click();
   await expect(page.getByText("PASSED_AVAILABLE_CHECKS", { exact: true })).toBeVisible();
+  await expect(page.getByText("replay integrity", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Close", exact: true }).click();
   await page.getByLabel("Project path").fill(path);

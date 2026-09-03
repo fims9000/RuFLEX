@@ -382,7 +382,7 @@ export function EvidenceWorkspace({
               <div className="evidence-check-header"><strong>Check result</strong><StatusBadge tone={statusTone(explanationCheck.status)}>{explanationCheck.status}</StatusBadge></div>
               {explanationCheck.checks.map((item) => (
                 <div key={item.name}>
-                  <span>{item.name} · {item.detail}</span>
+                  <span><strong>{item.category.replaceAll("_", " ")}</strong> · {item.name} · {item.detail}</span>
                   <StatusBadge tone={statusTone(item.status)}>{item.status}</StatusBadge>
                 </div>
               ))}

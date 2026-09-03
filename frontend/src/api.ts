@@ -893,7 +893,7 @@ export type ExplanationCheck = {
   explanation_id: string;
   run_id: string;
   status: "PASSED_AVAILABLE_CHECKS" | "WARNING" | "FAILED";
-  checks: Array<{ name: string; status: "PASS" | "WARN" | "FAIL" | "N/A"; detail: string }>;
+  checks: Array<{ name: string; category: "provenance_identity" | "replay_integrity" | "quantitative_quality" | "claim_boundary"; validator_key: string; applicability: "APPLICABLE" | "NOT_APPLICABLE" | "NOT_AVAILABLE"; status: "PASS" | "WARN" | "FAIL" | "N/A"; detail: string }>;
   scientific_note: string;
 };
 

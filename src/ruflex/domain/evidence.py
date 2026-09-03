@@ -63,6 +63,9 @@ class ExplanationCheckItem(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: str
+    category: Literal["provenance_identity", "replay_integrity", "quantitative_quality", "claim_boundary"] = "provenance_identity"
+    validator_key: str = "native"
+    applicability: Literal["APPLICABLE", "NOT_APPLICABLE", "NOT_AVAILABLE"] = "APPLICABLE"
     status: Literal["PASS", "WARN", "FAIL", "N/A"]
     detail: str
 
@@ -70,7 +73,7 @@ class ExplanationCheckItem(BaseModel):
 class ExplanationCheck(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: int = 1
+    schema_version: int = 2
     check_id: UUID = Field(default_factory=uuid4)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     explanation_id: UUID
