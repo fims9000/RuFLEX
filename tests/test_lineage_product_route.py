@@ -41,8 +41,10 @@ def test_lineage_uses_persisted_dataset_run_and_evaluation_references(tmp_path: 
     assert f"run:{run.run_id}" in ids
     assert f"evaluation:{evaluation.evaluation_id}" in ids
     assert f"final-test:{final_test.final_test_id}" in ids
+    assert f"preprocessing:{run.preprocessing_artifact_sha256}" in ids
     dataset = next(node for node in graph.nodes if node.kind == "dataset")
     assert any(edge.source == dataset.id and edge.target == f"run:{run.run_id}" and edge.relation == "trained_on" for edge in graph.edges)
+    assert any(edge.source == f"preprocessing:{run.preprocessing_artifact_sha256}" and edge.target == f"run:{run.run_id}" and edge.relation == "preprocessed_for" for edge in graph.edges)
     assert any(edge.source == f"run:{run.run_id}" and edge.target == f"evaluation:{evaluation.evaluation_id}" and edge.relation == "evaluated_as" for edge in graph.edges)
     assert any(edge.target == f"final-test:{final_test.final_test_id}" and edge.relation == "applied_threshold" for edge in graph.edges)
     assert any(edge.source == f"evaluation:{evaluation.evaluation_id}" and edge.target == f"final-test:{final_test.final_test_id}" and edge.relation == "opened_after_validation_freeze" for edge in graph.edges)

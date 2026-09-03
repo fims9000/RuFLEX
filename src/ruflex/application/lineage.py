@@ -135,6 +135,7 @@ def build_project_lineage(project_root: Path) -> LineageGraph:
 
     runs = [item for item in _json_models(root / "runs", TrainingRun, exclude=("active-training-run.json",)) if isinstance(item, TrainingRun)]
     run_nodes: dict[UUID, str] = {}
+    preprocessing_nodes: dict[str, str] = {}
     for run in runs:
         node = add_node(LineageNode(
             id=_node_id("run", run.run_id),
@@ -148,6 +149,22 @@ def build_project_lineage(project_root: Path) -> LineageGraph:
         run_nodes[run.run_id] = node
         if dataset_node and run.dataset_fingerprint and contract is not None and run.dataset_fingerprint == contract.dataset_fingerprint:
             add_edge(dataset_node, node, "trained_on")
+        if run.preprocessing_artifact_sha256 is not None:
+            preprocessing_node = preprocessing_nodes.get(run.preprocessing_artifact_sha256)
+            if preprocessing_node is None:
+                preprocessing_node = add_node(LineageNode(
+                    id=_node_id("preprocessing", run.preprocessing_artifact_sha256),
+                    kind="preprocessing",
+                    label="Train-only preprocessing",
+                    detail=f"{len(run.feature_columns)} features · {run.preprocessing_artifact_sha256[:12]}",
+                    target="DATA",
+                    object_id=run.preprocessing_artifact_sha256,
+                    status="train_only",
+                ))
+                preprocessing_nodes[run.preprocessing_artifact_sha256] = preprocessing_node
+                if dataset_node and run.dataset_fingerprint and contract is not None and run.dataset_fingerprint == contract.dataset_fingerprint:
+                    add_edge(dataset_node, preprocessing_node, "fit_on_train_partition")
+            add_edge(preprocessing_node, node, "preprocessed_for")
 
     studies = [item for item in _json_models(root / "studies", TrainingStudy, exclude=("active-study.json",)) if isinstance(item, TrainingStudy)]
     study_nodes: dict[UUID, str] = {}
