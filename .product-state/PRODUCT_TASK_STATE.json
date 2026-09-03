@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "product_version": "1.0.1",
-  "active_capability": "golden_route_authoritative_e2e",
+  "active_capability": "assurance_claim_graph",
   "completed_capabilities": [
     "dataset_contracts",
     "training_and_validation_evidence",
@@ -14,17 +14,17 @@
     "project_reopen_integrity"
   ],
   "active_acceptance": [
-    "Create and execute the authoritative browser Golden Route across all core product objects.",
-    "Validate the final extracted VerificationBundle independently from its project root."
+    "Make AssuranceCase a typed Claim → Evidence → Assumption → Limitation graph.",
+    "Preserve existing independent gate semantics while making claim relations explicit in Studio and bundles."
   ],
   "blockers": [],
-  "next_executable_work": "Extend the authoritative browser Golden Route to include portable bundle validation and broken-evidence negative coverage.",
+  "next_executable_work": "Introduce typed Assurance claim graph objects and retain legacy AssuranceCase reopen compatibility.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
     "frontend_build": "PASS: npm run build",
     "project_integrity": "PASS: API/SDK missing-model negative test and project lifecycle E2E",
-    "browser": "PASS: assurance bundle, multi-seed Study reopen, project integrity E2E",
-    "golden_route_browser": "PENDING full authoritative route"
+    "browser": "PASS: assurance bundle, multi-seed Study reopen, project integrity E2E, authoritative product evidence route",
+    "golden_route_browser": "PASS: product-evidence-capture.spec.ts validates the real Studio route including portable bundle validation"
   }
 }
