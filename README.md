@@ -27,7 +27,7 @@ Core Product V1 capabilities include:
 
 - editable Type-1 Mamdani and Sugeno FIS with canonical variables, membership functions, rules and operators;
 - exact fuzzy computation traces, response surfaces and semantic FIS revisions;
-- CSV/XLSX data contracts with advisory, user-overridable role proposals; dataset-bound row identities; and MATLAB `.fis` interoperability;
+- CSV/XLSX data contracts with advisory, user-overridable role proposals; dataset-bound row identities; and MATLAB `.fis` interoperability with source-artifact, semantic-revision and reopen-integrity provenance;
 - real ANFIS/FlatNeuroFuzzy training plus logistic/linear, Decision Tree, Random Forest and Gradient Boosting baselines, each bound to a content-addressed train-only preprocessing artifact;
 - persistent multi-seed Studies with separate split/training seed provenance, validation-only selection, durable LocalExecutor recovery without seed replacement, and Stability Lab evidence (case agreement, HCIR and frozen review gates only for fixed-split training-variability studies);
 - typed API error codes alongside human-readable error detail, so Studio and SDK callers can distinguish invalid state, unavailable capability, broken provenance, frozen policy and final-test boundary failures without parsing display text;
