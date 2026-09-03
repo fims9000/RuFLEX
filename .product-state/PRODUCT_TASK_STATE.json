@@ -21,14 +21,15 @@
     "typed_api_errors",
     "typed_capability_negotiation",
     "native_explanation_validator_adapter",
-    "plugin_contracts_and_read_only_sdk"
+    "plugin_contracts_and_read_only_sdk",
+    "imported_fis_provenance_integrity"
   ],
   "active_acceptance": [
     "Verify current product-cycle changes across the full source tree and a fresh tracked-source archive.",
     "Keep unrelated article and interrupted S03 work out of the committed product baseline."
   ],
   "blockers": [],
-  "next_executable_work": "Run release-quality audit for typed errors, capability negotiation, plugin contracts and validator provenance; then resume the master-spec gap audit.",
+  "next_executable_work": "Run the current full release-quality audit from exact HEAD, including a fresh tracked-source archive, then resume the master-spec gap audit.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -48,6 +49,7 @@
     "typed_capability_negotiation": "PASS: run-bound capability API, Studio evidence presentation, Python suite, frontend build, and Evidence close/reopen browser route",
     "native_explanation_validator_adapter": "PASS: persisted validator categories and native adapter boundary, focused evidence route tests, frontend build, and Evidence browser route",
     "current_cycle_full_qa": "PASS: full Python suite, compileall, frontend unit/Vite/Storybook, full 25-spec Playwright suite, diff check, and fresh tracked-source archive focused backend/npm ci/Vite QA (current archive SHA-256 1e6a08d32864c06583fbba21094ff21240d954153cf4ef46b1b9cace04701cdf)",
-    "plugin_contracts_and_read_only_sdk": "PASS: registered native validator descriptor is available through FastAPI, Studio and read-only SDK; focused Python and Evidence browser tests passed"
+    "plugin_contracts_and_read_only_sdk": "PASS: registered native validator descriptor is available through FastAPI, Studio and read-only SDK; focused Python and Evidence browser tests passed",
+    "imported_fis_provenance_integrity": "PASS: project integrity now verifies MATLAB FIS import receipt schema, imported source artifact hash/provenance, and semantic binding to the persisted FIS; focused integrity and FIS tests passed"
   }
 }
