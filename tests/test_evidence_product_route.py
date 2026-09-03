@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import time
 
 import pandas as pd
 import pytest
@@ -99,6 +100,55 @@ def test_posthoc_occlusion_is_persisted_checked_and_not_mislabeled_exact(tmp_pat
     latest_check = client.get(f"/api/projects/{reopened_session}/evidence/explanation-checks/latest")
     assert latest.status_code == 200 and latest.json()["explanation_id"] == explanation["explanation_id"]
     assert latest_check.status_code == 200 and latest_check.json()["check_id"] == check["check_id"]
+
+
+def test_explanation_job_persists_local_executor_lifecycle_and_reopens(tmp_path: Path) -> None:
+    client = TestClient(app)
+    root = tmp_path / "explanation-job"
+    session_id = _project_with_data(client, root)
+    run = _train(client, session_id, "logistic_regression")
+    started = client.post(
+        "/api/projects/evidence/explanation-jobs",
+        json={
+            "session_id": session_id,
+            "run_id": run["run_id"],
+            "sample": {"temperature": 25.0, "torque": 48.0, "vibration": 0.6},
+            "method": "occlusion",
+        },
+    )
+    assert started.status_code == 202, started.text
+    job = started.json()
+    assert job["kind"] == "explanation_generation"
+    assert job["request"]["run_id"] == run["run_id"]
+    for _ in range(100):
+        job = client.get(f"/api/projects/{session_id}/evidence/explanation-jobs/{job['job_id']}").json()
+        if job["status"] not in {"queued", "running"}:
+            break
+        time.sleep(0.02)
+    assert job["status"] == "succeeded", job
+    assert job["progress"] == 1.0
+    explanation = client.get(f"/api/projects/{session_id}/evidence/explanations/{job['output']['explanation_id']}")
+    assert explanation.status_code == 200
+    checked = client.post(
+        "/api/projects/evidence/explanation-check-jobs",
+        json={"session_id": session_id, "explanation_id": job["output"]["explanation_id"]},
+    )
+    assert checked.status_code == 202, checked.text
+    check_job = checked.json()
+    for _ in range(100):
+        check_job = client.get(f"/api/projects/{session_id}/evidence/explanation-jobs/{check_job['job_id']}").json()
+        if check_job["status"] not in {"queued", "running"}:
+            break
+        time.sleep(0.02)
+    assert check_job["status"] == "succeeded", check_job
+    check = client.get(f"/api/projects/{session_id}/evidence/explanation-checks/{check_job['output']['check_id']}")
+    assert check.status_code == 200
+    assert client.post("/api/projects/close", json={"session_id": session_id}).status_code == 204
+    reopened = client.post("/api/projects/open", json={"path": str(root), "read_only": False}).json()["session_id"]
+    persisted = client.get(f"/api/projects/{reopened}/evidence/explanation-jobs")
+    assert persisted.status_code == 200
+    assert persisted.json()[0]["job_id"] == job["job_id"]
+    assert persisted.json()[0]["output"] == job["output"]
 
 
 def test_assurance_claim_refuses_an_unbound_claim() -> None:

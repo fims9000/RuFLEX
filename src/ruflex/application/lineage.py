@@ -8,6 +8,7 @@ from uuid import UUID
 from pydantic import BaseModel, ValidationError
 
 from ruflex.application.datasets import DatasetContract, load_dataset_contract, load_dataset_profile
+from ruflex.application.jobs import Job
 from ruflex.domain.evidence import ExplanationCheck, ExplanationContract
 from ruflex.domain.fis import FISSpec
 from ruflex.domain.expert_correction import ExpertCorrectionRevision
@@ -291,6 +292,33 @@ def build_project_lineage(project_root: Path) -> LineageGraph:
             object_id=str(check.check_id), status=check.status,
         ))
         add_edge(explanation_nodes.get(check.explanation_id), node, "validated_by")
+
+    for job in _json_models(root / "jobs", Job):
+        assert isinstance(job, Job)
+        node = add_node(LineageNode(
+            id=_node_id("job", job.job_id), kind="local_job",
+            label=job.kind.replace("_", " "), detail=job.message or "persisted LocalExecutor operation",
+            target="EVIDENCE", object_id=str(job.job_id), status=job.status.value.upper(),
+        ))
+        run_id = job.request.get("run_id")
+        if isinstance(run_id, str):
+            try:
+                add_edge(run_nodes.get(UUID(run_id)), node, "executed_by")
+            except ValueError:
+                pass
+        explanation_id = job.output.get("explanation_id")
+        if explanation_id is not None:
+            try:
+                add_edge(node, explanation_nodes.get(UUID(explanation_id)), "produced")
+            except ValueError:
+                pass
+        check_id = job.output.get("check_id")
+        if check_id is not None:
+            try:
+                check_node = _node_id("explanation-check", UUID(check_id))
+                add_edge(node, check_node if check_node in nodes else None, "produced")
+            except ValueError:
+                pass
 
     corrections = [
         item for item in _json_models(

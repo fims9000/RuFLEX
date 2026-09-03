@@ -397,12 +397,20 @@ export const studioApi = {
     request<ExplanationContract>("/api/projects/evidence/explanations/occlusion", { session_id: sessionId, run_id: runId, sample }),
   createPosthocExplanation: (sessionId: string, runId: string, sample: Record<string, number>, method: "occlusion" | "integrated_gradients" | "gradient_shap" | "shap" | "tree_shap") =>
     request<ExplanationContract>("/api/projects/evidence/explanations", { session_id: sessionId, run_id: runId, sample, method }),
+  startPosthocExplanationJob: (sessionId: string, runId: string, sample: Record<string, number>, method: "occlusion" | "integrated_gradients" | "gradient_shap" | "shap" | "tree_shap") =>
+    request<ProductJob>("/api/projects/evidence/explanation-jobs", { session_id: sessionId, run_id: runId, sample, method }),
+  getPosthocExplanationJob: (sessionId: string, jobId: string) =>
+    request<ProductJob>(`/api/projects/${sessionId}/evidence/explanation-jobs/${jobId}`),
+  listPosthocExplanationJobs: (sessionId: string) =>
+    request<ProductJob[]>(`/api/projects/${sessionId}/evidence/explanation-jobs`),
   getLatestExplanation: (sessionId: string) =>
     request<ExplanationContract>(`/api/projects/${sessionId}/evidence/explanations/latest`),
   getExplanation: (sessionId: string, explanationId: string) =>
     request<ExplanationContract>(`/api/projects/${sessionId}/evidence/explanations/${explanationId}`),
   checkExplanation: (sessionId: string, explanationId: string) =>
     request<ExplanationCheck>("/api/projects/evidence/explanation-checks", { session_id: sessionId, explanation_id: explanationId }),
+  startExplanationCheckJob: (sessionId: string, explanationId: string) =>
+    request<ProductJob>("/api/projects/evidence/explanation-check-jobs", { session_id: sessionId, explanation_id: explanationId }),
   getLatestExplanationCheck: (sessionId: string) =>
     request<ExplanationCheck>(`/api/projects/${sessionId}/evidence/explanation-checks/latest`),
   getExplanationCheck: (sessionId: string, checkId: string) =>
@@ -576,6 +584,22 @@ export type StudyJob = {
   execution_config: Record<string, number | string | boolean | null>;
   recovery_count: number;
   recovery_note: string | null;
+};
+
+export type ProductJob = {
+  schema_version: number;
+  job_id: string;
+  kind: string;
+  status: "queued" | "running" | "succeeded" | "failed" | "cancelled";
+  created_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+  progress: number;
+  message: string | null;
+  request: Record<string, unknown>;
+  output: Record<string, string>;
+  error: string | null;
+  log: string[];
 };
 
 export type AnalysisEvaluation = {

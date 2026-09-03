@@ -13,6 +13,7 @@ import {
   VerificationBundleValidation,
   FISEvaluation,
   ModelCatalogEntry,
+  ProductJob,
   ProjectSummary,
   TrainingRun,
   TreePathEvidence,
@@ -107,6 +108,7 @@ export function EvidenceWorkspace({
   const [bundle, setBundle] = useState<{ path: string; sha256: string; entry_count: number } | null>(null);
   const [bundleValidation, setBundleValidation] = useState<VerificationBundleValidation | null>(null);
   const [demo, setDemo] = useState<ConditionMonitoringDemo | null>(null);
+  const [explanationJob, setExplanationJob] = useState<ProductJob | null>(null);
 
   useEffect(() => { setSample(initialSample); setComparisonSample(initialSample); }, [initialSample]);
   useEffect(() => setBehaviorResult(restoredBehaviorResult), [restoredBehaviorResult?.result_id]);
@@ -114,6 +116,7 @@ export function EvidenceWorkspace({
   useEffect(() => setExhaustive(restoredExhaustive), [restoredExhaustive?.result_id]);
   useEffect(() => setAssurance(restoredAssurance), [restoredAssurance?.assurance_id]);
   useEffect(() => { studioApi.getLatestConditionMonitoringDemo(project.session_id).then(setDemo).catch(() => setDemo(null)); }, [project.session_id]);
+  useEffect(() => { studioApi.listPosthocExplanationJobs(project.session_id).then((jobs) => setExplanationJob(jobs[0] ?? null)).catch(() => setExplanationJob(null)); }, [project.session_id]);
   useEffect(() => { if (project) studioApi.listExplanations(project.session_id).then(setPersistedExplanations).catch(() => setPersistedExplanations([])); }, [project.session_id, explanation?.explanation_id]);
   useEffect(() => {
     studioApi.getModelCatalog().then(setCatalog).catch(() => setCatalog([]));
@@ -172,8 +175,15 @@ export function EvidenceWorkspace({
     setBusy(true);
     setError(null);
     try {
-      const created = await studioApi.createPosthocExplanation(project.session_id, run.run_id, numericSample(), method);
-      onExplanation(created);
+      let job = await studioApi.startPosthocExplanationJob(project.session_id, run.run_id, numericSample(), method);
+      setExplanationJob(job);
+      for (let attempt = 0; attempt < 120 && ["queued", "running"].includes(job.status); attempt += 1) {
+        await new Promise((resolve) => window.setTimeout(resolve, 100));
+        job = await studioApi.getPosthocExplanationJob(project.session_id, job.job_id);
+        setExplanationJob(job);
+      }
+      if (job.status !== "succeeded" || !job.output.explanation_id) throw new Error(job.error ?? job.message ?? "Explanation job did not complete.");
+      onExplanation(await studioApi.getExplanation(project.session_id, job.output.explanation_id));
       onExplanationCheck(null);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
@@ -187,7 +197,15 @@ export function EvidenceWorkspace({
     setBusy(true);
     setError(null);
     try {
-      onExplanationCheck(await studioApi.checkExplanation(project.session_id, explanation.explanation_id));
+      let job = await studioApi.startExplanationCheckJob(project.session_id, explanation.explanation_id);
+      setExplanationJob(job);
+      for (let attempt = 0; attempt < 120 && ["queued", "running"].includes(job.status); attempt += 1) {
+        await new Promise((resolve) => window.setTimeout(resolve, 100));
+        job = await studioApi.getPosthocExplanationJob(project.session_id, job.job_id);
+        setExplanationJob(job);
+      }
+      if (job.status !== "succeeded" || !job.output.check_id) throw new Error(job.error ?? job.message ?? "Explanation-check job did not complete.");
+      onExplanationCheck(await studioApi.getExplanationCheck(project.session_id, job.output.check_id));
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
     } finally {
@@ -285,9 +303,10 @@ export function EvidenceWorkspace({
               ))}
             </div>
             <div className="evidence-actions">
-              <Button view="action" disabled={busy || project.read_only || availableMethods.length === 0} onClick={generate}>Generate explanation</Button>
+              <Button view="action" disabled={busy || project.read_only || availableMethods.length === 0} onClick={generate}>{busy ? "Generating…" : "Generate explanation"}</Button>
               <span className="property-description">{run.model_kind} · run {run.run_id.slice(0, 8)}</span>
             </div>
+            {explanationJob && <div className="property-description" data-testid="explanation-job"><StatusBadge tone={explanationJob.status === "succeeded" ? "success" : explanationJob.status === "failed" ? "danger" : "warning"}>{explanationJob.status.toUpperCase()}</StatusBadge> LocalExecutor · {explanationJob.message ?? "Persisted operation"}{explanationJob.error && ` · ${explanationJob.error}`}</div>}
           </>
         )}
         {error && <div className="error" role="alert">{error}</div>}

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import time
 
 import pandas as pd
 
@@ -8,6 +9,8 @@ from ruflex.application.datasets import build_dataset_contract, inspect_dataset,
 from ruflex.application.behavior import create_behavior_spec, run_behavior_spec
 from ruflex.application.fis import create_default_fis
 from ruflex.application.lineage import build_project_lineage
+from ruflex.application.evidence_jobs import start_explanation_generation_job
+from ruflex.application.jobs import JobStatus, load_job
 from ruflex.application.projects import ProjectService
 from ruflex.application.training import create_validation_evaluation, evaluate_final_test, select_validation_threshold, train_decision_tree
 
@@ -74,3 +77,20 @@ def test_lineage_links_exact_fis_revision_to_behavior_spec_and_result_after_reop
     assert {fis_node, spec_node, result_node} <= {node.id for node in graph.nodes}
     assert any(edge.source == fis_node and edge.target == spec_node and edge.relation == "specified_for" for edge in graph.edges)
     assert any(edge.source == spec_node and edge.target == result_node and edge.relation == "executed_as" for edge in graph.edges)
+
+
+def test_lineage_links_persisted_explanation_job_to_its_canonical_output(tmp_path: Path) -> None:
+    root = _project(tmp_path)
+    run = train_decision_tree(root, seed=9)
+    job = start_explanation_generation_job(root, run_id=run.run_id, sample={"temperature": 10.0, "pressure": 4.0}, method="occlusion")
+    for _ in range(100):
+        job = load_job(root, job.job_id)
+        if job.status not in {JobStatus.QUEUED, JobStatus.RUNNING}:
+            break
+        time.sleep(0.02)
+    assert job.status == JobStatus.SUCCEEDED
+    graph = build_project_lineage(root)
+    job_node = f"job:{job.job_id}"
+    explanation_node = f"explanation:{job.output['explanation_id']}"
+    assert {job_node, explanation_node} <= {node.id for node in graph.nodes}
+    assert any(edge.source == job_node and edge.target == explanation_node and edge.relation == "produced" for edge in graph.edges)

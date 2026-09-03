@@ -25,6 +25,7 @@ from ruflex.application.fis import FISError, create_default_fis, diagnose_fis, e
 from ruflex.application.fis_interop import export_matlab_fis, persist_imported_matlab_fis
 from ruflex.application.model_catalog import list_model_catalog
 from ruflex.domain.training import AnalysisComparison, AnalysisEvaluation, FinalTestEvaluation, CalibrationTransform, DecisionThresholdPolicy, StudyJob, TrainingRun, TrainingStudy, TreePathEvidence
+from ruflex.application.jobs import Job
 from ruflex.domain.evidence import ExplanationCheck, ExplanationContract
 from ruflex.domain.evidence import ExplanationReproducibilityAnalysis
 from ruflex.domain.behavior import BehaviorSpec, BehaviorSpecResult
@@ -902,6 +903,58 @@ def create_posthoc_explanation(request: CreatePosthocExplanationRequest) -> Expl
     except ProjectError as error:
         raise _project_error(error) from error
     except (EvidenceError, ValueError, OSError, FileNotFoundError) as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+
+
+@app.post("/api/projects/evidence/explanation-jobs", response_model=Job, status_code=202)
+def start_posthoc_explanation_job(request: CreatePosthocExplanationRequest) -> Job:
+    """Queue a persisted explanation operation without hiding its execution state."""
+    from ruflex.application.evidence_jobs import EvidenceJobError, start_explanation_generation_job
+
+    try:
+        session = service.get(request.session_id)
+        if session.project.read_only:
+            raise ProjectReadOnlyError("Project was opened read-only and cannot persist an explanation job.")
+        return start_explanation_generation_job(
+            session.project.root, run_id=request.run_id, sample=request.sample, method=request.method,
+        )
+    except ProjectError as error:
+        raise _project_error(error) from error
+    except (EvidenceJobError, ValueError, OSError, FileNotFoundError) as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+
+
+@app.get("/api/projects/{session_id}/evidence/explanation-jobs/{job_id}", response_model=Job)
+def get_posthoc_explanation_job(session_id: UUID, job_id: UUID) -> Job:
+    from ruflex.application.jobs import load_job
+    try:
+        return load_job(service.get(session_id).project.root, job_id)
+    except ProjectError as error:
+        raise _project_error(error) from error
+    except (ValueError, OSError, FileNotFoundError) as error:
+        raise HTTPException(status_code=404, detail=f"Explanation job not found: {job_id}") from error
+
+
+@app.get("/api/projects/{session_id}/evidence/explanation-jobs", response_model=list[Job])
+def list_posthoc_explanation_jobs(session_id: UUID) -> list[Job]:
+    from ruflex.application.jobs import list_jobs
+    try:
+        return list_jobs(service.get(session_id).project.root, kind="explanation_generation")
+    except ProjectError as error:
+        raise _project_error(error) from error
+
+
+@app.post("/api/projects/evidence/explanation-check-jobs", response_model=Job, status_code=202)
+def start_posthoc_explanation_check_job(request: CheckExplanationRequest) -> Job:
+    from ruflex.application.evidence_jobs import EvidenceJobError, start_explanation_check_job
+    try:
+        session = service.get(request.session_id)
+        if session.project.read_only:
+            raise ProjectReadOnlyError("Project was opened read-only and cannot persist an explanation-check job.")
+        return start_explanation_check_job(session.project.root, explanation_id=request.explanation_id)
+    except ProjectError as error:
+        raise _project_error(error) from error
+    except (EvidenceJobError, ValueError, OSError, FileNotFoundError) as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
 
 

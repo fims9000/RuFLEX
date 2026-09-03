@@ -160,7 +160,7 @@ export function AppShell({
       <footer className="status-strip">
         <span className="connection-indicator">●</span>
         <span>{status}</span>
-        <span>Jobs 0</span>
+        <span>Local-first jobs</span>
         <span>Warnings {error ? 1 : 0}</span>
         <span className="status-spacer" />
         <span>Local</span>

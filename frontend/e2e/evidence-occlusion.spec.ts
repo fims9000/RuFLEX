@@ -36,6 +36,7 @@ test("PRODUCT-05 persists post-hoc evidence separately from exact traces", async
   await page.getByRole("button", { name: "E", exact: true }).click();
   await expect(page.getByText("Computation evidence and post-hoc attribution", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Generate explanation", exact: true }).click();
+  await expect(page.getByTestId("explanation-job")).toContainText("SUCCEEDED");
   await expect(page.getByText("POST-HOC ATTRIBUTION", { exact: true }).first()).toBeVisible();
   await expect(page.getByText(/not a causal effect/i).first()).toBeVisible();
   await page.getByRole("button", { name: "Run explanation checks", exact: true }).click();
@@ -45,6 +46,7 @@ test("PRODUCT-05 persists post-hoc evidence separately from exact traces", async
   await page.getByLabel("Project path").fill(path);
   await page.getByRole("button", { name: "Open project", exact: true }).click();
   await page.getByRole("button", { name: /Post-hoc occlusion/ }).click();
+  await expect(page.getByTestId("explanation-job")).toContainText("SUCCEEDED");
   await expect(page.getByText("PASSED_AVAILABLE_CHECKS", { exact: true })).toBeVisible();
 });
 

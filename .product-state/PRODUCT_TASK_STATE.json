@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "product_version": "1.0.1",
-  "active_capability": "persisted_operating_curve_evidence",
+  "active_capability": "persisted_explanation_jobs",
   "completed_capabilities": [
     "dataset_contracts",
     "training_and_validation_evidence",
@@ -15,14 +15,15 @@
     "dataset_bound_row_identity",
     "first_class_preprocessing_provenance",
     "dataset_role_provenance",
-    "persisted_operating_curve_evidence"
+    "persisted_operating_curve_evidence",
+    "persisted_explanation_jobs"
   ],
   "active_acceptance": [
-    "Persist and display binary validation ROC/precision-recall curves from immutable evaluation evidence.",
-    "Reopen persisted operating-curve evidence in the Studio without accessing the final-test split."
+    "Persist and display LocalExecutor lifecycle for post-hoc explanation generation.",
+    "Reopen the explanation job and its immutable ExplanationContract without rerunning the explainer."
   ],
   "blockers": [],
-  "next_executable_work": "Continue the master-spec audit with the next unmet end-user capability after the persisted operating-curve evidence is committed and regression-verified.",
+  "next_executable_work": "Extend coherent persisted job semantics to the next evidence/verification operation only if it can preserve the same explicit inputs, outputs and reopen guarantees.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -34,6 +35,8 @@
     "full_python": "PASS: pytest -q reached 100% after typed row identity, preprocessing artifact, and role-provenance additions",
     "frontend": "PASS: unit test, TypeScript/Vite build, 25 Playwright E2E tests after provenance additions",
     "tracked_source_archive": "PASS: fresh git archive focused backend tests, npm ci/Vite build, and project lifecycle browser E2E; no .git or ignored project artifacts required",
-    "operating_curves": "PASS: persisted validation/final-test curve schema, focused Python routes, Studio build, and close/reopen browser route"
+    "operating_curves": "PASS: persisted validation/final-test curve schema, focused Python routes, Studio build, and close/reopen browser route",
+    "explanation_jobs": "PASS: persisted LocalExecutor generation/check lifecycle, API reload, Studio polling, close/reopen browser route, and lineage output edge",
+    "full_python_after_jobs": "PASS: pytest -q reached 100% after persisted explanation job additions"
   }
 }
