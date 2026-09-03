@@ -13,6 +13,24 @@ RuFLEX does not promise to solve underspecification, prove causal explanations,
 guarantee generalization or turn a confidence score into a safety claim. It
 makes the relevant product evidence explicit, linked and inspectable.
 
+## Current release and research status
+
+- **Product:** RuFLEX V1.0.1.
+- **Product reference commit:** `8bbd46b2a349db88b98f8cbbbe95e18650c17569`.
+  This identifies the inspected V1.0.1 product state; later documentation-only
+  commits do not change its product subject or frozen research artifacts.
+- **Stability Lab:** RC1 is complete; RC2 is complete and strengthens RC1 with
+  explicit selected-run agreement and raw-threshold provenance.
+- **Frozen studies:** Study 01 and Study 02 R2 are completed within their
+  declared scopes. Their allowed and forbidden claims remain part of the
+  corresponding research records.
+- **A01:** its confirmatory final result is frozen. It is not a pre-freeze
+  plan: 300 fixed fits across 15 dataset/model cells yielded one
+  `SUPPORTS_H3`, one `CONTRADICTS_H3`, and 13 `INCONCLUSIVE` H3 outcomes.
+
+For a compact technical passport and links to the frozen evidence, see
+[Current state](docs/CURRENT_STATE.md).
+
 ## The position
 
 Most model workflows end with a trained artifact and a chart. RuFLEX treats a
@@ -97,6 +115,26 @@ Key safeguards are concrete rather than rhetorical:
 - AssuranceCase presents separate evidence gates, assumptions, limitations and
   risks — never a scalar “trust score”.
 
+## Research status
+
+RuFLEX currently hosts three related, but distinct, research directions:
+
+- **Exact fuzzy computation and trace reconstruction:** declared fuzzy
+  semantics can be reconstructed and inspected where the product route supports
+  an exact trace.
+- **Validation–final-test artifact separation:** persisted objects and product
+  interfaces are tested for the declared boundary; this is not a universal
+  leakage detector or a certification claim.
+- **Stability-aware selective review:** repeated fixed-split fits make selected
+  prediction support, dispersion and review decisions measurable with
+  validation-derived criteria.
+
+A01 is the frozen confirmatory study for the third direction. Its 300 fixed
+fits cover 15 dataset/model cells. One cell favoured the frozen stability-aware
+review policy over its validation-matched confidence-only comparator, one
+favoured the comparator, and 13 were inconclusive. This is model- and
+data-dependent evidence, not a claim that RuFLEX universally reduces risk.
+
 ## Product evidence, not a slide deck
 
 The repository contains 19 tracked screenshots generated from one real,
@@ -169,6 +207,19 @@ For a fresh tracked-source handoff, use `git archive`; the release QA receipts
 and source archives intentionally exclude local project stores, model binaries,
 raw datasets, credentials and caches.
 
+## Reproducibility
+
+Protocols, frozen configurations, result artifacts and limitations are retained
+under `research/`; product evidence and technical notes live under `docs/`.
+The V1.0.1 tracked-source checkpoint is
+`RuFLEX_PRODUCT_V1_0_1_SOURCE_8bbd46b.zip` with SHA-256
+`382e06f3aab0689269498b14bf8496bf15dabeac62bbe691c5aef323ab0cd28c`.
+
+Stability Lab RC1 and RC2 are historical release checkpoints, not separate
+products. Their receipts document the state at their respective freezes; the
+current status is maintained in this README and
+[Current state](docs/CURRENT_STATE.md).
+
 ## Read-only Python access
 
 The SDK is an inspection boundary, not a hidden mutation path:
@@ -193,7 +244,7 @@ src/ruflex/  canonical domain, application services, FastAPI and SDK
 src/ruanfis/ vendored deep neuro-fuzzy backend
 tests/       product, persistence, integrity and browser-route tests
 docs/product/ product evidence, demonstration and technical notes
-research/    separately versioned experimental protocols and evidence
+research/    protocols, frozen configurations, result artifacts and limitations
 ```
 
 `src/ruanfis` is a vendored backend boundary. RuFLEX owns the project model,
@@ -202,13 +253,13 @@ it. Older toolbox, Streamlit-oriented and article-oriented material is retained
 only for compatibility or historical research context; it is not the Product
 V1 entrypoint.
 
-## Research relationship
+## Product and research
 
-The product and its research workstreams are intentionally separate. Product
-capabilities make studies more auditable; a research result is not required to
-make a product feature exist, and a product feature does not establish an
-empirical research claim. Study protocols, amendments, frozen results and
-their limitations remain in `research/` and associated documentation.
+Product and research are distinct layers of the same RuFLEX platform, not
+separate projects. Product capabilities provide the persisted environment in
+which studies run; frozen studies provide empirical evidence within a declared
+scope. A study does not make a product feature exist, and a product feature
+does not establish an empirical claim by itself.
 
 ## License
 

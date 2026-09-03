@@ -1,5 +1,9 @@
 # RuFLEX Product V1 RC2 status
 
+> **Historical document.** It does not describe the current Product V1.0.1
+> state. See [README](../README.md) and
+> [docs/CURRENT_STATE.md](CURRENT_STATE.md).
+
 The canonical product is the React/TypeScript Studio over FastAPI and persisted
 Python domain objects. Streamlit remains legacy-only.
 
