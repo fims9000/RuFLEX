@@ -97,5 +97,11 @@ def test_api_persists_supported_import_and_returns_explicit_report(tmp_path) -> 
     receipt = json.loads((root / "models" / "fis" / "imports" / f"{imported.json()['spec']['fis_id']}.json").read_text())
     assert receipt["source_artifact_sha256"] == source_sha
     assert receipt["semantic_hash"] == imported.json()["spec"]["semantic_hash"]
+    from ruflex.application.lineage import build_project_lineage
+    graph = build_project_lineage(root)
+    source_node = f"imported-artifact:{source_sha}"
+    revision_node = f"fis-revision:{imported.json()['spec']['fis_id']}:{receipt['semantic_hash']}"
+    assert {source_node, revision_node} <= {node.id for node in graph.nodes}
+    assert any(edge.source == source_node and edge.target == revision_node and edge.relation == "imported_as" for edge in graph.edges)
     active = client.get(f"/api/projects/{session_id}/fis/active")
     assert active.status_code == 200

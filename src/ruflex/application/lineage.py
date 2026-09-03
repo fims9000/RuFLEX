@@ -134,6 +134,25 @@ def build_project_lineage(project_root: Path) -> LineageGraph:
                 detail=spec.system_type, target="MODELS", object_id=str(spec.fis_id),
             ))
 
+    import_root = fis_root / "imports"
+    if import_root.is_dir():
+        for path in sorted(import_root.glob("*.json")):
+            try:
+                receipt = json.loads(path.read_text(encoding="utf-8"))
+                source_sha = receipt["source_artifact_sha256"]
+                semantic_hash = receipt["semantic_hash"]
+                fis_id = receipt["fis_id"]
+                if not all(isinstance(value, str) and value for value in (source_sha, semantic_hash, fis_id)):
+                    continue
+            except (OSError, ValueError, KeyError, TypeError):
+                continue
+            source_node = add_node(LineageNode(
+                id=_node_id("imported-artifact", source_sha), kind="imported_artifact",
+                label="Imported MATLAB FIS source", detail=f"SHA-256 {source_sha[:12]}",
+                target="MODELS", object_id=source_sha, status="IMPORTED",
+            ))
+            add_edge(source_node, fis_revision_nodes.get(semantic_hash), "imported_as")
+
     runs = [item for item in _json_models(root / "runs", TrainingRun, exclude=("active-training-run.json",)) if isinstance(item, TrainingRun)]
     run_nodes: dict[UUID, str] = {}
     preprocessing_nodes: dict[str, str] = {}
