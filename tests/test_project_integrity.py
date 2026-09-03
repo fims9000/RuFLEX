@@ -82,6 +82,20 @@ def test_project_integrity_checks_imported_matlab_fis_provenance(tmp_path: Path)
     assert any(issue["code"] == "IMPORTED_FIS_SEMANTIC_MISMATCH" for issue in report["issues"])
 
 
+def test_project_integrity_checks_persisted_fis_semantic_identity(tmp_path: Path) -> None:
+    client = TestClient(app); root = tmp_path / "fis-semantic-integrity"
+    session_id = client.post("/api/projects", json={"path": str(root), "name": "FIS semantic integrity"}).json()["session_id"]
+    imported = client.post("/api/projects/fis/import/matlab", json={"session_id": session_id, "source": _MAMDANI})
+    assert imported.status_code == 200, imported.text
+    fis_path = root / "models" / "fis" / f"{imported.json()['spec']['fis_id']}.json"
+    payload = json.loads(fis_path.read_text(encoding="utf-8"))
+    payload["semantic_hash"] = "0" * 64
+    fis_path.write_text(json.dumps(payload), encoding="utf-8")
+    report = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert report["status"] == "FAIL"
+    assert any(issue["code"] == "FIS_EVIDENCE_MALFORMED" for issue in report["issues"])
+
+
 def test_project_integrity_rejects_detached_persisted_explanation_evidence(tmp_path: Path) -> None:
     client = TestClient(app); root = tmp_path / "explanation-integrity"
     session_id = client.post("/api/projects", json={"path": str(root), "name": "Explanation integrity"}).json()["session_id"]

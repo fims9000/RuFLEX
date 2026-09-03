@@ -8,7 +8,7 @@ from pydantic import ValidationError
 
 from ruflex.application.artifacts import ArtifactRecord, ArtifactRef, ArtifactStore
 from ruflex.application.datasets import DatasetContract, DatasetProfile, load_data_audit, load_dataset_contract, load_dataset_profile
-from ruflex.application.fis import load_fis
+from ruflex.application.fis import list_fis_revisions, load_fis
 from ruflex.application.projects import ProjectService
 from ruflex.application.training import list_training_runs
 from ruflex.domain.evidence import ExplanationCheck, ExplanationContract
@@ -44,6 +44,32 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
         runs = []
         issues.append(ProjectIntegrityIssue(code="TRAINING_EVIDENCE_MALFORMED", status="FAIL", path="runs", detail=str(error)))
     store = ArtifactStore(base)
+    fis_root = base / "models" / "fis"
+    if fis_root.exists() and not fis_root.is_dir():
+        issues.append(ProjectIntegrityIssue(code="FIS_EVIDENCE_MALFORMED", status="FAIL", path="models/fis", detail="FIS evidence path is not a directory."))
+    elif fis_root.is_dir():
+        fis_paths = sorted(fis_root.glob("*.json"))
+        fis_ids: set[str] = set()
+        for path in fis_paths:
+            checked += 1
+            relative_path = str(path.relative_to(base))
+            try:
+                spec = load_fis(base, path.stem)
+                if str(spec.fis_id) != path.stem:
+                    raise ValueError("FIS filename does not match its persisted identity.")
+                fis_ids.add(path.stem)
+                list_fis_revisions(base, path.stem); checked += 1
+            except (FileNotFoundError, ValidationError, ValueError, OSError, json.JSONDecodeError) as error:
+                issues.append(ProjectIntegrityIssue(code="FIS_EVIDENCE_MALFORMED", status="FAIL", path=relative_path, detail=str(error)))
+        active_path = fis_root / "active.txt"
+        if active_path.exists():
+            checked += 1
+            try:
+                active_id = active_path.read_text(encoding="utf-8").strip()
+                if active_id not in fis_ids:
+                    raise ValueError("Active FIS pointer does not resolve to a persisted FIS.")
+            except (ValueError, OSError) as error:
+                issues.append(ProjectIntegrityIssue(code="FIS_ACTIVE_POINTER_INVALID", status="FAIL", path="models/fis/active.txt", detail=str(error)))
     import_root = base / "models" / "fis" / "imports"
     if import_root.exists() and not import_root.is_dir():
         issues.append(ProjectIntegrityIssue(code="IMPORTED_FIS_PROVENANCE_MALFORMED", status="FAIL", path="models/fis/imports", detail="Imported FIS provenance path is not a directory."))
