@@ -9,7 +9,7 @@ from ruflex.application.datasets import build_dataset_contract, inspect_dataset,
 from ruflex.application.behavior import create_behavior_spec, run_behavior_spec
 from ruflex.application.fis import create_default_fis
 from ruflex.application.lineage import build_project_lineage
-from ruflex.application.evidence_jobs import start_explanation_generation_job
+from ruflex.application.evidence_jobs import start_assurance_case_job, start_explanation_generation_job, start_verification_bundle_export_job
 from ruflex.application.jobs import JobStatus, load_job
 from ruflex.application.projects import ProjectService
 from ruflex.application.training import create_validation_evaluation, evaluate_final_test, select_validation_threshold, train_decision_tree
@@ -94,3 +94,24 @@ def test_lineage_links_persisted_explanation_job_to_its_canonical_output(tmp_pat
     explanation_node = f"explanation:{job.output['explanation_id']}"
     assert {job_node, explanation_node} <= {node.id for node in graph.nodes}
     assert any(edge.source == job_node and edge.target == explanation_node and edge.relation == "produced" for edge in graph.edges)
+
+
+def test_lineage_links_assurance_and_bundle_jobs_to_their_canonical_outputs(tmp_path: Path) -> None:
+    root = _project(tmp_path)
+
+    def wait(job):
+        for _ in range(100):
+            current = load_job(root, job.job_id)
+            if current.status not in {JobStatus.QUEUED, JobStatus.RUNNING}:
+                return current
+            time.sleep(0.02)
+        raise AssertionError("LocalExecutor job did not finish")
+
+    assurance_job = wait(start_assurance_case_job(root))
+    assert assurance_job.status == JobStatus.SUCCEEDED
+    bundle_job = wait(start_verification_bundle_export_job(root))
+    assert bundle_job.status == JobStatus.SUCCEEDED
+
+    graph = build_project_lineage(root)
+    assert any(edge.source == f"job:{assurance_job.job_id}" and edge.target == f"assurance:{assurance_job.output['assurance_id']}" and edge.relation == "produced" for edge in graph.edges)
+    assert any(edge.source == f"job:{bundle_job.job_id}" and edge.target == f"verification-bundle:{bundle_job.output['bundle_id']}" and edge.relation == "produced" for edge in graph.edges)

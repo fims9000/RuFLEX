@@ -293,13 +293,17 @@ def build_project_lineage(project_root: Path) -> LineageGraph:
         ))
         add_edge(explanation_nodes.get(check.explanation_id), node, "validated_by")
 
+    job_nodes: dict[UUID, str] = {}
+    jobs: list[Job] = []
     for job in _json_models(root / "jobs", Job):
         assert isinstance(job, Job)
+        jobs.append(job)
         node = add_node(LineageNode(
             id=_node_id("job", job.job_id), kind="local_job",
             label=job.kind.replace("_", " "), detail=job.message or "persisted LocalExecutor operation",
             target="EVIDENCE", object_id=str(job.job_id), status=job.status.value.upper(),
         ))
+        job_nodes[job.job_id] = node
         run_id = job.request.get("run_id")
         if isinstance(run_id, str):
             try:
@@ -427,9 +431,25 @@ def build_project_lineage(project_root: Path) -> LineageGraph:
         if dataset_node: add_edge(dataset_node, node, "assured_by")
         for run_node in run_nodes.values(): add_edge(run_node, node, "assurance_input")
 
+    for job in jobs:
+        assurance_id = job.output.get("assurance_id")
+        if assurance_id is not None:
+            try:
+                add_edge(job_nodes.get(job.job_id), _node_id("assurance", UUID(assurance_id)), "produced")
+            except ValueError:
+                pass
+
     bundles = [item for item in _json_models(root / "evidence" / "verification-bundles", VerificationBundle, exclude=("active-bundle.json",)) if isinstance(item, VerificationBundle)]
     for item in bundles:
         node = add_node(LineageNode(id=_node_id("verification-bundle", item.bundle_id), kind="verification_bundle", label="VerificationBundle", detail=f"{item.entry_count} declarative entries", target="EVIDENCE", object_id=str(item.bundle_id), status="INSPECTION_FIRST"))
         add_edge(_node_id("assurance", item.assurance_id), node, "exported_as")
+
+    for job in jobs:
+        bundle_id = job.output.get("bundle_id")
+        if bundle_id is not None:
+            try:
+                add_edge(job_nodes.get(job.job_id), _node_id("verification-bundle", UUID(bundle_id)), "produced")
+            except ValueError:
+                pass
 
     return LineageGraph(nodes=list(nodes.values()), edges=list(edges.values()))
