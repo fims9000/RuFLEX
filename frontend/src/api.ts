@@ -40,6 +40,9 @@ export type DatasetProfile = {
     semantic_type: string;
     dtype: string;
     nullable: boolean;
+    proposed_role: "feature" | "id_candidate";
+    role_confidence: number;
+    role_reason: string;
   }>;
 };
 export type DatasetConfirmation = {
@@ -52,6 +55,7 @@ export type DatasetConfirmation = {
     id_columns: string[];
     source_format: "csv" | "xlsx";
     row_identity_scheme: string;
+    role_decisions: Record<string, "target" | "feature" | "id">;
   };
   audit: {
     findings: Array<{

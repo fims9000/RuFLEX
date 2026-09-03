@@ -17,11 +17,15 @@ def _fixture() -> pd.DataFrame:
 def test_profile_surfaces_id_duplicates_missing_constant_and_deterministic_audit() -> None:
     profile = inspect_dataset(_fixture(), source_artifact_sha256="a" * 64)
     assert "entity_id" in profile.id_candidates
+    entity = next(column for column in profile.columns if column.name == "entity_id")
+    assert entity.proposed_role == "id_candidate"
+    assert "Explicit identifier token" in entity.role_reason
     contract = build_dataset_contract(profile, target="target", task="binary_classification", id_columns=["entity_id"])
     first, second = run_data_audit(contract, _fixture()), run_data_audit(contract, _fixture())
     assert first.model_dump(mode="json") == second.model_dump(mode="json")
     assert {finding.code for finding in first.findings} >= {"DUPLICATE_ROWS", "MISSING_VALUES", "CONSTANT_COLUMN"}
     assert "entity_id" not in contract.feature_columns
+    assert contract.role_decisions == {"entity_id": "id", "temperature": "feature", "mode": "feature", "target": "target"}
 
 
 def test_id_candidate_heuristic_requires_explicit_id_token() -> None:
@@ -31,6 +35,7 @@ def test_id_candidate_heuristic_requires_explicit_id_token() -> None:
     })
     profile = inspect_dataset(frame, source_artifact_sha256="d" * 64)
     assert set(profile.id_candidates) == {"id", "row_id", "customer_id"}
+    assert next(column for column in profile.columns if column.name == "job_housemaid").proposed_role == "feature"
     assert all(next(column for column in profile.columns if column.name == name).semantic_type != "id" for name in ("job_housemaid", "valid", "paid"))
 
 

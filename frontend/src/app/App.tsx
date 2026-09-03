@@ -79,6 +79,7 @@ export function App() {
   const [datasetState, setDatasetState] = useState<DatasetState | null>(null);
   const [target, setTarget] = useState("target");
   const [task, setTask] = useState("binary_classification");
+  const [idColumns, setIdColumns] = useState("");
   const [intendedUse, setIntendedUse] = useState("New entities");
   const [noveltyAxis, setNoveltyAxis] = useState("entity");
   const [generalization, setGeneralization] =
@@ -175,6 +176,7 @@ export function App() {
         setDataset({ contract: state.contract, audit: state.audit });
         setTarget(state.contract.target);
         setTask(state.contract.task);
+        setIdColumns(state.contract.id_columns.join(", "));
       })
       .catch(() => {
         setDatasetState(null);
@@ -383,9 +385,9 @@ export function App() {
   async function inspectCsv() {
     if (!project) return;
     try {
-      setProfile(
-        (await studioApi.inspectCsv(project.session_id, csvText)).profile,
-      );
+      const inspected = (await studioApi.inspectCsv(project.session_id, csvText)).profile;
+      setProfile(inspected);
+      setIdColumns((current) => current || inspected.id_candidates.join(", "));
       setStatus("Dataset schema inspected");
     } catch (reason) {
       setError(
@@ -401,7 +403,7 @@ export function App() {
         csvText,
         target,
         task,
-        profile?.id_candidates ?? [],
+        idColumns.split(",").map((column) => column.trim()).filter(Boolean),
       );
       setDataset(confirmed);
       const persisted = await studioApi.getDatasetState(project.session_id);
@@ -430,7 +432,7 @@ export function App() {
         btoa(binary),
         target,
         task,
-        [],
+        idColumns.split(",").map((column) => column.trim()).filter(Boolean),
       );
       setDataset(confirmed);
       const persisted = await studioApi.getDatasetState(project.session_id);
@@ -718,6 +720,10 @@ export function App() {
                     <option value="regression">Regression</option>
                   </select>
                 </label>
+                <label className="field-label">
+                  ID columns
+                  <TextInput aria-label="ID columns" value={idColumns} onUpdate={setIdColumns} placeholder={profile?.id_candidates.join(", ") || "comma-separated, optional"} />
+                </label>
               </div>
               <div className="form-actions">
                 <Button view="outlined" onClick={inspectCsv}>
@@ -750,6 +756,8 @@ export function App() {
                 <div className="data-summary">
                   Rows: {profile.row_count} · columns: {profile.columns.length}{" "}
                   · ID candidates: {profile.id_candidates.join(", ") || "none"}
+                  <div className="info-message">Role proposals are advisory: choose target and ID columns before freezing the authoritative DatasetContract.</div>
+                  <div className="data-table-wrap"><table className="data-table"><thead><tr><th>column</th><th>proposal</th><th>confidence</th><th>reason</th></tr></thead><tbody>{profile.columns.map((column) => <tr key={column.name}><td>{column.name}</td><td>{column.proposed_role}</td><td>{Math.round(column.role_confidence * 100)}%</td><td>{column.role_reason}</td></tr>)}</tbody></table></div>
                 </div>
               )}
             </div>
