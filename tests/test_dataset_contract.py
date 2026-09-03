@@ -1,4 +1,5 @@
 import base64
+import json
 from io import BytesIO
 from pathlib import Path
 
@@ -41,7 +42,9 @@ def test_id_candidate_heuristic_requires_explicit_id_token() -> None:
 
 def test_bank_marketing_frozen_contract_keeps_job_housemaid() -> None:
     root = Path(__file__).resolve().parents[1]
-    frame = pd.read_csv(root / "research/a01_stability_aware_review/artifacts/phase1-data/materialized/uci_bank_marketing/canonical.csv")
+    specification = json.loads((root / "research/a01_stability_aware_review/config/dataset_specs.json").read_text(encoding="utf-8"))
+    bank = next(item for item in specification["datasets"] if item["canonical_dataset_id"] == "uci_bank_marketing")
+    frame = pd.DataFrame({column: [0.0, 1.0] for column in bank["feature_columns"]} | {"source_row_id": [0, 1], "y": [0, 1]})
     profile = inspect_dataset(frame, source_artifact_sha256="e" * 64)
     contract = build_dataset_contract(profile, target="y", task="binary_classification", id_columns=["source_row_id"])
     assert len(contract.feature_columns) == 62
