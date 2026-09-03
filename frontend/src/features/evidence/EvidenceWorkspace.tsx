@@ -212,6 +212,12 @@ export function EvidenceWorkspace({
       setBusy(false);
     }
   }
+  async function cancelQueuedJob() {
+    if (!explanationJob || explanationJob.status !== "queued") return;
+    setError(null);
+    try { setExplanationJob(await studioApi.cancelEvidenceJob(project.session_id, explanationJob.job_id)); }
+    catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
+  }
 
   async function createAndRunBehavior() {
     if (!run) return;
@@ -315,7 +321,7 @@ export function EvidenceWorkspace({
               <Button view="action" disabled={busy || project.read_only || availableMethods.length === 0} onClick={generate}>{busy ? "Generating…" : "Generate explanation"}</Button>
               <span className="property-description">{run.model_kind} · run {run.run_id.slice(0, 8)}</span>
             </div>
-            {explanationJob && <div className="property-description" data-testid="explanation-job"><StatusBadge tone={explanationJob.status === "succeeded" ? "success" : explanationJob.status === "failed" ? "danger" : "warning"}>{explanationJob.status.toUpperCase()}</StatusBadge> LocalExecutor · {explanationJob.message ?? "Persisted operation"}{explanationJob.error && ` · ${explanationJob.error}`}</div>}
+            {explanationJob && <div className="property-description" data-testid="explanation-job"><StatusBadge tone={explanationJob.status === "succeeded" ? "success" : explanationJob.status === "failed" ? "danger" : "warning"}>{explanationJob.status.toUpperCase()}</StatusBadge> LocalExecutor · {explanationJob.message ?? "Persisted operation"}{explanationJob.error && ` · ${explanationJob.error}`}{explanationJob.status === "queued" && <Button view="flat" size="s" onClick={cancelQueuedJob}>Cancel queued job</Button>}</div>}
           </>
         )}
         {error && <div className="error" role="alert">{error}</div>}

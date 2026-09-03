@@ -40,6 +40,10 @@ class Job(BaseModel):
     log: list[str] = Field(default_factory=list)
 
 
+class JobStateError(ValueError):
+    pass
+
+
 def _jobs_root(project_root: Path) -> Path:
     root = Path(project_root).resolve() / "jobs"
     root.mkdir(parents=True, exist_ok=True)
@@ -78,3 +82,20 @@ def list_jobs(project_root: Path, *, kind: str | None = None) -> list[Job]:
     if kind is not None:
         jobs = [job for job in jobs if job.kind == kind]
     return sorted(jobs, key=lambda job: (job.created_at, str(job.job_id)), reverse=True)
+
+
+def cancel_queued_job(project_root: Path, job_id: UUID) -> Job:
+    """Cancel only before native work starts; never mislabel a completed artifact."""
+    job = load_job(project_root, job_id)
+    if job.status == JobStatus.CANCELLED:
+        return job
+    if job.status != JobStatus.QUEUED:
+        raise JobStateError(
+            "This LocalExecutor job has already started and its native operation is not safely interruptible. "
+            "Its persisted output will remain authoritative if it completes."
+        )
+    job.status = JobStatus.CANCELLED
+    job.finished_at = datetime.now(timezone.utc)
+    job.message = "Cancelled before LocalExecutor started native work."
+    job.log.append(job.message)
+    return persist_job(project_root, job)

@@ -401,6 +401,8 @@ export const studioApi = {
     request<ProductJob>("/api/projects/evidence/explanation-jobs", { session_id: sessionId, run_id: runId, sample, method }),
   getPosthocExplanationJob: (sessionId: string, jobId: string) =>
     request<ProductJob>(`/api/projects/${sessionId}/evidence/explanation-jobs/${jobId}`),
+  cancelEvidenceJob: (sessionId: string, jobId: string) =>
+    request<ProductJob>(`/api/projects/${sessionId}/evidence/jobs/${jobId}/cancel`, {}),
   listPosthocExplanationJobs: (sessionId: string) =>
     request<ProductJob[]>(`/api/projects/${sessionId}/evidence/explanation-jobs`),
   getLatestExplanation: (sessionId: string) =>

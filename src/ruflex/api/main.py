@@ -944,6 +944,22 @@ def list_posthoc_explanation_jobs(session_id: UUID) -> list[Job]:
         raise _project_error(error) from error
 
 
+@app.post("/api/projects/{session_id}/evidence/jobs/{job_id}/cancel", response_model=Job)
+def cancel_persisted_evidence_job(session_id: UUID, job_id: UUID) -> Job:
+    from ruflex.application.jobs import JobStateError, cancel_queued_job
+    try:
+        session = service.get(session_id)
+        if session.project.read_only:
+            raise ProjectReadOnlyError("Project was opened read-only and cannot cancel a persisted job.")
+        return cancel_queued_job(session.project.root, job_id)
+    except ProjectError as error:
+        raise _project_error(error) from error
+    except FileNotFoundError as error:
+        raise HTTPException(status_code=404, detail=f"Evidence job not found: {job_id}") from error
+    except JobStateError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+
+
 @app.post("/api/projects/evidence/explanation-check-jobs", response_model=Job, status_code=202)
 def start_posthoc_explanation_check_job(request: CheckExplanationRequest) -> Job:
     from ruflex.application.evidence_jobs import EvidenceJobError, start_explanation_check_job

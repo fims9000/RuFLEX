@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
 from ruflex.api.main import app
+from ruflex.application.jobs import Job, JobStatus, persist_job
 
 
 def _frame(rows: int = 48) -> pd.DataFrame:
@@ -149,6 +150,23 @@ def test_explanation_job_persists_local_executor_lifecycle_and_reopens(tmp_path:
     assert persisted.status_code == 200
     assert persisted.json()[0]["job_id"] == job["job_id"]
     assert persisted.json()[0]["output"] == job["output"]
+
+
+def test_queued_evidence_job_can_cancel_without_creating_a_canonical_output(tmp_path: Path) -> None:
+    client = TestClient(app)
+    root = tmp_path / "queued-cancel"
+    session_id = _project_with_data(client, root)
+    queued = persist_job(root, Job(kind="explanation_generation", message="Queued for LocalExecutor."))
+    cancelled = client.post(f"/api/projects/{session_id}/evidence/jobs/{queued.job_id}/cancel")
+    assert cancelled.status_code == 200, cancelled.text
+    assert cancelled.json()["status"] == "cancelled"
+    assert cancelled.json()["output"] == {}
+    assert cancelled.json()["finished_at"] is not None
+    assert client.post(f"/api/projects/{session_id}/evidence/jobs/{queued.job_id}/cancel").json()["status"] == "cancelled"
+    running = persist_job(root, Job(kind="explanation_generation", status=JobStatus.RUNNING))
+    rejected = client.post(f"/api/projects/{session_id}/evidence/jobs/{running.job_id}/cancel")
+    assert rejected.status_code == 409
+    assert "not safely interruptible" in rejected.text
 
 
 def test_assurance_claim_refuses_an_unbound_claim() -> None:
