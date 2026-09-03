@@ -19,6 +19,7 @@ from ruflex.data.datasets import DatasetConfig, NormalizationArtifact, TabularDa
 from ruflex.domain.evidence import ExplanationCheck, ExplanationCheckItem, ExplanationContract, FeatureAttribution
 from ruflex.models.flat_nf.model import FlatNeuroFuzzyModel
 from ruflex.models.specs import ShallowModelSpec
+from ruflex.plugins import PluginDescriptor, PluginRegistry
 
 
 class EvidenceError(RuntimeError):
@@ -745,10 +746,26 @@ class NativeExplanationValidatorAdapter:
         return _native_check_explanation(project_root, explanation_id, validator_key=self.key)
 
 
+_validator_plugins = PluginRegistry()
+_validator_plugins.register(
+    PluginDescriptor(
+        key=NativeExplanationValidatorAdapter.key,
+        version=NativeExplanationValidatorAdapter.version,
+        kind="explanation_validator",
+        capabilities={"provenance_identity": True, "replay_integrity": True, "quantitative_quality": True},
+        config_schema={"type": "object", "additionalProperties": False},
+        input_schema={"explanation_id": "UUID", "project_root": "canonical_project_root"},
+        output_schema={"ExplanationCheck": "schema_version=2"},
+    ),
+    NativeExplanationValidatorAdapter(),
+)
+
+
 def check_explanation(project_root: Path, explanation_id: UUID) -> ExplanationCheck:
     """Run the registered product-native validator through the adapter boundary."""
 
-    return NativeExplanationValidatorAdapter().validate(project_root, explanation_id)
+    validator = _validator_plugins.implementation("native_explanation_validator")
+    return validator.validate(project_root, explanation_id)  # type: ignore[union-attr]
 
 
 def _native_check_explanation(project_root: Path, explanation_id: UUID, *, validator_key: str) -> ExplanationCheck:
