@@ -9,6 +9,19 @@ export type ProjectSummary = {
   modified_at: string;
 };
 export type ModelCatalogEntry = { key: string; label: string; family: string; available: boolean; capabilities: Record<string, boolean>; limitation: string | null };
+export type RunCapabilityNegotiation = {
+  schema_version: number;
+  run_id: string;
+  model_kind: string;
+  model_artifact_sha256: string;
+  decisions: Array<{
+    capability: "occlusion" | "shap" | "tree_shap" | "integrated_gradients" | "gradient_shap" | "exact_tree_path";
+    status: "AVAILABLE" | "NOT_APPLICABLE";
+    reason_code: "AVAILABLE" | "CAPABILITY_UNAVAILABLE";
+    detail: string;
+  }>;
+  scientific_note: string;
+};
 
 export type LineageNode = {
   id: string;
@@ -422,6 +435,8 @@ export const studioApi = {
     request<TrainingRun[]>(`/api/projects/${sessionId}/training/runs`),
   getTrainingRun: (sessionId: string, runId: string) =>
     request<TrainingRun>(`/api/projects/${sessionId}/training/runs/${runId}`),
+  getTrainingRunCapabilities: (sessionId: string, runId: string) =>
+    request<RunCapabilityNegotiation>(`/api/projects/${sessionId}/training/runs/${runId}/capabilities`),
   createTreePath: (sessionId: string, runId: string, sample: Record<string, number>) =>
     request<TreePathEvidence>("/api/projects/training/tree-path", { session_id: sessionId, run_id: runId, sample }),
   getLatestTreePath: (sessionId: string) =>

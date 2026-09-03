@@ -13,6 +13,7 @@ import {
   VerificationBundleValidation,
   FISEvaluation,
   ModelCatalogEntry,
+  RunCapabilityNegotiation,
   ProductJob,
   ProjectSummary,
   TrainingRun,
@@ -109,6 +110,7 @@ export function EvidenceWorkspace({
   const [bundleValidation, setBundleValidation] = useState<VerificationBundleValidation | null>(null);
   const [demo, setDemo] = useState<ConditionMonitoringDemo | null>(null);
   const [explanationJob, setExplanationJob] = useState<ProductJob | null>(null);
+  const [capabilityNegotiation, setCapabilityNegotiation] = useState<RunCapabilityNegotiation | null>(null);
 
   useEffect(() => { setSample(initialSample); setComparisonSample(initialSample); }, [initialSample]);
   useEffect(() => setBehaviorResult(restoredBehaviorResult), [restoredBehaviorResult?.result_id]);
@@ -121,12 +123,23 @@ export function EvidenceWorkspace({
   useEffect(() => {
     studioApi.getModelCatalog().then(setCatalog).catch(() => setCatalog([]));
   }, []);
+  useEffect(() => {
+    if (!run) { setCapabilityNegotiation(null); return; }
+    studioApi.getTrainingRunCapabilities(project.session_id, run.run_id)
+      .then(setCapabilityNegotiation)
+      .catch(() => setCapabilityNegotiation(null));
+  }, [project.session_id, run?.run_id]);
   const modelCapabilities = useMemo(() => {
     if (!run) return {} as Record<string, boolean>;
     const key = run.model_kind === "logistic_regression" || run.model_kind === "linear_regression" ? "linear" : run.model_kind;
     return catalog.find((entry) => entry.key === key)?.capabilities ?? {};
   }, [catalog, run?.model_kind]);
   const availableMethods = useMemo(() => {
+    if (capabilityNegotiation) {
+      return capabilityNegotiation.decisions
+        .filter((decision) => decision.status === "AVAILABLE" && decision.capability !== "exact_tree_path")
+        .map((decision) => decision.capability as EvidenceMethod);
+    }
     const methods: EvidenceMethod[] = [];
     if (modelCapabilities.occlusion) methods.push("occlusion");
     if (modelCapabilities.shap) methods.push("shap");
@@ -134,7 +147,7 @@ export function EvidenceWorkspace({
     if (modelCapabilities.integrated_gradients) methods.push("integrated_gradients");
     if (modelCapabilities.gradient_shap) methods.push("gradient_shap");
     return methods;
-  }, [modelCapabilities]);
+  }, [capabilityNegotiation, modelCapabilities]);
   useEffect(() => {
     if (!run || availableMethods.length === 0) return;
     if (!availableMethods.includes(method)) setMethod(availableMethods[0]);
@@ -321,6 +334,7 @@ export function EvidenceWorkspace({
               <Button view="action" disabled={busy || project.read_only || availableMethods.length === 0} onClick={generate}>{busy ? "Generating…" : "Generate explanation"}</Button>
               <span className="property-description">{run.model_kind} · run {run.run_id.slice(0, 8)}</span>
             </div>
+            {capabilityNegotiation && <div className="trace-card" data-testid="run-capability-negotiation"><strong>Run capability contract</strong><div className="property-list">{capabilityNegotiation.decisions.map((decision) => <div key={decision.capability}><span>{decision.capability.replaceAll("_", " ")}</span><span><StatusBadge tone={decision.status === "AVAILABLE" ? "success" : "info"}>{decision.status}</StatusBadge> {decision.detail}</span></div>)}</div></div>}
             {explanationJob && <div className="property-description" data-testid="explanation-job"><StatusBadge tone={explanationJob.status === "succeeded" ? "success" : explanationJob.status === "failed" ? "danger" : "warning"}>{explanationJob.status.toUpperCase()}</StatusBadge> LocalExecutor · {explanationJob.message ?? "Persisted operation"}{explanationJob.error && ` · ${explanationJob.error}`}{explanationJob.status === "queued" && <Button view="flat" size="s" onClick={cancelQueuedJob}>Cancel queued job</Button>}</div>}
           </>
         )}

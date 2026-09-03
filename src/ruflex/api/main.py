@@ -25,6 +25,7 @@ from ruflex.application.generalization import ContractFreezeError, ContractLintR
 from ruflex.application.fis import FISError, create_default_fis, diagnose_fis, evaluate_fis, evaluate_response_surface, list_fis_revisions, load_fis, load_latest_trace, persist_fis, save_trace_artifact
 from ruflex.application.fis_interop import export_matlab_fis, persist_imported_matlab_fis
 from ruflex.application.model_catalog import list_model_catalog
+from ruflex.application.capabilities import RunCapabilityNegotiation, negotiate_run_capabilities
 from ruflex.domain.training import AnalysisComparison, AnalysisEvaluation, FinalTestEvaluation, CalibrationTransform, DecisionThresholdPolicy, StudyJob, TrainingRun, TrainingStudy, TreePathEvidence
 from ruflex.application.jobs import Job
 from ruflex.domain.evidence import ExplanationCheck, ExplanationContract
@@ -891,6 +892,21 @@ def get_training_run(session_id: UUID, run_id: UUID) -> TrainingRun:
     except (ProjectError, FileNotFoundError, ValueError) as error:
         if isinstance(error, ProjectError):
             raise _project_error(error) from error
+        raise HTTPException(status_code=404, detail=f"Training run not found: {run_id}") from error
+
+
+@app.get("/api/projects/{session_id}/training/runs/{run_id}/capabilities", response_model=RunCapabilityNegotiation)
+def get_training_run_capabilities(session_id: UUID, run_id: UUID) -> RunCapabilityNegotiation:
+    """Negotiate native evidence routes against one persisted model artifact."""
+
+    from ruflex.application.training import load_training_run
+
+    try:
+        session = service.get(session_id)
+        return negotiate_run_capabilities(load_training_run(session.project.root, run_id))
+    except ProjectError as error:
+        raise _project_error(error) from error
+    except (FileNotFoundError, ValueError) as error:
         raise HTTPException(status_code=404, detail=f"Training run not found: {run_id}") from error
 
 
