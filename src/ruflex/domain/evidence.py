@@ -32,6 +32,7 @@ class ExplanationContract(BaseModel):
     model_kind: str
     model_artifact_sha256: str
     preprocessing_identity: str | None = None
+    preprocessing_artifact_sha256: str | None = None
     feature_order_identity: str | None = None
     sample_identity: str | None = None
     reference_identity: str | None = None

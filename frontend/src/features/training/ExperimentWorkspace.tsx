@@ -266,6 +266,7 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
           <div className="run-provenance">
             <StatusBadge tone="success">model artifact persisted</StatusBadge>
             <code>{run.model_artifact_sha256.slice(0, 24)}…</code>
+            {run.preprocessing_artifact_sha256 && <><StatusBadge tone="success">train-only preprocessing persisted</StatusBadge><code>{run.preprocessing_artifact_sha256.slice(0, 24)}…</code></>}
             <span>seed {run.seed}</span>
             <span>{run.split.train_count}/{run.split.validation_count}/{run.split.test_count} rows</span>
           </div>

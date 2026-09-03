@@ -104,6 +104,7 @@ class DataSplit:
     test_features: np.ndarray
     test_targets: np.ndarray
     normalization: NormalizationArtifact
+    imputation_values: dict[str, float]
     train_indices: np.ndarray
     validation_indices: np.ndarray
     test_indices: np.ndarray
@@ -189,6 +190,7 @@ class TabularDataset:
 
         # Missing-value statistics are learned from TRAIN only. This is part of
         # the Test Firewall just like normalization and model fitting.
+        imputation_values: dict[str, float] = {}
         if config.fill_missing == "median":
             train_medians = train_frame.median(axis=0, skipna=True)
             missing_medians = [column for column in feature_columns if not np.isfinite(float(train_medians[column]))]
@@ -200,6 +202,7 @@ class TabularDataset:
             train_frame = train_frame.fillna(train_medians)
             validation_frame = validation_frame.fillna(train_medians)
             test_frame = test_frame.fillna(train_medians)
+            imputation_values = {column: float(train_medians[column]) for column in feature_columns}
 
         train_features = train_frame.to_numpy(dtype=float)
         validation_features = validation_frame.to_numpy(dtype=float)
@@ -222,6 +225,7 @@ class TabularDataset:
             test_features=normalization.transform_array(test_features),
             test_targets=np.asarray(test_targets, dtype=float),
             normalization=normalization,
+            imputation_values=imputation_values,
             train_indices=np.asarray(train_indices, dtype=int),
             validation_indices=np.asarray(validation_indices, dtype=int),
             test_indices=np.asarray(test_indices, dtype=int),
@@ -250,4 +254,3 @@ class TabularDataset:
             minimum=tuple(float(value) for value in train_features.min(axis=0)),
             maximum=tuple(float(value) for value in train_features.max(axis=0)),
         )
-

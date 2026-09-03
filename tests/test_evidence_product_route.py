@@ -73,6 +73,7 @@ def test_posthoc_occlusion_is_persisted_checked_and_not_mislabeled_exact(tmp_pat
     assert explanation["epistemic_category"] == "POST-HOC ATTRIBUTION"
     assert explanation["exactness"] == "post_hoc"
     assert explanation["family"] == "occlusion"
+    assert explanation["preprocessing_artifact_sha256"] == run["preprocessing_artifact_sha256"]
     assert {item["feature"] for item in explanation["attributions"]} == set(run["feature_columns"])
     assert "not a causal" in explanation["scientific_note"]
 
@@ -85,6 +86,7 @@ def test_posthoc_occlusion_is_persisted_checked_and_not_mislabeled_exact(tmp_pat
     assert check["status"] == "PASSED_AVAILABLE_CHECKS"
     statuses = {item["name"]: item["status"] for item in check["checks"]}
     assert statuses["model_identity"] == "PASS"
+    assert statuses["preprocessing_artifact"] == "PASS"
     assert statuses["feature_order_identity"] == "PASS"
     assert statuses["repeatability"] == "PASS"
     assert statuses["causal_validity"] == "N/A"

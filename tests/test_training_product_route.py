@@ -223,6 +223,8 @@ def test_validation_evaluation_is_a_persistent_run_bound_analysis_object(tmp_pat
     assert evaluation["model_artifact_sha256"] == trained.json()["model_artifact_sha256"]
     assert evaluation["dataset_artifact_sha256"]
     assert evaluation["preprocessing_identity"].startswith("preprocessing:")
+    assert evaluation["preprocessing_artifact_sha256"] == trained.json()["preprocessing_artifact_sha256"]
+    assert evaluation["preprocessing_artifact_sha256"]
     assert all(row["calibrated_probability"] is None for row in evaluation["prediction_preview"])
 
     reopened = client.get(f"/api/projects/{session_id}/analyses/evaluations/latest")

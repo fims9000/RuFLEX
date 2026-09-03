@@ -103,6 +103,9 @@ class TrainingRun(BaseModel):
     split: SplitProvenance
     model_spec: dict
     normalization: dict
+    # Content-addressed, train-only preprocessing payload. Optional only for
+    # legacy project reopen; newly trained runs must carry this binding.
+    preprocessing_artifact_sha256: str | None = None
     training_summary: dict
     trajectory: list[EpochPoint]
     validation_metrics: dict[str, float]
@@ -314,6 +317,7 @@ class AnalysisEvaluation(BaseModel):
     dataset_fingerprint: str | None = None
     dataset_artifact_sha256: str | None = None
     preprocessing_identity: str | None = None
+    preprocessing_artifact_sha256: str | None = None
     split: Literal["validation"] = "validation"
     test_status: Literal["LOCKED_NOT_EVALUATED"] = "LOCKED_NOT_EVALUATED"
     metrics: dict[str, float]
@@ -349,6 +353,7 @@ class FinalTestEvaluation(BaseModel):
     dataset_fingerprint: str
     dataset_artifact_sha256: str
     preprocessing_identity: str
+    preprocessing_artifact_sha256: str | None = None
     split: Literal["test"] = "test"
     status: Literal["FINAL_TEST_EVALUATED"] = "FINAL_TEST_EVALUATED"
     calibration_id: UUID | None = None

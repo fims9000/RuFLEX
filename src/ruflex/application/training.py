@@ -445,6 +445,7 @@ def train_linear_baseline(
         validation_fraction=validation_fraction, test_fraction=test_fraction,
         normalization=NormalizationMode.STANDARD, fill_missing="median", random_state=resolved_split_seed,
     ))
+    preprocessing_artifact_sha256 = _persist_preprocessing_artifact(project_root, contract, split)
     if split.validation_features.shape[0] == 0:
         raise TrainingError("The resolved validation split is empty.")
     if kind == "logistic_regression":
@@ -473,7 +474,7 @@ def train_linear_baseline(
     }
     model_ref = ArtifactStore(project_root).ingest_bytes(
         json.dumps(artifact_payload, sort_keys=True, separators=(",", ":")).encode("utf-8"),
-        metadata=ArtifactMetadata(media_type="application/vnd.ruflex.declarative-linear-model+json", source_kind="generated", original_name=f"{kind}.json", parent_artifacts=[contract.source_artifact_sha256], producer={"component": "ruflex.application.training", "version": "1"}),
+        metadata=ArtifactMetadata(media_type="application/vnd.ruflex.declarative-linear-model+json", source_kind="generated", original_name=f"{kind}.json", parent_artifacts=[contract.source_artifact_sha256, preprocessing_artifact_sha256], producer={"component": "ruflex.application.training", "version": "1"}),
     )
     loss = metrics["mse"] if contract.task == TaskType.REGRESSION.value else 1.0 - metrics["accuracy"]
     summary = {"source": kind, "epochs_ran": 1, "best_epoch": 1, "monitor_name": "validation_loss", "best_monitor_value": loss, "train_loss": loss, "train_metrics": {}, "validation_loss": loss, "validation_metrics": metrics, "history": []}
@@ -482,7 +483,7 @@ def train_linear_baseline(
         seed=resolved_training_seed, split_seed=resolved_split_seed, training_seed=resolved_training_seed, randomness_protocol=randomness_protocol,
         max_epochs=1, learning_rate=0.0, batch_size=int(split.train_features.shape[0]), patience=None,
         split=_provenance(contract, split, split_seed=resolved_split_seed, validation_fraction=validation_fraction, test_fraction=test_fraction),
-        model_spec={"model_kind": kind, "coefficients": artifact_payload["coefficients"], "intercept": intercept}, normalization=_normalization_dict(split.normalization), training_summary=summary,
+        model_spec={"model_kind": kind, "coefficients": artifact_payload["coefficients"], "intercept": intercept}, normalization=_normalization_dict(split.normalization), preprocessing_artifact_sha256=preprocessing_artifact_sha256, training_summary=summary,
         trajectory=[EpochPoint(epoch=0, train_loss=loss, validation_loss=loss, train_metrics={}, validation_metrics=metrics), EpochPoint(epoch=1, train_loss=loss, validation_loss=loss, train_metrics={}, validation_metrics=metrics)],
         validation_metrics=metrics, prediction_preview=preview, confusion_matrix=confusion, calibration=calibration, model_artifact_sha256=model_ref.sha256,
     )
@@ -524,6 +525,7 @@ def train_decision_tree(
         target_column=contract.target, feature_columns=tuple(feature_columns), validation_fraction=validation_fraction,
         test_fraction=test_fraction, normalization=NormalizationMode.STANDARD, fill_missing="median", random_state=resolved_split_seed,
     ))
+    preprocessing_artifact_sha256 = _persist_preprocessing_artifact(project_root, contract, split)
     if split.validation_features.shape[0] == 0:
         raise TrainingError("The resolved validation split is empty.")
     if contract.task == TaskType.BINARY_CLASSIFICATION.value:
@@ -543,10 +545,10 @@ def train_decision_tree(
     preview, confusion, calibration = _validation_payload(contract.task, split.validation_targets, raw_validation, source_rows=split.validation_indices, dataset_fingerprint=contract.dataset_fingerprint)
     metrics = _baseline_metrics(contract.task, split.validation_targets, raw_validation)
     payload = _tree_payload(estimator, kind="decision_tree", task=contract.task, target=contract.target, feature_columns=feature_columns, normalization=_normalization_dict(split.normalization), split_seed=resolved_split_seed, training_seed=resolved_training_seed)
-    ref = ArtifactStore(project_root).ingest_bytes(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8"), metadata=ArtifactMetadata(media_type="application/vnd.ruflex.declarative-decision-tree+json", source_kind="generated", original_name="decision-tree.json", parent_artifacts=[contract.source_artifact_sha256], producer={"component": "ruflex.application.training", "version": "1"}))
+    ref = ArtifactStore(project_root).ingest_bytes(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8"), metadata=ArtifactMetadata(media_type="application/vnd.ruflex.declarative-decision-tree+json", source_kind="generated", original_name="decision-tree.json", parent_artifacts=[contract.source_artifact_sha256, preprocessing_artifact_sha256], producer={"component": "ruflex.application.training", "version": "1"}))
     loss = metrics["mse"] if contract.task == TaskType.REGRESSION.value else 1 - metrics["accuracy"]
     summary = {"source": "decision_tree", "epochs_ran": 1, "best_epoch": 1, "monitor_name": "validation_loss", "best_monitor_value": loss, "train_loss": loss, "train_metrics": {}, "validation_loss": loss, "validation_metrics": metrics, "history": []}
-    run = TrainingRun(model_kind="decision_tree", task=contract.task, target=contract.target, dataset_fingerprint=contract.dataset_fingerprint, dataset_artifact_sha256=contract.source_artifact_sha256, feature_columns=feature_columns, seed=resolved_training_seed, split_seed=resolved_split_seed, training_seed=resolved_training_seed, randomness_protocol=randomness_protocol, max_epochs=1, learning_rate=0.0, batch_size=int(split.train_features.shape[0]), patience=None, split=_provenance(contract, split, split_seed=resolved_split_seed, validation_fraction=validation_fraction, test_fraction=test_fraction), model_spec={"model_kind": "decision_tree", "node_count": payload["tree"]["node_count"], "max_depth": payload["tree"]["max_depth"], "leaf_count": sum(1 for value in payload["tree"]["children_left"] if value == -1)}, normalization=_normalization_dict(split.normalization), training_summary=summary, trajectory=[EpochPoint(epoch=0, train_loss=loss, validation_loss=loss, train_metrics={}, validation_metrics=metrics), EpochPoint(epoch=1, train_loss=loss, validation_loss=loss, train_metrics={}, validation_metrics=metrics)], validation_metrics=metrics, prediction_preview=preview, confusion_matrix=confusion, calibration=calibration, model_artifact_sha256=ref.sha256)
+    run = TrainingRun(model_kind="decision_tree", task=contract.task, target=contract.target, dataset_fingerprint=contract.dataset_fingerprint, dataset_artifact_sha256=contract.source_artifact_sha256, feature_columns=feature_columns, seed=resolved_training_seed, split_seed=resolved_split_seed, training_seed=resolved_training_seed, randomness_protocol=randomness_protocol, max_epochs=1, learning_rate=0.0, batch_size=int(split.train_features.shape[0]), patience=None, split=_provenance(contract, split, split_seed=resolved_split_seed, validation_fraction=validation_fraction, test_fraction=test_fraction), model_spec={"model_kind": "decision_tree", "node_count": payload["tree"]["node_count"], "max_depth": payload["tree"]["max_depth"], "leaf_count": sum(1 for value in payload["tree"]["children_left"] if value == -1)}, normalization=_normalization_dict(split.normalization), preprocessing_artifact_sha256=preprocessing_artifact_sha256, training_summary=summary, trajectory=[EpochPoint(epoch=0, train_loss=loss, validation_loss=loss, train_metrics={}, validation_metrics=metrics), EpochPoint(epoch=1, train_loss=loss, validation_loss=loss, train_metrics={}, validation_metrics=metrics)], validation_metrics=metrics, prediction_preview=preview, confusion_matrix=confusion, calibration=calibration, model_artifact_sha256=ref.sha256)
     persist_training_run(project_root, run)
     return run
 
@@ -563,6 +565,7 @@ def train_random_forest(
     resolved_split_seed, resolved_training_seed, randomness_protocol = _resolve_randomness(seed=seed, split_seed=split_seed, training_seed=training_seed)
     _seed_everything(resolved_training_seed)
     split = TabularDataset.from_dataframe(frame).split(DatasetConfig(target_column=contract.target, feature_columns=tuple(columns), validation_fraction=validation_fraction, test_fraction=test_fraction, normalization=NormalizationMode.STANDARD, fill_missing="median", random_state=resolved_split_seed))
+    preprocessing_artifact_sha256 = _persist_preprocessing_artifact(project_root, contract, split)
     if contract.task == TaskType.BINARY_CLASSIFICATION.value:
         estimator = RandomForestClassifier(n_estimators=n_estimators, random_state=resolved_training_seed, max_depth=max_depth)
         estimator.fit(split.train_features, np.asarray(split.train_targets).reshape(-1).astype(int))
@@ -578,9 +581,9 @@ def train_random_forest(
     normalization = _normalization_dict(split.normalization)
     trees = [_tree_payload(tree, kind="decision_tree", task=contract.task, target=contract.target, feature_columns=columns, normalization=normalization, split_seed=resolved_split_seed, training_seed=resolved_training_seed)["tree"] for tree in estimator.estimators_]
     payload = {"format": "ruflex.declarative-random-forest/v1", "model_kind": "random_forest", "task": contract.task, "target": contract.target, "feature_columns": columns, "parameters": {"n_estimators": n_estimators, "max_depth": max_depth, "random_state": resolved_training_seed}, "split_seed": resolved_split_seed, "training_seed": resolved_training_seed, "normalization": normalization, "trees": trees, "ensemble_semantics": "aggregate constituent tree predictions; no single tree path is the exact explanation of the ensemble"}
-    ref = ArtifactStore(project_root).ingest_bytes(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode(), metadata=ArtifactMetadata(media_type="application/vnd.ruflex.declarative-random-forest+json", source_kind="generated", original_name="random-forest.json", parent_artifacts=[contract.source_artifact_sha256], producer={"component": "ruflex.application.training", "version": "1"}))
+    ref = ArtifactStore(project_root).ingest_bytes(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode(), metadata=ArtifactMetadata(media_type="application/vnd.ruflex.declarative-random-forest+json", source_kind="generated", original_name="random-forest.json", parent_artifacts=[contract.source_artifact_sha256, preprocessing_artifact_sha256], producer={"component": "ruflex.application.training", "version": "1"}))
     loss = metrics["mse"] if contract.task == TaskType.REGRESSION.value else 1 - metrics["accuracy"]
-    run = TrainingRun(model_kind="random_forest", task=contract.task, target=contract.target, dataset_fingerprint=contract.dataset_fingerprint, dataset_artifact_sha256=contract.source_artifact_sha256, feature_columns=columns, seed=resolved_training_seed, split_seed=resolved_split_seed, training_seed=resolved_training_seed, randomness_protocol=randomness_protocol, max_epochs=1, learning_rate=0., batch_size=int(split.train_features.shape[0]), patience=None, split=_provenance(contract, split, split_seed=resolved_split_seed, validation_fraction=validation_fraction, test_fraction=test_fraction), model_spec={"model_kind": "random_forest", "tree_count": n_estimators, "node_count": sum(tree["node_count"] for tree in trees), "max_depth": max(tree["max_depth"] for tree in trees), "leaf_count": sum(sum(1 for node in tree["children_left"] if node == -1) for tree in trees)}, normalization=normalization, training_summary={"source": "random_forest", "epochs_ran": 1, "best_epoch": 1, "monitor_name": "validation_loss", "best_monitor_value": loss, "train_loss": loss, "train_metrics": {}, "validation_loss": loss, "validation_metrics": metrics, "history": []}, trajectory=[EpochPoint(epoch=0, train_loss=loss, validation_loss=loss, train_metrics={}, validation_metrics=metrics), EpochPoint(epoch=1, train_loss=loss, validation_loss=loss, train_metrics={}, validation_metrics=metrics)], validation_metrics=metrics, prediction_preview=preview, confusion_matrix=confusion, calibration=calibration, model_artifact_sha256=ref.sha256)
+    run = TrainingRun(model_kind="random_forest", task=contract.task, target=contract.target, dataset_fingerprint=contract.dataset_fingerprint, dataset_artifact_sha256=contract.source_artifact_sha256, feature_columns=columns, seed=resolved_training_seed, split_seed=resolved_split_seed, training_seed=resolved_training_seed, randomness_protocol=randomness_protocol, max_epochs=1, learning_rate=0., batch_size=int(split.train_features.shape[0]), patience=None, split=_provenance(contract, split, split_seed=resolved_split_seed, validation_fraction=validation_fraction, test_fraction=test_fraction), model_spec={"model_kind": "random_forest", "tree_count": n_estimators, "node_count": sum(tree["node_count"] for tree in trees), "max_depth": max(tree["max_depth"] for tree in trees), "leaf_count": sum(sum(1 for node in tree["children_left"] if node == -1) for tree in trees)}, normalization=normalization, preprocessing_artifact_sha256=preprocessing_artifact_sha256, training_summary={"source": "random_forest", "epochs_ran": 1, "best_epoch": 1, "monitor_name": "validation_loss", "best_monitor_value": loss, "train_loss": loss, "train_metrics": {}, "validation_loss": loss, "validation_metrics": metrics, "history": []}, trajectory=[EpochPoint(epoch=0, train_loss=loss, validation_loss=loss, train_metrics={}, validation_metrics=metrics), EpochPoint(epoch=1, train_loss=loss, validation_loss=loss, train_metrics={}, validation_metrics=metrics)], validation_metrics=metrics, prediction_preview=preview, confusion_matrix=confusion, calibration=calibration, model_artifact_sha256=ref.sha256)
     persist_training_run(project_root, run); return run
 
 
@@ -591,6 +594,7 @@ def train_gradient_boosting(project_root: Path, *, seed: int | None = None, spli
     resolved_split_seed, resolved_training_seed, randomness_protocol = _resolve_randomness(seed=seed, split_seed=split_seed, training_seed=training_seed)
     _seed_everything(resolved_training_seed)
     split = TabularDataset.from_dataframe(frame).split(DatasetConfig(target_column=contract.target, feature_columns=tuple(columns), validation_fraction=validation_fraction, test_fraction=test_fraction, normalization=NormalizationMode.STANDARD, fill_missing="median", random_state=resolved_split_seed))
+    preprocessing_artifact_sha256 = _persist_preprocessing_artifact(project_root, contract, split)
     if contract.task == TaskType.BINARY_CLASSIFICATION.value:
         estimator = GradientBoostingClassifier(n_estimators=n_estimators, learning_rate=learning_rate, max_depth=max_depth, random_state=resolved_training_seed)
         estimator.fit(split.train_features, np.asarray(split.train_targets).reshape(-1).astype(int)); probabilities = estimator.predict_proba(split.validation_features)[:, 1]; raw = estimator.decision_function(split.validation_features)
@@ -606,9 +610,9 @@ def train_gradient_boosting(project_root: Path, *, seed: int | None = None, spli
     # local evidence after the original sklearn estimator has gone out of memory.
     initial_raw_prediction = float(np.asarray(estimator._raw_predict_init(split.train_features[:1]), dtype=float).reshape(-1)[0])
     payload = {"format": "ruflex.declarative-gradient-boosting/v1", "model_kind": "gradient_boosting", "task": contract.task, "target": contract.target, "feature_columns": columns, "parameters": {"n_estimators": n_estimators, "learning_rate": learning_rate, "max_depth": max_depth, "random_state": resolved_training_seed}, "split_seed": resolved_split_seed, "training_seed": resolved_training_seed, "normalization": normalization, "initial_raw_prediction": initial_raw_prediction, "trees": trees, "ensemble_semantics": "stagewise weighted aggregation; no single constituent path is the exact explanation of the ensemble"}
-    ref = ArtifactStore(project_root).ingest_bytes(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode(), metadata=ArtifactMetadata(media_type="application/vnd.ruflex.declarative-gradient-boosting+json", source_kind="generated", original_name="gradient-boosting.json", parent_artifacts=[contract.source_artifact_sha256], producer={"component": "ruflex.application.training", "version": "1"}))
+    ref = ArtifactStore(project_root).ingest_bytes(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode(), metadata=ArtifactMetadata(media_type="application/vnd.ruflex.declarative-gradient-boosting+json", source_kind="generated", original_name="gradient-boosting.json", parent_artifacts=[contract.source_artifact_sha256, preprocessing_artifact_sha256], producer={"component": "ruflex.application.training", "version": "1"}))
     loss = metrics["mse"] if contract.task == TaskType.REGRESSION.value else 1-metrics["accuracy"]
-    run = TrainingRun(model_kind="gradient_boosting", task=contract.task, target=contract.target, dataset_fingerprint=contract.dataset_fingerprint, dataset_artifact_sha256=contract.source_artifact_sha256, feature_columns=columns, seed=resolved_training_seed, split_seed=resolved_split_seed, training_seed=resolved_training_seed, randomness_protocol=randomness_protocol, max_epochs=n_estimators, learning_rate=learning_rate, batch_size=int(split.train_features.shape[0]), patience=None, split=_provenance(contract, split, split_seed=resolved_split_seed, validation_fraction=validation_fraction, test_fraction=test_fraction), model_spec={"model_kind":"gradient_boosting","tree_count":len(trees),"node_count":sum(tree["node_count"] for tree in trees),"max_depth":max(tree["max_depth"] for tree in trees),"leaf_count":sum(sum(1 for node in tree["children_left"] if node==-1) for tree in trees)}, normalization=normalization, training_summary={"source":"gradient_boosting","epochs_ran":n_estimators,"best_epoch":n_estimators,"monitor_name":"validation_loss","best_monitor_value":loss,"train_loss":loss,"train_metrics":{},"validation_loss":loss,"validation_metrics":metrics,"history":[]}, trajectory=[EpochPoint(epoch=0, train_loss=loss, validation_loss=loss, train_metrics={}, validation_metrics=metrics),EpochPoint(epoch=n_estimators, train_loss=loss, validation_loss=loss, train_metrics={}, validation_metrics=metrics)], validation_metrics=metrics,prediction_preview=preview,confusion_matrix=confusion,calibration=calibration,model_artifact_sha256=ref.sha256)
+    run = TrainingRun(model_kind="gradient_boosting", task=contract.task, target=contract.target, dataset_fingerprint=contract.dataset_fingerprint, dataset_artifact_sha256=contract.source_artifact_sha256, feature_columns=columns, seed=resolved_training_seed, split_seed=resolved_split_seed, training_seed=resolved_training_seed, randomness_protocol=randomness_protocol, max_epochs=n_estimators, learning_rate=learning_rate, batch_size=int(split.train_features.shape[0]), patience=None, split=_provenance(contract, split, split_seed=resolved_split_seed, validation_fraction=validation_fraction, test_fraction=test_fraction), model_spec={"model_kind":"gradient_boosting","tree_count":len(trees),"node_count":sum(tree["node_count"] for tree in trees),"max_depth":max(tree["max_depth"] for tree in trees),"leaf_count":sum(sum(1 for node in tree["children_left"] if node==-1) for tree in trees)}, normalization=normalization, preprocessing_artifact_sha256=preprocessing_artifact_sha256, training_summary={"source":"gradient_boosting","epochs_ran":n_estimators,"best_epoch":n_estimators,"monitor_name":"validation_loss","best_monitor_value":loss,"train_loss":loss,"train_metrics":{},"validation_loss":loss,"validation_metrics":metrics,"history":[]}, trajectory=[EpochPoint(epoch=0, train_loss=loss, validation_loss=loss, train_metrics={}, validation_metrics=metrics),EpochPoint(epoch=n_estimators, train_loss=loss, validation_loss=loss, train_metrics={}, validation_metrics=metrics)], validation_metrics=metrics,prediction_preview=preview,confusion_matrix=confusion,calibration=calibration,model_artifact_sha256=ref.sha256)
     persist_training_run(project_root, run); return run
 
 
@@ -658,6 +662,42 @@ def load_latest_tree_path(project_root: Path) -> TreePathEvidence:
 
 def _normalization_dict(normalization: NormalizationArtifact) -> dict:
     return normalization.to_dict()
+
+
+def _persist_preprocessing_artifact(project_root: Path, contract, split) -> str:
+    """Persist the exact train-only transformation used by a TrainingRun.
+
+    The content-addressed object captures the fitted parameters and schemas
+    without persisting raw partition values.  Its SHA is the durable identity
+    carried by downstream analyses, explanations, and final-test evidence.
+    """
+    payload = {
+        "format": "ruflex.preprocessing/v1",
+        "dataset_fingerprint": contract.dataset_fingerprint,
+        "dataset_artifact_sha256": contract.source_artifact_sha256,
+        "fit_scope": "train_only",
+        "fit_case_identities": sorted(
+            row_identity(contract.dataset_fingerprint, int(index))
+            for index in np.asarray(split.train_indices, dtype=int).reshape(-1)
+        ),
+        "feature_columns": list(split.feature_columns),
+        "input_schema": {"feature_columns": list(split.feature_columns), "representation": "raw DatasetContract feature values"},
+        "output_schema": {"feature_columns": list(split.feature_columns), "representation": "finite normalized numeric feature values"},
+        "missing_value_policy": "median",
+        "imputation_values": split.imputation_values,
+        "normalization": _normalization_dict(split.normalization),
+    }
+    ref = ArtifactStore(project_root).ingest_bytes(
+        json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8"),
+        metadata=ArtifactMetadata(
+            media_type="application/vnd.ruflex.preprocessing+json",
+            source_kind="generated",
+            original_name="train-only-preprocessing.json",
+            parent_artifacts=[contract.source_artifact_sha256],
+            producer={"component": "ruflex.application.training", "version": "1"},
+        ),
+    )
+    return ref.sha256
 
 
 def train_flat_neuro_fuzzy(
@@ -719,6 +759,7 @@ def train_flat_neuro_fuzzy(
             random_state=resolved_split_seed,
         )
     )
+    preprocessing_artifact_sha256 = _persist_preprocessing_artifact(project_root, contract, split)
     if split.validation_features.shape[0] == 0:
         raise TrainingError("The resolved validation split is empty; increase the dataset size or validation fraction.")
 
@@ -769,7 +810,7 @@ def train_flat_neuro_fuzzy(
                 media_type="application/x-pytorch-model",
                 source_kind="generated",
                 original_name="flat-neuro-fuzzy.pt",
-                parent_artifacts=[contract.source_artifact_sha256],
+                parent_artifacts=[contract.source_artifact_sha256, preprocessing_artifact_sha256],
                 producer={"component": "ruflex.application.training", "version": "1"},
             ),
         )
@@ -793,6 +834,7 @@ def train_flat_neuro_fuzzy(
         split=_provenance(contract, split, split_seed=resolved_split_seed, validation_fraction=validation_fraction, test_fraction=test_fraction),
         model_spec=spec.to_dict(),
         normalization=_normalization_dict(split.normalization),
+        preprocessing_artifact_sha256=preprocessing_artifact_sha256,
         training_summary=summary.to_dict(),
         trajectory=[
             EpochPoint(
@@ -1090,6 +1132,7 @@ def create_validation_evaluation(project_root: Path, run_id: UUID) -> AnalysisEv
         dataset_fingerprint=run.dataset_fingerprint or contract.dataset_fingerprint,
         dataset_artifact_sha256=run.dataset_artifact_sha256 or contract.source_artifact_sha256,
         preprocessing_identity=preprocessing_identity,
+        preprocessing_artifact_sha256=run.preprocessing_artifact_sha256,
         test_status=run.split.test_status,
         metrics=dict(run.validation_metrics),
         prediction_preview=rows,
@@ -1713,6 +1756,7 @@ def evaluate_final_test(
         dataset_fingerprint=run.dataset_fingerprint,
         dataset_artifact_sha256=run.dataset_artifact_sha256,
         preprocessing_identity=expected_preprocessing,
+        preprocessing_artifact_sha256=run.preprocessing_artifact_sha256,
         calibration_id=None if calibration is None else calibration.calibration_id,
         threshold_id=None if threshold is None else threshold.threshold_id,
         selective_policy_id=None if selective_policy is None else selective_policy.policy_id,

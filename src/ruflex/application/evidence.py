@@ -692,6 +692,7 @@ def _persist_explanation(project_root: Path, explanation: ExplanationContract) -
     run = load_training_run(project_root, explanation.run_id)
     explanation = explanation.model_copy(update={
         "preprocessing_identity": explanation.preprocessing_identity or _stable_identity("preprocessing", run.normalization),
+        "preprocessing_artifact_sha256": explanation.preprocessing_artifact_sha256 or run.preprocessing_artifact_sha256,
         "feature_order_identity": explanation.feature_order_identity or _stable_identity("feature-order", list(run.feature_columns)),
         "sample_identity": explanation.sample_identity or _stable_identity(
             "explanation-sample",
@@ -746,6 +747,15 @@ def check_explanation(project_root: Path, explanation_id: UUID) -> ExplanationCh
             "Legacy explanation predates persisted preprocessing identity." if explanation.preprocessing_identity is None
             else "Persisted preprocessing identity matches the TrainingRun." if explanation.preprocessing_identity == expected_preprocessing
             else "Persisted preprocessing identity does not match the TrainingRun."
+        ),
+    ))
+    checks.append(ExplanationCheckItem(
+        name="preprocessing_artifact",
+        status="WARN" if explanation.preprocessing_artifact_sha256 is None else ("PASS" if explanation.preprocessing_artifact_sha256 == run.preprocessing_artifact_sha256 else "FAIL"),
+        detail=(
+            "Legacy explanation predates the preprocessing artifact binding." if explanation.preprocessing_artifact_sha256 is None
+            else "Persisted preprocessing artifact matches the TrainingRun." if explanation.preprocessing_artifact_sha256 == run.preprocessing_artifact_sha256
+            else "Persisted preprocessing artifact does not match the TrainingRun."
         ),
     ))
     expected_feature_order = _stable_identity("feature-order", list(run.feature_columns))

@@ -42,6 +42,7 @@ test("PRODUCT-02 performs real neuro-fuzzy training, validation evaluation and r
   const runEvidence = page.locator(".run-provenance");
   await expect(runEvidence).toBeVisible({ timeout: 30_000 });
   await expect(runEvidence).toContainText("model artifact persisted");
+  await expect(runEvidence).toContainText("train-only preprocessing persisted");
   await expect(page.locator(".run-summary-strip")).toBeVisible();
   await expect(page.getByText("Training trajectory · epoch 0 included", { exact: true })).toBeVisible();
 
@@ -58,6 +59,7 @@ test("PRODUCT-02 performs real neuro-fuzzy training, validation evaluation and r
   await page.getByRole("button", { name: /Training run/ }).click();
   await expect(page.locator(".run-provenance")).toBeVisible();
   await expect(page.locator(".run-provenance")).toContainText("model artifact persisted");
+  await expect(page.locator(".run-provenance")).toContainText("train-only preprocessing persisted");
   await page.getByRole("button", { name: "A", exact: true }).click();
   await expect(page.getByText("VALIDATION EVIDENCE", { exact: true })).toBeVisible();
 });

@@ -586,6 +586,7 @@ export type AnalysisEvaluation = {
   dataset_fingerprint: string | null;
   dataset_artifact_sha256: string | null;
   preprocessing_identity: string | null;
+  preprocessing_artifact_sha256: string | null;
   split: "validation";
   test_status: "LOCKED_NOT_EVALUATED";
   metrics: Record<string, number>;
@@ -999,6 +1000,7 @@ export type TrainingRun = {
   };
   model_spec: Record<string, unknown>;
   normalization: Record<string, unknown>;
+  preprocessing_artifact_sha256: string | null;
   training_summary: {
     source: string;
     epochs_ran: number;
