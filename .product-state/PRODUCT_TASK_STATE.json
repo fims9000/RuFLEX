@@ -24,7 +24,8 @@
     "plugin_contracts_and_read_only_sdk",
     "imported_fis_provenance_integrity",
     "explanation_evidence_reopen_integrity",
-    "artifact_metadata_integrity"
+    "artifact_metadata_integrity",
+    "fis_reopen_integrity"
   ],
   "active_acceptance": [
     "Verify current product-cycle changes across the full source tree and a fresh tracked-source archive.",
@@ -54,6 +55,7 @@
     "plugin_contracts_and_read_only_sdk": "PASS: registered native validator descriptor is available through FastAPI, Studio and read-only SDK; focused Python and Evidence browser tests passed",
     "imported_fis_provenance_integrity": "PASS: project integrity now verifies MATLAB FIS import receipt schema, imported source artifact hash/provenance, and semantic binding to the persisted FIS; focused integrity and FIS tests passed",
     "explanation_evidence_reopen_integrity": "PASS: project integrity now fails closed for malformed or detached persisted ExplanationContract/ExplanationCheck evidence and unresolved active pointers; focused evidence/integrity tests passed",
-    "artifact_metadata_integrity": "PASS: ArtifactStore verifies canonical metadata SHA, byte size and relative blob path as well as blob content; focused and full Python tests passed"
+    "artifact_metadata_integrity": "PASS: ArtifactStore verifies canonical metadata SHA, byte size and relative blob path as well as blob content; focused and full Python tests passed",
+    "fis_reopen_integrity": "PASS: project integrity validates persisted FIS semantic identity, revision history and active pointer before import provenance is accepted; focused and full Python tests passed"
   }
 }
