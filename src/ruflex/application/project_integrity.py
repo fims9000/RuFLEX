@@ -11,6 +11,7 @@ from ruflex.application.datasets import DatasetContract, DatasetProfile, load_da
 from ruflex.application.fis import load_fis
 from ruflex.application.projects import ProjectService
 from ruflex.application.training import list_training_runs
+from ruflex.domain.evidence import ExplanationCheck, ExplanationContract
 from ruflex.domain.project import ProjectIntegrityIssue, ProjectIntegrityReport
 
 
@@ -72,6 +73,7 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                     issues.append(ProjectIntegrityIssue(code="IMPORTED_FIS_SEMANTIC_MISMATCH", status="FAIL", path=relative_path, detail="Import receipt semantic hash does not match the persisted FIS."))
             except (FileNotFoundError, ValidationError, ValueError, OSError, json.JSONDecodeError) as error:
                 issues.append(ProjectIntegrityIssue(code="IMPORTED_FIS_PROVENANCE_MALFORMED", status="FAIL", path=relative_path, detail=str(error)))
+    runs_by_id = {run.run_id: run for run in runs}
     for run in runs:
         verification = store.verify(ArtifactRef(sha256=run.model_artifact_sha256)); checked += 1
         if not verification.valid:
@@ -97,5 +99,76 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                         issues.append(ProjectIntegrityIssue(code="PREPROCESSING_PROVENANCE_MISMATCH", status="FAIL", path=f"runs/{run.run_id}.json", detail="Persisted preprocessing artifact does not match the TrainingRun's train-only normalization and feature schema."))
                 except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError) as error:
                     issues.append(ProjectIntegrityIssue(code="PREPROCESSING_ARTIFACT_MALFORMED", status="FAIL", path=f"runs/{run.run_id}.json", detail=str(error)))
+    explanation_root = base / "evidence" / "explanations"
+    explanations: dict[object, ExplanationContract] = {}
+    if explanation_root.exists() and not explanation_root.is_dir():
+        issues.append(ProjectIntegrityIssue(code="EXPLANATION_EVIDENCE_MALFORMED", status="FAIL", path="evidence/explanations", detail="Explanation evidence path is not a directory."))
+    elif explanation_root.is_dir():
+        for path in sorted(explanation_root.glob("*.json")):
+            if path.name == "active-explanation.json":
+                continue
+            checked += 1
+            relative_path = str(path.relative_to(base))
+            try:
+                explanation = ExplanationContract.model_validate_json(path.read_text(encoding="utf-8"))
+                if path.stem != str(explanation.explanation_id):
+                    raise ValueError("Explanation filename does not match its persisted identity.")
+                explanations[explanation.explanation_id] = explanation
+                run = runs_by_id.get(explanation.run_id)
+                if run is None:
+                    issues.append(ProjectIntegrityIssue(code="EXPLANATION_RUN_MISSING", status="FAIL", path=relative_path, detail="Explanation references a TrainingRun that is not present."))
+                    continue
+                if explanation.model_artifact_sha256 != run.model_artifact_sha256:
+                    issues.append(ProjectIntegrityIssue(code="EXPLANATION_MODEL_MISMATCH", status="FAIL", path=relative_path, detail="Explanation model artifact does not match its TrainingRun."))
+                if explanation.preprocessing_artifact_sha256 is not None and explanation.preprocessing_artifact_sha256 != run.preprocessing_artifact_sha256:
+                    issues.append(ProjectIntegrityIssue(code="EXPLANATION_PREPROCESSING_MISMATCH", status="FAIL", path=relative_path, detail="Explanation preprocessing artifact does not match its TrainingRun."))
+                if list(explanation.sample) != list(run.feature_columns) or set(explanation.sample) != set(run.feature_columns):
+                    issues.append(ProjectIntegrityIssue(code="EXPLANATION_SAMPLE_SCHEMA_MISMATCH", status="FAIL", path=relative_path, detail="Explanation sample feature identity/order does not match its TrainingRun."))
+                if [item.feature for item in explanation.attributions] != list(run.feature_columns):
+                    issues.append(ProjectIntegrityIssue(code="EXPLANATION_ATTRIBUTION_SCHEMA_MISMATCH", status="FAIL", path=relative_path, detail="Explanation attribution feature identity/order does not match its TrainingRun."))
+                if explanation.target != run.target:
+                    issues.append(ProjectIntegrityIssue(code="EXPLANATION_TARGET_MISMATCH", status="FAIL", path=relative_path, detail="Explanation target does not match its TrainingRun."))
+            except (ValidationError, ValueError, OSError, json.JSONDecodeError) as error:
+                issues.append(ProjectIntegrityIssue(code="EXPLANATION_EVIDENCE_MALFORMED", status="FAIL", path=relative_path, detail=str(error)))
+        active_path = explanation_root / "active-explanation.json"
+        if active_path.exists():
+            checked += 1
+            try:
+                active_id = json.loads(active_path.read_text(encoding="utf-8"))["explanation_id"]
+                if str(active_id) not in {str(key) for key in explanations}:
+                    raise ValueError("Active explanation pointer does not resolve to a persisted explanation.")
+            except (KeyError, TypeError, ValueError, OSError, json.JSONDecodeError) as error:
+                issues.append(ProjectIntegrityIssue(code="EXPLANATION_ACTIVE_POINTER_INVALID", status="FAIL", path="evidence/explanations/active-explanation.json", detail=str(error)))
+    check_root = base / "evidence" / "explanation-checks"
+    if check_root.exists() and not check_root.is_dir():
+        issues.append(ProjectIntegrityIssue(code="EXPLANATION_CHECK_EVIDENCE_MALFORMED", status="FAIL", path="evidence/explanation-checks", detail="Explanation-check evidence path is not a directory."))
+    elif check_root.is_dir():
+        check_ids: set[object] = set()
+        for path in sorted(check_root.glob("*.json")):
+            if path.name == "active-check.json":
+                continue
+            checked += 1
+            relative_path = str(path.relative_to(base))
+            try:
+                check = ExplanationCheck.model_validate_json(path.read_text(encoding="utf-8"))
+                if path.stem != str(check.check_id):
+                    raise ValueError("Explanation check filename does not match its persisted identity.")
+                check_ids.add(check.check_id)
+                explanation = explanations.get(check.explanation_id)
+                if explanation is None:
+                    issues.append(ProjectIntegrityIssue(code="EXPLANATION_CHECK_EXPLANATION_MISSING", status="FAIL", path=relative_path, detail="Explanation check references an explanation that is not present."))
+                elif check.run_id != explanation.run_id:
+                    issues.append(ProjectIntegrityIssue(code="EXPLANATION_CHECK_RUN_MISMATCH", status="FAIL", path=relative_path, detail="Explanation check run identity does not match its explanation."))
+            except (ValidationError, ValueError, OSError, json.JSONDecodeError) as error:
+                issues.append(ProjectIntegrityIssue(code="EXPLANATION_CHECK_EVIDENCE_MALFORMED", status="FAIL", path=relative_path, detail=str(error)))
+        active_path = check_root / "active-check.json"
+        if active_path.exists():
+            checked += 1
+            try:
+                active_id = json.loads(active_path.read_text(encoding="utf-8"))["check_id"]
+                if str(active_id) not in {str(key) for key in check_ids}:
+                    raise ValueError("Active explanation-check pointer does not resolve to persisted evidence.")
+            except (KeyError, TypeError, ValueError, OSError, json.JSONDecodeError) as error:
+                issues.append(ProjectIntegrityIssue(code="EXPLANATION_CHECK_ACTIVE_POINTER_INVALID", status="FAIL", path="evidence/explanation-checks/active-check.json", detail=str(error)))
     status = "FAIL" if any(issue.status == "FAIL" for issue in issues) else "WARN" if issues else "PASS"
     return ProjectIntegrityReport(project_id=project.id, status=status, checked_objects=checked, issues=issues)
