@@ -11,6 +11,6 @@ The persisted Golden Route is exercised by the Product browser routes and integr
 6. Execute revision-bound BehaviorSpecs and a validation-only ACCEPT/REVIEW selective policy.
 7. Use Exhaustive Lab only for `EXACT_FINITE_STRUCTURE` Decision Tree paths or `EXACT_ON_DECLARED_DISCRETE_GRID` FIS states.
 8. Freeze policy and explicitly evaluate the final test. Later selective-policy tuning is blocked.
-9. Build Lineage, AssuranceCase and the inspection-first VerificationBundle; close and reopen the project.
+9. Build Lineage, AssuranceCase and the inspection-first VerificationBundle; validate its checksums, typed evidence and direct provenance references from the ZIP or a freshly extracted root; close and reopen the project.
 
 The safe condition-monitoring demonstration is executable in Evidence: it persists telemetry decision evidence, an occlusion explanation/check, AssuranceCase and VerificationBundle without emitting any actuator or targeting command.

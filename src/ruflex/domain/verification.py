@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from typing import Literal
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -17,3 +18,22 @@ class VerificationBundle(BaseModel):
     manifest_sha256: str
     inspection_first: bool = True
     excluded: list[str] = Field(default_factory=list)
+
+
+class VerificationBundleValidation(BaseModel):
+    """Portable inspection result for a declarative VerificationBundle."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: int = 1
+    bundle_path: str
+    status: Literal["PASS", "FAIL"]
+    bundle_sha256: str | None = None
+    manifest_sha256: str | None = None
+    checked_entries: int = Field(default=0, ge=0)
+    errors: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    scientific_note: str = (
+        "Validation checks declarative evidence hashes, schemas, and persisted "
+        "relationships. It does not execute bundled content or establish model quality."
+    )

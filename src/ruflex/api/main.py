@@ -33,6 +33,7 @@ from ruflex.domain.stability import StabilityGateApplication, StabilityGatePolic
 from ruflex.domain.demo import ConditionMonitoringDemo
 from ruflex.domain.exhaustive import ExhaustiveLabResult
 from ruflex.domain.assurance import AssuranceCase
+from ruflex.domain.verification import VerificationBundleValidation
 from ruflex.domain.expert_correction import ExpertCorrectionResult, ExpertCorrectionRevision
 from ruflex.domain.fis import FISEvaluation, FISSpec, ResponseSurface
 from ruflex.application.workspace_sessions import WorkspaceSession, WorkspaceSessionError, WorkspaceSessionService
@@ -60,6 +61,12 @@ class SessionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     session_id: UUID
+
+
+class ValidateVerificationBundleRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    path: str = Field(min_length=1)
 
 
 class UpdateProjectMetadataRequest(SessionRequest):
@@ -1056,6 +1063,13 @@ def export_verification_bundle_route(request: SessionRequest) -> dict:
         return export_verification_bundle(session.project.root)
     except ProjectError as error: raise _project_error(error) from error
     except FileNotFoundError as error: raise HTTPException(status_code=422, detail="Build an AssuranceCase before exporting a VerificationBundle.") from error
+
+
+@app.post("/api/verification-bundles/validate", response_model=VerificationBundleValidation)
+def validate_verification_bundle_route(request: ValidateVerificationBundleRequest) -> VerificationBundleValidation:
+    """Inspect an exported or freshly extracted declarative evidence bundle."""
+    from ruflex.application.verification_bundle import validate_verification_bundle
+    return validate_verification_bundle(request.path)
 
 
 @app.post("/api/projects/evidence/behavior-specs", response_model=BehaviorSpec, status_code=201)

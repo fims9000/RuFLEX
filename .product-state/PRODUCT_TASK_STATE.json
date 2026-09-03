@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "product_version": "1.0.1",
+  "active_capability": "verification_bundle_portability",
+  "completed_capabilities": [
+    "dataset_contracts",
+    "training_and_validation_evidence",
+    "decision_policies",
+    "stability_lab",
+    "explanation_contract_v2",
+    "behavior_and_assurance"
+  ],
+  "active_acceptance": [
+    "VerificationBundle has a portable fail-closed validator for ZIP and extracted roots.",
+    "Bundle validation is available through API, Studio, and the read-only SDK.",
+    "Golden Route export validates evidence hashes, typed objects, and direct provenance references."
+  ],
+  "blockers": [],
+  "next_executable_work": "Run the Golden Route browser route with portable bundle validation, then advance to the next unmet product capability.",
+  "qa": {
+    "focused_backend": "PASS: tests/test_evidence_product_route.py tests/test_sdk_smoke.py tests/test_lineage_product_route.py",
+    "frontend_build": "PASS: npm run build",
+    "golden_route_browser": "PENDING"
+  }
+}

@@ -21,6 +21,7 @@ from ruflex.application.generalization import (
     load_slice_analysis,
 )
 from ruflex.application.lineage import build_project_lineage
+from ruflex.application.verification_bundle import validate_verification_bundle
 from ruflex.application.projects import ProjectService
 from ruflex.application.training import (
     list_training_runs,
@@ -37,6 +38,7 @@ from ruflex.domain.selective import SelectivePredictionPolicy
 from ruflex.domain.stability import StabilityGatePolicy, StudyStabilityAnalysis
 from ruflex.domain.expert_correction import ExpertCorrectionRevision
 from ruflex.domain.lineage import LineageGraph
+from ruflex.domain.verification import VerificationBundleValidation
 from ruflex.domain.training import (
     AnalysisComparison,
     AnalysisEvaluation,
@@ -155,3 +157,8 @@ class StudioProjectView:
 def open_studio_project(path: str | Path) -> StudioProjectView:
     """Open a Studio workspace read-only without creating a browser/API session."""
     return StudioProjectView(path)
+
+
+def validate_bundle(path: str | Path) -> VerificationBundleValidation:
+    """Read-only, portable inspection of a VerificationBundle ZIP or directory."""
+    return validate_verification_bundle(path)

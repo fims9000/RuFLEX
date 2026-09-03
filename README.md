@@ -35,7 +35,7 @@ Core Product V1 capabilities include:
 - exact Decision Tree execution paths and capability-compatible post-hoc evidence (TreeSHAP, SHAP, Integrated Gradients, GradientSHAP and Occlusion);
 - explanation contracts/checks, GeneralizationContract, Slice Lab, provenance lineage and expert FIS correction;
 - revision-bound BehaviorSpecs, validation-derived ACCEPT/REVIEW policies, cross-run explanation reproducibility and bounded Exhaustive Lab evidence;
-- semantic AssuranceCase gates and portable VerificationBundles with declarative evidence checksums (never a scalar trust score);
+- semantic AssuranceCase gates and portable VerificationBundles with declarative evidence checksums plus fail-closed ZIP/extracted-root validation (never a scalar trust score);
 - a read-only Python escape hatch over the same canonical Studio objects.
 
 ### Scientific safeguards

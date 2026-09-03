@@ -135,6 +135,7 @@ export type StabilityGatePolicy = {
 export type StabilityGateApplication = { policy_id: string; selected_run_id: string; disposition: "ACCEPT" | "REVIEW" | "BLOCK"; reasons: Array<"LOW_CONFIDENCE" | "RUN_DISAGREEMENT" | "HIGH_DISPERSION" | "OUT_OF_SCOPE" | "INSUFFICIENT_RUN_SUPPORT">; selected_run_probability: number; predicted_label: number; confidence: number; majority_class_agreement: number; selected_run_agreement: number; probability_std: number; run_support_count: number; run_probabilities: Record<string, number> };
 export type ExhaustiveLabResult = { result_id: string; kind: "decision_tree_structure" | "fis_discrete_grid"; exactness_label: "EXACT_FINITE_STRUCTURE" | "EXACT_ON_DECLARED_DISCRETE_GRID"; run_id: string | null; fis_semantic_hash: string | null; declared_grid: Record<string, number[]>; state_count: number; state_estimate: number; max_states: number; paths: Array<Record<string, unknown>>; uncovered_states: Array<Record<string, unknown>>; dead_rules: string[]; conflict_states: Array<Record<string, unknown>>; scientific_note: string };
 export type AssuranceCase = { assurance_id: string; gates: Array<{ key: string; status: "PASS" | "WARN" | "FAIL" | "NOT_AVAILABLE"; evidence: string[]; risk: string | null }>; unresolved_risks: string[]; scientific_note: string };
+export type VerificationBundleValidation = { bundle_path: string; status: "PASS" | "FAIL"; bundle_sha256: string | null; manifest_sha256: string | null; checked_entries: number; errors: string[]; warnings: string[]; scientific_note: string };
 export type ConditionMonitoringDemo = { demo_id: string; policy_id: string; telemetry: Record<string, number>; predicted_class: number; probability: number; confidence: number; decision: "ACCEPT" | "REVIEW" | "OUT_OF_SCOPE"; scope_disposition: string; explanation_id: string | null; explanation_check_id: string | null; assurance_id: string | null; verification_bundle_sha256: string | null; explanation_note: string; safety_note: string };
 
 const apiBase = import.meta.env.VITE_RUFLEX_API_URL ?? "http://127.0.0.1:8000";
@@ -432,6 +433,7 @@ export const studioApi = {
   createAssuranceCase: (sessionId: string) => request<AssuranceCase>("/api/projects/evidence/assurance-cases", { session_id: sessionId }),
   getLatestAssuranceCase: (sessionId: string) => request<AssuranceCase>(`/api/projects/${sessionId}/evidence/assurance-cases/latest`),
   exportVerificationBundle: (sessionId: string) => request<{ path: string; sha256: string; entry_count: number }>("/api/projects/evidence/verification-bundles", { session_id: sessionId }),
+  validateVerificationBundle: (path: string) => request<VerificationBundleValidation>("/api/verification-bundles/validate", { path }),
   runMultiSeedStudy: (
     sessionId: string,
     config: {

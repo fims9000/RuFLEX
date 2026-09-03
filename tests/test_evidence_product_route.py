@@ -329,6 +329,59 @@ def test_assurance_case_is_persisted_independent_gate_evidence(tmp_path: Path) -
         assert exported_fis["operators"]["centroid_sampling"] == "midpoint_cells"
 
 
+def test_verification_bundle_validates_portably_and_fails_closed_on_tampering(tmp_path: Path) -> None:
+    from ruflex.application.verification_bundle import validate_verification_bundle
+    from ruflex.sdk.studio import validate_bundle
+    import shutil
+
+    client = TestClient(app); root = tmp_path / "portable-bundle"; session_id = _project_with_data(client, root)
+    assert client.post("/api/projects/fis/default", json={"session_id": session_id, "name": "portable bundle fis"}).status_code == 201
+    assert client.post("/api/projects/evidence/assurance-cases", json={"session_id": session_id}).status_code == 201
+    exported = client.post("/api/projects/evidence/verification-bundles", json={"session_id": session_id})
+    assert exported.status_code == 201, exported.text
+    bundle_path = Path(exported.json()["path"])
+    valid = validate_verification_bundle(bundle_path)
+    assert valid.status == "PASS", valid.errors
+    api_valid = client.post("/api/verification-bundles/validate", json={"path": str(bundle_path)})
+    assert api_valid.status_code == 200 and api_valid.json()["status"] == "PASS"
+    assert validate_bundle(bundle_path).status == "PASS"
+    extracted = tmp_path / "fresh-root"; shutil.unpack_archive(bundle_path, extracted, "zip")
+    assert validate_verification_bundle(extracted).status == "PASS"
+    contract = extracted / "data" / "dataset-contract.json"
+    contract.write_text('{"tampered": true}', encoding="utf-8")
+    invalid = validate_verification_bundle(extracted)
+    assert invalid.status == "FAIL"
+    assert any("Checksum mismatch" in error for error in invalid.errors)
+    api_invalid = client.post("/api/verification-bundles/validate", json={"path": str(extracted)})
+    assert api_invalid.status_code == 200 and api_invalid.json()["status"] == "FAIL"
+
+
+def test_verification_bundle_rejects_rechecksumming_broken_provenance(tmp_path: Path) -> None:
+    from ruflex.application.verification_bundle import validate_verification_bundle
+    import hashlib
+    import json
+    import shutil
+
+    client = TestClient(app); root = tmp_path / "broken-provenance"; session_id = _project_with_data(client, root)
+    run = _train(client, session_id, "logistic_regression")
+    explanation = client.post("/api/projects/evidence/explanations/occlusion", json={"session_id": session_id, "run_id": run["run_id"], "sample": {"temperature": 25.0, "torque": 48.0, "vibration": 0.6}})
+    assert explanation.status_code == 201, explanation.text
+    assert client.post("/api/projects/evidence/explanation-checks", json={"session_id": session_id, "explanation_id": explanation.json()["explanation_id"]}).status_code == 201
+    assert client.post("/api/projects/evidence/assurance-cases", json={"session_id": session_id}).status_code == 201
+    bundle = client.post("/api/projects/evidence/verification-bundles", json={"session_id": session_id}).json()
+    extracted = tmp_path / "rebuilt-broken"; shutil.unpack_archive(bundle["path"], extracted, "zip")
+    check_path = next((extracted / "evidence" / "explanation-checks").glob("*.json"))
+    changed = json.loads(check_path.read_text(encoding="utf-8")); changed["run_id"] = "00000000-0000-0000-0000-000000000001"
+    check_path.write_text(json.dumps(changed), encoding="utf-8")
+    manifest_path = extracted / "verification-manifest.json"; manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    relative = check_path.relative_to(extracted).as_posix(); manifest["checksums"][relative] = hashlib.sha256(check_path.read_bytes()).hexdigest()
+    manifest_bytes = json.dumps(manifest, indent=2, sort_keys=True).encode(); manifest_path.write_bytes(manifest_bytes)
+    (extracted / "verification-manifest.sha256").write_text(f"{hashlib.sha256(manifest_bytes).hexdigest()}  verification-manifest.json\n", encoding="utf-8")
+    invalid = validate_verification_bundle(extracted)
+    assert invalid.status == "FAIL"
+    assert any("broken evidence provenance" in error for error in invalid.errors)
+
+
 def test_assurance_never_passes_malformed_or_failed_behavior_evidence(tmp_path: Path) -> None:
     client = TestClient(app); root = tmp_path / "assurance-negative"; session_id = _project_with_data(client, root)
     malformed = root / "evidence" / "behavior-specs" / "00000000-0000-0000-0000-000000000001.json"
