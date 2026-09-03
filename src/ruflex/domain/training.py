@@ -165,7 +165,7 @@ class StudyJob(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: int = 2
+    schema_version: int = 3
     job_id: UUID = Field(default_factory=uuid4)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     started_at: datetime | None = None
@@ -180,6 +180,10 @@ class StudyJob(BaseModel):
     split_seed: int | None = None
     study_id: UUID | None = None
     error: str | None = None
+    execution_backend: Literal["LOCAL"] = "LOCAL"
+    execution_config: dict[str, int | float | str | bool | None] = Field(default_factory=dict)
+    recovery_count: int = Field(default=0, ge=0)
+    recovery_note: str | None = None
 
 
 class CalibrationProvenance(BaseModel):

@@ -171,6 +171,34 @@ def test_study_job_returns_immediately_and_persists_seed_lifecycle(tmp_path: Pat
     assert job["status"] == "SUCCEEDED"
     assert {state["status"] for state in job["seed_states"]} == {"SUCCEEDED"}
     assert job["study_id"] is not None
+    listed = client.get(f"/api/projects/{session_id}/training/study-jobs")
+    assert listed.status_code == 200 and [item["job_id"] for item in listed.json()] == [job["job_id"]]
+    assert job["execution_backend"] == "LOCAL"
+    assert job["execution_config"]["max_epochs"] == 1
+
+
+def test_persisted_study_job_resumes_without_replacing_declared_seeds(tmp_path: Path) -> None:
+    from ruflex.domain.training import StudyJob, StudySeedState
+
+    client = TestClient(app); root = tmp_path / "resumable-study"
+    session_id = client.post("/api/projects", json={"path": str(root), "name": "Resumable study"}).json()["session_id"]
+    assert client.post("/api/projects/dataset/confirm", json={"session_id": session_id, "csv_text": _binary_frame().to_csv(index=False), "target": "target", "task": "binary_classification", "id_columns": []}).status_code == 200
+    interrupted = StudyJob(
+        name="interrupted forest", model_kind="random_forest", selection_metric="f1", randomness_protocol="TRAINING_VARIABILITY", split_seed=42,
+        seed_states=[StudySeedState(seed=seed, split_seed=42, training_seed=seed, status="RUNNING" if seed == 71 else "QUEUED") for seed in [71, 73, 79]],
+        execution_config={"max_epochs": 1, "learning_rate": .01, "batch_size": 16, "patience": 1, "validation_fraction": .2, "test_fraction": .2, "max_rules": 3},
+    )
+    destination = root / "studies" / "jobs" / f"{interrupted.job_id}.json"; destination.parent.mkdir(parents=True, exist_ok=True); destination.write_text(interrupted.model_dump_json(), encoding="utf-8")
+    resumed = client.post(f"/api/projects/{session_id}/training/study-jobs/{interrupted.job_id}/resume")
+    assert resumed.status_code == 200, resumed.text
+    assert resumed.json()["recovery_count"] == 1
+    for _ in range(80):
+        job = client.get(f"/api/projects/{session_id}/training/study-jobs/{interrupted.job_id}").json()
+        if job["status"] not in {"QUEUED", "RUNNING"}: break
+        time.sleep(.05)
+    assert job["status"] == "SUCCEEDED"
+    assert [state["seed"] for state in job["seed_states"]] == [71, 73, 79]
+    assert {state["status"] for state in job["seed_states"]} == {"SUCCEEDED"}
 
 
 def test_validation_evaluation_is_a_persistent_run_bound_analysis_object(tmp_path: Path) -> None:

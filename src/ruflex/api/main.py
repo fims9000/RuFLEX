@@ -1174,6 +1174,15 @@ def get_study_job(session_id: UUID, job_id: UUID) -> StudyJob:
         raise HTTPException(status_code=404, detail="No Study job exists with this id.") from error
 
 
+@app.get("/api/projects/{session_id}/training/study-jobs", response_model=list[StudyJob])
+def list_persisted_study_jobs(session_id: UUID) -> list[StudyJob]:
+    from ruflex.application.training import list_study_jobs
+    try:
+        return list_study_jobs(service.get(session_id).project.root)
+    except ProjectError as error:
+        raise _project_error(error) from error
+
+
 @app.post("/api/projects/{session_id}/training/study-jobs/{job_id}/cancel", response_model=StudyJob)
 def cancel_running_study_job(session_id: UUID, job_id: UUID) -> StudyJob:
     from ruflex.application.training import cancel_study_job
@@ -1186,6 +1195,20 @@ def cancel_running_study_job(session_id: UUID, job_id: UUID) -> StudyJob:
         raise _project_error(error) from error
     except FileNotFoundError as error:
         raise HTTPException(status_code=404, detail="No Study job exists with this id.") from error
+
+
+@app.post("/api/projects/{session_id}/training/study-jobs/{job_id}/resume", response_model=StudyJob)
+def resume_persisted_study_job(session_id: UUID, job_id: UUID) -> StudyJob:
+    from ruflex.application.training import TrainingError, resume_study_job
+    try:
+        session = service.get(session_id)
+        if session.project.read_only:
+            raise ProjectReadOnlyError("Project was opened read-only and cannot resume a study.")
+        return resume_study_job(session.project.root, job_id)
+    except ProjectError as error:
+        raise _project_error(error) from error
+    except (TrainingError, FileNotFoundError) as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
 
 
 @app.get("/api/projects/{session_id}/training/studies/latest", response_model=TrainingStudy)

@@ -9,7 +9,7 @@ import tempfile
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from threading import Event, Thread
+from threading import Event
 from uuid import UUID
 
 import numpy as np
@@ -21,6 +21,7 @@ from sklearn.ensemble import GradientBoostingClassifier, GradientBoostingRegress
 from sklearn.metrics import accuracy_score, average_precision_score, f1_score, mean_absolute_error, mean_squared_error, precision_score, r2_score, recall_score, roc_auc_score
 
 from ruflex.application.artifacts import ArtifactMetadata, ArtifactRef, ArtifactStore
+from ruflex.application.execution import local_executor
 from ruflex.application.datasets import load_dataset_contract, load_dataset_frame
 from ruflex.core.enums import NormalizationMode, TaskType, VariableRole
 from ruflex.core.membership import GaussianMembershipSpec
@@ -946,6 +947,14 @@ def load_study_job(project_root: Path, job_id: UUID) -> StudyJob:
     return StudyJob.model_validate_json(_study_job_path(project_root, job_id).read_text(encoding="utf-8"))
 
 
+def list_study_jobs(project_root: Path) -> list[StudyJob]:
+    """Read persisted job state; no thread-local state is treated as canonical."""
+    return sorted(
+        (StudyJob.model_validate_json(path.read_text(encoding="utf-8")) for path in _study_jobs_root(project_root).glob("*.json")),
+        key=lambda job: (job.created_at, str(job.job_id)),
+    )
+
+
 def cancel_study_job(project_root: Path, job_id: UUID) -> StudyJob:
     job = load_study_job(project_root, job_id)
     if job.status in {"SUCCEEDED", "FAILED", "CANCELLED"}:
@@ -956,14 +965,25 @@ def cancel_study_job(project_root: Path, job_id: UUID) -> StudyJob:
     return job
 
 
-def _execute_study_job(project_root: Path, job_id: UUID, config: dict) -> None:
+def _execute_study_job(project_root: Path, job_id: UUID) -> None:
     cancellation = _study_job_cancellations.setdefault(job_id, Event())
     job = load_study_job(project_root, job_id)
     job.status = "RUNNING"
-    job.started_at = datetime.now(timezone.utc)
+    job.started_at = job.started_at or datetime.now(timezone.utc)
     _persist_study_job(project_root, job)
     successful_runs: list[TrainingRun] = []
     for state in job.seed_states:
+        if state.status == "SUCCEEDED":
+            if state.run_id is None:
+                state.status = "FAILED"; state.error = "Persisted successful seed has no TrainingRun identity."
+            else:
+                try: successful_runs.append(load_training_run(project_root, state.run_id))
+                except (FileNotFoundError, ValueError) as error:
+                    state.status = "FAILED"; state.error = f"Persisted TrainingRun cannot be reopened: {error}"
+            _persist_study_job(project_root, job)
+            continue
+        if state.status == "FAILED":
+            continue
         if cancellation.is_set() or job.cancel_requested:
             state.status = "CANCELLED"
             for pending in job.seed_states[job.seed_states.index(state) + 1:]:
@@ -976,7 +996,7 @@ def _execute_study_job(project_root: Path, job_id: UUID, config: dict) -> None:
         state.status = "RUNNING"
         _persist_study_job(project_root, job)
         try:
-            run = train_model(project_root, model_kind=job.model_kind, split_seed=state.split_seed, training_seed=state.training_seed, **config)
+            run = train_model(project_root, model_kind=job.model_kind, split_seed=state.split_seed, training_seed=state.training_seed, **job.execution_config)
             run.randomness_protocol = job.randomness_protocol
             persist_training_run(project_root, run)
             state.status = "SUCCEEDED"
@@ -1006,12 +1026,39 @@ def _execute_study_job(project_root: Path, job_id: UUID, config: dict) -> None:
     _persist_study_job(project_root, job)
 
 
+def _submit_study_job(project_root: Path, job_id: UUID) -> StudyJob:
+    # Attaching after a Studio reopen is idempotent: an already active local
+    # worker remains the sole executor, and callers simply observe its durable
+    # job record rather than submitting duplicate training.
+    local_executor.submit(project_root=project_root, job_id=job_id, operation=lambda: _execute_study_job(project_root, job_id))
+    return load_study_job(project_root, job_id)
+
+
 def start_study_job(project_root: Path, *, name: str, model_kind: str, seeds: list[int], selection_metric: str, randomness_protocol: str = "LEGACY_COMBINED", split_seed: int | None = None, training_seed: int | None = None, **config) -> StudyJob:
     pairs = _study_seed_pairs(seeds=seeds, randomness_protocol=randomness_protocol, split_seed=split_seed, training_seed=training_seed)
-    job = StudyJob(name=name, model_kind=model_kind, selection_metric=selection_metric, seed_states=[StudySeedState(seed=current_training, split_seed=current_split, training_seed=current_training) for current_split, current_training in pairs], randomness_protocol=randomness_protocol, split_seed=(pairs[0][0] if len({pair[0] for pair in pairs}) == 1 else None))
+    job = StudyJob(name=name, model_kind=model_kind, selection_metric=selection_metric, seed_states=[StudySeedState(seed=current_training, split_seed=current_split, training_seed=current_training) for current_split, current_training in pairs], randomness_protocol=randomness_protocol, split_seed=(pairs[0][0] if len({pair[0] for pair in pairs}) == 1 else None), execution_config=config)
     _persist_study_job(project_root, job)
-    Thread(target=_execute_study_job, args=(project_root, job.job_id, config), daemon=True).start()
-    return job
+    return _submit_study_job(project_root, job.job_id)
+
+
+def resume_study_job(project_root: Path, job_id: UUID) -> StudyJob:
+    """Resume only an interrupted persisted request; never replace its seeds or config."""
+    job = load_study_job(project_root, job_id)
+    if job.status in {"SUCCEEDED", "FAILED", "CANCELLED"}:
+        raise TrainingError(f"Study job {job_id} is terminal ({job.status}) and cannot be resumed.")
+    if job.cancel_requested:
+        raise TrainingError("A cancelled Study job cannot be resumed; create a new declared Study instead.")
+    if local_executor.is_active(project_root=project_root, job_id=job_id):
+        return job
+    for state in job.seed_states:
+        if state.status == "RUNNING":
+            state.status = "QUEUED"
+            state.error = None
+    job.status = "QUEUED"
+    job.recovery_count += 1
+    job.recovery_note = "Explicitly resumed from persisted local execution state; completed seed identities were retained."
+    _persist_study_job(project_root, job)
+    return _submit_study_job(project_root, job.job_id)
 
 
 def load_training_study(project_root: Path, study_id: UUID) -> TrainingStudy:

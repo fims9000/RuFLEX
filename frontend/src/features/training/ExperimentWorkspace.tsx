@@ -130,6 +130,27 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
     }).catch(() => setTreeEvidence(null));
   }, [project.session_id, run?.run_id, run?.model_kind]);
   useEffect(() => { studioApi.getModelCatalog().then(setCatalog).catch(() => setCatalog([])); }, []);
+  useEffect(() => {
+    studioApi.listStudyJobs(project.session_id).then((jobs) => {
+      const resumable = jobs.filter((job) => ["QUEUED", "RUNNING"].includes(job.status)).at(-1);
+      setStudyJob(resumable ?? null);
+    }).catch(() => setStudyJob(null));
+  }, [project.session_id]);
+
+  async function observeStudy(initial: StudyJob) {
+    let job = initial;
+    setStudyJob(job);
+    while (["QUEUED", "RUNNING"].includes(job.status)) {
+      await new Promise((resolve) => window.setTimeout(resolve, 250));
+      job = await studioApi.getStudyJob(project.session_id, job.job_id);
+      setStudyJob(job);
+    }
+    if (job.status !== "SUCCEEDED") throw new Error(job.error ?? `Study ${job.status.toLowerCase()}`);
+    const result = await studioApi.getLatestTrainingStudy(project.session_id);
+    setStudy(result); onStudy(result);
+    const selected = result.seed_runs.find((item) => item.run_id === result.selected_run_id);
+    if (selected) onRun(selected);
+  }
 
   async function train() {
     setRunning(true);
@@ -164,17 +185,7 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
     try {
       const selectionMetric = dataset?.contract.task === "regression" ? "rmse" : "f1";
       let job = await studioApi.startStudyJob(project.session_id, { name: `Study ${new Date().toLocaleString()}`, model_kind: modelKind, seeds, randomness_protocol: studyMode, split_seed: splitSeed, training_seed: splitSeed, selection_metric: selectionMetric, max_epochs: maxEpochs, learning_rate: learningRate, batch_size: batchSize, patience, validation_fraction: .2, test_fraction: .2, max_rules: maxRules });
-      setStudyJob(job);
-      while (["QUEUED", "RUNNING"].includes(job.status)) {
-        await new Promise((resolve) => window.setTimeout(resolve, 250));
-        job = await studioApi.getStudyJob(project.session_id, job.job_id);
-        setStudyJob(job);
-      }
-      if (job.status !== "SUCCEEDED") throw new Error(job.error ?? `Study ${job.status.toLowerCase()}`);
-      const result = await studioApi.getLatestTrainingStudy(project.session_id);
-      setStudy(result); onStudy(result);
-      const selected = result.seed_runs.find((item) => item.run_id === result.selected_run_id);
-      if (selected) onRun(selected);
+      await observeStudy(job);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Multi-seed study failed");
     } finally {
@@ -197,6 +208,13 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
     if (!studyJob || !["QUEUED", "RUNNING"].includes(studyJob.status)) return;
     try { setStudyJob(await studioApi.cancelStudyJob(project.session_id, studyJob.job_id)); }
     catch (reason) { setError(reason instanceof Error ? reason.message : "Could not cancel Study"); }
+  }
+  async function resumeStudy() {
+    if (!studyJob || !["QUEUED", "RUNNING"].includes(studyJob.status)) return;
+    setRunning(true); setError(null);
+    try { await observeStudy(await studioApi.resumeStudyJob(project.session_id, studyJob.job_id)); }
+    catch (reason) { setError(reason instanceof Error ? reason.message : "Could not resume Study"); }
+    finally { setRunning(false); }
   }
 
   if (!dataset) return <section className="feature-workspace"><EmptyState title="No confirmed dataset">Confirm a DatasetContract in Data before training a model.</EmptyState></section>;
@@ -231,7 +249,7 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
         </div>
         <Button view="action" disabled={running || project.read_only} onClick={train}>{running ? "Training…" : "Run real training"}</Button>
         <Button view="outlined" disabled={running || project.read_only} onClick={trainStudy}>{running ? "Training…" : "Run multi-seed study"}</Button>
-        {studyJob && <div className="info-message"><strong>Study job {studyJob.status}</strong> · {studyJob.seed_states.map((state) => `seed ${state.seed}: ${state.status}`).join(" · ")} {(["QUEUED", "RUNNING"].includes(studyJob.status)) && <Button view="flat" size="s" onClick={cancelStudy}>Cancel study</Button>}</div>}
+        {studyJob && <div className="info-message"><strong>Study job {studyJob.status}</strong> · LocalExecutor · {studyJob.seed_states.map((state) => `seed ${state.seed}: ${state.status}`).join(" · ")} {(["QUEUED", "RUNNING"].includes(studyJob.status)) && <><Button view="flat" size="s" onClick={resumeStudy}>Resume persisted study</Button><Button view="flat" size="s" onClick={cancelStudy}>Cancel study</Button></>} {studyJob.recovery_note && <small>{studyJob.recovery_note}</small>}</div>}
         <div className="info-message">Training variability fixes split membership and varies only model randomness. Split and combined modes are separate sensitivity protocols. Selection is validation-only and never reads the locked test split.</div>
         {project.read_only && <div className="info-message">Read-only projects cannot start training runs.</div>}
       </section>

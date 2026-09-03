@@ -465,8 +465,12 @@ export const studioApi = {
     request<StudyJob>("/api/projects/training/study-jobs", { session_id: sessionId, ...config }),
   getStudyJob: (sessionId: string, jobId: string) =>
     request<StudyJob>(`/api/projects/${sessionId}/training/study-jobs/${jobId}`),
+  listStudyJobs: (sessionId: string) =>
+    request<StudyJob[]>(`/api/projects/${sessionId}/training/study-jobs`),
   cancelStudyJob: (sessionId: string, jobId: string) =>
     request<StudyJob>(`/api/projects/${sessionId}/training/study-jobs/${jobId}/cancel`, {}),
+  resumeStudyJob: (sessionId: string, jobId: string) =>
+    request<StudyJob>(`/api/projects/${sessionId}/training/study-jobs/${jobId}/resume`, {}),
   createAnalysisEvaluation: (sessionId: string, runId: string) =>
     request<AnalysisEvaluation>("/api/projects/analyses/evaluations", {
       session_id: sessionId,
@@ -560,6 +564,10 @@ export type StudyJob = {
   seed_states: Array<{ seed: number; status: "QUEUED" | "RUNNING" | "SUCCEEDED" | "FAILED" | "CANCELLED"; run_id: string | null; runtime_seconds: number | null; error: string | null }>;
   study_id: string | null;
   error: string | null;
+  execution_backend: "LOCAL";
+  execution_config: Record<string, number | string | boolean | null>;
+  recovery_count: number;
+  recovery_note: string | null;
 };
 
 export type AnalysisEvaluation = {
