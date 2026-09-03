@@ -3,7 +3,7 @@ import hashlib, json, os, re, sqlite3, tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 class ArtifactIntegrityError(RuntimeError): pass
 class ArtifactMetadata(BaseModel):
  model_config=ConfigDict(extra="forbid"); media_type:str; source_kind:Literal["upload","generated","imported","external"]; original_name:str|None=None; source_uri:str|None=None; parent_artifacts:list[str]=Field(default_factory=list); producer:dict[str,str]|None=None
@@ -30,10 +30,19 @@ class ArtifactStore:
   if not path.is_file() or path.is_symlink(): raise ArtifactIntegrityError("Artifact source must be a regular non-symlink file.")
   return self.ingest_bytes(path.read_bytes(),metadata=metadata)
  def verify(self,reference:ArtifactRef)->ArtifactVerification:
-  blob=self._blob(reference.sha256)
+  blob=self._blob(reference.sha256); record_path=self._record(reference.sha256)
   if not blob.is_file() or blob.is_symlink(): return ArtifactVerification(sha256=reference.sha256,valid=False,message="Artifact blob is missing or unsafe.")
-  actual=hashlib.sha256(blob.read_bytes()).hexdigest(); valid=actual==reference.sha256 and self._record(reference.sha256).is_file()
-  return ArtifactVerification(sha256=reference.sha256,actual_sha256=actual,valid=valid,message="Artifact verified." if valid else "Artifact hash mismatch or metadata is missing.")
+  actual=hashlib.sha256(blob.read_bytes()).hexdigest()
+  if actual!=reference.sha256: return ArtifactVerification(sha256=reference.sha256,actual_sha256=actual,valid=False,message="Artifact blob hash mismatch.")
+  if not record_path.is_file() or record_path.is_symlink(): return ArtifactVerification(sha256=reference.sha256,actual_sha256=actual,valid=False,message="Artifact metadata is missing or unsafe.")
+  try:
+   record=ArtifactRecord.model_validate_json(record_path.read_text(encoding="utf-8"))
+   expected_path=str(blob.relative_to(self.root))
+   if record.sha256!=reference.sha256 or record.size_bytes!=blob.stat().st_size or record.relative_blob_path!=expected_path:
+    return ArtifactVerification(sha256=reference.sha256,actual_sha256=actual,valid=False,message="Artifact metadata does not match the canonical blob identity.")
+  except (OSError, ValidationError, ValueError):
+   return ArtifactVerification(sha256=reference.sha256,actual_sha256=actual,valid=False,message="Artifact metadata is malformed.")
+  return ArtifactVerification(sha256=reference.sha256,actual_sha256=actual,valid=True,message="Artifact verified.")
  def open(self,reference:ArtifactRef):
   result=self.verify(reference)
   if not result.valid: raise ArtifactIntegrityError(result.message)

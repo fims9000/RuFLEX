@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import pytest
@@ -29,6 +30,18 @@ def test_tamper_and_materialization_escape_are_rejected(tmp_path: Path) -> None:
         store.open(reference)
     with pytest.raises(ArtifactIntegrityError, match="escapes"):
         store.materialize(reference, Path("../escape.bin"))
+
+
+def test_verify_rejects_metadata_that_does_not_describe_the_canonical_blob(tmp_path: Path) -> None:
+    store = ArtifactStore(tmp_path)
+    reference = store.ingest_bytes(b"canonical bytes", metadata=ArtifactMetadata(media_type="text/plain", source_kind="generated"))
+    receipt_path = tmp_path / "objects" / "artifacts" / f"{reference.sha256}.json"
+    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    receipt["size_bytes"] += 1
+    receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+    verification = store.verify(reference)
+    assert not verification.valid
+    assert "metadata" in verification.message.lower()
 
 
 def test_failed_atomic_ingest_leaves_no_metadata_or_blob(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
