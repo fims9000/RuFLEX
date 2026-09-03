@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "product_version": "1.0.1",
-  "active_capability": "product_spec_gap_audit",
+  "active_capability": "release_quality_audit",
   "completed_capabilities": [
     "dataset_contracts",
     "training_and_validation_evidence",
@@ -20,14 +20,15 @@
     "persisted_evidence_jobs",
     "typed_api_errors",
     "typed_capability_negotiation",
-    "native_explanation_validator_adapter"
+    "native_explanation_validator_adapter",
+    "plugin_contracts_and_read_only_sdk"
   ],
   "active_acceptance": [
-    "Identify the next largest coherent master-spec capability gap without changing frozen research evidence.",
-    "Prefer an end-user Studio flow that has domain, persistence, API, SDK, lineage and browser verification coverage."
+    "Verify current product-cycle changes across the full source tree and a fresh tracked-source archive.",
+    "Keep unrelated article and interrupted S03 work out of the committed product baseline."
   ],
   "blockers": [],
-  "next_executable_work": "Audit the remaining master specification and implement the next dependency-ready end-user capability after capability negotiation.",
+  "next_executable_work": "Run release-quality audit for typed errors, capability negotiation, plugin contracts and validator provenance; then resume the master-spec gap audit.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -46,6 +47,7 @@
     "typed_api_errors": "PASS: typed FastAPI error payloads preserve legacy detail; Python suite, frontend unit and Vite build passed",
     "typed_capability_negotiation": "PASS: run-bound capability API, Studio evidence presentation, Python suite, frontend build, and Evidence close/reopen browser route",
     "native_explanation_validator_adapter": "PASS: persisted validator categories and native adapter boundary, focused evidence route tests, frontend build, and Evidence browser route",
-    "current_cycle_full_qa": "PASS: full Python suite, compileall, frontend unit/Vite/Storybook, full 25-spec Playwright suite, diff check, and fresh tracked-source archive focused backend/npm ci/Vite QA (archive SHA-256 654e23a3fbd2dc20f1ecb28ff0d44923e40697f9c31dae86bf133906c68b9b0d)"
+    "current_cycle_full_qa": "PASS: full Python suite, compileall, frontend unit/Vite/Storybook, full 25-spec Playwright suite, diff check, and fresh tracked-source archive focused backend/npm ci/Vite QA (archive SHA-256 654e23a3fbd2dc20f1ecb28ff0d44923e40697f9c31dae86bf133906c68b9b0d)",
+    "plugin_contracts_and_read_only_sdk": "PASS: registered native validator descriptor is available through FastAPI, Studio and read-only SDK; focused Python and Evidence browser tests passed"
   }
 }
