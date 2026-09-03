@@ -35,6 +35,7 @@ import {
   LineageGraph,
   LineageNode,
   ProjectSummary,
+  ProjectIntegrityReport,
   ScopeClassification,
   SliceAnalysis,
   TrainingRun,
@@ -115,6 +116,7 @@ export function App() {
   const [assurance, setAssurance] = useState<AssuranceCase | null>(null);
   const [expertCorrection, setExpertCorrection] = useState<ExpertCorrectionRevision | null>(null);
   const [lineage, setLineage] = useState<LineageGraph | null>(null);
+  const [integrity, setIntegrity] = useState<ProjectIntegrityReport | null>(null);
   const [selectedExpertCorrectionId, setSelectedExpertCorrectionId] = useState<string | null>(null);
   const datasetFileInputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -161,6 +163,7 @@ export function App() {
       setScopeCandidateValue("");
       setScopeClassification(null);
       setLineage(null);
+      setIntegrity(null);
       setSelectedExpertCorrectionId(null);
       return;
     }
@@ -227,6 +230,7 @@ export function App() {
     studioApi.getLatestExpertCorrection(project.session_id).then(setExpertCorrection).catch(() => setExpertCorrection(null));
     studioApi.getActiveGeneralization(project.session_id).then(setGeneralization).catch(() => setGeneralization(null));
     studioApi.getProjectLineage(project.session_id).then(setLineage).catch(() => setLineage(null));
+    studioApi.getProjectIntegrity(project.session_id).then(setIntegrity).catch(() => setIntegrity(null));
   }, [project?.session_id]);
   useEffect(() => {
     if (!project) return;
@@ -1017,7 +1021,7 @@ export function App() {
         />
       ) : (
         <section className="foundation-workspace">
-          <div className="feature-toolbar">
+            <div className="feature-toolbar">
             <div>
               <span className="eyebrow">PROJECT OVERVIEW</span>
               <h2>Scientific objects, not a required pipeline</h2>
@@ -1026,7 +1030,8 @@ export function App() {
                 Project Explorer.
               </p>
             </div>
-          </div>
+            </div>
+          {integrity && <div className="trace-card" data-testid="project-integrity"><div className="evidence-check-header"><strong>Reopen integrity</strong><StatusBadge tone={integrity.status === "PASS" ? "success" : integrity.status === "FAIL" ? "danger" : "warning"}>{integrity.status}</StatusBadge></div><p>{integrity.checked_objects} persisted objects checked. {integrity.scientific_note}</p>{integrity.issues.map((issue) => <p className="property-description" key={`${issue.code}-${issue.path}`}>{issue.code} · {issue.path} · {issue.detail}</p>)}</div>}
           <div className="project-overview-grid">
             <button onClick={() => setActive("DATA")}>
               Data

@@ -33,6 +33,7 @@ test("E2E-02 saves metadata, closes, and reopens it", async ({ page }) => {
   await page.getByLabel("Project path").fill(path);
   await page.getByRole("button", { name: "Open project", exact: true }).click();
   await expect(page.getByText("Description: Preserved description", { exact: true })).toBeVisible();
+  await expect(page.getByTestId("project-integrity")).toContainText("PASS");
 });
 
 test("E2E-03 read-only opening disables mutating Studio controls", async ({ page }) => {

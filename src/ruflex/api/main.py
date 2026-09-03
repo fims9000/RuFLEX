@@ -37,7 +37,7 @@ from ruflex.domain.verification import VerificationBundleValidation
 from ruflex.domain.expert_correction import ExpertCorrectionResult, ExpertCorrectionRevision
 from ruflex.domain.fis import FISEvaluation, FISSpec, ResponseSurface
 from ruflex.application.workspace_sessions import WorkspaceSession, WorkspaceSessionError, WorkspaceSessionService
-from ruflex.domain.project import ProjectSummary
+from ruflex.domain.project import ProjectIntegrityReport, ProjectSummary
 from ruflex.domain.lineage import LineageGraph
 from ruflex.application.lineage import build_project_lineage
 
@@ -431,6 +431,15 @@ def list_artifacts(session_id: UUID) -> list[ArtifactRecord]:
 def get_project_lineage(session_id: UUID) -> LineageGraph:
     try:
         return build_project_lineage(service.get(session_id).project.root)
+    except ProjectError as error:
+        raise _project_error(error) from error
+
+
+@app.get("/api/projects/{session_id}/integrity", response_model=ProjectIntegrityReport)
+def get_project_integrity(session_id: UUID) -> ProjectIntegrityReport:
+    from ruflex.application.project_integrity import inspect_project_integrity
+    try:
+        return inspect_project_integrity(service.get(session_id).project.root)
     except ProjectError as error:
         raise _project_error(error) from error
 

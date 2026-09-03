@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "product_version": "1.0.1",
-  "active_capability": "golden_route_integrity_audit",
+  "active_capability": "golden_route_authoritative_e2e",
   "completed_capabilities": [
     "dataset_contracts",
     "training_and_validation_evidence",
@@ -10,19 +10,21 @@
     "explanation_contract_v2",
     "behavior_and_assurance",
     "verification_bundle_portability",
-    "local_executor_study_recovery"
+    "local_executor_study_recovery",
+    "project_reopen_integrity"
   ],
   "active_acceptance": [
-    "Audit all persisted Golden Route object loaders for integrity checks on reopen.",
-    "Identify the next missing end-to-end capability from the master product specification."
+    "Create and execute the authoritative browser Golden Route across all core product objects.",
+    "Validate the final extracted VerificationBundle independently from its project root."
   ],
   "blockers": [],
-  "next_executable_work": "Audit project reopen integrity and typed broken-evidence states before extending the Golden Route.",
+  "next_executable_work": "Extend the authoritative browser Golden Route to include portable bundle validation and broken-evidence negative coverage.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
     "frontend_build": "PASS: npm run build",
-    "browser": "PASS: assurance bundle and multi-seed Study reopen E2E",
+    "project_integrity": "PASS: API/SDK missing-model negative test and project lifecycle E2E",
+    "browser": "PASS: assurance bundle, multi-seed Study reopen, project integrity E2E",
     "golden_route_browser": "PENDING full authoritative route"
   }
 }

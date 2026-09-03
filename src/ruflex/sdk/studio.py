@@ -21,6 +21,7 @@ from ruflex.application.generalization import (
     load_slice_analysis,
 )
 from ruflex.application.lineage import build_project_lineage
+from ruflex.application.project_integrity import inspect_project_integrity
 from ruflex.application.verification_bundle import validate_verification_bundle
 from ruflex.application.projects import ProjectService
 from ruflex.application.training import (
@@ -38,6 +39,7 @@ from ruflex.domain.selective import SelectivePredictionPolicy
 from ruflex.domain.stability import StabilityGatePolicy, StudyStabilityAnalysis
 from ruflex.domain.expert_correction import ExpertCorrectionRevision
 from ruflex.domain.lineage import LineageGraph
+from ruflex.domain.project import ProjectIntegrityReport
 from ruflex.domain.verification import VerificationBundleValidation
 from ruflex.domain.training import (
     AnalysisComparison,
@@ -152,6 +154,9 @@ class StudioProjectView:
 
     def lineage(self) -> LineageGraph:
         return build_project_lineage(self.root)
+
+    def integrity(self) -> ProjectIntegrityReport:
+        return inspect_project_integrity(self.root)
 
 
 def open_studio_project(path: str | Path) -> StudioProjectView:

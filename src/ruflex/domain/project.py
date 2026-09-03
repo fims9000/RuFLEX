@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -55,6 +55,31 @@ class ProjectSummary(BaseModel):
     schema_version: int
     read_only: bool
     modified_at: datetime
+
+
+class ProjectIntegrityIssue(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    code: str
+    status: Literal["WARN", "FAIL"]
+    path: str
+    detail: str
+
+
+class ProjectIntegrityReport(BaseModel):
+    """Read-only integrity state reconstructed from persisted project objects."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: int = 1
+    project_id: UUID
+    status: Literal["PASS", "WARN", "FAIL"]
+    checked_objects: int = Field(default=0, ge=0)
+    issues: list[ProjectIntegrityIssue] = Field(default_factory=list)
+    scientific_note: str = (
+        "Integrity inspection validates stored object readability and direct artifact provenance. "
+        "It never recreates a missing dataset, model, threshold, or policy."
+    )
 
 
 class Project(BaseModel):
