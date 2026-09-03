@@ -26,6 +26,7 @@ from ruflex.application.fis import FISError, create_default_fis, diagnose_fis, e
 from ruflex.application.fis_interop import export_matlab_fis, persist_imported_matlab_fis
 from ruflex.application.model_catalog import list_model_catalog
 from ruflex.application.capabilities import RunCapabilityNegotiation, negotiate_run_capabilities
+from ruflex.plugins import PluginDescriptor
 from ruflex.domain.training import AnalysisComparison, AnalysisEvaluation, FinalTestEvaluation, CalibrationTransform, DecisionThresholdPolicy, StudyJob, TrainingRun, TrainingStudy, TreePathEvidence
 from ruflex.application.jobs import Job
 from ruflex.domain.evidence import ExplanationCheck, ExplanationContract
@@ -433,6 +434,13 @@ def health() -> dict[str, str]:
 @app.get("/api/model-catalog")
 def get_model_catalog() -> list[dict]:
     return list_model_catalog()
+
+
+@app.get("/api/plugins", response_model=list[PluginDescriptor])
+def get_plugin_catalog() -> list[PluginDescriptor]:
+    from ruflex.application.evidence import list_explanation_validator_plugins
+
+    return list_explanation_validator_plugins()
 
 
 @app.post("/api/projects", response_model=ProjectSessionSummary, status_code=201)

@@ -761,6 +761,12 @@ _validator_plugins.register(
 )
 
 
+def list_explanation_validator_plugins() -> list[PluginDescriptor]:
+    """Read-only descriptor inventory for the Studio and SDK boundary."""
+
+    return _validator_plugins.list_descriptors()
+
+
 def check_explanation(project_root: Path, explanation_id: UUID) -> ExplanationCheck:
     """Run the registered product-native validator through the adapter boundary."""
 
