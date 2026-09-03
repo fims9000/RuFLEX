@@ -246,8 +246,17 @@ export function EvidenceWorkspace({
     catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
     finally { setBusy(false); }
   }
-  async function buildAssurance() { setBusy(true); setError(null); try { const result=await studioApi.createAssuranceCase(project.session_id); setAssurance(result); onAssurance(result); } catch(reason) { setError(reason instanceof Error ? reason.message : String(reason)); } finally { setBusy(false); } }
-  async function exportBundle() { setBusy(true); setError(null); try { const exported = await studioApi.exportVerificationBundle(project.session_id); setBundle(exported); setBundleValidation(await studioApi.validateVerificationBundle(exported.path)); } catch(reason) { setError(reason instanceof Error ? reason.message : String(reason)); } finally { setBusy(false); } }
+  async function waitForJob(job: ProductJob) {
+    for (let attempt = 0; attempt < 120 && ["queued", "running"].includes(job.status); attempt += 1) {
+      await new Promise((resolve) => window.setTimeout(resolve, 100));
+      job = await studioApi.getPosthocExplanationJob(project.session_id, job.job_id);
+      setExplanationJob(job);
+    }
+    if (job.status !== "succeeded") throw new Error(job.error ?? job.message ?? "Evidence job did not complete.");
+    return job;
+  }
+  async function buildAssurance() { setBusy(true); setError(null); try { const job = await waitForJob(await studioApi.startAssuranceCaseJob(project.session_id)); const result=await studioApi.getLatestAssuranceCase(project.session_id); if (!job.output.assurance_id || result.assurance_id !== job.output.assurance_id) throw new Error("Assurance job output identity did not match its persisted AssuranceCase."); setAssurance(result); onAssurance(result); } catch(reason) { setError(reason instanceof Error ? reason.message : String(reason)); } finally { setBusy(false); } }
+  async function exportBundle() { setBusy(true); setError(null); try { const job = await waitForJob(await studioApi.startVerificationBundleJob(project.session_id)); const exported={ path: job.output.path, sha256: job.output.sha256, entry_count: Number(job.output.entry_count) }; if (!exported.path || !exported.sha256 || !Number.isFinite(exported.entry_count)) throw new Error("VerificationBundle job did not persist a complete export receipt."); setBundle(exported); setBundleValidation(await studioApi.validateVerificationBundle(exported.path)); } catch(reason) { setError(reason instanceof Error ? reason.message : String(reason)); } finally { setBusy(false); } }
 
   const hasExact = Boolean(evaluation || treeEvidence);
 

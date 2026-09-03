@@ -60,6 +60,14 @@ def _execute(project_root: Path, job_id: UUID) -> None:
             from ruflex.application.evidence import check_explanation
             result = check_explanation(project_root, UUID(job.request["explanation_id"]))
             output = {"check_id": str(result.check_id)}
+        elif job.kind == "assurance_case":
+            from ruflex.application.assurance import create_assurance_case
+            result = create_assurance_case(project_root)
+            output = {"assurance_id": str(result.assurance_id)}
+        elif job.kind == "verification_bundle_export":
+            from ruflex.application.verification_bundle import export_verification_bundle
+            result = export_verification_bundle(project_root)
+            output = {key: str(value) for key, value in result.items()}
         else:
             raise EvidenceJobError(f"Unsupported evidence job kind {job.kind!r}.")
         job = load_job(project_root, job_id)
@@ -106,3 +114,18 @@ def start_explanation_check_job(project_root: Path, *, explanation_id: UUID) -> 
     persist_job(project_root, job)
     local_executor.submit(project_root=project_root, job_id=job.job_id, operation=lambda: _execute(project_root, job.job_id))
     return load_job(project_root, job.job_id)
+
+
+def _start(project_root: Path, kind: str) -> Job:
+    job = Job(kind=kind, message="Queued for LocalExecutor.", log=["Request persisted before LocalExecutor submission."])
+    persist_job(project_root, job)
+    local_executor.submit(project_root=project_root, job_id=job.job_id, operation=lambda: _execute(project_root, job.job_id))
+    return load_job(project_root, job.job_id)
+
+
+def start_assurance_case_job(project_root: Path) -> Job:
+    return _start(project_root, "assurance_case")
+
+
+def start_verification_bundle_export_job(project_root: Path) -> Job:
+    return _start(project_root, "verification_bundle_export")

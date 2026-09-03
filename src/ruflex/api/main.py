@@ -1109,6 +1109,16 @@ def create_assurance_case_route(request: SessionRequest) -> AssuranceCase:
         return create_assurance_case(session.project.root)
     except ProjectError as error: raise _project_error(error) from error
 
+
+@app.post("/api/projects/evidence/assurance-jobs", response_model=Job, status_code=202)
+def start_assurance_case_job_route(request: SessionRequest) -> Job:
+    from ruflex.application.evidence_jobs import start_assurance_case_job
+    try:
+        session = service.get(request.session_id)
+        if session.project.read_only: raise ProjectReadOnlyError("Project was opened read-only and cannot persist an AssuranceCase job.")
+        return start_assurance_case_job(session.project.root)
+    except ProjectError as error: raise _project_error(error) from error
+
 @app.get("/api/projects/{session_id}/evidence/assurance-cases/latest", response_model=AssuranceCase)
 def get_latest_assurance_case(session_id: UUID) -> AssuranceCase:
     from ruflex.application.assurance import load_latest_assurance_case
@@ -1123,6 +1133,17 @@ def export_verification_bundle_route(request: SessionRequest) -> dict:
         session=service.get(request.session_id)
         if session.project.read_only: raise ProjectReadOnlyError("Project was opened read-only and cannot export a VerificationBundle.")
         return export_verification_bundle(session.project.root)
+    except ProjectError as error: raise _project_error(error) from error
+    except FileNotFoundError as error: raise HTTPException(status_code=422, detail="Build an AssuranceCase before exporting a VerificationBundle.") from error
+
+
+@app.post("/api/projects/evidence/verification-bundle-jobs", response_model=Job, status_code=202)
+def start_verification_bundle_export_job_route(request: SessionRequest) -> Job:
+    from ruflex.application.evidence_jobs import start_verification_bundle_export_job
+    try:
+        session = service.get(request.session_id)
+        if session.project.read_only: raise ProjectReadOnlyError("Project was opened read-only and cannot persist a VerificationBundle job.")
+        return start_verification_bundle_export_job(session.project.root)
     except ProjectError as error: raise _project_error(error) from error
     except FileNotFoundError as error: raise HTTPException(status_code=422, detail="Build an AssuranceCase before exporting a VerificationBundle.") from error
 
