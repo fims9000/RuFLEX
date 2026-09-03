@@ -4,7 +4,8 @@ from pathlib import Path
 from uuid import UUID
 
 from ruflex.application.datasets import load_dataset_contract, load_dataset_profile
-from ruflex.application.evidence import load_explanation, load_explanation_check
+from ruflex.application.evidence import list_explanation_validator_plugins, load_explanation, load_explanation_check
+from ruflex.application.jobs import Job, list_jobs
 from ruflex.application.reproducibility import load_latest_explanation_reproducibility
 from ruflex.application.exhaustive import load_latest_exhaustive
 from ruflex.application.assurance import load_latest_assurance_case
@@ -41,6 +42,7 @@ from ruflex.domain.expert_correction import ExpertCorrectionRevision
 from ruflex.domain.lineage import LineageGraph
 from ruflex.domain.project import ProjectIntegrityReport
 from ruflex.domain.verification import VerificationBundleValidation
+from ruflex.plugins import PluginDescriptor
 from ruflex.domain.training import (
     AnalysisComparison,
     AnalysisEvaluation,
@@ -79,6 +81,14 @@ class StudioProjectView:
 
     def training_runs(self) -> list[TrainingRun]:
         return list_training_runs(self.root)
+
+    def jobs(self, *, kind: str | None = None) -> list[Job]:
+        """Return persisted LocalExecutor records without restarting work."""
+        return list_jobs(self.root, kind=kind)
+
+    def explanation_validator_plugins(self) -> list[PluginDescriptor]:
+        """Return registered validator contracts; this does not load external code."""
+        return list_explanation_validator_plugins()
 
     def evaluation(self, evaluation_id: UUID | str) -> AnalysisEvaluation:
         return load_validation_evaluation(self.root, UUID(str(evaluation_id)))

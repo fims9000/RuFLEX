@@ -22,6 +22,8 @@ def test_python_escape_hatch_opens_same_canonical_project(tmp_path: Path) -> Non
     assert project.manifest.name == "SDK project"
     assert project.dataset_contract().dataset_fingerprint == contract.dataset_fingerprint
     assert any(node.kind == "dataset" for node in project.lineage().nodes)
+    assert project.jobs() == []
+    assert [plugin.key for plugin in project.explanation_validator_plugins()] == ["native_explanation_validator"]
 
 
 def test_python_escape_hatch_reads_persisted_analysis_and_active_generalization(tmp_path: Path) -> None:
