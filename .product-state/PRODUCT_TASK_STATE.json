@@ -22,7 +22,8 @@
     "typed_capability_negotiation",
     "native_explanation_validator_adapter",
     "plugin_contracts_and_read_only_sdk",
-    "imported_fis_provenance_integrity"
+    "imported_fis_provenance_integrity",
+    "explanation_evidence_reopen_integrity"
   ],
   "active_acceptance": [
     "Verify current product-cycle changes across the full source tree and a fresh tracked-source archive.",
@@ -50,6 +51,7 @@
     "native_explanation_validator_adapter": "PASS: persisted validator categories and native adapter boundary, focused evidence route tests, frontend build, and Evidence browser route",
     "current_cycle_full_qa": "PASS: exact HEAD full Python suite and compileall; frontend unit/Vite/Storybook; full 26-spec Playwright suite; diff check; fresh tracked-source archive focused backend tests, npm ci, Vite build, and MATLAB FIS provenance browser smoke using the declared RuFLEX Python/browser runtime (archive SHA-256 1636d372de5532e7a50d06675db782df4c9ed7c145dfe40215c177349537eed0)",
     "plugin_contracts_and_read_only_sdk": "PASS: registered native validator descriptor is available through FastAPI, Studio and read-only SDK; focused Python and Evidence browser tests passed",
-    "imported_fis_provenance_integrity": "PASS: project integrity now verifies MATLAB FIS import receipt schema, imported source artifact hash/provenance, and semantic binding to the persisted FIS; focused integrity and FIS tests passed"
+    "imported_fis_provenance_integrity": "PASS: project integrity now verifies MATLAB FIS import receipt schema, imported source artifact hash/provenance, and semantic binding to the persisted FIS; focused integrity and FIS tests passed",
+    "explanation_evidence_reopen_integrity": "PASS: project integrity now fails closed for malformed or detached persisted ExplanationContract/ExplanationCheck evidence and unresolved active pointers; focused evidence/integrity tests passed"
   }
 }
