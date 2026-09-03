@@ -495,7 +495,7 @@ export function BuildWorkspace({
       }
       setWorking(result.spec);
       onFisChange(result.spec);
-      setMessage("MATLAB FIS imported as a canonical executable model.");
+      setMessage(`MATLAB FIS imported as a canonical executable model${result.source_artifact_sha256 ? ` · source artifact ${result.source_artifact_sha256.slice(0, 12)}` : ""}.`);
     } catch (reason) {
       setError(
         reason instanceof Error ? reason.message : "MATLAB FIS import failed",

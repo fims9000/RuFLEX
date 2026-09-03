@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 import ast
+import json
 import re
 from dataclasses import dataclass
+from datetime import datetime, timezone
+from pathlib import Path
 
+from ruflex.application.artifacts import ArtifactMetadata, ArtifactStore
 from ruflex.application.fis import FISError, persist_fis, with_semantic_hash
 from ruflex.domain.fis import (
     AntecedentClause,
@@ -30,6 +34,7 @@ class CompatibilityIssue:
 class FISImportResult:
     spec: FISSpec | None
     issues: list[CompatibilityIssue]
+    source_artifact_sha256: str | None = None
 
 
 _MF_TYPES = {
@@ -192,10 +197,39 @@ def import_matlab_fis(source: str) -> FISImportResult:
     return FISImportResult(spec, issues)
 
 
+def _persist_import_receipt(project_root: Path, *, spec: FISSpec, source_artifact_sha256: str, issues: list[CompatibilityIssue]) -> None:
+    root = Path(project_root).resolve() / "models" / "fis" / "imports"
+    root.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "schema_version": 1,
+        "fis_id": str(spec.fis_id),
+        "semantic_hash": spec.semantic_hash,
+        "source_format": "matlab_fis",
+        "source_artifact_sha256": source_artifact_sha256,
+        "importer": "ruflex_matlab_fis_importer",
+        "importer_version": "1",
+        "issues": [issue.__dict__ for issue in issues],
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    (root / f"{spec.fis_id}.json").write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+
+
 def persist_imported_matlab_fis(project_root, source: str) -> FISImportResult:
     result = import_matlab_fis(source)
     if result.spec is not None:
-        return FISImportResult(persist_fis(project_root, result.spec), result.issues)
+        root = Path(project_root)
+        source_ref = ArtifactStore(root).ingest_bytes(
+            source.encode("utf-8"),
+            metadata=ArtifactMetadata(
+                media_type="text/plain",
+                original_name="imported-matlab.fis",
+                source_kind="imported",
+                source_uri="matlab_fis_import",
+            ),
+        )
+        spec = persist_fis(root, result.spec)
+        _persist_import_receipt(root, spec=spec, source_artifact_sha256=source_ref.sha256, issues=result.issues)
+        return FISImportResult(spec, result.issues, source_ref.sha256)
     return result
 
 

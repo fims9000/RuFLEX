@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from ruflex.application.fis import evaluate_fis
@@ -80,7 +82,8 @@ def test_api_persists_supported_import_and_returns_explicit_report(tmp_path) -> 
     from ruflex.api.main import app
 
     client = TestClient(app)
-    created = client.post("/api/projects", json={"path": str(tmp_path / "project"), "name": "interop"})
+    root = tmp_path / "project"
+    created = client.post("/api/projects", json={"path": str(root), "name": "interop"})
     session_id = created.json()["session_id"]
     imported = client.post(
         "/api/projects/fis/import/matlab",
@@ -89,5 +92,10 @@ def test_api_persists_supported_import_and_returns_explicit_report(tmp_path) -> 
     assert imported.status_code == 200, imported.text
     assert imported.json()["spec"]["name"] == "tipper"
     assert any(issue["status"] == "APPROXIMATED" for issue in imported.json()["issues"])
+    source_sha = imported.json()["source_artifact_sha256"]
+    assert source_sha is not None
+    receipt = json.loads((root / "models" / "fis" / "imports" / f"{imported.json()['spec']['fis_id']}.json").read_text())
+    assert receipt["source_artifact_sha256"] == source_sha
+    assert receipt["semantic_hash"] == imported.json()["spec"]["semantic_hash"]
     active = client.get(f"/api/projects/{session_id}/fis/active")
     assert active.status_code == 200

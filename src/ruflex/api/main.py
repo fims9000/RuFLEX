@@ -662,6 +662,7 @@ def import_matlab_fis(request: ImportMatlabFISRequest) -> dict:
         return {
             "spec": None if result.spec is None else result.spec.model_dump(mode="json"),
             "issues": [issue.__dict__ for issue in result.issues],
+            "source_artifact_sha256": result.source_artifact_sha256,
         }
     except ProjectError as error:
         raise _project_error(error) from error

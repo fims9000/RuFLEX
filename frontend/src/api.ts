@@ -350,7 +350,7 @@ export const studioApi = {
       input_columns: inputColumns ?? null,
     }),
   importMatlabFis: (sessionId: string, source: string) =>
-    request<{ spec: FISSpec | null; issues: FISCompatibilityIssue[] }>(
+    request<{ spec: FISSpec | null; issues: FISCompatibilityIssue[]; source_artifact_sha256: string | null }>(
       "/api/projects/fis/import/matlab",
       { session_id: sessionId, source },
     ),
