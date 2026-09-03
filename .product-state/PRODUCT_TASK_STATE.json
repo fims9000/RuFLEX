@@ -26,6 +26,8 @@
     "project_integrity": "PASS: API/SDK missing-model negative test and project lifecycle E2E",
     "assurance_claim_graph": "PASS: typed claim evidence invariant, API persistence/reopen, Studio evidence route",
     "browser": "PASS: assurance bundle, multi-seed Study reopen, project integrity E2E, authoritative product evidence route",
-    "golden_route_browser": "PASS: product-evidence-capture.spec.ts validates the real Studio route including portable bundle validation"
+    "golden_route_browser": "PASS: product-evidence-capture.spec.ts validates the real Studio route including portable bundle validation",
+    "full_python": "PASS: pytest -q reached 100% after updated product slices",
+    "frontend": "PASS: unit test, TypeScript/Vite build, 25 Playwright E2E tests"
   }
 }
