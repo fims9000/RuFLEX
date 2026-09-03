@@ -31,6 +31,7 @@
     "browser": "PASS: assurance bundle, multi-seed Study reopen, project integrity E2E, authoritative product evidence route",
     "golden_route_browser": "PASS: product-evidence-capture.spec.ts validates the real Studio route including portable bundle validation",
     "full_python": "PASS: pytest -q reached 100% after typed row identity, preprocessing artifact, and role-provenance additions",
-    "frontend": "PASS: unit test, TypeScript/Vite build, 25 Playwright E2E tests after provenance additions"
+    "frontend": "PASS: unit test, TypeScript/Vite build, 25 Playwright E2E tests after provenance additions",
+    "tracked_source_archive": "PASS: fresh git archive focused backend tests, npm ci/Vite build, and project lifecycle browser E2E; no .git or ignored project artifacts required"
   }
 }
