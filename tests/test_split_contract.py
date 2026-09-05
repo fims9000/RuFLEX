@@ -59,6 +59,21 @@ def test_group_split_requires_a_contract_column_and_exact_dataset(tmp_path) -> N
         create_split_contract(tmp_path, family="GROUP", group_column="missing", split_seed=19)
 
 
+def test_temporal_and_site_contracts_materialize_exact_nonrandom_roles(tmp_path) -> None:
+    frame = _frame().assign(event_time=list(range(45)), site=[f"s{index // 9}" for index in range(45)])
+    artifact = persist_dataset_bytes(tmp_path, frame.to_csv(index=False).encode(), original_name="governed.csv")
+    profile = inspect_dataset(frame, source_artifact_sha256=artifact.sha256)
+    contract = build_dataset_contract(profile, target="target", task="binary_classification", id_columns=["patient_id"])
+    persist_dataset_contract(tmp_path, contract, report=run_data_audit(contract, frame), profile=profile)
+    temporal = create_split_contract(tmp_path, family="TEMPORAL", time_column="event_time", split_seed=19)
+    assert max(temporal.role_source_rows["train"]) < min(temporal.role_source_rows["validation"])
+    assert max(temporal.role_source_rows["validation"]) < min(temporal.role_source_rows["test"])
+    site = create_split_contract(tmp_path, family="SITE_HOLDOUT", site_column="site", split_seed=19)
+    role_sites = {role: set(frame.loc[rows, "site"]) for role, rows in site.role_source_rows.items()}
+    assert not (role_sites["train"] & role_sites["validation"])
+    assert not (role_sites["train"] & role_sites["test"])
+
+
 def test_split_contract_api_survives_close_reopen_and_training_uses_it(tmp_path) -> None:
     client = TestClient(app)
     root = tmp_path / "group-project"

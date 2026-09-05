@@ -41,6 +41,9 @@ class SplitContract(BaseModel):
  group_column:str|None=None
  time_column:str|None=None
  site_column:str|None=None
+ device_column:str|None=None
+ spatial_column:str|None=None
+ regime_column:str|None=None
  role_source_rows:dict[Literal['train','validation','test'],list[int]]
  role_identity_hashes:dict[Literal['train','validation','test'],str]
  split_identity:str
@@ -129,8 +132,8 @@ def _rows_hash(dataset_fingerprint:str, rows:list[int])->str:
  payload={"dataset_fingerprint":dataset_fingerprint,"source_rows":sorted(int(row) for row in rows)}
  return hashlib.sha256(json.dumps(payload,sort_keys=True,separators=(",",":" )).encode()).hexdigest()
 
-def _split_identity(contract:DatasetContract, *, family:str, split_seed:int, group_column:str|None, role_rows:dict[str,list[int]])->str:
- payload={"dataset_fingerprint":contract.dataset_fingerprint,"family":family,"split_seed":split_seed,"group_column":group_column,"roles":{key:sorted(value) for key,value in sorted(role_rows.items())}}
+def _split_identity(contract:DatasetContract, *, family:str, split_seed:int, identity_column:str|None, role_rows:dict[str,list[int]])->str:
+ payload={"dataset_fingerprint":contract.dataset_fingerprint,"family":family,"split_seed":split_seed,"identity_column":identity_column,"roles":{key:sorted(value) for key,value in sorted(role_rows.items())}}
  return hashlib.sha256(json.dumps(payload,sort_keys=True,separators=(",",":" )).encode()).hexdigest()
 
 def _validate_role_rows(rows:dict[str,list[int]])->None:
@@ -141,23 +144,24 @@ def _validate_role_rows(rows:dict[str,list[int]])->None:
  if sets["train"] & sets["validation"] or sets["train"] & sets["test"] or sets["validation"] & sets["test"]: raise DatasetConfirmationError("Split contract roles must be disjoint.")
  if not sets["train"] or not sets["validation"]: raise DatasetConfirmationError("Split contract requires non-empty TRAIN and VALIDATION roles.")
 
-def create_split_contract(project_root:Path, *, family:Literal['RANDOM','GROUP','TEMPORAL','SITE_HOLDOUT','DEVICE_HOLDOUT','SPATIAL','REGIME'], split_seed:int, validation_fraction:float=.2, test_fraction:float=.2, group_column:str|None=None, time_column:str|None=None, site_column:str|None=None)->SplitContract:
+def create_split_contract(project_root:Path, *, family:Literal['RANDOM','GROUP','TEMPORAL','SITE_HOLDOUT','DEVICE_HOLDOUT','SPATIAL','REGIME'], split_seed:int, validation_fraction:float=.2, test_fraction:float=.2, group_column:str|None=None, time_column:str|None=None, site_column:str|None=None, device_column:str|None=None, spatial_column:str|None=None, regime_column:str|None=None)->SplitContract:
  """Materialize a declared split before fitting, with exact persisted rows.
 
- The first V1.3 implementation intentionally supports RANDOM and GROUP.  The
- other declared families are schema-valid but rejected here rather than being
- silently approximated by a random row split.
+ Every executable family records its exact source rows. Identity holdouts use
+ group-disjoint membership; TEMPORAL uses an ordered holdout rather than a
+ random approximation.
  """
  contract=load_dataset_contract(project_root); frame=load_dataset_frame(project_root)
  if validation_fraction<=0 or test_fraction<0 or validation_fraction+test_fraction>=1: raise DatasetConfirmationError("Split fractions must be positive/valid and sum to less than one.")
- if family not in {'RANDOM','GROUP'}: raise DatasetConfirmationError(f"Split family {family} is declared but not executable in this release; no random fallback is permitted.")
  eligible=frame.loc[frame[contract.target].notna()].copy()
  if eligible.empty: raise DatasetConfirmationError("No target-labelled rows are available for a split contract.")
  source_rows=[int(row) for row in eligible.index]
- if family=='GROUP':
-  if not group_column or group_column not in frame.columns: raise DatasetConfirmationError("GROUP split requires an existing group column.")
-  if eligible[group_column].isna().any(): raise DatasetConfirmationError("GROUP split cannot assign rows with missing group identity.")
-  groups=eligible[group_column].astype(str).to_numpy()
+ identity_columns={'GROUP':group_column,'SITE_HOLDOUT':site_column,'DEVICE_HOLDOUT':device_column,'SPATIAL':spatial_column,'REGIME':regime_column}
+ identity_column=identity_columns.get(family)
+ if family in identity_columns:
+  if not identity_column or identity_column not in frame.columns: raise DatasetConfirmationError("GROUP split requires an existing group column." if family=='GROUP' else f"{family} split requires its declared identity column.")
+  if eligible[identity_column].isna().any(): raise DatasetConfirmationError(f"{family} split cannot assign rows with missing identity.")
+  groups=eligible[identity_column].astype(str).to_numpy()
   if len(set(groups))<3: raise DatasetConfirmationError("GROUP split requires at least three distinct groups.")
   outer=GroupShuffleSplit(n_splits=1,test_size=test_fraction,random_state=int(split_seed))
   remaining_positions,test_positions=next(outer.split(eligible,groups=groups))
@@ -166,8 +170,14 @@ def create_split_contract(project_root:Path, *, family:Literal['RANDOM','GROUP',
   inner=GroupShuffleSplit(n_splits=1,test_size=effective_validation,random_state=int(split_seed)+1)
   train_positions,validation_positions=next(inner.split(remaining,groups=remaining_groups))
   role_rows={"train":[int(row) for row in remaining.iloc[train_positions].index],"validation":[int(row) for row in remaining.iloc[validation_positions].index],"test":[int(row) for row in eligible.iloc[test_positions].index]}
-  group_sets={role:set(frame.loc[indices,group_column].astype(str)) for role,indices in role_rows.items()}
-  if group_sets['train']&group_sets['validation'] or group_sets['train']&group_sets['test'] or group_sets['validation']&group_sets['test']: raise DatasetConfirmationError("GROUP split generation produced overlapping group identities.")
+  group_sets={role:set(frame.loc[indices,identity_column].astype(str)) for role,indices in role_rows.items()}
+  if group_sets['train']&group_sets['validation'] or group_sets['train']&group_sets['test'] or group_sets['validation']&group_sets['test']: raise DatasetConfirmationError(f"{family} split generation produced overlapping identities.")
+ elif family=='TEMPORAL':
+  if not time_column or time_column not in frame.columns: raise DatasetConfirmationError("TEMPORAL split requires a declared time column.")
+  if eligible[time_column].isna().any(): raise DatasetConfirmationError("TEMPORAL split cannot assign rows with missing time.")
+  ordered=eligible.assign(__source_row=eligible.index).sort_values([time_column,'__source_row'],kind='stable')
+  test_count=round(len(ordered)*test_fraction); validation_count=round(len(ordered)*validation_fraction)
+  role_rows={'train':[int(row) for row in ordered.iloc[:len(ordered)-test_count-validation_count].index],'validation':[int(row) for row in ordered.iloc[len(ordered)-test_count-validation_count:len(ordered)-test_count].index],'test':[int(row) for row in ordered.iloc[len(ordered)-test_count:].index]}
  else:
   # This is deterministic and preserves legacy RANDOM semantics without
   # exposing future family declarations as random fallbacks.
@@ -177,7 +187,7 @@ def create_split_contract(project_root:Path, *, family:Literal['RANDOM','GROUP',
   role_rows={"test":sorted(int(row) for row in shuffled[:test_count]),"validation":sorted(int(row) for row in shuffled[test_count:test_count+validation_count]),"train":sorted(int(row) for row in shuffled[test_count+validation_count:])}
  _validate_role_rows(role_rows)
  hashes={role:_rows_hash(contract.dataset_fingerprint,rows) for role,rows in role_rows.items()}
- result=SplitContract(dataset_fingerprint=contract.dataset_fingerprint,dataset_artifact_sha256=contract.source_artifact_sha256,family=family,split_seed=int(split_seed),validation_fraction=validation_fraction,test_fraction=test_fraction,group_column=group_column,time_column=time_column,site_column=site_column,role_source_rows={role:sorted(rows) for role,rows in role_rows.items()},role_identity_hashes=hashes,split_identity=_split_identity(contract,family=family,split_seed=int(split_seed),group_column=group_column,role_rows=role_rows))
+ result=SplitContract(dataset_fingerprint=contract.dataset_fingerprint,dataset_artifact_sha256=contract.source_artifact_sha256,family=family,split_seed=int(split_seed),validation_fraction=validation_fraction,test_fraction=test_fraction,group_column=group_column,time_column=time_column,site_column=site_column,device_column=device_column,spatial_column=spatial_column,regime_column=regime_column,role_source_rows={role:sorted(rows) for role,rows in role_rows.items()},role_identity_hashes=hashes,split_identity=_split_identity(contract,family=family,split_seed=int(split_seed),identity_column=(time_column if family=='TEMPORAL' else identity_column),role_rows=role_rows))
  _persist_json(_split_root(project_root),f"{result.split_id}.json",result)
  _atomic_split_pointer(Path(project_root).resolve()/"data"/"active-split-contract.json",result)
  return result

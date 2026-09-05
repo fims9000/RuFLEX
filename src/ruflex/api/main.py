@@ -120,6 +120,9 @@ class CreateSplitContractRequest(SessionRequest):
     group_column: str | None = None
     time_column: str | None = None
     site_column: str | None = None
+    device_column: str | None = None
+    spatial_column: str | None = None
+    regime_column: str | None = None
 
 
 class CreateGeneralizationContractRequest(SessionRequest):
@@ -746,6 +749,7 @@ def create_project_split_contract(request: CreateSplitContractRequest) -> SplitC
             session.project.root, family=request.family, split_seed=request.split_seed,
             validation_fraction=request.validation_fraction, test_fraction=request.test_fraction,
             group_column=request.group_column, time_column=request.time_column, site_column=request.site_column,
+            device_column=request.device_column, spatial_column=request.spatial_column, regime_column=request.regime_column,
         )
     except ProjectError as error:
         raise _project_error(error) from error
