@@ -109,3 +109,18 @@ def test_project_integrity_rejects_detached_persisted_explanation_evidence(tmp_p
     report = client.get(f"/api/projects/{session_id}/integrity").json()
     assert report["status"] == "FAIL"
     assert any(issue["code"] == "EXPLANATION_MODEL_MISMATCH" for issue in report["issues"])
+
+
+def test_project_integrity_rejects_tampered_runtime_component_provenance(tmp_path: Path) -> None:
+    client = TestClient(app); root = tmp_path / "runtime-component-integrity"
+    session_id = client.post("/api/projects", json={"path": str(root), "name": "Runtime component integrity"}).json()["session_id"]
+    assert client.post("/api/projects/dataset/confirm", json={"session_id": session_id, "csv_text": _frame(), "target": "target", "task": "binary_classification", "id_columns": []}).status_code == 200
+    run = client.post("/api/projects/training/run", json={"session_id": session_id, "model_kind": "logistic_regression", "seed": 42, "max_epochs": 1, "learning_rate": .01, "batch_size": 16, "patience": 1, "validation_fraction": .2, "test_fraction": .2, "max_rules": 3}).json()
+    explanation = client.post("/api/projects/evidence/explanations/occlusion", json={"session_id": session_id, "run_id": run["run_id"], "sample": {"temperature": 20.0, "torque": 40.0}}).json()
+    path = root / "evidence" / "explanations" / f"{explanation['explanation_id']}.json"
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["explainer_provider"] = "ruflex.tampered"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    report = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert report["status"] == "FAIL"
+    assert any(issue["code"] == "EXPLAINER_RUNTIME_PROVIDER_MISMATCH" for issue in report["issues"])

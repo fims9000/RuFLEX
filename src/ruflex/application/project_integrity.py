@@ -9,6 +9,7 @@ from pydantic import ValidationError
 from ruflex.application.artifacts import ArtifactRecord, ArtifactRef, ArtifactStore
 from ruflex.application.datasets import DatasetContract, DatasetProfile, load_data_audit, load_dataset_contract, load_dataset_profile
 from ruflex.application.fis import list_fis_revisions, load_fis
+from ruflex.application.jobs import Job
 from ruflex.application.projects import ProjectService
 from ruflex.application.training import list_training_runs
 from ruflex.domain.evidence import ExplanationCheck, ExplanationContract
@@ -165,6 +166,13 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                     issues.append(ProjectIntegrityIssue(code="EXPLANATION_TARGET_MISMATCH", status="FAIL", path=relative_path, detail="Explanation target does not match its TrainingRun."))
                 if explanation.schema_version >= 3 and not all((explanation.explainer_key, explanation.explainer_version, explanation.explainer_provider)):
                     issues.append(ProjectIntegrityIssue(code="EXPLAINER_RUNTIME_BINDING_MISSING", status="FAIL", path=relative_path, detail="A schema-v3 ExplanationContract is missing explainer runtime provenance."))
+                elif explanation.schema_version >= 3:
+                    try:
+                        descriptor = builtin_runtime_registry().resolve_component("explainer", explanation.explainer_key, version=explanation.explainer_version)
+                        if descriptor.identity.provider != explanation.explainer_provider:
+                            issues.append(ProjectIntegrityIssue(code="EXPLAINER_RUNTIME_PROVIDER_MISMATCH", status="FAIL", path=relative_path, detail="Explanation runtime provider does not match the active frozen descriptor."))
+                    except Exception:
+                        issues.append(ProjectIntegrityIssue(code="EXPLAINER_RUNTIME_UNAVAILABLE", status="WARN", path=relative_path, detail="Persisted explainer runtime is unavailable locally; evidence remains inspectable but cannot be replayed."))
             except (ValidationError, ValueError, OSError, json.JSONDecodeError) as error:
                 issues.append(ProjectIntegrityIssue(code="EXPLANATION_EVIDENCE_MALFORMED", status="FAIL", path=relative_path, detail=str(error)))
         active_path = explanation_root / "active-explanation.json"
@@ -198,6 +206,13 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                     issues.append(ProjectIntegrityIssue(code="EXPLANATION_CHECK_RUN_MISMATCH", status="FAIL", path=relative_path, detail="Explanation check run identity does not match its explanation."))
                 if check.schema_version >= 3 and not all((check.validator_key, check.validator_version, check.validator_provider)):
                     issues.append(ProjectIntegrityIssue(code="VALIDATOR_RUNTIME_BINDING_MISSING", status="FAIL", path=relative_path, detail="A schema-v3 ExplanationCheck is missing validator runtime provenance."))
+                elif check.schema_version >= 3:
+                    try:
+                        descriptor = builtin_runtime_registry().resolve_component("explanation_validator", check.validator_key, version=check.validator_version)
+                        if descriptor.identity.provider != check.validator_provider:
+                            issues.append(ProjectIntegrityIssue(code="VALIDATOR_RUNTIME_PROVIDER_MISMATCH", status="FAIL", path=relative_path, detail="Explanation validator provider does not match the active frozen descriptor."))
+                    except Exception:
+                        issues.append(ProjectIntegrityIssue(code="VALIDATOR_RUNTIME_UNAVAILABLE", status="WARN", path=relative_path, detail="Persisted validator runtime is unavailable locally; evidence remains inspectable."))
             except (ValidationError, ValueError, OSError, json.JSONDecodeError) as error:
                 issues.append(ProjectIntegrityIssue(code="EXPLANATION_CHECK_EVIDENCE_MALFORMED", status="FAIL", path=relative_path, detail=str(error)))
         active_path = check_root / "active-check.json"
@@ -209,5 +224,26 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                     raise ValueError("Active explanation-check pointer does not resolve to persisted evidence.")
             except (KeyError, TypeError, ValueError, OSError, json.JSONDecodeError) as error:
                 issues.append(ProjectIntegrityIssue(code="EXPLANATION_CHECK_ACTIVE_POINTER_INVALID", status="FAIL", path="evidence/explanation-checks/active-check.json", detail=str(error)))
+    try:
+        jobs_root = base / "jobs"
+        if jobs_root.exists() and not jobs_root.is_dir():
+            raise ValueError("Persisted jobs path is not a directory.")
+        jobs = [Job.model_validate_json(path.read_text(encoding="utf-8")) for path in sorted(jobs_root.glob("*.json"))] if jobs_root.is_dir() else []
+        checked += len(jobs)
+        for job in jobs:
+            if job.schema_version < 2:
+                continue
+            relative_path = f"jobs/{job.job_id}.json"
+            if not all((job.execution_backend_key, job.execution_backend_version, job.execution_backend_provider)):
+                issues.append(ProjectIntegrityIssue(code="JOB_BACKEND_RUNTIME_BINDING_MISSING", status="FAIL", path=relative_path, detail="A schema-v2 job is missing execution backend runtime provenance."))
+                continue
+            try:
+                descriptor = builtin_runtime_registry().resolve_component("execution_backend", job.execution_backend_key, version=job.execution_backend_version)
+                if descriptor.identity.provider != job.execution_backend_provider:
+                    issues.append(ProjectIntegrityIssue(code="JOB_BACKEND_RUNTIME_PROVIDER_MISMATCH", status="FAIL", path=relative_path, detail="Job backend provider does not match the active frozen descriptor."))
+            except Exception:
+                issues.append(ProjectIntegrityIssue(code="JOB_BACKEND_RUNTIME_UNAVAILABLE", status="WARN", path=relative_path, detail="Persisted execution backend is unavailable locally; job remains inspectable."))
+    except (ValidationError, ValueError, FileNotFoundError) as error:
+        issues.append(ProjectIntegrityIssue(code="JOB_EVIDENCE_MALFORMED", status="FAIL", path="jobs", detail=str(error)))
     status = "FAIL" if any(issue.status == "FAIL" for issue in issues) else "WARN" if issues else "PASS"
     return ProjectIntegrityReport(project_id=project.id, status=status, checked_objects=checked, issues=issues)
