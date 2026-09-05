@@ -190,7 +190,17 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                 try:
                     with store.open(ArtifactRef(sha256=run.preprocessing_artifact_sha256)) as handle:
                         preprocessing = json.loads(handle.read().decode("utf-8"))
-                    if preprocessing.get("format") != "ruflex.preprocessing/v1" or preprocessing.get("fit_scope") != "train_only" or preprocessing.get("normalization") != run.normalization or preprocessing.get("feature_columns") != run.feature_columns or preprocessing.get("missing_value_policy") != "median" or set(preprocessing.get("imputation_values", {})) != set(run.feature_columns):
+                    legacy = preprocessing.get("format") == "ruflex.preprocessing/v1"
+                    current = preprocessing.get("format") == "ruflex.preprocessing/v2"
+                    categorical = preprocessing.get("categorical_encoding", {})
+                    categorical_valid = legacy or (
+                        categorical.get("kind") == "ordinal"
+                        and set(categorical.get("columns", [])) <= set(run.feature_columns)
+                        and set(categorical.get("categories", {})) == set(categorical.get("columns", []))
+                        and categorical.get("unknown_value") == -1.0
+                    )
+                    missing_policy_valid = preprocessing.get("missing_value_policy") == ("median" if legacy else "train_median_or_mode")
+                    if not (legacy or current) or preprocessing.get("fit_scope") != "train_only" or preprocessing.get("normalization") != run.normalization or preprocessing.get("feature_columns") != run.feature_columns or not missing_policy_valid or set(preprocessing.get("imputation_values", {})) != set(run.feature_columns) or not categorical_valid:
                         issues.append(ProjectIntegrityIssue(code="PREPROCESSING_PROVENANCE_MISMATCH", status="FAIL", path=f"runs/{run.run_id}.json", detail="Persisted preprocessing artifact does not match the TrainingRun's train-only normalization and feature schema."))
                 except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError) as error:
                     issues.append(ProjectIntegrityIssue(code="PREPROCESSING_ARTIFACT_MALFORMED", status="FAIL", path=f"runs/{run.run_id}.json", detail=str(error)))

@@ -717,7 +717,7 @@ def _persist_preprocessing_artifact(project_root: Path, contract, split) -> str:
     carried by downstream analyses, explanations, and final-test evidence.
     """
     payload = {
-        "format": "ruflex.preprocessing/v1",
+        "format": "ruflex.preprocessing/v2",
         "dataset_fingerprint": contract.dataset_fingerprint,
         "dataset_artifact_sha256": contract.source_artifact_sha256,
         "fit_scope": "train_only",
@@ -728,8 +728,14 @@ def _persist_preprocessing_artifact(project_root: Path, contract, split) -> str:
         "feature_columns": list(split.feature_columns),
         "input_schema": {"feature_columns": list(split.feature_columns), "representation": "raw DatasetContract feature values"},
         "output_schema": {"feature_columns": list(split.feature_columns), "representation": "finite normalized numeric feature values"},
-        "missing_value_policy": "median",
+        "missing_value_policy": "train_median_or_mode",
         "imputation_values": split.imputation_values,
+        "categorical_encoding": {
+            "kind": "ordinal",
+            "columns": list(split.categorical_feature_columns),
+            "categories": split.categorical_encoders,
+            "unknown_value": -1.0,
+        },
         "normalization": _normalization_dict(split.normalization),
     }
     ref = ArtifactStore(project_root).ingest_bytes(

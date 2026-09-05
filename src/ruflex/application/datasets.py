@@ -229,9 +229,13 @@ def _transform_root(project_root:Path)->Path:
  root=Path(project_root).resolve()/"data"/"transforms"; root.mkdir(parents=True,exist_ok=True); return root
 
 def create_transform_pipeline_contract(project_root:Path, *, contract:DatasetContract, split, preprocessing_artifact_sha256:str, split_contract_id:str|None=None)->TransformPipelineContract:
- """Persist the exact train-only numerical preprocessing already executed."""
+ """Persist the exact train-only numerical and categorical preprocessing."""
  normalization=split.normalization.to_dict(); columns=list(split.feature_columns)
- steps=[TransformStepContract(step_type='MedianImputer',parameters={'values':dict(split.imputation_values),'missing_value_policy':'median'},input_columns=columns,output_columns=columns,artifact_identity=preprocessing_artifact_sha256)]
+ steps=[]
+ if split.numeric_feature_columns:
+  steps.append(TransformStepContract(step_type='MedianImputer',parameters={'values':{column:split.imputation_values[column] for column in split.numeric_feature_columns},'missing_value_policy':'median'},input_columns=list(split.numeric_feature_columns),output_columns=list(split.numeric_feature_columns),artifact_identity=preprocessing_artifact_sha256))
+ if split.categorical_feature_columns:
+  steps.append(TransformStepContract(step_type='OrdinalEncoder',parameters={'categories':split.categorical_encoders,'missing_values':{column:split.imputation_values[column] for column in split.categorical_feature_columns},'unknown_value':-1.0,'missing_value_policy':'train_mode'},input_columns=list(split.categorical_feature_columns),output_columns=list(split.categorical_feature_columns),artifact_identity=preprocessing_artifact_sha256))
  if normalization['mode']=='standard': steps.append(TransformStepContract(step_type='StandardScaler',parameters={'center':normalization['center'],'scale':normalization['scale']},input_columns=columns,output_columns=columns,artifact_identity=preprocessing_artifact_sha256))
  elif normalization['mode']=='minmax': steps.append(TransformStepContract(step_type='MinMaxScaler',parameters={'minimum':normalization['minimum'],'maximum':normalization['maximum']},input_columns=columns,output_columns=columns,artifact_identity=preprocessing_artifact_sha256))
  payload={'dataset_fingerprint':contract.dataset_fingerprint,'split_contract_id':split_contract_id,'feature_order':columns,'steps':[item.model_dump(mode='json') for item in steps],'preprocessing_artifact_sha256':preprocessing_artifact_sha256}

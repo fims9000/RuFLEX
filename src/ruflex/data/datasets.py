@@ -110,7 +110,10 @@ class DataSplit:
     test_features: np.ndarray
     test_targets: np.ndarray
     normalization: NormalizationArtifact
-    imputation_values: dict[str, float]
+    imputation_values: dict[str, float | str]
+    categorical_encoders: dict[str, dict[str, float]]
+    numeric_feature_columns: tuple[str, ...]
+    categorical_feature_columns: tuple[str, ...]
     train_indices: np.ndarray
     validation_indices: np.ndarray
     test_indices: np.ndarray
@@ -140,7 +143,7 @@ class TabularDataset:
     def split(self, config: DatasetConfig) -> DataSplit:
         feature_columns = config.feature_columns or self.numeric_feature_columns(config.target_column)
         if not feature_columns:
-            raise ValueError("No numeric feature columns were found for the dataset.")
+            raise ValueError("No feature columns were found for the dataset.")
 
         cleaned = self.frame.loc[:, list(feature_columns) + [config.target_column]].copy()
         cleaned = cleaned.dropna(subset=[config.target_column])
@@ -208,28 +211,45 @@ class TabularDataset:
 
         def feature_frame(indices: np.ndarray) -> pd.DataFrame:
             if len(indices) == 0:
-                return pd.DataFrame(columns=list(feature_columns), dtype=float)
+                return pd.DataFrame(columns=list(feature_columns))
             return cleaned.loc[list(indices), list(feature_columns)].copy()
 
         train_frame = feature_frame(np.asarray(train_indices, dtype=int))
         validation_frame = feature_frame(np.asarray(validation_indices, dtype=int))
         test_frame = feature_frame(np.asarray(test_indices, dtype=int))
 
-        # Missing-value statistics are learned from TRAIN only. This is part of
-        # the Test Firewall just like normalization and model fitting.
-        imputation_values: dict[str, float] = {}
+        # Missing-value statistics and categorical vocabularies are learned
+        # only from TRAIN. Unknown non-training categories have the explicit
+        # reserved code -1; they never extend a fitted vocabulary.
+        numeric_columns = tuple(column for column in feature_columns if pd.api.types.is_numeric_dtype(cleaned[column]))
+        categorical_columns = tuple(column for column in feature_columns if column not in numeric_columns)
+        imputation_values: dict[str, float | str] = {}
+        categorical_encoders: dict[str, dict[str, float]] = {}
         if config.fill_missing == "median":
-            train_medians = train_frame.median(axis=0, skipna=True)
-            missing_medians = [column for column in feature_columns if not np.isfinite(float(train_medians[column]))]
+            train_medians = train_frame.loc[:, list(numeric_columns)].median(axis=0, skipna=True)
+            missing_medians = [column for column in numeric_columns if not np.isfinite(float(train_medians[column]))]
             if missing_medians:
                 raise ValueError(
                     "Cannot fit train-only median imputation because these TRAIN features contain no finite values: "
                     + ", ".join(missing_medians)
                 )
-            train_frame = train_frame.fillna(train_medians)
-            validation_frame = validation_frame.fillna(train_medians)
-            test_frame = test_frame.fillna(train_medians)
-            imputation_values = {column: float(train_medians[column]) for column in feature_columns}
+            if numeric_columns:
+                train_frame.loc[:, list(numeric_columns)] = train_frame.loc[:, list(numeric_columns)].fillna(train_medians)
+                validation_frame.loc[:, list(numeric_columns)] = validation_frame.loc[:, list(numeric_columns)].fillna(train_medians)
+                test_frame.loc[:, list(numeric_columns)] = test_frame.loc[:, list(numeric_columns)].fillna(train_medians)
+                imputation_values.update({column: float(train_medians[column]) for column in numeric_columns})
+            for column in categorical_columns:
+                observed = train_frame[column].dropna().astype(str)
+                if observed.empty:
+                    raise ValueError(f"Cannot fit train-only categorical imputation because TRAIN feature {column!r} has no observed category.")
+                mode = sorted(observed.value_counts().loc[lambda counts: counts == observed.value_counts().max()].index)[0]
+                for partition in (train_frame, validation_frame, test_frame):
+                    partition.loc[:, column] = partition[column].where(partition[column].notna(), mode).astype(str)
+                categories = sorted(train_frame[column].astype(str).unique().tolist())
+                categorical_encoders[column] = {category: float(index) for index, category in enumerate(categories)}
+                for partition in (train_frame, validation_frame, test_frame):
+                    partition.loc[:, column] = partition[column].map(categorical_encoders[column]).fillna(-1.0)
+                imputation_values[column] = mode
 
         train_features = train_frame.to_numpy(dtype=float)
         validation_features = validation_frame.to_numpy(dtype=float)
@@ -253,6 +273,9 @@ class TabularDataset:
             test_targets=np.asarray(test_targets, dtype=float),
             normalization=normalization,
             imputation_values=imputation_values,
+            categorical_encoders=categorical_encoders,
+            numeric_feature_columns=numeric_columns,
+            categorical_feature_columns=categorical_columns,
             train_indices=np.asarray(train_indices, dtype=int),
             validation_indices=np.asarray(validation_indices, dtype=int),
             test_indices=np.asarray(test_indices, dtype=int),

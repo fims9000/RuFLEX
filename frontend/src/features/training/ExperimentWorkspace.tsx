@@ -287,7 +287,7 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
           <dt>Features</dt><dd>{dataset.contract.feature_columns.join(", ")}</dd>
           <dt>Split</dt><dd>60% train · 20% validation · 20% locked test</dd>
           <dt>Frozen split</dt><dd>{splitContract ? `${splitContract.family} · ${splitContract.split_id.slice(0, 8)}` : "No explicit contract — legacy random holdout"}</dd>
-          <dt>Preprocessing</dt><dd>median fill + standardization fitted on train only</dd>
+          <dt>Preprocessing</dt><dd>train-only median/mode fill + ordinal encoding + standardization</dd>
         </dl>
         <div className="training-config-grid">
           <label className="field-label">Model<select aria-label="Training model" value={modelKind} disabled={running || project.read_only || !compatibleModels.length} onChange={(event) => setModelKind(event.target.value)}>{compatibleModels.map((entry) => <option key={entry.key} value={entry.key === "linear" ? (datasetTask === "regression" ? "linear_regression" : "logistic_regression") : entry.training_model_kinds[0]}>{entry.display_name}</option>)}</select></label>
