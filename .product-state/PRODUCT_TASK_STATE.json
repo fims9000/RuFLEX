@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "product_version": "1.0.1",
-  "active_capability": "release_quality_audit",
+  "product_version": "1.1.0",
+  "active_capability": "v1_1_release_quality_audit",
   "completed_capabilities": [
     "dataset_contracts",
     "training_and_validation_evidence",
@@ -25,14 +25,16 @@
     "imported_fis_provenance_integrity",
     "explanation_evidence_reopen_integrity",
     "artifact_metadata_integrity",
-    "fis_reopen_integrity"
+    "fis_reopen_integrity",
+    "capability_runtime",
+    "source_archive_ci"
   ],
   "active_acceptance": [
-    "Verify current product-cycle changes across the full source tree and a fresh tracked-source archive.",
+    "Finish the V1.1 full regression, visual, archive and CI-source audit from exact HEAD.",
     "Keep unrelated article and interrupted S03 work out of the committed product baseline."
   ],
   "blockers": [],
-  "next_executable_work": "Run the current full release-quality audit from exact HEAD, including a fresh tracked-source archive, then resume the master-spec gap audit.",
+  "next_executable_work": "Run the final exact-HEAD V1.1 verification matrix and package a local source archive; do not push, merge or tag.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
