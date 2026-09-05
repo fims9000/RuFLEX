@@ -180,6 +180,16 @@ def test_study_job_returns_immediately_and_persists_seed_lifecycle(tmp_path: Pat
     assert job["execution_config"]["max_epochs"] == 1
 
 
+def test_study_job_rejects_an_unregistered_execution_backend_with_typed_error(tmp_path: Path) -> None:
+    client = TestClient(app)
+    root = tmp_path / "unknown-backend-study"
+    session_id = client.post("/api/projects", json={"path": str(root), "name": "Unknown backend"}).json()["session_id"]
+    assert client.post("/api/projects/dataset/confirm", json={"session_id": session_id, "csv_text": _binary_frame().to_csv(index=False), "target": "target", "task": "binary_classification", "id_columns": []}).status_code == 200
+    response = client.post("/api/projects/training/study-jobs", json={"session_id": session_id, "name": "invalid backend", "model_kind": "random_forest", "seeds": [51, 53, 59], "selection_metric": "f1", "execution_backend_key": "missing_backend", "max_epochs": 1, "learning_rate": .01, "batch_size": 16, "patience": 1, "validation_fraction": .2, "test_fraction": .2, "max_rules": 3})
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "RUNTIME_NOT_FOUND"
+
+
 def test_persisted_study_job_resumes_without_replacing_declared_seeds(tmp_path: Path) -> None:
     from ruflex.domain.training import StudyJob, StudySeedState
 

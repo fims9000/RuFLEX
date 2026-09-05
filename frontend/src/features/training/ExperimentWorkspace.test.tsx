@@ -48,6 +48,7 @@ describe("ExperimentWorkspace dynamic model controls", () => {
     render(<ExperimentWorkspace project={project} dataset={dataset as never} run={null} study={null} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);
 
     await screen.findByRole("option", { name: "Flat Neuro-Fuzzy" });
+    expect(screen.getByLabelText("Study execution backend")).toHaveValue("local_executor");
     expect(screen.getByLabelText("Epochs")).toBeVisible();
     expect(screen.getByLabelText("Max rules / layer")).toBeVisible();
     expect(screen.queryByLabelText("Trees / estimators")).not.toBeInTheDocument();
