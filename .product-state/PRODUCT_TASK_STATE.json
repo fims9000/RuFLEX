@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "product_version": "1.2.0-rc1",
-  "active_capability": "v1_2_release_qa",
+  "active_capability": null,
   "completed_capabilities": [
     "dataset_contracts",
     "training_and_validation_evidence",
@@ -32,11 +32,11 @@
     "v1_2_unified_runtime"
   ],
   "active_acceptance": [
-    "V1.2 unified runtime implementation is committed; exact-HEAD archive and release receipt are the remaining acceptance gate.",
+    "V1.2 unified runtime is release-gated locally; exact source archive and release-side receipt are present.",
     "Keep unrelated article and interrupted S03 work out of the committed product baseline."
   ],
   "blockers": [],
-  "next_executable_work": "Run exact-HEAD archive QA and record the V1.2 release receipt; no product capability is authorized to change during that gate.",
+  "next_executable_work": "No automatic V1.2 capability change is authorized after the RC1 release gate.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
