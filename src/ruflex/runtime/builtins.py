@@ -9,12 +9,18 @@ from __future__ import annotations
 from dataclasses import dataclass
 import json
 from pathlib import Path
+import tempfile
 from typing import Any
 
 import numpy as np
+import pandas as pd
 from sklearn.ensemble import GradientBoostingClassifier, GradientBoostingRegressor, RandomForestClassifier, RandomForestRegressor
 from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
+from ruflex.core.enums import TaskType
+from ruflex.models.flat_nf.model import FlatNeuroFuzzyModel
+from ruflex.models.specs import ShallowModelSpec
+from ruflex.training.config import FineTuningOptions, ModelTrainingConfig, RefinementOptions, StagewiseOptions
 
 from ruflex.application.model_catalog import get_model_capability_contract
 from ruflex.runtime.contracts import FitRequest, FitResult, ModelAdapterDescriptor, PredictionRequest, PredictionResult, RuntimeIdentity
@@ -28,17 +34,40 @@ class _BuiltinAdapter:
     def fit(self, request: FitRequest) -> FitResult:
         """Compute only: no project paths, artifact stores, or policy state."""
         key = self.descriptor.identity.key
-        if key == "ruflex_flat_neuro_fuzzy":
-            # The Flat-NF bridge remains in the legacy artifact codec while its
-            # torch trainer is extracted; it is deliberately unavailable to
-            # the generic service rather than receiving a different science.
-            raise RuntimeExecutionError(key)
         X_train = np.asarray(request.X_train, dtype=float)
         y_train = np.asarray(request.y_train, dtype=float).reshape(-1)
         X_validation = np.asarray(request.X_validation, dtype=float)
         task = request.task
         parameters = request.validated_parameters
         seed = request.training_seed
+        if key == "ruflex_flat_neuro_fuzzy":
+            from ruflex.application.training import _build_flat_spec, _seed_everything
+
+            _seed_everything(seed)
+            max_rules = int(parameters.get("max_rules", 8))
+            spec = _build_flat_spec(pd.DataFrame(X_train, columns=request.feature_names), list(request.feature_names), max_rules=max_rules)
+            model = FlatNeuroFuzzyModel(spec)
+            config = ModelTrainingConfig(
+                task_type=TaskType(request.task), use_bootstrap_initialization=True, use_stagewise_pretraining=False,
+                stagewise=StagewiseOptions(epochs_per_stage=1, decision_epochs=1, refinement_rounds=1),
+                fine_tuning=FineTuningOptions(max_epochs=int(parameters.get("max_epochs", 20)), learning_rate=float(parameters.get("learning_rate", .01)), batch_size=int(parameters.get("batch_size", 32)), patience=parameters.get("patience", 8), shuffle=True, classification_threshold=.5),
+                refinement=RefinementOptions(cycles=1),
+            )
+            # The domain trainer expects a split-shaped object; the adapter
+            # constructs only train/validation partitions and no test data.
+            from types import SimpleNamespace
+            adapter_split = SimpleNamespace(train_features=X_train, train_targets=y_train, validation_features=X_validation, validation_targets=np.asarray(request.y_validation, dtype=float))
+            summary = model.fit(adapter_split, config)
+            raw = np.asarray(model.predict(X_validation), dtype=float).reshape(-1)
+            with tempfile.NamedTemporaryFile(prefix="ruflex-runtime-flat-", suffix=".pt", delete=False) as handle:
+                temporary = Path(handle.name)
+            try:
+                model.save_bundle(temporary, metadata={"producer": "ruflex.runtime", "model_kind": "flat_neuro_fuzzy", "task": request.task, "feature_columns": list(request.feature_names), "training_seed": seed, "split_seed": request.split_seed})
+                artifact_bytes = temporary.read_bytes()
+            finally:
+                temporary.unlink(missing_ok=True)
+            history = [{"epoch": point.epoch, "train_loss": point.train_loss, "validation_loss": point.validation_loss, "train_metrics": point.train_metrics, "validation_metrics": point.validation_metrics} for point in summary.history]
+            return FitResult(model_payload=None, serialized_artifact=artifact_bytes, artifact_media_type="application/x-pytorch-model", model_spec=spec.to_dict(), training_summary=summary.to_dict(), trajectory=history, validation_raw_predictions=raw.tolist(), validation_raw_probabilities=(1 / (1 + np.exp(-np.clip(raw, -60, 60)))).tolist() if request.task == "binary_classification" else None)
         if key == "sklearn_linear":
             if task == "binary_classification":
                 estimator = LogisticRegression(random_state=seed, max_iter=1000).fit(X_train, y_train.astype(int))
@@ -77,7 +106,20 @@ class _BuiltinAdapter:
 
     def predict(self, request: PredictionRequest) -> PredictionResult:
         if self.descriptor.identity.key == "ruflex_flat_neuro_fuzzy":
-            raise RuntimeExecutionError(self.descriptor.identity.key)
+            spec = ShallowModelSpec.from_dict(request.model_spec)
+            model = FlatNeuroFuzzyModel(spec)
+            with tempfile.NamedTemporaryFile(prefix="ruflex-runtime-load-", suffix=".pt", delete=False) as handle:
+                handle.write(request.artifact)
+                temporary = Path(handle.name)
+            try:
+                model.load_bundle(temporary)
+            finally:
+                temporary.unlink(missing_ok=True)
+            raw = np.asarray(model.predict(np.asarray(request.features, dtype=float)), dtype=float).reshape(-1)
+            if request.task == "binary_classification":
+                probability = 1 / (1 + np.exp(-np.clip(raw, -60, 60)))
+                return PredictionResult(prediction=(probability >= .5).astype(float).tolist(), probability=probability.tolist(), score=probability.tolist(), raw_score=raw.tolist())
+            return PredictionResult(prediction=raw.tolist(), score=raw.tolist())
         payload = json.loads(request.artifact.decode("utf-8"))
         values = np.asarray(request.features, dtype=float)
         if values.ndim == 1:

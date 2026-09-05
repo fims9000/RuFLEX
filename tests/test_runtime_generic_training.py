@@ -57,6 +57,7 @@ def test_generic_core_service_persists_external_adapter_without_project_access(t
 
 
 @pytest.mark.parametrize("adapter_key,model_kind,parameters", [
+    ("ruflex_flat_neuro_fuzzy", "flat_neuro_fuzzy", {"max_epochs": 2, "batch_size": 16, "patience": 2, "max_rules": 3, "learning_rate": .01}),
     ("sklearn_linear", "logistic_regression", {}),
     ("sklearn_decision_tree", "decision_tree", {"max_depth": 2}),
     ("sklearn_random_forest", "random_forest", {"n_estimators": 3}),
@@ -69,6 +70,6 @@ def test_generic_core_service_executes_builtin_sklearn_adapters(tmp_path: Path, 
     assert run.model_artifact_sha256
     assert run.validation_metrics
     with ArtifactStore(tmp_path).open(ArtifactRef(sha256=run.model_artifact_sha256)) as handle:
-        result = builtin_runtime_registry().resolve_model_adapter(adapter_key).predict(PredictionRequest(task="binary_classification", feature_names=("x",), features=np.asarray([[.2], [.8]]), artifact=handle.read(), preprocessing_identity=run.preprocessing_artifact_sha256 or ""))
+        result = builtin_runtime_registry().resolve_model_adapter(adapter_key).predict(PredictionRequest(task="binary_classification", feature_names=("x",), features=np.asarray([[.2], [.8]]), artifact=handle.read(), model_spec=run.model_spec, preprocessing_identity=run.preprocessing_artifact_sha256 or ""))
     assert len(result.prediction) == 2
     assert result.probability is not None
