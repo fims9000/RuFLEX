@@ -97,7 +97,9 @@ class TrainingRun(BaseModel):
     run_id: UUID = Field(default_factory=uuid4)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     status: Literal["succeeded"] = "succeeded"
-    model_kind: Literal["flat_neuro_fuzzy", "logistic_regression", "linear_regression", "decision_tree", "random_forest", "gradient_boosting"] = "flat_neuro_fuzzy"
+    # Adapter-owned concrete kinds are open strings.  Validation is performed
+    # by the persisted runtime binding, not an obsolete closed union.
+    model_kind: str = "flat_neuro_fuzzy"
     task: Literal["regression", "binary_classification"]
     target: str
     dataset_fingerprint: str | None = None
@@ -158,7 +160,7 @@ class TrainingStudy(BaseModel):
     study_id: UUID = Field(default_factory=uuid4)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     name: str
-    model_kind: Literal["flat_neuro_fuzzy", "logistic_regression", "linear_regression", "decision_tree", "random_forest", "gradient_boosting"] = "flat_neuro_fuzzy"
+    model_kind: str = "flat_neuro_fuzzy"
     task: Literal["regression", "binary_classification"]
     selection_metric: str
     selection_split: Literal["validation"] = "validation"
@@ -198,7 +200,7 @@ class StudyJob(BaseModel):
     started_at: datetime | None = None
     finished_at: datetime | None = None
     name: str
-    model_kind: Literal["flat_neuro_fuzzy", "logistic_regression", "linear_regression", "decision_tree", "random_forest", "gradient_boosting"] = "flat_neuro_fuzzy"
+    model_kind: str = "flat_neuro_fuzzy"
     selection_metric: str
     status: Literal["QUEUED", "RUNNING", "SUCCEEDED", "FAILED", "CANCELLED"] = "QUEUED"
     cancel_requested: bool = False
