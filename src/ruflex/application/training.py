@@ -945,10 +945,17 @@ def train_model(project_root: Path, *, model_kind: str, **config) -> TrainingRun
     # Preserve old API callers while allowing the explicit provenance contract.
     config.setdefault("seed", None)
     from ruflex.runtime.registry import builtin_runtime_registry
+    from ruflex.application.runtime_training import train_with_adapter
 
     try:
-        adapter = builtin_runtime_registry().resolve_training_model_kind(model_kind)
-        run = adapter.fit_compatibility_project(project_root, model_kind=model_kind, config=config)  # type: ignore[attr-defined]
+        registry = builtin_runtime_registry()
+        adapter = registry.resolve_training_model_kind(model_kind)
+        run = train_with_adapter(
+            project_root, registry=registry, adapter_key=adapter.descriptor.identity.key,
+            model_kind=model_kind, seed=config.get("seed"), split_seed=config.get("split_seed"),
+            training_seed=config.get("training_seed"), validation_fraction=config.get("validation_fraction", .2),
+            test_fraction=config.get("test_fraction", .2), parameters=config,
+        )
     except Exception as error:
         if isinstance(error, TrainingError):
             raise

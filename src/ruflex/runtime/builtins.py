@@ -81,7 +81,8 @@ class _BuiltinAdapter:
             estimator = DecisionTreeClassifier(random_state=seed, max_depth=parameters.get("max_depth")).fit(X_train, y_train.astype(int)) if task == "binary_classification" else DecisionTreeRegressor(random_state=seed, max_depth=parameters.get("max_depth")).fit(X_train, y_train)
             raw = np.log(np.clip(estimator.predict_proba(X_validation)[:, 1], 1e-12, 1 - 1e-12) / np.clip(1 - estimator.predict_proba(X_validation)[:, 1], 1e-12, 1)) if task == "binary_classification" else estimator.predict(X_validation)
             payload = _tree_artifact(estimator, request=request, model_kind="decision_tree")
-            return FitResult(serialized_artifact=json.dumps(payload, sort_keys=True, separators=(",", ":")).encode(), artifact_media_type="application/vnd.ruflex.declarative-decision-tree+json", model_spec={"node_count": payload["tree"]["node_count"], "max_depth": payload["tree"]["max_depth"]}, training_summary={"source": "decision_tree", "epochs_ran": 1}, validation_raw_predictions=np.asarray(raw, dtype=float).reshape(-1).tolist())
+            tree_spec = payload["tree"]
+            return FitResult(serialized_artifact=json.dumps(payload, sort_keys=True, separators=(",", ":")).encode(), artifact_media_type="application/vnd.ruflex.declarative-decision-tree+json", model_spec={"node_count": tree_spec["node_count"], "max_depth": tree_spec["max_depth"], "leaf_count": sum(1 for node in tree_spec["children_left"] if node == -1)}, training_summary={"source": "decision_tree", "epochs_ran": 1}, validation_raw_predictions=np.asarray(raw, dtype=float).reshape(-1).tolist())
         if key in {"sklearn_random_forest", "sklearn_gradient_boosting"}:
             count = int(parameters.get("n_estimators") or (25 if key == "sklearn_random_forest" else 50))
             depth = parameters.get("max_depth")
@@ -101,7 +102,8 @@ class _BuiltinAdapter:
                 initial = float(np.asarray(estimator._raw_predict_init(X_train[:1]), dtype=float).reshape(-1)[0])
                 payload = {"format": "ruflex.declarative-gradient-boosting/v1", "model_kind": "gradient_boosting", "task": task, "feature_columns": list(request.feature_names), "parameters": {"n_estimators": count, "learning_rate": rate, "max_depth": depth, "random_state": seed}, "split_seed": request.split_seed, "training_seed": seed, "initial_raw_prediction": initial, "trees": trees}
                 media = "application/vnd.ruflex.declarative-gradient-boosting+json"
-            return FitResult(serialized_artifact=json.dumps(payload, sort_keys=True, separators=(",", ":")).encode(), artifact_media_type=media, model_spec={"tree_count": len(trees)}, training_summary={"source": key.removeprefix("sklearn_"), "epochs_ran": count}, validation_raw_predictions=np.asarray(raw, dtype=float).reshape(-1).tolist(), validation_raw_probabilities=None if task != "binary_classification" else (1 / (1 + np.exp(-np.clip(raw, -60, 60)))).tolist())
+            model_spec = {"tree_count": len(trees), "node_count": sum(tree["node_count"] for tree in trees), "max_depth": max(tree["max_depth"] for tree in trees), "leaf_count": sum(sum(1 for node in tree["children_left"] if node == -1) for tree in trees)}
+            return FitResult(serialized_artifact=json.dumps(payload, sort_keys=True, separators=(",", ":")).encode(), artifact_media_type=media, model_spec=model_spec, training_summary={"source": key.removeprefix("sklearn_"), "epochs_ran": count}, validation_raw_predictions=np.asarray(raw, dtype=float).reshape(-1).tolist(), validation_raw_probabilities=None if task != "binary_classification" else (1 / (1 + np.exp(-np.clip(raw, -60, 60)))).tolist())
         raise RuntimeExecutionError(key)
 
     def predict(self, request: PredictionRequest) -> PredictionResult:

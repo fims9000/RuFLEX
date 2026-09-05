@@ -58,8 +58,19 @@ def train_with_adapter(
         preprocessing_identity=preprocessing_sha,
     )
     result = adapter.fit(request)
+    # Core owns dataset/preprocessing provenance even when an adapter chooses
+    # a declarative JSON artifact representation.  This does not alter model
+    # parameters or predictions; it binds the result to the canonical input.
+    serialized_artifact = result.serialized_artifact
+    if result.artifact_media_type.endswith("+json"):
+        payload = json.loads(serialized_artifact.decode("utf-8"))
+        payload.setdefault("target", contract.target)
+        payload.setdefault("normalization", _normalization_dict(split.normalization))
+        payload.setdefault("split_seed", resolved_split)
+        payload.setdefault("training_seed", resolved_training)
+        serialized_artifact = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
     artifact = ArtifactStore(project_root).ingest_bytes(
-        result.serialized_artifact,
+        serialized_artifact,
         metadata=ArtifactMetadata(
             media_type=result.artifact_media_type, source_kind="generated",
             original_name=f"{model_kind}.runtime-artifact", parent_artifacts=[contract.source_artifact_sha256, preprocessing_sha],
