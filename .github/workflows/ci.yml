@@ -25,6 +25,24 @@ jobs:
         with: { python-version: "3.11" }
       - run: PYTHONPATH=src python -m compileall -q src/ruflex
 
+  runtime-matrix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: python -m pip install -e '.[dev,studio]'
+      - run: PYTHONPATH=src python -m pytest -q tests/test_runtime_registry.py tests/test_runtime_entrypoint_plugin.py tests/test_runtime_model_adapter_matrix.py
+
+  frontend-unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - working-directory: frontend
+        run: npm ci && npm test
+
   frontend-build:
     runs-on: ubuntu-latest
     steps:
@@ -40,7 +58,22 @@ jobs:
       - working-directory: frontend
         run: npm run build-storybook
 
-  playwright-core:
+  storybook-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - working-directory: frontend
+        run: npm ci && npm run build-storybook
+
+  diff-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: git diff --check HEAD^ HEAD
+
+  playwright-full:
     runs-on: ubuntu-latest
     env:
       PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.playwright-browsers
@@ -56,17 +89,17 @@ jobs:
       - working-directory: frontend
         run: npx playwright install --with-deps chromium
       - working-directory: frontend
-        run: npx playwright test e2e/training-evaluate.spec.ts e2e/project-lifecycle.spec.ts e2e/stability-lab.spec.ts --reporter=line
+        run: npx playwright test --reporter=line
       - if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-core-artifacts
+          name: playwright-full-artifacts
           path: |
             frontend/test-results/
             frontend/playwright-report/
           if-no-files-found: ignore
 
-  archive-smoke:
+  source-archive-smoke:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -74,10 +107,4 @@ jobs:
         with: { python-version: "3.11" }
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
-      - run: git archive --format=tar HEAD | tar -x -C "$RUNNER_TEMP"
-      - working-directory: ${{ runner.temp }}
-        run: python -m pip install -e '.[dev,studio]'
-      - working-directory: ${{ runner.temp }}
-        run: PYTHONPATH=src python -m compileall -q src/ruflex
-      - working-directory: ${{ runner.temp }}/frontend
-        run: npm ci && npm run build
+      - run: ./scripts/verify_source_archive.sh
