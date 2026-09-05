@@ -56,4 +56,14 @@ describe("ExperimentWorkspace dynamic model controls", () => {
     expect(screen.queryByLabelText("Epochs")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Max rules / layer")).not.toBeInTheDocument();
   });
+
+  it("keeps runtime selection visible but blocks mutating training actions in read-only mode", async () => {
+    render(<ExperimentWorkspace project={{ ...project, read_only: true }} dataset={dataset as never} run={null} study={null} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);
+
+    await screen.findByRole("option", { name: "Random Forest" });
+    expect(screen.getByText("Read-only projects cannot start training runs.")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Run real training" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Run multi-seed study" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Freeze RANDOM SplitContract/ })).toBeDisabled();
+  });
 });

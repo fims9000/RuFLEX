@@ -31,6 +31,11 @@ export function StabilityLab({ project, study, theme }: { project: ProjectSummar
   const selected = useMemo(() => analysis?.cases.find((x) => x.case_id === caseId) ?? analysis?.cases[0] ?? null, [analysis, caseId]);
   const decision = selected ? policy?.decisions.find((x) => x.case_id === selected.case_id) : undefined;
   const applicable = analysis?.applicability === "APPLICABLE";
+  const protocolNote = study?.randomness_protocol === "TRAINING_VARIABILITY"
+    ? "Training variability fixes split membership and changes only the declared training seed; case-level agreement is fully aligned."
+    : study?.randomness_protocol === "SPLIT_VARIABILITY"
+      ? "Split variability fixes the training seed but changes split membership; only explicitly aligned case evidence is eligible for case-level analysis."
+      : "Combined variability changes both split and training seeds; observed variability mixes data-partition and training effects."
 
   async function createAnalysis() {
     if (!study) return;
@@ -50,7 +55,7 @@ export function StabilityLab({ project, study, theme }: { project: ProjectSummar
 
   return <section className="feature-workspace">
     <div className="feature-toolbar"><div><span className="eyebrow">STABILITY LAB</span><h2>Independent-fit evidence and stability-aware review</h2><p>Aggregate quality, one-run confidence, prediction stability, and explanation stability remain separate evidence channels.</p></div><StatusBadge tone={analysis ? (applicable ? "success" : "warning") : "info"}>{analysis ? (applicable ? "Persisted validation evidence" : "Case-level evidence not applicable") : "Ready"}</StatusBadge></div>
-    <div className="feature-toolbar compact-toolbar"><div><strong>{study.randomness_protocol}</strong> · split seeds {study.seed_runs.map((x) => x.split_seed).join(", ")} · training seeds {study.training_seeds.join(", ")}</div><Button view="action" disabled={busy || project.read_only} onClick={createAnalysis} data-ruflex-action="stability.analysis.create">{busy ? "Building…" : "Create Study Stability Analysis"}</Button></div>
+    <div className="feature-toolbar compact-toolbar"><div><strong>{study.randomness_protocol}</strong> · split seeds {study.seed_runs.map((x) => x.split_seed).join(", ")} · training seeds {study.training_seeds.join(", ")}<p className="property-description">{protocolNote}</p></div><Button view="action" disabled={busy || project.read_only} onClick={createAnalysis} data-ruflex-action="stability.analysis.create">{busy ? "Building…" : "Create Study Stability Analysis"}</Button></div>
     {analysis?.applicability === "NOT_APPLICABLE" && <div className="error" role="status">{analysis.applicability_reason} Aggregate distributions remain available; RuFLEX deliberately does not display HCIR or a Stability Gate for this protocol.</div>}
     {analysis?.warnings.map((warning) => <p key={warning} className="muted">Warning: {warning}</p>)}
     {analysis && <div className="run-summary-strip"><div><span>Validation cases</span><strong>{analysis.case_count}</strong></div><div><span>Frozen raw class threshold</span><strong>{analysis.decision_threshold === null ? "Not bound" : analysis.decision_threshold.toFixed(4)}</strong></div><div><span>HC instability rate (raw)</span><strong>{analysis.high_confidence_instability_rate === null ? "N/A" : `${(analysis.high_confidence_instability_rate * 100).toFixed(1)}%`}</strong></div><div><span>High-confidence denominator</span><strong>{analysis.high_confidence_case_count}</strong></div><div><span>Unstable among them</span><strong>{analysis.high_confidence_unstable_case_count}</strong></div></div>}

@@ -37,7 +37,8 @@
     "expanded_scientific_action_inventory",
     "external_explainer_core_persistence",
     "persisted_behavior_revision_comparisons",
-    "external_runtime_governed_golden_route"
+    "external_runtime_governed_golden_route",
+    "stability_protocol_ui_and_read_only_component_coverage"
   ],
   "active_acceptance": [
     "V1.3 persists SplitContract, train-only TransformPipelineContract and leakage-audit evidence through Studio/API, reopen, Lineage, Assurance and VerificationBundle.",
@@ -45,7 +46,7 @@
     "Keep unrelated article and interrupted S03 work out of the committed product baseline."
   ],
   "blockers": [],
-  "next_executable_work": "Expand Studio component-state and browser evidence for task selection, final-test confirmation, stability gate, typed errors, read-only mode, and plugin availability before broader V1.3 QA.",
+  "next_executable_work": "Run the broader V1.3 regression and fresh tracked-source archive QA; resolve only verified regressions before the next capability slice.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
