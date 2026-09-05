@@ -1,4 +1,4 @@
-"""Persisted LocalExecutor orchestration for potentially expensive XAI work."""
+"""Persisted execution-backend orchestration for potentially expensive evidence work."""
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -126,8 +126,8 @@ def start_explanation_check_job(project_root: Path, *, explanation_id: UUID, val
     job = _new_job(
         kind="explanation_check", execution_backend_key=execution_backend_key,
         request={"explanation_id": str(explanation_id), "validator_key": validator_key},
-        message="Queued for LocalExecutor.",
-        log=["Request persisted before LocalExecutor submission."],
+        message="Queued for frozen execution backend.",
+        log=["Request persisted before execution-backend submission."],
     )
     persist_job(project_root, job)
     _submit(project_root, job)

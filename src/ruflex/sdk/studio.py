@@ -84,7 +84,7 @@ class StudioProjectView:
         return list_training_runs(self.root)
 
     def jobs(self, *, kind: str | None = None) -> list[Job]:
-        """Return persisted LocalExecutor records without restarting work."""
+        """Return persisted execution-backend records without restarting work."""
         return list_jobs(self.root, kind=kind)
 
     def explanation_validator_plugins(self) -> list[PluginDescriptor]:

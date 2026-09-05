@@ -13,7 +13,7 @@ print(project.dataset_profile())
 print(project.active_fis())
 print(project.fis_revisions())
 print(project.training_runs())
-print(project.jobs())  # persisted LocalExecutor state; no resubmission
+print(project.jobs())  # persisted execution-backend state; no resubmission
 print(project.explanation_validator_plugins())
 print(project.lineage())
 ```

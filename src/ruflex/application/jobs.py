@@ -21,7 +21,7 @@ class JobStatus(StrEnum):
 
 
 class Job(BaseModel):
-    """Durable local-first job record for non-training product operations."""
+    """Durable job record for non-training product operations and backend provenance."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -94,11 +94,11 @@ def cancel_queued_job(project_root: Path, job_id: UUID) -> Job:
         return job
     if job.status != JobStatus.QUEUED:
         raise JobStateError(
-            "This LocalExecutor job has already started and its native operation is not safely interruptible. "
+            "This execution-backend job has already started and its native operation is not safely interruptible. "
             "Its persisted output will remain authoritative if it completes."
         )
     job.status = JobStatus.CANCELLED
     job.finished_at = datetime.now(timezone.utc)
-    job.message = "Cancelled before LocalExecutor started native work."
+    job.message = "Cancelled before the frozen execution backend started native work."
     job.log.append(job.message)
     return persist_job(project_root, job)

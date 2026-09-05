@@ -350,7 +350,7 @@ def build_project_lineage(project_root: Path) -> LineageGraph:
         jobs.append(job)
         node = add_node(LineageNode(
             id=_node_id("job", job.job_id), kind="local_job",
-            label=job.kind.replace("_", " "), detail=job.message or "persisted LocalExecutor operation",
+            label=job.kind.replace("_", " "), detail=job.message or "persisted execution-backend operation",
             target="EVIDENCE", object_id=str(job.job_id), status=job.status.value.upper(),
         ))
         job_nodes[job.job_id] = node
