@@ -1092,7 +1092,7 @@ export type TrainingRun = {
   run_id: string;
   created_at: string;
   status: "succeeded";
-  model_kind: "flat_neuro_fuzzy" | "logistic_regression" | "linear_regression" | "decision_tree" | "random_forest" | "gradient_boosting";
+  model_kind: string;
   task: "regression" | "binary_classification";
   target: string;
   dataset_fingerprint: string | null;
@@ -1107,10 +1107,13 @@ export type TrainingRun = {
   batch_size: number;
   patience: number | null;
   split: {
-    family: "random_holdout";
+    family: string;
     seed: number;
     split_seed: number | null;
     split_identity: string | null;
+    split_contract_id?: string | null;
+    group_column?: string | null;
+    role_identity_hashes?: Record<string, string>;
     validation_fraction: number;
     test_fraction: number;
     train_count: number;
@@ -1122,6 +1125,7 @@ export type TrainingRun = {
   model_spec: Record<string, unknown>;
   normalization: Record<string, unknown>;
   preprocessing_artifact_sha256: string | null;
+  transform_pipeline_id?: string | null;
   training_summary: {
     source: string;
     epochs_ran: number;

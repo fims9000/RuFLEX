@@ -7,7 +7,7 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from ruflex.application.artifacts import ArtifactRecord, ArtifactRef, ArtifactStore
-from ruflex.application.datasets import DatasetConfirmationError, DatasetContract, DatasetProfile, SplitContract, load_data_audit, load_dataset_contract, load_dataset_profile, load_split_contract
+from ruflex.application.datasets import DatasetConfirmationError, DatasetContract, DatasetProfile, SplitContract, TransformPipelineContract, load_data_audit, load_dataset_contract, load_dataset_profile, load_split_contract, load_transform_pipeline_contract
 from ruflex.application.fis import list_fis_revisions, load_fis
 from ruflex.application.jobs import Job
 from ruflex.application.projects import ProjectService
@@ -52,6 +52,18 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                 load_split_contract(base, split.split_id)
             except (FileNotFoundError, ValidationError, ValueError, DatasetConfirmationError, OSError) as error:
                 issues.append(ProjectIntegrityIssue(code="SPLIT_CONTRACT_EVIDENCE_MALFORMED", status="FAIL", path=str(path.relative_to(base)), detail=str(error)))
+    transform_root = base / "data" / "transforms"
+    if transform_root.exists() and not transform_root.is_dir():
+        issues.append(ProjectIntegrityIssue(code="TRANSFORM_PIPELINE_EVIDENCE_MALFORMED", status="FAIL", path="data/transforms", detail="Transform-pipeline evidence path is not a directory."))
+    elif transform_root.is_dir():
+        for path in sorted(transform_root.glob("*.json")):
+            checked += 1
+            try:
+                pipeline = TransformPipelineContract.model_validate_json(path.read_text(encoding="utf-8"))
+                if path.stem != str(pipeline.pipeline_id): raise ValueError("TransformPipelineContract filename does not match its persisted identity.")
+                load_transform_pipeline_contract(base, pipeline.pipeline_id)
+            except (FileNotFoundError, ValidationError, ValueError, DatasetConfirmationError, OSError) as error:
+                issues.append(ProjectIntegrityIssue(code="TRANSFORM_PIPELINE_EVIDENCE_MALFORMED", status="FAIL", path=str(path.relative_to(base)), detail=str(error)))
     try:
         runs = list_training_runs(base); checked += len(runs)
     except (ValidationError, ValueError, FileNotFoundError) as error:
@@ -144,6 +156,13 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                     raise DatasetConfirmationError("TrainingRun role identity hashes differ from its immutable SplitContract.")
             except (FileNotFoundError, ValidationError, ValueError, DatasetConfirmationError) as error:
                 issues.append(ProjectIntegrityIssue(code="SPLIT_CONTRACT_PROVENANCE_MISMATCH", status="FAIL", path=f"runs/{run.run_id}.json", detail=str(error)))
+        if run.transform_pipeline_id is not None:
+            try:
+                pipeline = load_transform_pipeline_contract(base, run.transform_pipeline_id); checked += 1
+                if pipeline.preprocessing_artifact_sha256 != run.preprocessing_artifact_sha256 or pipeline.feature_order != run.feature_columns:
+                    raise DatasetConfirmationError("TransformPipelineContract does not match TrainingRun preprocessing provenance.")
+            except (FileNotFoundError, ValidationError, ValueError, DatasetConfirmationError) as error:
+                issues.append(ProjectIntegrityIssue(code="TRANSFORM_PIPELINE_PROVENANCE_MISMATCH", status="FAIL", path=f"runs/{run.run_id}.json", detail=str(error)))
         if run.preprocessing_artifact_sha256 is not None:
             verification = store.verify(ArtifactRef(sha256=run.preprocessing_artifact_sha256)); checked += 1
             if not verification.valid:

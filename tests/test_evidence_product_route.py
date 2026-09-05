@@ -463,6 +463,29 @@ def test_verification_bundle_rejects_rechecksumming_broken_provenance(tmp_path: 
     assert any("broken evidence provenance" in error for error in invalid.errors)
 
 
+def test_verification_bundle_rejects_rechecksummed_transform_pipeline_tampering(tmp_path: Path) -> None:
+    from ruflex.application.verification_bundle import validate_verification_bundle
+    import hashlib
+    import json
+    import shutil
+
+    client = TestClient(app); root = tmp_path / "transform-bundle"; session_id = _project_with_data(client, root)
+    _train(client, session_id, "logistic_regression")
+    assert client.post("/api/projects/evidence/assurance-cases", json={"session_id": session_id}).status_code == 201
+    bundle = client.post("/api/projects/evidence/verification-bundles", json={"session_id": session_id}).json()
+    extracted = tmp_path / "transform-bundle-extracted"; shutil.unpack_archive(bundle["path"], extracted, "zip")
+    pipeline_path = next((extracted / "data" / "transforms").glob("*.json"))
+    payload = json.loads(pipeline_path.read_text(encoding="utf-8")); payload["feature_order"] = ["tampered"]
+    pipeline_path.write_text(json.dumps(payload), encoding="utf-8")
+    manifest_path = extracted / "verification-manifest.json"; manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    relative = pipeline_path.relative_to(extracted).as_posix(); manifest["checksums"][relative] = hashlib.sha256(pipeline_path.read_bytes()).hexdigest()
+    manifest_bytes = json.dumps(manifest, indent=2, sort_keys=True).encode(); manifest_path.write_bytes(manifest_bytes)
+    (extracted / "verification-manifest.sha256").write_text(f"{hashlib.sha256(manifest_bytes).hexdigest()}  verification-manifest.json\n", encoding="utf-8")
+    invalid = validate_verification_bundle(extracted)
+    assert invalid.status == "FAIL"
+    assert any("TransformPipelineContract" in error for error in invalid.errors)
+
+
 def test_assurance_never_passes_malformed_or_failed_behavior_evidence(tmp_path: Path) -> None:
     client = TestClient(app); root = tmp_path / "assurance-negative"; session_id = _project_with_data(client, root)
     malformed = root / "evidence" / "behavior-specs" / "00000000-0000-0000-0000-000000000001.json"

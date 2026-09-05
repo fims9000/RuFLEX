@@ -20,7 +20,7 @@ from typing import Any, Literal
 
 from ruflex.application.projects import ProjectError, ProjectReadOnlyError, ProjectService
 from ruflex.application.artifacts import ArtifactMetadata, ArtifactRecord, ArtifactRef, ArtifactStore
-from ruflex.application.datasets import DataAuditReport, DatasetContract, DatasetProfile, SplitContract, build_dataset_contract, create_split_contract, inspect_dataset, list_split_contracts, load_data_audit, load_dataset_contract, load_dataset_frame, load_dataset_profile, load_split_contract, persist_dataset_bytes, persist_dataset_contract, run_data_audit
+from ruflex.application.datasets import DataAuditReport, DatasetContract, DatasetProfile, SplitContract, TransformPipelineContract, build_dataset_contract, create_split_contract, inspect_dataset, list_split_contracts, list_transform_pipeline_contracts, load_data_audit, load_dataset_contract, load_dataset_frame, load_dataset_profile, load_split_contract, load_transform_pipeline_contract, persist_dataset_bytes, persist_dataset_contract, run_data_audit
 from ruflex.application.generalization import ContractFreezeError, ContractLintReport, GeneralizationContract, GeneralizationContractError, NoveltyAxis, ScopeClassification, ScopeRule, SliceAnalysis, SliceDefinition, classify_scope, create_generalization_contract, create_slice_analysis, freeze_generalization_contract, lint_generalization_contract, load_generalization_contract, load_latest_slice_analysis, persist_generalization_contract, recommend_split_families
 from ruflex.application.fis import FISError, create_default_fis, diagnose_fis, evaluate_fis, evaluate_response_surface, list_fis_revisions, load_fis, load_latest_trace, persist_fis, save_trace_artifact
 from ruflex.application.fis_interop import export_matlab_fis, persist_imported_matlab_fis
@@ -768,6 +768,24 @@ def get_project_split_contract(session_id: UUID, split_id: UUID) -> SplitContrac
         raise _project_error(error) from error
     except (FileNotFoundError, ValueError, OSError) as error:
         raise HTTPException(status_code=404, detail=f"Split contract is unavailable: {error}") from error
+
+
+@app.get("/api/projects/{session_id}/dataset/transforms", response_model=list[TransformPipelineContract])
+def list_project_transform_pipelines(session_id: UUID) -> list[TransformPipelineContract]:
+    try:
+        return list_transform_pipeline_contracts(service.get(session_id).project.root)
+    except ProjectError as error:
+        raise _project_error(error) from error
+
+
+@app.get("/api/projects/{session_id}/dataset/transforms/{pipeline_id}", response_model=TransformPipelineContract)
+def get_project_transform_pipeline(session_id: UUID, pipeline_id: UUID) -> TransformPipelineContract:
+    try:
+        return load_transform_pipeline_contract(service.get(session_id).project.root, pipeline_id)
+    except ProjectError as error:
+        raise _project_error(error) from error
+    except (FileNotFoundError, ValueError, OSError) as error:
+        raise HTTPException(status_code=404, detail=f"Transform pipeline is unavailable: {error}") from error
 
 
 @app.get("/api/projects/{session_id}/dataset/features/{feature_name}/range")

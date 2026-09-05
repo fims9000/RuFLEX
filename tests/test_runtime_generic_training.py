@@ -11,6 +11,7 @@ import pytest
 from ruflex.application.datasets import build_dataset_contract, create_split_contract, inspect_dataset, persist_dataset_bytes, persist_dataset_contract, run_data_audit
 from ruflex.application.runtime_training import train_with_adapter
 from ruflex.application.training import load_training_run
+from ruflex.application.datasets import load_transform_pipeline_contract
 from ruflex.application.artifacts import ArtifactRef, ArtifactStore
 from ruflex.runtime.contracts import FitRequest, FitResult, ModelAdapterDescriptor, PredictionRequest, PredictionResult, RuntimeIdentity
 from ruflex.runtime.registry import RuntimeRegistry
@@ -53,6 +54,10 @@ def test_generic_core_service_persists_external_adapter_without_project_access(t
     assert reopened.adapter_key == "fixture_adapter"
     assert reopened.model_kind == "fixture_model"
     assert reopened.preprocessing_artifact_sha256
+    assert reopened.transform_pipeline_id
+    pipeline = load_transform_pipeline_contract(tmp_path, reopened.transform_pipeline_id)
+    assert pipeline.fit_role == "TRAIN"
+    assert [step.step_type for step in pipeline.steps] == ["MedianImputer", "StandardScaler"]
     assert reopened.split.test_status == "LOCKED_NOT_EVALUATED"
 
 

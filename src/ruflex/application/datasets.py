@@ -49,6 +49,25 @@ class SplitContract(BaseModel):
  )
 
  def role_rows(self, role:str)->tuple[int,...]: return tuple(self.role_source_rows[role])
+class TransformStepContract(BaseModel):
+ step_type:Literal['MedianImputer','StandardScaler','MinMaxScaler','OneHotEncoder','OrdinalEncoder','FeatureSelector','CustomTrustedTransform']
+ parameters:dict
+ fit_role:Literal['TRAIN']='TRAIN'
+ input_columns:list[str]
+ output_columns:list[str]
+ artifact_identity:str|None=None
+ version:str='1'
+class TransformPipelineContract(BaseModel):
+ schema_version:int=1
+ pipeline_id:UUID=Field(default_factory=uuid4)
+ dataset_fingerprint:str
+ split_contract_id:str|None=None
+ feature_order:list[str]
+ steps:list[TransformStepContract]
+ preprocessing_artifact_sha256:str
+ fit_role:Literal['TRAIN']='TRAIN'
+ pipeline_identity:str
+ scientific_note:str='Transforms are fitted only on TRAIN rows. This provenance boundary does not independently detect every possible data leak.'
 class AuditFinding(BaseModel): code:str; severity:str; scope:str; evidence:dict; remediation:str; check_version:str='1'
 class DataAuditReport(BaseModel): dataset_fingerprint:str; findings:list[AuditFinding]
 def _is_id_candidate(name: str) -> bool:
@@ -177,6 +196,47 @@ def list_split_contracts(project_root:Path)->list[SplitContract]:
   try: contracts.append(load_split_contract(project_root,path.stem))
   except (OSError,ValueError,DatasetConfirmationError): continue
  return sorted(contracts,key=lambda item:str(item.split_id))
+
+def _transform_root(project_root:Path)->Path:
+ root=Path(project_root).resolve()/"data"/"transforms"; root.mkdir(parents=True,exist_ok=True); return root
+
+def create_transform_pipeline_contract(project_root:Path, *, contract:DatasetContract, split, preprocessing_artifact_sha256:str, split_contract_id:str|None=None)->TransformPipelineContract:
+ """Persist the exact train-only numerical preprocessing already executed."""
+ normalization=split.normalization.to_dict(); columns=list(split.feature_columns)
+ steps=[TransformStepContract(step_type='MedianImputer',parameters={'values':dict(split.imputation_values),'missing_value_policy':'median'},input_columns=columns,output_columns=columns,artifact_identity=preprocessing_artifact_sha256)]
+ if normalization['mode']=='standard': steps.append(TransformStepContract(step_type='StandardScaler',parameters={'center':normalization['center'],'scale':normalization['scale']},input_columns=columns,output_columns=columns,artifact_identity=preprocessing_artifact_sha256))
+ elif normalization['mode']=='minmax': steps.append(TransformStepContract(step_type='MinMaxScaler',parameters={'minimum':normalization['minimum'],'maximum':normalization['maximum']},input_columns=columns,output_columns=columns,artifact_identity=preprocessing_artifact_sha256))
+ payload={'dataset_fingerprint':contract.dataset_fingerprint,'split_contract_id':split_contract_id,'feature_order':columns,'steps':[item.model_dump(mode='json') for item in steps],'preprocessing_artifact_sha256':preprocessing_artifact_sha256}
+ identity='transform-pipeline:'+hashlib.sha256(json.dumps(payload,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+ result=TransformPipelineContract(**payload,pipeline_identity=identity)
+ _persist_json(_transform_root(project_root),f'{result.pipeline_id}.json',result)
+ return result
+
+def _transform_pipeline_identity(result:TransformPipelineContract)->str:
+ payload={
+  'dataset_fingerprint':result.dataset_fingerprint,
+  'split_contract_id':result.split_contract_id,
+  'feature_order':result.feature_order,
+  'steps':[item.model_dump(mode='json') for item in result.steps],
+  'preprocessing_artifact_sha256':result.preprocessing_artifact_sha256,
+ }
+ return 'transform-pipeline:'+hashlib.sha256(json.dumps(payload,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+
+def load_transform_pipeline_contract(project_root:Path,pipeline_id:UUID|str)->TransformPipelineContract:
+ result=TransformPipelineContract.model_validate_json((_transform_root(project_root)/f'{pipeline_id}.json').read_text(encoding='utf-8'))
+ contract=load_dataset_contract(project_root)
+ if result.dataset_fingerprint!=contract.dataset_fingerprint: raise DatasetConfirmationError('Transform pipeline does not belong to the active DatasetContract revision.')
+ if result.fit_role!='TRAIN' or any(step.fit_role!='TRAIN' for step in result.steps): raise DatasetConfirmationError('Transform pipeline has a non-TRAIN fitting scope.')
+ if result.pipeline_identity!=_transform_pipeline_identity(result): raise DatasetConfirmationError('Transform pipeline identity does not match its persisted provenance.')
+ if result.split_contract_id is not None: load_split_contract(project_root,result.split_contract_id)
+ return result
+
+def list_transform_pipeline_contracts(project_root:Path)->list[TransformPipelineContract]:
+ pipelines=[]
+ for path in _transform_root(project_root).glob('*.json'):
+  try: pipelines.append(load_transform_pipeline_contract(project_root,path.stem))
+  except (OSError,ValueError,DatasetConfirmationError): continue
+ return sorted(pipelines,key=lambda item:str(item.pipeline_id))
 
 def persist_dataset_bytes(project_root:Path,data:bytes,*,original_name:str="dataset.csv",media_type:str="text/csv")->ArtifactRef:
  return ArtifactStore(project_root).ingest_bytes(data,metadata=ArtifactMetadata(media_type=media_type,source_kind="upload",original_name=original_name))

@@ -24,7 +24,7 @@ from ruflex.application.artifacts import ArtifactMetadata, ArtifactRef, Artifact
 from ruflex.runtime.backends import resolve_execution_backend
 from ruflex.runtime.contracts import PredictionRequest
 from ruflex.runtime.registry import builtin_runtime_registry
-from ruflex.application.datasets import load_dataset_contract, load_dataset_frame, load_split_contract, row_identity
+from ruflex.application.datasets import load_dataset_contract, load_dataset_frame, load_split_contract, load_transform_pipeline_contract, row_identity
 from ruflex.core.enums import NormalizationMode, TaskType, VariableRole
 from ruflex.core.membership import GaussianMembershipSpec
 from ruflex.core.variables import VariableSpec
@@ -1590,6 +1590,10 @@ def evaluate_final_test(
 
     frame = load_dataset_frame(project_root)
     split_contract = load_split_contract(project_root, run.split.split_contract_id) if run.split.split_contract_id else None
+    if run.transform_pipeline_id is not None:
+        pipeline = load_transform_pipeline_contract(project_root, run.transform_pipeline_id)
+        if pipeline.preprocessing_artifact_sha256 != run.preprocessing_artifact_sha256 or pipeline.feature_order != run.feature_columns:
+            raise TrainingError("The frozen TransformPipelineContract does not match the TrainingRun preprocessing identity.")
     split = TabularDataset.from_dataframe(frame).split(DatasetConfig(
         target_column=run.target,
         feature_columns=tuple(run.feature_columns),

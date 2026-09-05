@@ -7,7 +7,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ValidationError
 
-from ruflex.application.datasets import DatasetContract, SplitContract, list_split_contracts, load_dataset_contract, load_dataset_profile
+from ruflex.application.datasets import DatasetContract, SplitContract, list_split_contracts, load_dataset_contract, load_dataset_profile, load_transform_pipeline_contract
 from ruflex.application.jobs import Job
 from ruflex.domain.evidence import ExplanationCheck, ExplanationContract
 from ruflex.domain.fis import FISSpec
@@ -169,6 +169,7 @@ def build_project_lineage(project_root: Path) -> LineageGraph:
     runs = [item for item in _json_models(root / "runs", TrainingRun, exclude=("active-training-run.json",)) if isinstance(item, TrainingRun)]
     run_nodes: dict[UUID, str] = {}
     preprocessing_nodes: dict[str, str] = {}
+    transform_pipeline_nodes: dict[str, str] = {}
     for run in runs:
         node = add_node(LineageNode(
             id=_node_id("run", run.run_id),
@@ -200,6 +201,21 @@ def build_project_lineage(project_root: Path) -> LineageGraph:
                 if dataset_node and run.dataset_fingerprint and contract is not None and run.dataset_fingerprint == contract.dataset_fingerprint:
                     add_edge(dataset_node, preprocessing_node, "fit_on_train_partition")
             add_edge(preprocessing_node, node, "preprocessed_for")
+        if run.transform_pipeline_id is not None:
+            try:
+                pipeline = load_transform_pipeline_contract(root, run.transform_pipeline_id)
+                pipeline_node = transform_pipeline_nodes.get(run.transform_pipeline_id)
+                if pipeline_node is None:
+                    pipeline_node = add_node(LineageNode(
+                        id=_node_id("transform-pipeline", pipeline.pipeline_id), kind="transform_pipeline",
+                        label="Train-only transform pipeline", detail=" → ".join(step.step_type for step in pipeline.steps),
+                        target="DATA", object_id=str(pipeline.pipeline_id), status="FROZEN",
+                    ))
+                    transform_pipeline_nodes[run.transform_pipeline_id] = pipeline_node
+                    add_edge(dataset_node, pipeline_node, "transformed_by")
+                add_edge(pipeline_node, node, "prepared_for")
+            except (OSError, ValueError, ValidationError):
+                pass
 
     studies = [item for item in _json_models(root / "studies", TrainingStudy, exclude=("active-study.json",)) if isinstance(item, TrainingStudy)]
     study_nodes: dict[UUID, str] = {}

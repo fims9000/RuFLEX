@@ -80,6 +80,10 @@ def test_split_contract_api_survives_close_reopen_and_training_uses_it(tmp_path)
     latest = client.get(f"/api/projects/{reopened['session_id']}/training/latest")
     assert latest.status_code == 200
     assert latest.json()["split"]["split_contract_id"] == split_id
+    pipeline_id = latest.json()["transform_pipeline_id"]
+    pipeline = client.get(f"/api/projects/{reopened['session_id']}/dataset/transforms/{pipeline_id}")
+    assert pipeline.status_code == 200
+    assert all(step["fit_role"] == "TRAIN" for step in pipeline.json()["steps"])
     lineage = build_project_lineage(root)
     assert any(node.kind == "split_contract" for node in lineage.nodes)
     assert inspect_project_integrity(root).status == "PASS"

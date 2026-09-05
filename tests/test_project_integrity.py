@@ -67,6 +67,20 @@ def test_project_integrity_rejects_tampered_train_only_preprocessing_artifact(tm
     assert any(issue["code"] == "PREPROCESSING_ARTIFACT_INVALID" for issue in report["issues"])
 
 
+def test_project_integrity_rejects_tampered_transform_pipeline(tmp_path: Path) -> None:
+    client = TestClient(app); root = tmp_path / "transform-pipeline-integrity"
+    session_id = client.post("/api/projects", json={"path": str(root), "name": "Transform pipeline"}).json()["session_id"]
+    assert client.post("/api/projects/dataset/confirm", json={"session_id": session_id, "csv_text": _frame(), "target": "target", "task": "binary_classification", "id_columns": []}).status_code == 200
+    trained = client.post("/api/projects/training/run", json={"session_id": session_id, "model_kind": "logistic_regression", "seed": 42, "max_epochs": 1, "learning_rate": .01, "batch_size": 16, "patience": 1, "validation_fraction": .2, "test_fraction": .2, "max_rules": 3}).json()
+    pipeline_id = trained["transform_pipeline_id"]
+    path = root / "data" / "transforms" / f"{pipeline_id}.json"
+    payload = json.loads(path.read_text(encoding="utf-8")); payload["feature_order"] = ["tampered"]
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    report = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert report["status"] == "FAIL"
+    assert any(issue["code"] == "TRANSFORM_PIPELINE_EVIDENCE_MALFORMED" for issue in report["issues"])
+
+
 def test_project_integrity_checks_imported_matlab_fis_provenance(tmp_path: Path) -> None:
     client = TestClient(app); root = tmp_path / "fis-import-integrity"
     session_id = client.post("/api/projects", json={"path": str(root), "name": "FIS import integrity"}).json()["session_id"]
