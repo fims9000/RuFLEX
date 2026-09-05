@@ -6,12 +6,15 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from ruflex.application.datasets import build_dataset_contract, inspect_dataset, persist_dataset_bytes, persist_dataset_contract, run_data_audit
 from ruflex.application.runtime_training import train_with_adapter
 from ruflex.application.training import load_training_run
+from ruflex.application.artifacts import ArtifactRef, ArtifactStore
 from ruflex.runtime.contracts import FitRequest, FitResult, ModelAdapterDescriptor, PredictionRequest, PredictionResult, RuntimeIdentity
 from ruflex.runtime.registry import RuntimeRegistry
+from ruflex.runtime import builtin_runtime_registry
 
 
 @dataclass(frozen=True)
@@ -51,3 +54,21 @@ def test_generic_core_service_persists_external_adapter_without_project_access(t
     assert reopened.model_kind == "fixture_model"
     assert reopened.preprocessing_artifact_sha256
     assert reopened.split.test_status == "LOCKED_NOT_EVALUATED"
+
+
+@pytest.mark.parametrize("adapter_key,model_kind,parameters", [
+    ("sklearn_linear", "logistic_regression", {}),
+    ("sklearn_decision_tree", "decision_tree", {"max_depth": 2}),
+    ("sklearn_random_forest", "random_forest", {"n_estimators": 3}),
+    ("sklearn_gradient_boosting", "gradient_boosting", {"n_estimators": 3, "learning_rate": .1, "max_depth": 2}),
+])
+def test_generic_core_service_executes_builtin_sklearn_adapters(tmp_path: Path, adapter_key: str, model_kind: str, parameters: dict) -> None:
+    _project(tmp_path)
+    run = train_with_adapter(tmp_path, registry=builtin_runtime_registry(), adapter_key=adapter_key, model_kind=model_kind, seed=8, parameters=parameters)
+    assert run.adapter_key == adapter_key
+    assert run.model_artifact_sha256
+    assert run.validation_metrics
+    with ArtifactStore(tmp_path).open(ArtifactRef(sha256=run.model_artifact_sha256)) as handle:
+        result = builtin_runtime_registry().resolve_model_adapter(adapter_key).predict(PredictionRequest(task="binary_classification", feature_names=("x",), features=np.asarray([[.2], [.8]]), artifact=handle.read(), preprocessing_identity=run.preprocessing_artifact_sha256 or ""))
+    assert len(result.prediction) == 2
+    assert result.probability is not None
