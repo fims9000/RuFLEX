@@ -320,11 +320,13 @@ class CreatePosthocExplanationRequest(SessionRequest):
     run_id: UUID
     sample: dict[str, float] = Field(min_length=1)
     method: str = Field(default="occlusion", pattern=r"^[a-z][a-z0-9_]{2,80}$")
+    execution_backend_key: str = Field(default="local_executor", pattern=r"^[a-z][a-z0-9_]{2,80}$")
 
 
 class CheckExplanationRequest(SessionRequest):
     explanation_id: UUID
     validator_key: str = Field(default="native_explanation_validator", pattern=r"^[a-z][a-z0-9_]{2,80}$")
+    execution_backend_key: str = Field(default="local_executor", pattern=r"^[a-z][a-z0-9_]{2,80}$")
 
 
 class CreateExplanationReproducibilityRequest(SessionRequest):
@@ -1201,6 +1203,7 @@ def start_posthoc_explanation_job(request: CreatePosthocExplanationRequest) -> J
             raise ProjectReadOnlyError("Project was opened read-only and cannot persist an explanation job.")
         return start_explanation_generation_job(
             session.project.root, run_id=request.run_id, sample=request.sample, method=request.method,
+            execution_backend_key=request.execution_backend_key,
         )
     except ProjectError as error:
         raise _project_error(error) from error
@@ -1251,7 +1254,7 @@ def start_posthoc_explanation_check_job(request: CheckExplanationRequest) -> Job
         session = service.get(request.session_id)
         if session.project.read_only:
             raise ProjectReadOnlyError("Project was opened read-only and cannot persist an explanation-check job.")
-        return start_explanation_check_job(session.project.root, explanation_id=request.explanation_id, validator_key=request.validator_key)
+        return start_explanation_check_job(session.project.root, explanation_id=request.explanation_id, validator_key=request.validator_key, execution_backend_key=request.execution_backend_key)
     except ProjectError as error:
         raise _project_error(error) from error
     except (EvidenceJobError, ValueError, OSError, FileNotFoundError) as error:

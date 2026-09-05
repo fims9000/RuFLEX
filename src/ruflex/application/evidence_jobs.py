@@ -13,8 +13,8 @@ class EvidenceJobError(ValueError):
     pass
 
 
-def _new_job(kind: str, **values) -> Job:
-    descriptor, _ = resolve_execution_backend()
+def _new_job(kind: str, *, execution_backend_key: str = "local_executor", **values) -> Job:
+    descriptor, _ = resolve_execution_backend(execution_backend_key)
     return Job(
         kind=kind,
         execution_backend_key=descriptor.identity.key,
@@ -89,6 +89,7 @@ def start_explanation_generation_job(
     run_id: UUID,
     sample: dict[str, float],
     method: str,
+    execution_backend_key: str = "local_executor",
 ) -> Job:
     from ruflex.runtime import builtin_runtime_registry
     from ruflex.runtime.errors import RuntimeErrorBase
@@ -97,7 +98,7 @@ def start_explanation_generation_job(
     except RuntimeErrorBase as error:
         raise EvidenceJobError(f"Explanation runtime is unavailable: {error.code}: {error.message}") from error
     job = _new_job(
-        kind="explanation_generation",
+        kind="explanation_generation", execution_backend_key=execution_backend_key,
         request={"run_id": str(run_id), "sample": sample, "method": method},
         message="Queued for frozen execution backend.",
         log=["Request persisted before execution-backend submission."],
@@ -107,7 +108,7 @@ def start_explanation_generation_job(
     return load_job(project_root, job.job_id)
 
 
-def start_explanation_check_job(project_root: Path, *, explanation_id: UUID, validator_key: str = "native_explanation_validator") -> Job:
+def start_explanation_check_job(project_root: Path, *, explanation_id: UUID, validator_key: str = "native_explanation_validator", execution_backend_key: str = "local_executor") -> Job:
     from ruflex.runtime import builtin_runtime_registry
     from ruflex.runtime.errors import RuntimeErrorBase
     try:
@@ -115,7 +116,7 @@ def start_explanation_check_job(project_root: Path, *, explanation_id: UUID, val
     except RuntimeErrorBase as error:
         raise EvidenceJobError(f"Validator runtime is unavailable: {error.code}: {error.message}") from error
     job = _new_job(
-        kind="explanation_check",
+        kind="explanation_check", execution_backend_key=execution_backend_key,
         request={"explanation_id": str(explanation_id), "validator_key": validator_key},
         message="Queued for LocalExecutor.",
         log=["Request persisted before LocalExecutor submission."],
