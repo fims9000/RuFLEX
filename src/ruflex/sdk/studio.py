@@ -5,6 +5,7 @@ from uuid import UUID
 
 from ruflex.application.datasets import load_dataset_contract, load_dataset_profile
 from ruflex.application.evidence import list_explanation_validator_plugins, load_explanation, load_explanation_check
+from ruflex.application.model_catalog import ModelCapabilityContract, model_capability_contracts
 from ruflex.application.jobs import Job, list_jobs
 from ruflex.application.reproducibility import load_latest_explanation_reproducibility
 from ruflex.application.exhaustive import load_latest_exhaustive
@@ -89,6 +90,10 @@ class StudioProjectView:
     def explanation_validator_plugins(self) -> list[PluginDescriptor]:
         """Return registered validator contracts; this does not load external code."""
         return list_explanation_validator_plugins()
+
+    def model_capabilities(self) -> list[ModelCapabilityContract]:
+        """Return runtime model contracts without opening an execution boundary."""
+        return model_capability_contracts()
 
     def evaluation(self, evaluation_id: UUID | str) -> AnalysisEvaluation:
         return load_validation_evaluation(self.root, UUID(str(evaluation_id)))

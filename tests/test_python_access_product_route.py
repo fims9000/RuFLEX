@@ -24,6 +24,7 @@ def test_python_escape_hatch_opens_same_canonical_project(tmp_path: Path) -> Non
     assert any(node.kind == "dataset" for node in project.lineage().nodes)
     assert project.jobs() == []
     assert [plugin.key for plugin in project.explanation_validator_plugins()] == ["native_explanation_validator"]
+    assert {item.key for item in project.model_capabilities()} >= {"flat_neuro_fuzzy", "decision_tree", "linear"}
 
 
 def test_python_escape_hatch_reads_persisted_analysis_and_active_generalization(tmp_path: Path) -> None:
