@@ -38,7 +38,8 @@
     "external_explainer_core_persistence",
     "persisted_behavior_revision_comparisons",
     "external_runtime_governed_golden_route",
-    "stability_protocol_ui_and_read_only_component_coverage"
+    "stability_protocol_ui_and_read_only_component_coverage",
+    "durable_real_studio_screenshot_evidence"
   ],
   "active_acceptance": [
     "V1.3 persists SplitContract, train-only TransformPipelineContract and leakage-audit evidence through Studio/API, reopen, Lineage, Assurance and VerificationBundle.",
@@ -71,6 +72,7 @@
     "explanation_evidence_reopen_integrity": "PASS: project integrity now fails closed for malformed or detached persisted ExplanationContract/ExplanationCheck evidence and unresolved active pointers; focused evidence/integrity tests passed",
     "artifact_metadata_integrity": "PASS: ArtifactStore verifies canonical metadata SHA, byte size and relative blob path as well as blob content; focused and full Python tests passed",
     "fis_reopen_integrity": "PASS: project integrity validates persisted FIS semantic identity, revision history and active pointer before import provenance is accepted; focused and full Python tests passed",
-    "v1_1_release_quality": "PASS: capability runtime/API/SDK/Studio dynamic selection, archive smoke and 26-route Playwright matrix; exact release receipt is docs/qa/V1_1_RELEASE_QA.md"
+    "v1_1_release_quality": "PASS: capability runtime/API/SDK/Studio dynamic selection, archive smoke and 26-route Playwright matrix; exact release receipt is docs/qa/V1_1_RELEASE_QA.md",
+    "v1_3_current_cycle": "PASS: full Python suite reached 100%; frontend unit, Vite and Storybook builds passed; focused external-runtime golden route and full real Studio product-evidence/visual checks passed. Product screenshots 01-19 were explicitly recaptured; ordinary Playwright writes evidence only to test output."
   }
 }

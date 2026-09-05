@@ -1,5 +1,5 @@
 {
-  "project_path": "/tmp/ruflex-product-evidence-1788610719791-4f50df051f7e2",
+  "project_path": "ephemeral local product-evidence project",
   "object_types": [
     "DatasetContract",
     "FIS revision",
@@ -22,11 +22,8 @@
     "AssuranceCase",
     "VerificationBundle"
   ],
-  "fis_revision": {
-    "fis_id": "80e3d68c-b177-418a-88f2-8a467404127d",
-    "semantic_hash": "566dc210ac9ef63221588c5ca530f3cbb3df38f8f4cabde43e626f2eae1547ac"
-  },
-  "fis_behavior_spec": "a46a7946-ec03-42e0-8f82-81b3f0ba0974",
-  "fis_behavior_result": "d36dd4ef-f530-4e87-b65d-92c40d8189ea",
-  "reopen_session": "4031ed5f-cea9-4668-a033-8790d139b766"
+  "fis_revision": "runtime-generated persisted FIS revision",
+  "fis_behavior_spec": "runtime-generated persisted BehaviorSpec",
+  "fis_behavior_result": "runtime-generated persisted BehaviorSpecResult",
+  "reopen_session": "runtime-generated read-only reopen session"
 }
