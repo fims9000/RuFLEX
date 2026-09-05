@@ -1,0 +1,81 @@
+name: RuFLEX product CI
+
+on:
+  push:
+    branches: [master, "feature/**"]
+  pull_request:
+    branches: [master]
+
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e '.[dev,studio]'
+      - run: PYTHONPATH=src python -m pytest -q
+
+  backend-compile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: PYTHONPATH=src python -m compileall -q src/ruflex
+
+  frontend-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - working-directory: frontend
+        run: npm ci
+      - working-directory: frontend
+        run: npm test
+      - working-directory: frontend
+        run: npm run build
+      - working-directory: frontend
+        run: npm run build-storybook
+
+  playwright-core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - run: python -m pip install -e '.[dev,studio]'
+      - working-directory: frontend
+        run: npm ci
+      - working-directory: frontend
+        run: npx playwright install --with-deps chromium
+      - working-directory: frontend
+        run: npx playwright test e2e/training-evaluate.spec.ts e2e/project-lifecycle.spec.ts e2e/stability-lab.spec.ts --reporter=line
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-core-artifacts
+          path: |
+            frontend/test-results/
+            frontend/playwright-report/
+          if-no-files-found: ignore
+
+  archive-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: git archive --format=tar HEAD | tar -x -C "$RUNNER_TEMP"
+      - working-directory: ${{ runner.temp }}
+        run: python -m pip install -e '.[dev,studio]'
+      - working-directory: ${{ runner.temp }}
+        run: PYTHONPATH=src python -m compileall -q src/ruflex
+      - working-directory: ${{ runner.temp }}/frontend
+        run: npm ci && npm run build

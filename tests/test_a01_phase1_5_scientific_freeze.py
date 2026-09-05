@@ -22,6 +22,17 @@ def test_h1_amendment_withdraws_binary_labels_without_rewriting_phase1() -> None
 
 
 def test_h2_recomputation_and_model_freeze_are_complete() -> None:
+    # The source distribution deliberately excludes the 300 fitted model blobs
+    # and their persisted project objects.  A source-only archive must prove
+    # that the scientific audit fails closed in that situation; a materialized
+    # Phase 1.5 evidence/runtime checkout must still reproduce the frozen
+    # result rather than silently accepting an incomplete audit.
+    artifacts = ROOT / "artifacts" / "phase1-projects"
+    if not artifacts.is_dir():
+        with pytest.raises(FileNotFoundError):
+            audit()
+        return
+
     receipt = audit()
     assert receipt["h2_counts"] == {"PATTERN_OBSERVED": 4, "PATTERN_NOT_OBSERVED": 11, "NOT_ASSESSABLE": 0}
     assert receipt["model_artifact_count"] == 300
