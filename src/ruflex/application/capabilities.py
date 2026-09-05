@@ -7,6 +7,8 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict
 
 from ruflex.application.model_catalog import list_model_catalog
+from ruflex.runtime.compatibility import resolved_run_identity
+from ruflex.runtime.registry import builtin_runtime_registry
 from ruflex.domain.training import TrainingRun
 
 
@@ -26,7 +28,7 @@ class CapabilityDecision(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     capability: CapabilityKey
-    status: Literal["AVAILABLE", "NOT_APPLICABLE"]
+    status: Literal["AVAILABLE", "NOT_APPLICABLE", "UNAVAILABLE_RUNTIME", "INCOMPATIBLE_VERSION", "BROKEN_ARTIFACT"]
     reason_code: Literal["AVAILABLE", "CAPABILITY_UNAVAILABLE"]
     detail: str
 
@@ -65,6 +67,19 @@ def _catalog_key(run: TrainingRun) -> str:
 
 
 def negotiate_run_capabilities(run: TrainingRun) -> RunCapabilityNegotiation:
+    identity = resolved_run_identity(run)
+    if identity is None:
+        return RunCapabilityNegotiation(
+            run_id=run.run_id, model_kind=run.model_kind, model_artifact_sha256=run.model_artifact_sha256,
+            decisions=[CapabilityDecision(capability=capability, status="UNAVAILABLE_RUNTIME", reason_code="CAPABILITY_UNAVAILABLE", detail="The persisted run has no resolvable trusted runtime adapter.") for capability in _CAPABILITY_ORDER],
+        )
+    try:
+        builtin_runtime_registry().resolve_model_adapter(identity.key, version=identity.version)
+    except Exception:
+        return RunCapabilityNegotiation(
+            run_id=run.run_id, model_kind=run.model_kind, model_artifact_sha256=run.model_artifact_sha256,
+            decisions=[CapabilityDecision(capability=capability, status="UNAVAILABLE_RUNTIME", reason_code="CAPABILITY_UNAVAILABLE", detail="The persisted runtime adapter is unavailable in this installation.") for capability in _CAPABILITY_ORDER],
+        )
     catalog = {entry["key"]: entry for entry in list_model_catalog()}
     entry = catalog.get(_catalog_key(run))
     capabilities = {} if entry is None else entry["capabilities"]

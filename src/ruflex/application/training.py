@@ -894,6 +894,17 @@ def train_flat_neuro_fuzzy(
 
 
 def persist_training_run(project_root: Path, run: TrainingRun) -> None:
+    # Binding belongs to canonical persistence, never to a runtime adapter.
+    # A compatibility failure is intentionally non-destructive for historical
+    # model kinds; their evidence remains inspectable but unavailable to new
+    # runtime operations.
+    from ruflex.runtime.compatibility import bind_new_run_to_runtime
+
+    if run.adapter_key is None:
+        try:
+            bind_new_run_to_runtime(run)
+        except Exception:
+            pass
     path = _run_path(project_root, run.run_id)
     _atomic_write_text(path, run.model_dump_json(indent=2))
     _atomic_write_text(

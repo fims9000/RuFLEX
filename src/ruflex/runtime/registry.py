@@ -43,6 +43,13 @@ class RuntimeRegistry:
             raise RuntimeVersionMismatchError(key, version)
         return adapter
 
+    def resolve_training_model_kind(self, model_kind: str) -> ModelAdapter:
+        """Resolve the declared concrete TrainingRun kind without UI name logic."""
+        for descriptor in self.model_descriptors():
+            if model_kind in descriptor.training_model_kinds:
+                return self.resolve_model_adapter(descriptor.identity.key)
+        raise RuntimeNotFoundError(model_kind)
+
     def model_descriptors(self) -> list[ModelAdapterDescriptor]:
         return [self._adapters[key].descriptor for key in sorted(self._adapters)]
 
