@@ -25,7 +25,7 @@ export type RunCapabilityNegotiation = {
   model_artifact_sha256: string;
   decisions: Array<{
     capability: "occlusion" | "shap" | "tree_shap" | "integrated_gradients" | "gradient_shap" | "exact_tree_path";
-    status: "AVAILABLE" | "NOT_APPLICABLE";
+    status: "AVAILABLE" | "NOT_APPLICABLE" | "UNAVAILABLE_RUNTIME" | "INCOMPATIBLE_VERSION" | "BROKEN_ARTIFACT";
     reason_code: "AVAILABLE" | "CAPABILITY_UNAVAILABLE";
     detail: string;
   }>;
