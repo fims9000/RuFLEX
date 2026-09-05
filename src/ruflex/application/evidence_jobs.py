@@ -13,9 +13,6 @@ class EvidenceJobError(ValueError):
     pass
 
 
-_METHODS = {"occlusion", "integrated_gradients", "gradient_shap", "shap", "tree_shap"}
-
-
 def _new_job(kind: str, **values) -> Job:
     descriptor, _ = resolve_execution_backend()
     return Job(
@@ -53,7 +50,7 @@ def _execute(project_root: Path, job_id: UUID) -> None:
         return
     job.status = JobStatus.RUNNING
     job.started_at = datetime.now(timezone.utc)
-    _append(job, "LocalExecutor started persisted evidence operation.")
+    _append(job, "Frozen execution backend started persisted evidence operation.")
     persist_job(project_root, job)
     try:
         if job.kind == "explanation_generation":
@@ -93,13 +90,17 @@ def start_explanation_generation_job(
     sample: dict[str, float],
     method: str,
 ) -> Job:
-    if method not in _METHODS:
-        raise EvidenceJobError(f"Unsupported explanation method {method!r}.")
+    from ruflex.runtime import builtin_runtime_registry
+    from ruflex.runtime.errors import RuntimeErrorBase
+    try:
+        builtin_runtime_registry().resolve_component("explainer", method)
+    except RuntimeErrorBase as error:
+        raise EvidenceJobError(f"Explanation runtime is unavailable: {error.code}: {error.message}") from error
     job = _new_job(
         kind="explanation_generation",
         request={"run_id": str(run_id), "sample": sample, "method": method},
-        message="Queued for LocalExecutor.",
-        log=["Request persisted before LocalExecutor submission."],
+        message="Queued for frozen execution backend.",
+        log=["Request persisted before execution-backend submission."],
     )
     persist_job(project_root, job)
     _submit(project_root, job)
