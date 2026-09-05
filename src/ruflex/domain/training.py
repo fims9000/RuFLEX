@@ -91,7 +91,9 @@ class OperatingCurvePoint(BaseModel):
 class TrainingRun(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: int = 2
+    # v3 binds new fits to an immutable runtime adapter identity.  All fields
+    # are optional on read so v1/v2 project evidence remains inspectable.
+    schema_version: int = 3
     run_id: UUID = Field(default_factory=uuid4)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     status: Literal["succeeded"] = "succeeded"
@@ -128,6 +130,11 @@ class TrainingRun(BaseModel):
     scientific_note: str = (
         "Metrics shown here are validation metrics. The held-out test split remains locked and is not used for model selection."
     )
+    adapter_key: str | None = None
+    adapter_version: str | None = None
+    adapter_provider: str | None = None
+    adapter_kind: Literal["model_adapter"] | None = None
+    runtime_capability_snapshot_hash: str | None = None
 
     @model_validator(mode="before")
     @classmethod
@@ -147,7 +154,7 @@ class TrainingRun(BaseModel):
 class TrainingStudy(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: int = 2
+    schema_version: int = 3
     study_id: UUID = Field(default_factory=uuid4)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     name: str
@@ -162,6 +169,10 @@ class TrainingStudy(BaseModel):
     randomness_protocol: Literal["LEGACY_COMBINED", "TRAINING_VARIABILITY", "SPLIT_VARIABILITY", "COMBINED_VARIABILITY"] = "LEGACY_COMBINED"
     split_seed: int | None = None
     training_seeds: list[int] = Field(default_factory=list)
+    adapter_key: str | None = None
+    adapter_version: str | None = None
+    adapter_provider: str | None = None
+    runtime_capability_snapshot_hash: str | None = None
 
 
 class StudySeedState(BaseModel):
@@ -181,7 +192,7 @@ class StudyJob(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: int = 3
+    schema_version: int = 4
     job_id: UUID = Field(default_factory=uuid4)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     started_at: datetime | None = None
@@ -196,7 +207,12 @@ class StudyJob(BaseModel):
     split_seed: int | None = None
     study_id: UUID | None = None
     error: str | None = None
+    # LOCAL remains readable from v1.1. New jobs carry the canonical backend
+    # identity without requiring a migration rewrite of persisted files.
     execution_backend: Literal["LOCAL"] = "LOCAL"
+    execution_backend_key: str | None = None
+    execution_backend_version: str | None = None
+    execution_backend_provider: str | None = None
     execution_config: dict[str, int | float | str | bool | None] = Field(default_factory=dict)
     recovery_count: int = Field(default=0, ge=0)
     recovery_note: str | None = None
