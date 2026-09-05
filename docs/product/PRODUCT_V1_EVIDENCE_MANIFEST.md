@@ -1,6 +1,10 @@
 # RuFLEX Product V1 evidence manifest
 
-This is **product implementation evidence**, captured from the frozen RC2.1 React Studio by `frontend/e2e/product-evidence-capture.spec.ts`. It is not a research benchmark package; `docs/article/` remains separate research material. Runtime UUIDs for the capture project are recorded in `PRODUCT_V1_EVIDENCE_RUNTIME.json`.
+This is **product implementation evidence**, captured from the V1.2 RC1 React
+Studio by `frontend/e2e/product-evidence-capture.spec.ts`. It is not a research
+benchmark package; `docs/article/` remains separate research material. Runtime
+UUIDs for the capture project are recorded in
+`PRODUCT_V1_EVIDENCE_RUNTIME.json`.
 
 | Screenshot | Capability / persisted objects | Evidence class | Proves | Does not prove | Route and coverage |
 |---|---|---|---|---|---|
@@ -18,7 +22,7 @@ This is **product implementation evidence**, captured from the frozen RC2.1 Reac
 | 12_selective_review_policy.png | SelectivePredictionPolicy | behavioral | Validation-derived ACCEPT/REVIEW cutoff is distinct from class threshold | Automatic acceptance is always appropriate | capture; selective policy E2E |
 | 13_exhaustive_lab.png | ExhaustiveLabResult | exact finite structure | Exact decision-tree finite paths are enumerated and labelled honestly | Arbitrary continuous model exhaustiveness | capture; Exhaustive Lab E2E |
 | 14_expert_correction.png | ExpertCorrectionRevision | structural/behavioral | FIS revision retains expert structure while fitting unlocked consequents on TRAIN only | Improvement on the locked final test | capture; expert correction tests |
-| 15_lineage.png | LineageGraph, FIS revision, BehaviorSpec, BehaviorSpecResult | structural | Saved references include the RC2.1 FIS revision → BehaviorSpec → result chain after reopen | A causal graph or execution prescription | capture; lineage regression test |
+| 15_lineage.png | LineageGraph, FIS revision, BehaviorSpec, BehaviorSpecResult | structural | Saved references include the persisted FIS revision → BehaviorSpec → result chain after reopen | A causal graph or execution prescription | capture; lineage regression test |
 | 16_assurance_case.png | AssuranceCase | operational | Independent PASS/WARN/FAIL/NOT_AVAILABLE gates and risks, without a trust score | A scalar safety/trust conclusion | capture; assurance E2E |
 | 17_verification_bundle.png | VerificationBundle, VerificationBundleValidation | operational | Inspection-first declarative export is validated from its persisted ZIP by checksums, typed evidence and direct provenance references | Export contains executable models or sensitive raw data; validation establishes model quality | capture; assurance E2E |
 | 18_condition_monitoring_demo.png | DemoDecision with linked evidence | operational | Safe telemetry decision support yields ACCEPT/REVIEW/OUT_OF_SCOPE and names evidence links | Targeting, actuator control, or autonomous command | capture; demo E2E |

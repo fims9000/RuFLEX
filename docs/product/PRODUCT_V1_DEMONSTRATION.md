@@ -35,7 +35,7 @@ BehaviorSpecs execute persisted PASS/FAIL requirements ([BehaviorSpecs](screensh
 
 ## 8. Final-test firewall, lineage and assurance
 
-The demonstration opens final test only after the validation policy is frozen. Saved provenance is visible in [Lineage](screenshots/15_lineage.png), including the RC2.1 `FIS revision → BehaviorSpec → BehaviorSpecResult` edge. [AssuranceCase](screenshots/16_assurance_case.png) presents independent evidence gates and unresolved risks rather than a scalar trust number. [VerificationBundle](screenshots/17_verification_bundle.png) is inspection-first and excludes executable model objects, raw datasets, credentials and caches.
+The demonstration opens final test only after the validation policy is frozen. Saved provenance is visible in [Lineage](screenshots/15_lineage.png), including the persisted `FIS revision → BehaviorSpec → BehaviorSpecResult` edge. [AssuranceCase](screenshots/16_assurance_case.png) presents independent evidence gates and unresolved risks rather than a scalar trust number. [VerificationBundle](screenshots/17_verification_bundle.png) is inspection-first and excludes executable model objects, raw datasets, credentials and caches.
 
 ## 9. Condition monitoring and persistence
 
