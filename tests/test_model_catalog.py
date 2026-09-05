@@ -31,13 +31,29 @@ def test_model_runtime_contract_exposes_explicit_xai_and_task_support() -> None:
     assert "tree_shap" in tree["supported_explainers"]
     assert "integrated_gradients" not in tree["supported_explainers"]
     assert "binary_classification" in tree["supported_tasks"]
+    assert "multiclass_classification" not in tree["supported_tasks"]
+    assert tree["defaults"]["max_depth"] is None
+    assert tree["parameter_constraints"]["max_depth"]["nullable"] is True
     assert entries["linear"]["training_model_kinds"] == ["logistic_regression", "linear_regression"]
+    neuro_fuzzy = entries["flat_neuro_fuzzy"]
+    assert neuro_fuzzy["defaults"]["max_rules"] == 8
+    assert neuro_fuzzy["optional_dependencies"] == ["torch"]
 
 
 def test_plugin_lookup_fails_closed() -> None:
     client = TestClient(app)
     assert client.get("/api/plugins/native_explanation_validator").status_code == 200
     missing = client.get("/api/plugins/not_registered")
+    assert missing.status_code == 404
+    assert missing.json()["code"] == "CAPABILITY_UNAVAILABLE"
+
+
+def test_model_lookup_resolves_concrete_training_keys_and_rejects_unknown() -> None:
+    client = TestClient(app)
+    linear = client.get("/api/models/logistic_regression")
+    assert linear.status_code == 200
+    assert linear.json()["key"] == "linear"
+    missing = client.get("/api/models/no_such_model")
     assert missing.status_code == 404
     assert missing.json()["code"] == "CAPABILITY_UNAVAILABLE"
 

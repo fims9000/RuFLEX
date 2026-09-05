@@ -448,6 +448,15 @@ def get_models() -> list[dict]:
     return [contract.to_dict() for contract in model_capability_contracts()]
 
 
+@app.get("/api/models/{model_kind}")
+def get_model(model_kind: str) -> dict:
+    """Resolve a concrete training key through the runtime capability source."""
+    contract = get_model_capability_contract(model_kind)
+    if contract is None:
+        raise HTTPException(status_code=404, detail=f"Model capability is unavailable: {model_kind!r} is not registered.")
+    return contract.to_dict()
+
+
 @app.get("/api/capabilities")
 def get_capabilities() -> dict[str, object]:
     return {"schema_version": 1, "models": get_models()}

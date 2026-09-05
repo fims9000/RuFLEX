@@ -88,6 +88,45 @@ _ENTRIES = (
 )
 
 
+# These declarations mirror the arguments accepted by the canonical training
+# adapters.  They are deliberately data, rather than frontend knowledge: a
+# client can render a conservative form without claiming a parameter is used
+# by an adapter that ignores it.
+_TRAINING_RUNTIME: dict[str, dict] = {
+    "flat_neuro_fuzzy": {
+        "supported_tasks": ("binary_classification", "regression"),
+        "defaults": {"seed": 42, "max_epochs": 20, "learning_rate": 0.01, "batch_size": 32, "patience": 8, "max_rules": 8},
+        "constraints": {"max_epochs": {"minimum": 1, "maximum": 2000}, "learning_rate": {"exclusiveMinimum": 0.0, "maximum": 1.0}, "batch_size": {"minimum": 1, "maximum": 100000}, "patience": {"minimum": 1, "maximum": 2000, "nullable": True}, "max_rules": {"minimum": 1, "maximum": 128}},
+    },
+    "linear": {
+        "supported_tasks": ("binary_classification", "regression"),
+        "defaults": {"seed": 42},
+        "constraints": {},
+    },
+    "decision_tree": {
+        "supported_tasks": ("binary_classification", "regression"),
+        "defaults": {"seed": 42, "max_depth": None},
+        "constraints": {"max_depth": {"minimum": 1, "nullable": True}},
+    },
+    "random_forest": {
+        "supported_tasks": ("binary_classification", "regression"),
+        "defaults": {"seed": 42, "n_estimators": 25, "max_depth": None},
+        "constraints": {"n_estimators": {"minimum": 1}, "max_depth": {"minimum": 1, "nullable": True}},
+    },
+    "gradient_boosting": {
+        "supported_tasks": ("binary_classification", "regression"),
+        "defaults": {"seed": 42, "n_estimators": 50, "learning_rate": 0.1, "max_depth": 3},
+        "constraints": {"n_estimators": {"minimum": 1}, "learning_rate": {"exclusiveMinimum": 0.0}, "max_depth": {"minimum": 1}},
+    },
+}
+
+_SPLIT_DEFAULTS = {"validation_fraction": 0.2, "test_fraction": 0.2}
+_SPLIT_CONSTRAINTS = {
+    "validation_fraction": {"exclusiveMinimum": 0.0, "exclusiveMaximum": 1.0},
+    "test_fraction": {"minimum": 0.0, "exclusiveMaximum": 1.0},
+}
+
+
 def list_model_catalog() -> list[dict]:
     return [asdict(entry) for entry in _ENTRIES]
 
@@ -103,17 +142,20 @@ def model_capability_contracts() -> list[ModelCapabilityContract]:
             ("gradient_shap", entry.capabilities.gradient_shap),
         ) if enabled)
         trainable = entry.capabilities.fit
+        runtime = _TRAINING_RUNTIME.get(entry.key, {})
+        defaults = {**_SPLIT_DEFAULTS, **runtime.get("defaults", {})} if trainable else {}
+        constraints = {**_SPLIT_CONSTRAINTS, **runtime.get("constraints", {})} if trainable else {}
         contracts.append(ModelCapabilityContract(
             key=entry.key, display_name=entry.label, version="1.1.0", provider="ruflex.builtin",
             family=entry.family,
-            supported_tasks=("binary_classification", "multiclass_classification", "regression") if trainable else (),
+            supported_tasks=runtime.get("supported_tasks", ()) if trainable else (),
             training_model_kinds=("logistic_regression", "linear_regression") if entry.key == "linear" else ((entry.key,) if trainable else ()),
             input_modalities=("tabular",), available=entry.available,
             unavailability_reason=None if entry.available else "OPTIONAL_DEPENDENCY_MISSING",
             capabilities=entry.capabilities, supported_explainers=explainers,
             export_formats=("matlab_fis",) if entry.capabilities.export_fis else (),
-            config_schema={"type": "object", "additionalProperties": False}, defaults={"seed": 42},
-            parameter_constraints={}, optional_dependencies=(),
+            config_schema={"type": "object", "additionalProperties": False, "properties": constraints}, defaults=defaults,
+            parameter_constraints=constraints, optional_dependencies=("torch",) if entry.key == "flat_neuro_fuzzy" else (),
             evidence_objects_produced=("TrainingRun", "ModelArtifact") if trainable else ("FISSpec", "FISEvaluation"),
             limitations=tuple(item for item in (entry.limitation,) if item),
         ))
