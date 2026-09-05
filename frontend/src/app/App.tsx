@@ -665,7 +665,7 @@ export function App() {
               Open read-only
             </label>
             <div className="form-actions">
-              <Button view="action" type="submit">
+              <Button view="action" type="submit" data-ruflex-action="project.create">
                 Create project
               </Button>
               <Button
@@ -733,6 +733,7 @@ export function App() {
                   view="action"
                   disabled={!profile || project.read_only}
                   onClick={confirmCsv}
+                  data-ruflex-action="dataset.confirm"
                 >
                   Confirm dataset contract
                 </Button>
