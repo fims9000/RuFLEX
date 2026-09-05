@@ -187,3 +187,20 @@ def test_category_specific_execution_backend_entrypoint_has_full_lifecycle_contr
     assert backend.cancel(project_root=Path("/tmp"), job_id=UUID(int=1)) is True
     assert backend.resume(project_root=Path("/tmp"), job_id=UUID(int=1), operation=lambda: completed.append(True)) is True
     assert completed == [True, True]
+
+
+def test_registry_rejects_directly_registered_partial_execution_backend() -> None:
+    from ruflex.runtime.registry import RuntimeRegistry
+
+    class PartialBackend:
+        descriptor = ExecutionBackendDescriptor(
+            identity=RuntimeIdentity(
+                key="partial_execution_backend", version="1", provider="ruflex.tests", kind="execution_backend",
+            ),
+        )
+
+        def submit(self, *, project_root: Path, job_id: UUID, operation: Callable[[], None]) -> bool:
+            return True
+
+    with pytest.raises(TypeError, match="complete ExecutionBackendAdapter contract"):
+        RuntimeRegistry().register_component(PartialBackend.descriptor, implementation=PartialBackend())

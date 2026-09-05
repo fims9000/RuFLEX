@@ -69,6 +69,17 @@ class RuntimeRegistry:
             raise RuntimeUntrustedError(identity.key)
         if self._frozen or identity.key in self._components[identity.kind]:
             raise RuntimeDuplicateError(identity.key)
+        if implementation is not None:
+            expected_protocol = {
+                "explainer": ExplainerAdapter,
+                "explanation_validator": ExplanationValidatorAdapter,
+                "execution_backend": ExecutionBackendAdapter,
+            }[identity.kind]
+            if not isinstance(implementation, expected_protocol):
+                raise TypeError(
+                    f"Runtime component {identity.key!r} does not provide the complete "
+                    f"{expected_protocol.__name__} contract."
+                )
         self._components[identity.kind][identity.key] = descriptor
         if implementation is not None:
             self._component_implementations[identity.kind][identity.key] = implementation
