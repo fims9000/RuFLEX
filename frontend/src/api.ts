@@ -429,7 +429,7 @@ export const studioApi = {
       split_seed?: number | null;
       training_seed?: number | null;
       split_contract_id?: string | null;
-      rigor_profile?: "EXPLORATORY" | "RESEARCH" | "HIGH_STAKES";
+      rigor_profile?: "EXPLORATORY" | "CONFIRMATORY" | "HIGH_ASSURANCE_LIKE";
       max_epochs: number;
       learning_rate: number;
       batch_size: number;

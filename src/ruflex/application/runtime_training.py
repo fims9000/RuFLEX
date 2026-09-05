@@ -58,7 +58,7 @@ def train_with_adapter(
         raise RuntimeIncompatibleError("The resolved validation split is empty.")
     preprocessing_sha = _persist_preprocessing_artifact(project_root, contract, split)
     transform_pipeline = create_transform_pipeline_contract(project_root, contract=contract, split=split, preprocessing_artifact_sha256=preprocessing_sha, split_contract_id=(None if split_contract is None else str(split_contract.split_id)))
-    leakage_audit = run_leakage_audit(project_root, split_contract_id=(None if split_contract is None else str(split_contract.split_id)), transform_pipeline_id=str(transform_pipeline.pipeline_id), rigor_profile=str((parameters or {}).get("rigor_profile", "RESEARCH")).upper())
+    leakage_audit = run_leakage_audit(project_root, split_contract_id=(None if split_contract is None else str(split_contract.split_id)), transform_pipeline_id=str(transform_pipeline.pipeline_id), rigor_profile=str((parameters or {}).get("rigor_profile", "CONFIRMATORY")).upper())
     if leakage_audit.status == "FAIL":
         raise RuntimeIncompatibleError("Data-leakage audit failed; training is blocked until declared provenance is corrected.")
     request = FitRequest(

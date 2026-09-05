@@ -75,12 +75,17 @@ class LeakageAuditReport(BaseModel):
  schema_version:int=1
  audit_id:UUID=Field(default_factory=uuid4)
  dataset_fingerprint:str
- rigor_profile:Literal['EXPLORATORY','RESEARCH','HIGH_STAKES']='RESEARCH'
+ rigor_profile:Literal['EXPLORATORY','CONFIRMATORY','HIGH_ASSURANCE_LIKE']='CONFIRMATORY'
  split_contract_id:str|None=None
  transform_pipeline_id:str|None=None
  status:Literal['PASS','WARN','FAIL']
  findings:list['AuditFinding']=Field(default_factory=list)
  scientific_note:str='This audit verifies declared provenance invariants. It does not prove absence of every semantic or deployment-specific leakage path.'
+class RigorProfileContract(BaseModel):
+ profile:Literal['EXPLORATORY','CONFIRMATORY','HIGH_ASSURANCE_LIKE']
+ required_evidence:list[str]
+ stop_rules:list[str]
+ scientific_note:str='A rigor profile declares required evidence and stop rules. It is not a truth, safety, certification, or generalization label.'
 class AuditFinding(BaseModel): code:str; severity:str; scope:str; evidence:dict; remediation:str; check_version:str='1'
 class DataAuditReport(BaseModel): dataset_fingerprint:str; findings:list[AuditFinding]
 def _is_id_candidate(name: str) -> bool:
@@ -261,7 +266,15 @@ def list_transform_pipeline_contracts(project_root:Path)->list[TransformPipeline
 def _leakage_root(project_root:Path)->Path:
  root=Path(project_root).resolve()/'data'/'leakage-audits'; root.mkdir(parents=True,exist_ok=True); return root
 
-def run_leakage_audit(project_root:Path, *, split_contract_id:str|None, transform_pipeline_id:str, rigor_profile:Literal['EXPLORATORY','RESEARCH','HIGH_STAKES']='RESEARCH')->LeakageAuditReport:
+def rigor_profile_contract(profile:Literal['EXPLORATORY','CONFIRMATORY','HIGH_ASSURANCE_LIKE'])->RigorProfileContract:
+ requirements={
+  'EXPLORATORY':(['DatasetContract','TrainingRun','ValidationEvaluation'],['Do not present validation selection as final-test evidence.']),
+  'CONFIRMATORY':(['DatasetContract','SplitContract','TransformPipelineContract','TrainingRun','ValidationEvaluation','DecisionThresholdPolicy','SelectivePredictionPolicy','FinalTestEvaluation','Lineage','VerificationBundle'],['Block final test until validation-derived policies are frozen.','Block policy fitting after the first final-test access.']),
+  'HIGH_ASSURANCE_LIKE':(['DatasetContract','SplitContract','TransformPipelineContract','DataLeakageAudit','GeneralizationContract','BehaviorSpec','ExplanationCheck','AssuranceCase','VerificationBundle'],['Block on failed provenance or leakage-audit evidence.','Require independent human sign-off outside this software boundary.']),
+ }
+ required,stops=requirements[profile]; return RigorProfileContract(profile=profile,required_evidence=required,stop_rules=stops)
+
+def run_leakage_audit(project_root:Path, *, split_contract_id:str|None, transform_pipeline_id:str, rigor_profile:Literal['EXPLORATORY','CONFIRMATORY','HIGH_ASSURANCE_LIKE']='CONFIRMATORY')->LeakageAuditReport:
  """Fail closed on structural data-leakage signals before a fitted model is persisted."""
  contract=load_dataset_contract(project_root); findings:list[AuditFinding]=[]
  if contract.target in contract.feature_columns: findings.append(AuditFinding(code='TARGET_IN_FEATURES',severity='fail',scope='dataset',evidence={'target':contract.target},remediation='Remove the target from model feature columns.'))

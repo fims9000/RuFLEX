@@ -215,7 +215,7 @@ class TrainModelRequest(SessionRequest):
     split_seed: int | None = None
     training_seed: int | None = None
     split_contract_id: UUID | None = None
-    rigor_profile: Literal["EXPLORATORY", "RESEARCH", "HIGH_STAKES"] = "RESEARCH"
+    rigor_profile: Literal["EXPLORATORY", "CONFIRMATORY", "HIGH_ASSURANCE_LIKE"] = "CONFIRMATORY"
     max_epochs: int = Field(default=20, ge=1, le=2000)
     learning_rate: float = Field(default=0.01, gt=0.0, le=1.0)
     batch_size: int = Field(default=32, ge=1, le=100000)

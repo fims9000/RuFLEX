@@ -103,7 +103,7 @@ def test_split_contract_api_survives_close_reopen_and_training_uses_it(tmp_path)
     leakage_audit = client.get(f"/api/projects/{reopened['session_id']}/dataset/leakage-audits/{leakage_audit_id}")
     assert leakage_audit.status_code == 200
     assert leakage_audit.json()["status"] in {"PASS", "WARN"}
-    assert leakage_audit.json()["rigor_profile"] == "RESEARCH"
+    assert leakage_audit.json()["rigor_profile"] == "CONFIRMATORY"
     lineage = build_project_lineage(root)
     assert any(node.kind == "split_contract" for node in lineage.nodes)
     assert inspect_project_integrity(root).status == "PASS"

@@ -115,7 +115,7 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
   const [splitSeed, setSplitSeed] = useState(42);
   const [splitFamily, setSplitFamily] = useState<SplitContract["family"]>("RANDOM");
   const [groupColumn, setGroupColumn] = useState("");
-  const [rigorProfile, setRigorProfile] = useState<"EXPLORATORY" | "RESEARCH" | "HIGH_STAKES">("RESEARCH");
+  const [rigorProfile, setRigorProfile] = useState<"EXPLORATORY" | "CONFIRMATORY" | "HIGH_ASSURANCE_LIKE">("CONFIRMATORY");
   const [splitContract, setSplitContract] = useState<SplitContract | null>(null);
   const [study, setStudy] = useState<TrainingStudy | null>(restoredStudy);
   const [studyJob, setStudyJob] = useState<StudyJob | null>(null);
@@ -295,7 +295,7 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
           <NumberField label="Study split seed" value={splitSeed} step={1} disabled={running || project.read_only} onChange={setSplitSeed} />
           <label className="field-label">Split family<select aria-label="Split family" value={splitFamily} disabled={running || project.read_only} onChange={(event) => setSplitFamily(event.target.value as SplitContract["family"])}><option value="RANDOM">Random holdout</option><option value="GROUP">Group holdout</option><option value="TEMPORAL">Temporal holdout</option><option value="SITE_HOLDOUT">Site holdout</option><option value="DEVICE_HOLDOUT">Device holdout</option><option value="SPATIAL">Spatial-block holdout</option><option value="REGIME">Regime holdout</option></select></label>
           {splitFamily !== "RANDOM" && <label className="field-label">{splitFamily === "TEMPORAL" ? "Time" : "Declared identity"}<select aria-label="Split identity column" value={groupColumn} disabled={running || project.read_only} onChange={(event) => setGroupColumn(event.target.value)}><option value="">Choose column</option>{dataset.profile.columns.map((column) => <option key={column.name} value={column.name}>{column.name}</option>)}</select></label>}
-          <label className="field-label">Rigor profile<select aria-label="Rigor profile" value={rigorProfile} disabled={running || project.read_only} onChange={(event) => setRigorProfile(event.target.value as typeof rigorProfile)}><option value="EXPLORATORY">Exploratory</option><option value="RESEARCH">Research</option><option value="HIGH_STAKES">High stakes</option></select></label>
+          <label className="field-label">Rigor profile<select aria-label="Rigor profile" value={rigorProfile} disabled={running || project.read_only} onChange={(event) => setRigorProfile(event.target.value as typeof rigorProfile)}><option value="EXPLORATORY">Exploratory</option><option value="CONFIRMATORY">Confirmatory</option><option value="HIGH_ASSURANCE_LIKE">High-assurance-like</option></select></label>
           {supportsParameter("max_epochs") && <NumberField label="Epochs" value={maxEpochs} min={1} max={2000} step={1} disabled={running || project.read_only} onChange={setMaxEpochs} />}
           {supportsParameter("learning_rate") && <NumberField label="Learning rate" value={learningRate} min={0.000001} max={1} step={0.001} disabled={running || project.read_only} onChange={setLearningRate} />}
           {supportsParameter("batch_size") && <NumberField label="Batch size" value={batchSize} min={1} step={1} disabled={running || project.read_only} onChange={setBatchSize} />}
