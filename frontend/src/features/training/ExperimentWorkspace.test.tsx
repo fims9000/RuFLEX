@@ -20,6 +20,7 @@ const { studioApi } = vi.hoisted(() => ({ studioApi: {
       defaults: { n_estimators: 25, max_depth: null }, parameter_constraints: { n_estimators: {}, max_depth: {} }, optional_dependencies: [], evidence_objects_produced: [], limitations: [],
     },
   ]),
+  getRuntimeBackends: vi.fn().mockResolvedValue([{ identity: { key: "local_executor", version: "1", provider: "ruflex.builtin", kind: "execution_backend" }, supports_cancel: true, supports_resume: true }]),
   listStudyJobs: vi.fn().mockResolvedValue([]),
   getLatestTreePath: vi.fn(),
 } }));

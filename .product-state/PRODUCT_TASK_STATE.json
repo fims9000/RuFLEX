@@ -41,7 +41,8 @@
     "stability_protocol_ui_and_read_only_component_coverage",
     "durable_real_studio_screenshot_evidence",
     "complete_execution_backend_lifecycle_contract",
-    "runtime_component_implementation_contract_enforcement"
+    "runtime_component_implementation_contract_enforcement",
+    "selectable_persisted_execution_backend_for_study_jobs"
   ],
   "active_acceptance": [
     "V1.3 persists SplitContract, train-only TransformPipelineContract and leakage-audit evidence through Studio/API, reopen, Lineage, Assurance and VerificationBundle.",
@@ -77,6 +78,7 @@
     "v1_1_release_quality": "PASS: capability runtime/API/SDK/Studio dynamic selection, archive smoke and 26-route Playwright matrix; exact release receipt is docs/qa/V1_1_RELEASE_QA.md",
     "v1_3_current_cycle": "PASS: full Python suite reached 100%; frontend unit, Vite and Storybook builds passed; focused external-runtime golden route and full real Studio product-evidence/visual checks passed. Product screenshots 01-19 were explicitly recaptured; ordinary Playwright writes evidence only to test output.",
     "execution_backend_lifecycle_contract": "PASS: application ExecutionBackend and built-in runtime adapter expose the same submit/is_active/status/cancel/resume lifecycle; an external entry-point backend is discovered and exercised through the frozen registry boundary (56 focused product/runtime tests).",
-    "runtime_component_contract_enforcement": "PASS: direct runtime component registration rejects incomplete implementations rather than relying only on entry-point discovery; focused runtime/product route tests passed."
+    "runtime_component_contract_enforcement": "PASS: direct runtime component registration rejects incomplete implementations rather than relying only on entry-point discovery; focused runtime/product route tests passed.",
+    "selectable_execution_backend": "PASS: StudyJob accepts and persists an explicitly selected registered backend identity through API/Studio configuration; an external synchronous backend executes a real multi-seed job without local-executor substitution."
   }
 }

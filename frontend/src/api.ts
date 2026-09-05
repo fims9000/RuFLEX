@@ -18,6 +18,7 @@ export type ModelCapabilityContract = {
   optional_dependencies: string[]; evidence_objects_produced: string[]; limitations: string[];
 };
 export type PluginDescriptor = { key: string; version: string; kind: "model_adapter" | "explainer" | "explanation_validator" | "metric" | "exporter" | "execution_backend"; capabilities: Record<string, boolean>; config_schema: Record<string, unknown>; input_schema: Record<string, unknown>; output_schema: Record<string, unknown>; trusted: boolean; scientific_note: string };
+export type ExecutionBackendDescriptor = { identity: { key: string; version: string; provider: string; kind: "execution_backend" }; supports_cancel: boolean; supports_resume: boolean };
 export type RunCapabilityNegotiation = {
   schema_version: number;
   run_id: string;
@@ -562,7 +563,8 @@ export const studioApi = {
     request<TrainingStudy>(`/api/projects/${sessionId}/training/studies/latest`),
   getTrainingStudy: (sessionId: string, studyId: string) =>
     request<TrainingStudy>(`/api/projects/${sessionId}/training/studies/${studyId}`),
-  startStudyJob: (sessionId: string, config: { name: string; model_kind: string; seeds: number[]; randomness_protocol?: "LEGACY_COMBINED" | "TRAINING_VARIABILITY" | "SPLIT_VARIABILITY" | "COMBINED_VARIABILITY"; split_seed?: number | null; training_seed?: number | null; split_contract_id?: string | null; selection_metric: string; max_epochs: number; learning_rate: number; batch_size: number; patience: number | null; validation_fraction: number; test_fraction: number; max_rules: number; n_estimators?: number; max_depth?: number | null }) =>
+  getRuntimeBackends: () => request<ExecutionBackendDescriptor[]>("/api/runtime/backends"),
+  startStudyJob: (sessionId: string, config: { name: string; model_kind: string; seeds: number[]; randomness_protocol?: "LEGACY_COMBINED" | "TRAINING_VARIABILITY" | "SPLIT_VARIABILITY" | "COMBINED_VARIABILITY"; split_seed?: number | null; training_seed?: number | null; split_contract_id?: string | null; execution_backend_key?: string; selection_metric: string; max_epochs: number; learning_rate: number; batch_size: number; patience: number | null; validation_fraction: number; test_fraction: number; max_rules: number; n_estimators?: number; max_depth?: number | null }) =>
     request<StudyJob>("/api/projects/training/study-jobs", { session_id: sessionId, ...config }),
   getStudyJob: (sessionId: string, jobId: string) =>
     request<StudyJob>(`/api/projects/${sessionId}/training/study-jobs/${jobId}`),
@@ -686,6 +688,9 @@ export type StudyJob = {
   study_id: string | null;
   error: string | null;
   execution_backend: "LOCAL";
+  execution_backend_key?: string | null;
+  execution_backend_version?: string | null;
+  execution_backend_provider?: string | null;
   execution_config: Record<string, number | string | boolean | null>;
   recovery_count: number;
   recovery_note: string | null;

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from uuid import UUID
 
 import numpy as np
 import pandas as pd
@@ -19,7 +21,7 @@ from ruflex.application.projects import ProjectService
 from ruflex.application.selective import create_selective_policy
 from ruflex.application.verification_bundle import export_verification_bundle, validate_verification_bundle
 from ruflex.domain.evidence import ExplanationContract, FeatureAttribution
-from ruflex.runtime.contracts import ExplainerDescriptor, ExplainerRequest, ExplainerResult, FitRequest, FitResult, ModelAdapterDescriptor, PredictionRequest, PredictionResult, RuntimeIdentity
+from ruflex.runtime.contracts import ExecutionBackendDescriptor, ExplainerDescriptor, ExplainerRequest, ExplainerResult, FitRequest, FitResult, ModelAdapterDescriptor, PredictionRequest, PredictionResult, RuntimeIdentity
 from ruflex.runtime.registry import RuntimeRegistry
 from ruflex.runtime import builtin_runtime_registry
 
@@ -212,6 +214,54 @@ def test_external_runtime_governed_golden_route_reopens_and_exports_portable_evi
     assert final.run_id == run.run_id
     assert assurance.assurance_id
     assert validate_verification_bundle(Path(exported["path"])).status == "PASS"
+
+
+def test_study_job_persists_and_uses_the_selected_external_execution_backend(tmp_path: Path, monkeypatch) -> None:
+    """A backend choice is immutable job provenance, not a local-executor alias."""
+    _project(tmp_path)
+    descriptor = ExecutionBackendDescriptor(
+        identity=RuntimeIdentity(key="fixture_execution_backend", version="1", provider="ruflex.tests", kind="execution_backend"),
+        supports_cancel=True,
+        supports_resume=True,
+    )
+
+    class SynchronousBackend:
+        submissions: list[UUID] = []
+
+        def submit(self, *, project_root: Path, job_id: UUID, operation: Callable[[], None]) -> bool:
+            self.submissions.append(job_id)
+            operation()
+            return True
+
+        def is_active(self, *, project_root: Path, job_id: UUID) -> bool:
+            return False
+
+        def status(self, *, project_root: Path, job_id: UUID) -> str:
+            return "IDLE"
+
+        def cancel(self, *, project_root: Path, job_id: UUID) -> bool:
+            return True
+
+        def resume(self, *, project_root: Path, job_id: UUID, operation: Callable[[], None]) -> bool:
+            return self.submit(project_root=project_root, job_id=job_id, operation=operation)
+
+    backend = SynchronousBackend()
+    monkeypatch.setattr(
+        "ruflex.application.training.resolve_execution_backend",
+        lambda key="local_executor": (descriptor, backend) if key == descriptor.identity.key else (_ for _ in ()).throw(AssertionError(key)),
+    )
+    from ruflex.application.training import load_study_job, start_study_job
+
+    job = start_study_job(
+        tmp_path, name="external backend study", model_kind="logistic_regression", seeds=[3, 5, 7],
+        selection_metric="f1", execution_backend_key=descriptor.identity.key, max_epochs=1,
+    )
+    persisted = load_study_job(tmp_path, job.job_id)
+    assert backend.submissions == [job.job_id]
+    assert persisted.status == "SUCCEEDED"
+    assert (persisted.execution_backend_key, persisted.execution_backend_version, persisted.execution_backend_provider) == (
+        descriptor.identity.key, descriptor.identity.version, descriptor.identity.provider,
+    )
 
 
 @pytest.mark.parametrize("adapter_key,model_kind,parameters", [

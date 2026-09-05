@@ -1140,9 +1140,9 @@ def _submit_study_job(project_root: Path, job_id: UUID) -> StudyJob:
     return load_study_job(project_root, job_id)
 
 
-def start_study_job(project_root: Path, *, name: str, model_kind: str, seeds: list[int], selection_metric: str, randomness_protocol: str = "LEGACY_COMBINED", split_seed: int | None = None, training_seed: int | None = None, **config) -> StudyJob:
+def start_study_job(project_root: Path, *, name: str, model_kind: str, seeds: list[int], selection_metric: str, randomness_protocol: str = "LEGACY_COMBINED", split_seed: int | None = None, training_seed: int | None = None, execution_backend_key: str = "local_executor", **config) -> StudyJob:
     pairs = _study_seed_pairs(seeds=seeds, randomness_protocol=randomness_protocol, split_seed=split_seed, training_seed=training_seed)
-    descriptor, _ = resolve_execution_backend()
+    descriptor, _ = resolve_execution_backend(execution_backend_key)
     job = StudyJob(name=name, model_kind=model_kind, selection_metric=selection_metric, seed_states=[StudySeedState(seed=current_training, split_seed=current_split, training_seed=current_training) for current_split, current_training in pairs], randomness_protocol=randomness_protocol, split_seed=(pairs[0][0] if len({pair[0] for pair in pairs}) == 1 else None), execution_config=config, execution_backend_key=descriptor.identity.key, execution_backend_version=descriptor.identity.version, execution_backend_provider=descriptor.identity.provider)
     _persist_study_job(project_root, job)
     return _submit_study_job(project_root, job.job_id)

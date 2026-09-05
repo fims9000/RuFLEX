@@ -1,6 +1,6 @@
 import { EChartsOption } from "echarts";
 import { useEffect, useMemo, useState } from "react";
-import { DatasetState, ModelCapabilityContract, ProjectSummary, RunCapabilityNegotiation, SplitContract, StudyJob, TrainingRun, TrainingStudy, TreePathEvidence, studioApi } from "../../api";
+import { DatasetState, ExecutionBackendDescriptor, ModelCapabilityContract, ProjectSummary, RunCapabilityNegotiation, SplitContract, StudyJob, TrainingRun, TrainingStudy, TreePathEvidence, studioApi } from "../../api";
 import { ChartSurface } from "../../charts/ChartSurface";
 import { Button, EmptyState, StatusBadge } from "../../components/StudioPrimitives";
 import { StudioTheme } from "../../design/tokens";
@@ -124,6 +124,8 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
   const [treeSample, setTreeSample] = useState<Record<string, string>>({});
   const [treeEvidence, setTreeEvidence] = useState<TreePathEvidence | null>(null);
   const [catalog, setCatalog] = useState<ModelCapabilityContract[]>([]);
+  const [executionBackends, setExecutionBackends] = useState<ExecutionBackendDescriptor[]>([]);
+  const [executionBackendKey, setExecutionBackendKey] = useState("local_executor");
   const [runCapabilities, setRunCapabilities] = useState<RunCapabilityNegotiation | null>(null);
   const option = useMemo(() => run ? trajectoryOption(run) : null, [run]);
   const statistics = useMemo(() => study ? studyStatistics(study) : null, [study]);
@@ -148,6 +150,10 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
     studioApi.getTrainingRunCapabilities(project.session_id, run.run_id).then(setRunCapabilities).catch(() => setRunCapabilities(null));
   }, [project.session_id, run?.run_id]);
   useEffect(() => { studioApi.getModels().then(setCatalog).catch(() => setCatalog([])); }, []);
+  useEffect(() => { studioApi.getRuntimeBackends().then((backends) => {
+    setExecutionBackends(backends);
+    if (!backends.some((backend) => backend.identity.key === executionBackendKey)) setExecutionBackendKey(backends[0]?.identity.key ?? "local_executor");
+  }).catch(() => setExecutionBackends([])); }, []);
   const datasetTask = dataset?.contract.task;
   const catalogKey = (kind: string) => kind === "logistic_regression" || kind === "linear_regression" ? "linear" : kind;
   const compatibleModels = useMemo(() => catalog.filter((entry) => entry.available && entry.capabilities.fit && !!datasetTask && entry.supported_tasks.includes(datasetTask)), [catalog, datasetTask]);
@@ -237,7 +243,7 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
     try {
       const selectionMetric = dataset?.contract.task === "regression" ? "rmse" : "f1";
       if (splitContract && studyMode !== "TRAINING_VARIABILITY") throw new Error("A frozen SplitContract can be used only with fixed-split training variability studies.");
-      let job = await studioApi.startStudyJob(project.session_id, { name: `Study ${new Date().toLocaleString()}`, model_kind: trainingModelKind, seeds, randomness_protocol: studyMode, split_seed: splitContract?.split_seed ?? splitSeed, training_seed: splitSeed, split_contract_id: splitContract?.split_id ?? null, selection_metric: selectionMetric, max_epochs: maxEpochs, learning_rate: learningRate, batch_size: batchSize, patience, validation_fraction: .2, test_fraction: .2, max_rules: maxRules, n_estimators: nEstimators, max_depth: maxDepth });
+      let job = await studioApi.startStudyJob(project.session_id, { name: `Study ${new Date().toLocaleString()}`, model_kind: trainingModelKind, seeds, randomness_protocol: studyMode, split_seed: splitContract?.split_seed ?? splitSeed, training_seed: splitSeed, split_contract_id: splitContract?.split_id ?? null, execution_backend_key: executionBackendKey, selection_metric: selectionMetric, max_epochs: maxEpochs, learning_rate: learningRate, batch_size: batchSize, patience, validation_fraction: .2, test_fraction: .2, max_rules: maxRules, n_estimators: nEstimators, max_depth: maxDepth });
       await observeStudy(job);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Multi-seed study failed");
@@ -305,11 +311,12 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
           {supportsParameter("max_depth") && <label className="field-label">Maximum depth<input aria-label="Maximum depth" type="number" min={1} value={maxDepth ?? ""} placeholder="unlimited" disabled={running || project.read_only} onChange={(event) => setMaxDepth(event.target.value === "" ? null : Number(event.target.value))} /></label>}
           <label className="field-label">Study seeds<input aria-label="Study seeds" value={seedList} disabled={running || project.read_only} onChange={(event) => setSeedList(event.target.value)} /></label>
           <label className="field-label">Study randomness protocol<select aria-label="Study randomness protocol" value={studyMode} disabled={running || project.read_only} onChange={(event) => setStudyMode(event.target.value as typeof studyMode)}><option value="TRAINING_VARIABILITY">Training variability (fixed split)</option><option value="SPLIT_VARIABILITY">Split variability (fixed training seed)</option><option value="COMBINED_VARIABILITY">Combined variability</option></select></label>
+          <label className="field-label">Study execution backend<select aria-label="Study execution backend" value={executionBackendKey} disabled={running || project.read_only || !executionBackends.length} onChange={(event) => setExecutionBackendKey(event.target.value)}>{executionBackends.map((backend) => <option key={backend.identity.key} value={backend.identity.key}>{backend.identity.key} · {backend.identity.provider}</option>)}</select></label>
         </div>
         <Button view="outlined" disabled={running || project.read_only} onClick={freezeSplitContract} data-ruflex-action="split.freeze">Freeze {splitFamily} SplitContract</Button>
         <Button view="action" disabled={running || project.read_only} onClick={train} data-ruflex-action="training.run">{running ? "Training…" : "Run real training"}</Button>
         <Button view="outlined" disabled={running || project.read_only} onClick={trainStudy} data-ruflex-action="study.start">{running ? "Training…" : "Run multi-seed study"}</Button>
-        {studyJob && <div className="info-message"><strong>Study job {studyJob.status}</strong> · LocalExecutor · {studyJob.seed_states.map((state) => `seed ${state.seed}: ${state.status}`).join(" · ")} {(["QUEUED", "RUNNING"].includes(studyJob.status)) && <><Button view="flat" size="s" onClick={resumeStudy} data-ruflex-action="study.resume">Resume persisted study</Button><Button view="flat" size="s" onClick={cancelStudy} data-ruflex-action="study.cancel">Cancel study</Button></>} {studyJob.recovery_note && <small>{studyJob.recovery_note}</small>}</div>}
+        {studyJob && <div className="info-message"><strong>Study job {studyJob.status}</strong> · {studyJob.execution_backend_key ?? studyJob.execution_backend} · {studyJob.seed_states.map((state) => `seed ${state.seed}: ${state.status}`).join(" · ")} {(["QUEUED", "RUNNING"].includes(studyJob.status)) && <><Button view="flat" size="s" onClick={resumeStudy} data-ruflex-action="study.resume">Resume persisted study</Button><Button view="flat" size="s" onClick={cancelStudy} data-ruflex-action="study.cancel">Cancel study</Button></>} {studyJob.recovery_note && <small>{studyJob.recovery_note}</small>}</div>}
         <div className="info-message">A frozen SplitContract assigns exact source rows before fitting. GROUP keeps each declared identity in one role. It makes split membership auditable; it does not by itself establish generalization validity.</div>
         {project.read_only && <div className="info-message">Read-only projects cannot start training runs.</div>}
       </section>
