@@ -179,7 +179,7 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
     setError(null);
     try {
       const result = await studioApi.runTraining(project.session_id, {
-        model_kind: trainingModelKind as "flat_neuro_fuzzy" | "logistic_regression" | "linear_regression" | "decision_tree" | "random_forest" | "gradient_boosting",
+        model_kind: trainingModelKind,
         seed,
         max_epochs: maxEpochs,
         learning_rate: learningRate,
@@ -208,7 +208,7 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
     setError(null);
     try {
       const selectionMetric = dataset?.contract.task === "regression" ? "rmse" : "f1";
-      let job = await studioApi.startStudyJob(project.session_id, { name: `Study ${new Date().toLocaleString()}`, model_kind: trainingModelKind as "flat_neuro_fuzzy" | "logistic_regression" | "linear_regression" | "decision_tree" | "random_forest" | "gradient_boosting", seeds, randomness_protocol: studyMode, split_seed: splitSeed, training_seed: splitSeed, selection_metric: selectionMetric, max_epochs: maxEpochs, learning_rate: learningRate, batch_size: batchSize, patience, validation_fraction: .2, test_fraction: .2, max_rules: maxRules, n_estimators: nEstimators, max_depth: maxDepth });
+      let job = await studioApi.startStudyJob(project.session_id, { name: `Study ${new Date().toLocaleString()}`, model_kind: trainingModelKind, seeds, randomness_protocol: studyMode, split_seed: splitSeed, training_seed: splitSeed, selection_metric: selectionMetric, max_epochs: maxEpochs, learning_rate: learningRate, batch_size: batchSize, patience, validation_fraction: .2, test_fraction: .2, max_rules: maxRules, n_estimators: nEstimators, max_depth: maxDepth });
       await observeStudy(job);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Multi-seed study failed");

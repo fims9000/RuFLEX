@@ -424,7 +424,7 @@ export const studioApi = {
   runTraining: (
     sessionId: string,
     config: {
-      model_kind?: "flat_neuro_fuzzy" | "logistic_regression" | "linear_regression" | "decision_tree" | "random_forest" | "gradient_boosting";
+      model_kind?: string;
       seed: number;
       split_seed?: number | null;
       training_seed?: number | null;
@@ -522,7 +522,7 @@ export const studioApi = {
     sessionId: string,
     config: {
       name: string;
-      model_kind: "flat_neuro_fuzzy" | "logistic_regression" | "linear_regression" | "decision_tree" | "random_forest" | "gradient_boosting";
+      model_kind: string;
       seeds: number[];
       randomness_protocol?: "LEGACY_COMBINED" | "TRAINING_VARIABILITY" | "SPLIT_VARIABILITY" | "COMBINED_VARIABILITY";
       split_seed?: number | null;
@@ -547,7 +547,7 @@ export const studioApi = {
     request<TrainingStudy>(`/api/projects/${sessionId}/training/studies/latest`),
   getTrainingStudy: (sessionId: string, studyId: string) =>
     request<TrainingStudy>(`/api/projects/${sessionId}/training/studies/${studyId}`),
-  startStudyJob: (sessionId: string, config: { name: string; model_kind: "flat_neuro_fuzzy" | "logistic_regression" | "linear_regression" | "decision_tree" | "random_forest" | "gradient_boosting"; seeds: number[]; randomness_protocol?: "LEGACY_COMBINED" | "TRAINING_VARIABILITY" | "SPLIT_VARIABILITY" | "COMBINED_VARIABILITY"; split_seed?: number | null; training_seed?: number | null; selection_metric: string; max_epochs: number; learning_rate: number; batch_size: number; patience: number | null; validation_fraction: number; test_fraction: number; max_rules: number; n_estimators?: number; max_depth?: number | null }) =>
+  startStudyJob: (sessionId: string, config: { name: string; model_kind: string; seeds: number[]; randomness_protocol?: "LEGACY_COMBINED" | "TRAINING_VARIABILITY" | "SPLIT_VARIABILITY" | "COMBINED_VARIABILITY"; split_seed?: number | null; training_seed?: number | null; selection_metric: string; max_epochs: number; learning_rate: number; batch_size: number; patience: number | null; validation_fraction: number; test_fraction: number; max_rules: number; n_estimators?: number; max_depth?: number | null }) =>
     request<StudyJob>("/api/projects/training/study-jobs", { session_id: sessionId, ...config }),
   getStudyJob: (sessionId: string, jobId: string) =>
     request<StudyJob>(`/api/projects/${sessionId}/training/study-jobs/${jobId}`),
