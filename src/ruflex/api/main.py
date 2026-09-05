@@ -501,12 +501,23 @@ def get_runtime_backends() -> list[dict[str, object]]:
 
 @app.get("/api/runtime/{kind}/{key}")
 def get_runtime_component(kind: str, key: str) -> dict[str, object]:
-    if kind != "models":
-        raise HTTPException(status_code=404, detail={"code": "RUNTIME_NOT_FOUND", "message": f"Runtime kind {kind!r} is not registered."})
     try:
-        return builtin_runtime_registry().resolve_model_adapter(key).descriptor.model_dump(mode="json")
-    except RuntimeErrorBase as error:
+        if kind == "models":
+            return builtin_runtime_registry().resolve_model_adapter(key).descriptor.model_dump(mode="json")
+        if kind == "explainers":
+            from ruflex.runtime.explainers import BUILTIN_EXPLAINERS
+            return next(item.model_dump(mode="json") for item in BUILTIN_EXPLAINERS if item.identity.key == key)
+        if kind == "validators":
+            from ruflex.runtime.validators import NATIVE_EXPLANATION_VALIDATOR
+            if NATIVE_EXPLANATION_VALIDATOR.identity.key == key:
+                return NATIVE_EXPLANATION_VALIDATOR.model_dump(mode="json")
+        if kind == "backends":
+            from ruflex.runtime.backends import LOCAL_EXECUTOR
+            if LOCAL_EXECUTOR.identity.key == key:
+                return LOCAL_EXECUTOR.model_dump(mode="json")
+    except (RuntimeErrorBase, StopIteration) as error:
         raise _runtime_error(error) from error
+    raise HTTPException(status_code=404, detail={"code": "RUNTIME_NOT_FOUND", "message": f"Runtime component {kind}/{key!r} is not registered."})
 
 
 @app.get("/api/plugins", response_model=list[PluginDescriptor])

@@ -48,6 +48,8 @@ def test_runtime_api_exposes_frozen_snapshot_and_typed_lookup() -> None:
     assert models.status_code == 200
     assert {item["identity"]["key"] for item in models.json()} >= {"sklearn_decision_tree", "sklearn_linear"}
     assert client.get("/api/runtime/models/sklearn_decision_tree").status_code == 200
+    assert client.get("/api/runtime/explainers/occlusion").status_code == 200
+    assert client.get("/api/runtime/validators/native_explanation_validator").status_code == 200
     missing = client.get("/api/runtime/models/missing")
     assert missing.status_code == 422
     assert missing.json()["detail"]["code"] == "RUNTIME_NOT_FOUND"
