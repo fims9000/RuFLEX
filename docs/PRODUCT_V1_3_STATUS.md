@@ -18,7 +18,8 @@ Target branch: `feature/v1.3-data-governance-runtime`.
   lifecycle model-kind dispatch;
 - persisted execution backend provenance and a complete
   `submit`/`is_active`/`status`/cooperative-`cancel`/`resume` lifecycle
-  boundary;
+  boundary, including Studio selection and immutable `StudyJob` backend
+  identity;
 - governed external-runtime golden-route coverage, including project reopen,
   lineage, Assurance and portable verification evidence;
 - persisted behavior-revision comparison evidence and read-only Studio

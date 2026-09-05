@@ -39,3 +39,8 @@ study jobs also record the canonical execution backend identity. Capability
 negotiation is run-bound: persisted adapter identity, runtime availability,
 task and artifact determine whether an action is available. Availability is
 neither a quality nor a causal-validity claim.
+
+For a multi-seed Study, Studio selects one registered execution backend before
+submission and persists its key, version and provider with the `StudyJob`.
+Resume and cooperative cancellation resolve that same identity; they do not
+substitute the local executor after a project is reopened.
