@@ -691,7 +691,10 @@ def create_permutation_shap_explanation(project_root: Path, run_id: UUID, sample
 
 def _persist_explanation(project_root: Path, explanation: ExplanationContract) -> ExplanationContract:
     run = load_training_run(project_root, explanation.run_id)
+    from ruflex.runtime.explainers import BUILTIN_EXPLAINERS
+    runtime = next((item.identity for item in BUILTIN_EXPLAINERS if item.identity.key == explanation.family), None)
     explanation = explanation.model_copy(update={
+        "schema_version": 3,
         "preprocessing_identity": explanation.preprocessing_identity or _stable_identity("preprocessing", run.normalization),
         "preprocessing_artifact_sha256": explanation.preprocessing_artifact_sha256 or run.preprocessing_artifact_sha256,
         "feature_order_identity": explanation.feature_order_identity or _stable_identity("feature-order", list(run.feature_columns)),
@@ -703,6 +706,9 @@ def _persist_explanation(project_root: Path, explanation: ExplanationContract) -
             "explanation-reference",
             {"run_id": str(run.run_id), "method": explanation.method, "reference_definition": explanation.reference_definition},
         ),
+        "explainer_key": explanation.explainer_key or (runtime.key if runtime else None),
+        "explainer_version": explanation.explainer_version or (runtime.version if runtime else None),
+        "explainer_provider": explanation.explainer_provider or (runtime.provider if runtime else None),
     })
     destination = _explanations_root(project_root) / f"{explanation.explanation_id}.json"
     _atomic_write_text(destination, explanation.model_dump_json(indent=2))
@@ -915,7 +921,7 @@ def _native_check_explanation(project_root: Path, explanation_id: UUID, *, valid
         "causal_validity": "claim_boundary",
     }
     checks = [item.model_copy(update={"category": categories.get(item.name, "provenance_identity"), "validator_key": validator_key}) for item in checks]
-    result = ExplanationCheck(schema_version=2, explanation_id=explanation.explanation_id, run_id=explanation.run_id, status=status, checks=checks)
+    result = ExplanationCheck(schema_version=3, explanation_id=explanation.explanation_id, run_id=explanation.run_id, status=status, checks=checks, validator_key="native_explanation_validator", validator_version="1", validator_provider="ruflex.builtin")
     _atomic_write_text(_checks_root(project_root) / f"{result.check_id}.json", result.model_dump_json(indent=2))
     _atomic_write_text(_checks_root(project_root) / "active-check.json", json.dumps({"check_id": str(result.check_id)}, indent=2))
     return result

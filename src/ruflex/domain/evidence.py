@@ -25,7 +25,7 @@ class ExplanationContract(BaseModel):
     # Version 2 adds identities that are required to replay a persisted
     # post-hoc explanation exactly.  Both fields remain optional so version-1
     # project evidence remains readable and is reported as legacy provenance.
-    schema_version: int = 2
+    schema_version: int = 3
     explanation_id: UUID = Field(default_factory=uuid4)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     run_id: UUID
@@ -37,6 +37,9 @@ class ExplanationContract(BaseModel):
     sample_identity: str | None = None
     reference_identity: str | None = None
     generation_parameters: dict[str, int | float | str | bool] = Field(default_factory=dict)
+    explainer_key: str | None = None
+    explainer_version: str | None = None
+    explainer_provider: str | None = None
     sample: dict[str, float]
     target: str
     scope: Literal["local_sample"] = "local_sample"
@@ -73,13 +76,16 @@ class ExplanationCheckItem(BaseModel):
 class ExplanationCheck(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: int = 2
+    schema_version: int = 3
     check_id: UUID = Field(default_factory=uuid4)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     explanation_id: UUID
     run_id: UUID
     status: Literal["PASSED_AVAILABLE_CHECKS", "WARNING", "FAILED"]
     checks: list[ExplanationCheckItem]
+    validator_key: str | None = None
+    validator_version: str | None = None
+    validator_provider: str | None = None
     scientific_note: str = (
         "Checks validate available technical invariants of this explanation. "
         "They do not establish causal correctness or universal explanation quality."
