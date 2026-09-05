@@ -1001,7 +1001,7 @@ def run_multi_seed_study(project_root: Path, *, name: str, model_kind: str = "fl
     if selection_metric not in {"accuracy", "precision", "recall", "f1", "mse", "mae", "rmse", "r2"}:
         raise TrainingError(f"Unsupported selection metric {selection_metric!r}.")
     selected, value, rule = _select_study_run([(run, run.validation_metrics.get(selection_metric)) for run in runs], selection_metric)
-    study = TrainingStudy(name=name, model_kind=model_kind, task=runs[0].task, selection_metric=selection_metric, selection_rule=rule, seed_runs=runs, selected_run_id=selected.run_id, selection_reason=f"Selected {model_kind} run by declared validation {selection_metric} ({rule}) = {value:.6g}; exact ties select lowest training_seed; locked test was not used.", randomness_protocol=randomness_protocol, split_seed=(pairs[0][0] if len({pair[0] for pair in pairs}) == 1 else None), training_seeds=[pair[1] for pair in pairs])
+    study = TrainingStudy(name=name, model_kind=model_kind, task=runs[0].task, selection_metric=selection_metric, selection_rule=rule, seed_runs=runs, selected_run_id=selected.run_id, selection_reason=f"Selected {model_kind} run by declared validation {selection_metric} ({rule}) = {value:.6g}; exact ties select lowest training_seed; locked test was not used.", randomness_protocol=randomness_protocol, split_seed=(pairs[0][0] if len({pair[0] for pair in pairs}) == 1 else None), training_seeds=[pair[1] for pair in pairs], adapter_key=selected.adapter_key, adapter_version=selected.adapter_version, adapter_provider=selected.adapter_provider, runtime_capability_snapshot_hash=selected.runtime_capability_snapshot_hash)
     _atomic_write_text(_studies_root(project_root) / f"{study.study_id}.json", study.model_dump_json(indent=2))
     _atomic_write_text(_studies_root(project_root) / "active-study.json", json.dumps({"study_id": str(study.study_id)}, indent=2))
     return study
@@ -1082,7 +1082,7 @@ def _execute_study_job(project_root: Path, job_id: UUID) -> None:
         try:
             selection_metric = job.selection_metric
             selected, value, rule = _select_study_run([(run, run.validation_metrics.get(selection_metric)) for run in successful_runs], selection_metric)
-            created = TrainingStudy(name=job.name, model_kind=job.model_kind, task=successful_runs[0].task, selection_metric=selection_metric, selection_rule=rule, seed_runs=successful_runs, selected_run_id=selected.run_id, selection_reason=f"Selected {job.model_kind} run by declared validation {selection_metric} ({rule}) = {value:.6g}; exact ties select lowest training_seed; locked test was not used.", randomness_protocol=job.randomness_protocol, split_seed=job.split_seed, training_seeds=[run.training_seed or run.seed for run in successful_runs])
+            created = TrainingStudy(name=job.name, model_kind=job.model_kind, task=successful_runs[0].task, selection_metric=selection_metric, selection_rule=rule, seed_runs=successful_runs, selected_run_id=selected.run_id, selection_reason=f"Selected {job.model_kind} run by declared validation {selection_metric} ({rule}) = {value:.6g}; exact ties select lowest training_seed; locked test was not used.", randomness_protocol=job.randomness_protocol, split_seed=job.split_seed, training_seeds=[run.training_seed or run.seed for run in successful_runs], adapter_key=selected.adapter_key, adapter_version=selected.adapter_version, adapter_provider=selected.adapter_provider, runtime_capability_snapshot_hash=selected.runtime_capability_snapshot_hash)
             _atomic_write_text(_studies_root(project_root) / f"{created.study_id}.json", created.model_dump_json(indent=2))
             _atomic_write_text(_studies_root(project_root) / "active-study.json", json.dumps({"study_id": str(created.study_id)}, indent=2))
             job.study_id = created.study_id
@@ -1104,7 +1104,7 @@ def _submit_study_job(project_root: Path, job_id: UUID) -> StudyJob:
 
 def start_study_job(project_root: Path, *, name: str, model_kind: str, seeds: list[int], selection_metric: str, randomness_protocol: str = "LEGACY_COMBINED", split_seed: int | None = None, training_seed: int | None = None, **config) -> StudyJob:
     pairs = _study_seed_pairs(seeds=seeds, randomness_protocol=randomness_protocol, split_seed=split_seed, training_seed=training_seed)
-    job = StudyJob(name=name, model_kind=model_kind, selection_metric=selection_metric, seed_states=[StudySeedState(seed=current_training, split_seed=current_split, training_seed=current_training) for current_split, current_training in pairs], randomness_protocol=randomness_protocol, split_seed=(pairs[0][0] if len({pair[0] for pair in pairs}) == 1 else None), execution_config=config)
+    job = StudyJob(name=name, model_kind=model_kind, selection_metric=selection_metric, seed_states=[StudySeedState(seed=current_training, split_seed=current_split, training_seed=current_training) for current_split, current_training in pairs], randomness_protocol=randomness_protocol, split_seed=(pairs[0][0] if len({pair[0] for pair in pairs}) == 1 else None), execution_config=config, execution_backend_key="local_executor", execution_backend_version="1", execution_backend_provider="ruflex.builtin")
     _persist_study_job(project_root, job)
     return _submit_study_job(project_root, job.job_id)
 
