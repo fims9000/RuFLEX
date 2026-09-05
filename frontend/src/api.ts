@@ -124,14 +124,14 @@ export type GeneralizationResponse = {
 };
 export type BehaviorSpec = {
   spec_id: string; created_at?: string; run_id: string | null; model_artifact_sha256: string | null; fis_id: string | null; fis_semantic_hash: string | null; name: string;
-  kind: "output_range" | "monotonic_pair" | "invariance_pair" | "regression_case";
+  kind: "output_range" | "monotonic_pair" | "invariance_pair" | "symmetry_pair" | "bounded_perturbation" | "categorical_invariance" | "forbidden_region" | "required_order" | "domain_constraint" | "regression_case" | "batch_regression_suite";
   sample: Record<string, number>; comparison_sample: Record<string, number> | null;
   minimum: number | null; maximum: number | null;
-  expected_direction: "nondecreasing" | "nonincreasing" | null; tolerance: number; rationale: string;
+  expected_direction: "nondecreasing" | "nonincreasing" | null; maximum_delta?: number | null; cases?: Array<{ name: string; sample: Record<string, number>; minimum?: number | null; maximum?: number | null }>; tolerance: number; rationale: string;
 };
 export type BehaviorSpecResult = {
   result_id: string; created_at?: string; spec_id: string; run_id: string | null; model_artifact_sha256: string | null; fis_id: string | null; fis_semantic_hash: string | null;
-  status: "PASS" | "FAIL"; observed_output: number; comparison_output: number | null; detail: string;
+  status: "PASS" | "FAIL"; observed_output: number; comparison_output: number | null; detail: string; observations?: Array<{ name: string; output: number; status: "PASS" | "FAIL"; detail: string }>;
 };
 export type SelectivePredictionPolicy = {
   policy_id: string; evaluation_id: string; run_id: string; calibration_id: string | null;

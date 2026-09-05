@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 class BehaviorSpec(BaseModel):
     """An executable, revision-bound behavioural requirement; never a score."""
     model_config = ConfigDict(extra="forbid")
-    schema_version: int = 1
+    schema_version: int = 2
     spec_id: UUID = Field(default_factory=uuid4)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     run_id: UUID | None = None
@@ -18,12 +18,14 @@ class BehaviorSpec(BaseModel):
     fis_id: UUID | None = None
     fis_semantic_hash: str | None = None
     name: str = Field(min_length=1)
-    kind: Literal["output_range", "monotonic_pair", "invariance_pair", "regression_case"]
+    kind: Literal["output_range", "monotonic_pair", "invariance_pair", "symmetry_pair", "bounded_perturbation", "categorical_invariance", "forbidden_region", "required_order", "domain_constraint", "regression_case", "batch_regression_suite"]
     sample: dict[str, float]
     comparison_sample: dict[str, float] | None = None
     minimum: float | None = None
     maximum: float | None = None
     expected_direction: Literal["nondecreasing", "nonincreasing"] | None = None
+    maximum_delta: float | None = Field(default=None, ge=0.0)
+    cases: list["BehaviorCase"] = Field(default_factory=list)
     tolerance: float = Field(default=1e-9, ge=0.0)
     rationale: str = Field(min_length=1)
 
@@ -36,6 +38,20 @@ class BehaviorSpec(BaseModel):
         if self.fis_id is not None and not self.fis_semantic_hash:
             raise ValueError("FIS-bound BehaviorSpec requires semantic revision identity.")
         return self
+
+
+class BehaviorCase(BaseModel):
+    name: str = Field(min_length=1)
+    sample: dict[str, float] = Field(min_length=1)
+    minimum: float | None = None
+    maximum: float | None = None
+
+
+class BehaviorObservation(BaseModel):
+    name: str
+    output: float
+    status: Literal["PASS", "FAIL"]
+    detail: str
 
 
 class BehaviorSpecResult(BaseModel):
@@ -51,3 +67,4 @@ class BehaviorSpecResult(BaseModel):
     observed_output: float
     comparison_output: float | None = None
     detail: str
+    observations: list[BehaviorObservation] = Field(default_factory=list)

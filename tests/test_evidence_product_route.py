@@ -209,6 +209,26 @@ def test_behavior_spec_is_revision_bound_persists_and_reopens(tmp_path: Path) ->
     assert denied.status_code == 403
 
 
+def test_extended_behavior_specs_persist_pair_and_batch_observations(tmp_path: Path) -> None:
+    client = TestClient(app); root = tmp_path / "extended-behavior"; session_id = _project_with_data(client, root)
+    run = _train(client, session_id, "logistic_regression")
+    sample = {"temperature": 25.0, "torque": 48.0, "vibration": .6}
+    pair = {"temperature": 25.1, "torque": 48.0, "vibration": .6}
+    bounded = client.post("/api/projects/evidence/behavior-specs", json={
+        "session_id": session_id, "run_id": run["run_id"], "name": "Bounded perturbation", "kind": "bounded_perturbation", "sample": sample, "comparison_sample": pair, "maximum_delta": 1.0, "rationale": "Small input changes have a bounded declared response.",
+    })
+    assert bounded.status_code == 201, bounded.text
+    assert client.post("/api/projects/evidence/behavior-specs/run", json={"session_id": session_id, "spec_id": bounded.json()["spec_id"]}).status_code == 201
+    suite = client.post("/api/projects/evidence/behavior-specs", json={
+        "session_id": session_id, "run_id": run["run_id"], "name": "Two fixed cases", "kind": "batch_regression_suite", "sample": sample, "minimum": 0.0, "maximum": 1.0,
+        "cases": [{"name": "nominal", "sample": sample, "minimum": 0.0, "maximum": 1.0}, {"name": "nearby", "sample": pair, "minimum": 0.0, "maximum": 1.0}], "rationale": "Two named regression cases remain bounded.",
+    })
+    assert suite.status_code == 201, suite.text
+    result = client.post("/api/projects/evidence/behavior-specs/run", json={"session_id": session_id, "spec_id": suite.json()["spec_id"]})
+    assert result.status_code == 201, result.text
+    assert [item["name"] for item in result.json()["observations"]] == ["nominal", "nearby"]
+
+
 def test_gradient_boosting_declarative_artifact_supports_posthoc_replay(tmp_path: Path) -> None:
     client = TestClient(app)
     root = tmp_path / "gb-evidence"

@@ -7,7 +7,7 @@ from uuid import UUID
 from ruflex.application.evidence import _atomic_write_text, predict_run_sample
 from ruflex.application.training import load_training_run
 from ruflex.application.fis import evaluate_fis, list_fis_revisions, load_fis
-from ruflex.domain.behavior import BehaviorSpec, BehaviorSpecResult
+from ruflex.domain.behavior import BehaviorObservation, BehaviorSpec, BehaviorSpecResult
 
 
 class BehaviorSpecError(ValueError):
@@ -35,10 +35,21 @@ def create_behavior_spec(project_root: Path, payload: dict) -> BehaviorSpec:
         spec = BehaviorSpec.model_validate({**clean_payload, "fis_id": fis.fis_id, "fis_semantic_hash": fis.semantic_hash})
     if spec.kind == "output_range" and spec.minimum is None and spec.maximum is None:
         raise BehaviorSpecError("Output-range specs require a minimum or maximum.")
-    if spec.kind in {"monotonic_pair", "invariance_pair"} and spec.comparison_sample is None:
+    pair_kinds = {"monotonic_pair", "invariance_pair", "symmetry_pair", "bounded_perturbation", "categorical_invariance", "required_order"}
+    range_kinds = {"output_range", "regression_case", "domain_constraint"}
+    if spec.kind in pair_kinds and spec.comparison_sample is None:
         raise BehaviorSpecError(f"{spec.kind} requires a comparison sample.")
-    if spec.kind == "monotonic_pair" and spec.expected_direction is None:
-        raise BehaviorSpecError("Monotonic-pair specs require an expected direction.")
+    if spec.kind in {"monotonic_pair", "required_order"} and spec.expected_direction is None:
+        raise BehaviorSpecError(f"{spec.kind} requires an expected direction.")
+    if spec.kind == "bounded_perturbation" and spec.maximum_delta is None:
+        raise BehaviorSpecError("Bounded-perturbation specs require maximum_delta.")
+    if spec.kind == "forbidden_region" and (spec.minimum is None or spec.maximum is None):
+        raise BehaviorSpecError("Forbidden-region specs require minimum and maximum bounds.")
+    if spec.kind in range_kinds and spec.minimum is None and spec.maximum is None:
+        raise BehaviorSpecError(f"{spec.kind} requires a minimum or maximum.")
+    if spec.kind == "batch_regression_suite":
+        if not spec.cases: raise BehaviorSpecError("Batch regression suites require one or more named cases.")
+        if any(case.minimum is None and case.maximum is None for case in spec.cases): raise BehaviorSpecError("Every batch regression case requires a minimum or maximum.")
     _atomic_write_text(_root(project_root) / f"{spec.spec_id}.json", spec.model_dump_json(indent=2))
     _atomic_write_text(_root(project_root) / "active-spec.json", json.dumps({"spec_id": str(spec.spec_id)}))
     return spec
@@ -56,19 +67,35 @@ def run_behavior_spec(project_root: Path, spec_id: UUID) -> BehaviorSpecResult:
         if fis is None: raise BehaviorSpecError("Bound FIS semantic revision no longer exists.")
         value = evaluate_fis(fis, spec.sample).output
         other = evaluate_fis(fis, spec.comparison_sample).output if spec.comparison_sample else None
-    if spec.kind == "output_range":
+    observations: list[BehaviorObservation] = []
+    if spec.kind in {"output_range", "domain_constraint"}:
         passed = (spec.minimum is None or value >= spec.minimum - spec.tolerance) and (spec.maximum is None or value <= spec.maximum + spec.tolerance)
         detail = f"Output {value:.8g} is {'within' if passed else 'outside'} declared range [{spec.minimum}, {spec.maximum}]."
-    elif spec.kind == "invariance_pair":
+    elif spec.kind in {"invariance_pair", "symmetry_pair", "categorical_invariance"}:
         passed = abs(value - other) <= spec.tolerance
         detail = f"Pair difference {abs(value-other):.8g}; tolerance {spec.tolerance:.8g}."
-    elif spec.kind == "monotonic_pair":
+    elif spec.kind in {"monotonic_pair", "required_order"}:
         passed = value <= other + spec.tolerance if spec.expected_direction == "nondecreasing" else value >= other - spec.tolerance
         detail = f"Outputs {value:.8g} → {other:.8g}; expected {spec.expected_direction}."
+    elif spec.kind == "bounded_perturbation":
+        passed = abs(value - other) <= (spec.maximum_delta or 0.0) + spec.tolerance
+        detail = f"Perturbation difference {abs(value-other):.8g}; maximum {spec.maximum_delta:.8g}."
+    elif spec.kind == "forbidden_region":
+        passed = value < spec.minimum - spec.tolerance or value > spec.maximum + spec.tolerance
+        detail = f"Output {value:.8g} is {'outside' if passed else 'inside'} forbidden region [{spec.minimum}, {spec.maximum}]."
+    elif spec.kind == "batch_regression_suite":
+        observations = []
+        for case in spec.cases:
+            output = predict_run_sample(project_root, spec.run_id, case.sample) if spec.run_id is not None else evaluate_fis(fis, case.sample).output
+            case_passed = (case.minimum is None or output >= case.minimum - spec.tolerance) and (case.maximum is None or output <= case.maximum + spec.tolerance)
+            observations.append(BehaviorObservation(name=case.name, output=output, status="PASS" if case_passed else "FAIL", detail=f"Output {output:.8g}; accepted range [{case.minimum}, {case.maximum}]."))
+        passed = all(item.status == "PASS" for item in observations)
+        value = observations[0].output
+        detail = f"Batch regression suite: {sum(item.status == 'PASS' for item in observations)}/{len(observations)} cases passed."
     else:
         passed = (spec.minimum is None or value >= spec.minimum - spec.tolerance) and (spec.maximum is None or value <= spec.maximum + spec.tolerance)
         detail = f"Regression case output {value:.8g}; accepted range [{spec.minimum}, {spec.maximum}]."
-    result = BehaviorSpecResult(spec_id=spec.spec_id, run_id=spec.run_id, model_artifact_sha256=spec.model_artifact_sha256, fis_id=spec.fis_id, fis_semantic_hash=spec.fis_semantic_hash, status="PASS" if passed else "FAIL", observed_output=value, comparison_output=other, detail=detail)
+    result = BehaviorSpecResult(spec_id=spec.spec_id, run_id=spec.run_id, model_artifact_sha256=spec.model_artifact_sha256, fis_id=spec.fis_id, fis_semantic_hash=spec.fis_semantic_hash, status="PASS" if passed else "FAIL", observed_output=value, comparison_output=other, detail=detail, observations=observations)
     _atomic_write_text(_root(project_root) / f"result-{result.result_id}.json", result.model_dump_json(indent=2))
     _atomic_write_text(_root(project_root) / "active-result.json", json.dumps({"result_id": str(result.result_id)}))
     return result

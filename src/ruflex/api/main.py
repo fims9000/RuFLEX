@@ -340,12 +340,14 @@ class CreateBehaviorSpecRequest(SessionRequest):
     fis_id: UUID | None = None
     fis_semantic_hash: str | None = None
     name: str = Field(min_length=1, max_length=200)
-    kind: Literal["output_range", "monotonic_pair", "invariance_pair", "regression_case"]
+    kind: Literal["output_range", "monotonic_pair", "invariance_pair", "symmetry_pair", "bounded_perturbation", "categorical_invariance", "forbidden_region", "required_order", "domain_constraint", "regression_case", "batch_regression_suite"]
     sample: dict[str, float] = Field(min_length=1)
     comparison_sample: dict[str, float] | None = None
     minimum: float | None = None
     maximum: float | None = None
     expected_direction: Literal["nondecreasing", "nonincreasing"] | None = None
+    maximum_delta: float | None = Field(default=None, ge=0.0)
+    cases: list[dict[str, Any]] = Field(default_factory=list)
     tolerance: float = Field(default=1e-9, ge=0.0)
     rationale: str = Field(min_length=1, max_length=2000)
 
