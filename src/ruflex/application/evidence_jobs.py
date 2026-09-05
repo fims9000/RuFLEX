@@ -22,26 +22,10 @@ def _append(job: Job, message: str) -> None:
 
 
 def _generate(project_root: Path, request: dict) -> str:
-    from ruflex.application.evidence import (
-        create_gradient_shap_explanation,
-        create_integrated_gradients_explanation,
-        create_occlusion_explanation,
-        create_permutation_shap_explanation,
-        create_tree_shap_explanation,
-    )
+    from ruflex.application.evidence import create_runtime_explanation
     run_id = UUID(request["run_id"])
     sample = {str(name): float(value) for name, value in request["sample"].items()}
-    method = request["method"]
-    if method == "integrated_gradients":
-        result = create_integrated_gradients_explanation(project_root, run_id, sample)
-    elif method == "gradient_shap":
-        result = create_gradient_shap_explanation(project_root, run_id, sample)
-    elif method == "shap":
-        result = create_permutation_shap_explanation(project_root, run_id, sample)
-    elif method == "tree_shap":
-        result = create_tree_shap_explanation(project_root, run_id, sample)
-    else:
-        result = create_occlusion_explanation(project_root, run_id, sample)
+    result = create_runtime_explanation(project_root, explainer_key=request["method"], run_id=run_id, sample=sample)
     return str(result.explanation_id)
 
 

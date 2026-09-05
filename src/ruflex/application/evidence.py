@@ -728,6 +728,38 @@ def create_occlusion_explanation(project_root: Path, run_id: UUID, sample: dict[
     return _persist_explanation(project_root, _build_occlusion_explanation(project_root, run_id, sample))
 
 
+def create_runtime_explanation(
+    project_root: Path, *, explainer_key: str, run_id: UUID, sample: dict[str, float], parameters: dict[str, int | float] | None = None,
+) -> ExplanationContract:
+    """Resolve one declared explainer identity through a deterministic registry map.
+
+    Builders compute post-hoc values only; this core function persists the
+    canonical ExplanationContract and rejects unavailable capabilities before
+    execution.  No implicit TreeSHAP fallback is possible.
+    """
+    from ruflex.application.capabilities import negotiate_run_capabilities
+    from ruflex.runtime.explainers import BUILTIN_EXPLAINERS
+
+    runtime = next((item for item in BUILTIN_EXPLAINERS if item.identity.key == explainer_key), None)
+    if runtime is None:
+        raise EvidenceError(f"Explainer runtime {explainer_key!r} is not registered.")
+    run = load_training_run(project_root, run_id)
+    capability = "shap" if explainer_key == "shap" else explainer_key
+    decisions = {item.capability: item for item in negotiate_run_capabilities(run).decisions}
+    decision = decisions.get(capability)
+    if decision is not None and decision.status != "AVAILABLE":
+        raise EvidenceError(f"CAPABILITY_UNAVAILABLE: {decision.detail}")
+    values = dict(parameters or {})
+    builders = {
+        "occlusion": lambda: create_occlusion_explanation(project_root, run_id, sample),
+        "integrated_gradients": lambda: create_integrated_gradients_explanation(project_root, run_id, sample, steps=int(values.get("steps", 64))),
+        "gradient_shap": lambda: create_gradient_shap_explanation(project_root, run_id, sample, background_count=int(values.get("background_count", 24))),
+        "shap": lambda: create_permutation_shap_explanation(project_root, run_id, sample, background_count=int(values.get("background_count", 24)), max_evals=None if values.get("max_evals") is None else int(values["max_evals"])),
+        "tree_shap": lambda: create_tree_shap_explanation(project_root, run_id, sample, background_count=int(values.get("background_count", 32))),
+    }
+    return builders[explainer_key]()
+
+
 def load_explanation(project_root: Path, explanation_id: UUID) -> ExplanationContract:
     return ExplanationContract.model_validate_json((_explanations_root(project_root) / f"{explanation_id}.json").read_text(encoding="utf-8"))
 

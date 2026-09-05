@@ -1060,28 +1060,13 @@ def get_tree_path_trace(session_id: UUID, evidence_id: UUID) -> TreePathEvidence
 
 @app.post("/api/projects/evidence/explanations", response_model=ExplanationContract, status_code=201)
 def create_posthoc_explanation(request: CreatePosthocExplanationRequest) -> ExplanationContract:
-    from ruflex.application.evidence import (
-        EvidenceError,
-        create_gradient_shap_explanation,
-        create_integrated_gradients_explanation,
-        create_occlusion_explanation,
-        create_permutation_shap_explanation,
-        create_tree_shap_explanation,
-    )
+    from ruflex.application.evidence import EvidenceError, create_runtime_explanation
 
     try:
         session = service.get(request.session_id)
         if session.project.read_only:
             raise ProjectReadOnlyError("Project was opened read-only and cannot persist an explanation.")
-        if request.method == "integrated_gradients":
-            return create_integrated_gradients_explanation(session.project.root, request.run_id, request.sample)
-        if request.method == "gradient_shap":
-            return create_gradient_shap_explanation(session.project.root, request.run_id, request.sample)
-        if request.method == "shap":
-            return create_permutation_shap_explanation(session.project.root, request.run_id, request.sample)
-        if request.method == "tree_shap":
-            return create_tree_shap_explanation(session.project.root, request.run_id, request.sample)
-        return create_occlusion_explanation(session.project.root, request.run_id, request.sample)
+        return create_runtime_explanation(session.project.root, explainer_key=request.method, run_id=request.run_id, sample=request.sample)
     except ProjectError as error:
         raise _project_error(error) from error
     except (EvidenceError, ValueError, OSError, FileNotFoundError) as error:
