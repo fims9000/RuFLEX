@@ -716,6 +716,9 @@ export type ProductJob = {
   output: Record<string, string>;
   error: string | null;
   log: string[];
+  execution_backend_key: string | null;
+  execution_backend_version: string | null;
+  execution_backend_provider: string | null;
 };
 
 export type AnalysisEvaluation = {
