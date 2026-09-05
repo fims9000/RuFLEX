@@ -198,6 +198,7 @@ class ResponseSurfaceRequest(SessionRequest):
 
 class TrainModelRequest(SessionRequest):
     model_kind: str = Field(default="flat_neuro_fuzzy", pattern=r"^[a-z][a-z0-9_]{2,80}$")
+    adapter_key: str | None = Field(default=None, pattern=r"^[a-z][a-z0-9_]{2,80}$")
     seed: int = 42
     split_seed: int | None = None
     training_seed: int | None = None
@@ -435,10 +436,17 @@ def _session_summary(session: WorkspaceSession) -> ProjectSessionSummary:
     return ProjectSessionSummary(**session.project.summary().model_dump(), session_id=session.session_id)
 
 
-def _require_trainable_model(model_kind: str) -> None:
+def _require_trainable_model(model_kind: str, adapter_key: str | None = None) -> None:
     contract = get_model_capability_contract(model_kind)
     if contract is None or not contract.available or not contract.capabilities.fit:
         raise HTTPException(status_code=422, detail=f"Model capability is unavailable for training: {model_kind!r}.")
+    if adapter_key is not None:
+        try:
+            adapter = builtin_runtime_registry().resolve_model_adapter(adapter_key)
+        except RuntimeErrorBase as error:
+            raise _runtime_error(error) from error
+        if model_kind not in adapter.descriptor.training_model_kinds:
+            raise HTTPException(status_code=422, detail={"code": "RUNTIME_INCOMPATIBLE", "message": f"Adapter {adapter_key!r} is incompatible with model kind {model_kind!r}."})
 
 
 @app.get("/api/health")
@@ -945,7 +953,7 @@ def run_training(request: TrainModelRequest) -> TrainingRun:
 
     try:
         session = service.get(request.session_id)
-        _require_trainable_model(request.model_kind)
+        _require_trainable_model(request.model_kind, request.adapter_key)
         if session.project.read_only:
             raise ProjectReadOnlyError("Project was opened read-only and cannot start a training run.")
         return train_model(
@@ -1407,7 +1415,7 @@ def run_multi_seed_training_study(request: MultiSeedStudyRequest) -> TrainingStu
     from ruflex.application.training import TrainingError, run_multi_seed_study
     try:
         session = service.get(request.session_id)
-        _require_trainable_model(request.model_kind)
+        _require_trainable_model(request.model_kind, request.adapter_key)
         if session.project.read_only:
             raise ProjectReadOnlyError("Project was opened read-only and cannot start a study.")
         return run_multi_seed_study(
@@ -1429,7 +1437,7 @@ def start_multi_seed_study_job(request: MultiSeedStudyRequest) -> StudyJob:
     from ruflex.application.training import TrainingError, start_study_job
     try:
         session = service.get(request.session_id)
-        _require_trainable_model(request.model_kind)
+        _require_trainable_model(request.model_kind, request.adapter_key)
         if session.project.read_only:
             raise ProjectReadOnlyError("Project was opened read-only and cannot start a study.")
         return start_study_job(session.project.root, name=request.name, model_kind=request.model_kind, seeds=request.seeds, selection_metric=request.selection_metric, randomness_protocol=request.randomness_protocol, split_seed=request.split_seed, training_seed=request.training_seed, max_epochs=request.max_epochs, learning_rate=request.learning_rate, batch_size=request.batch_size, patience=request.patience, validation_fraction=request.validation_fraction, test_fraction=request.test_fraction, max_rules=request.max_rules, n_estimators=request.n_estimators, max_depth=request.max_depth)

@@ -66,6 +66,14 @@ def test_training_rejects_unknown_model_through_runtime_capability_contract(tmp_
     assert response.json()["code"] == "CAPABILITY_UNAVAILABLE"
 
 
+def test_training_rejects_adapter_key_incompatible_with_concrete_model(tmp_path: Path) -> None:
+    client = TestClient(app)
+    session_id = client.post("/api/projects", json={"path": str(tmp_path / "incompatible"), "name": "Incompatible"}).json()["session_id"]
+    response = client.post("/api/projects/training/run", json={"session_id": session_id, "model_kind": "decision_tree", "adapter_key": "sklearn_linear"})
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "RUNTIME_INCOMPATIBLE"
+
+
 def test_run_capability_negotiation_is_bound_to_the_persisted_model_artifact(tmp_path: Path) -> None:
     client = TestClient(app)
     root = tmp_path / "capabilities"
