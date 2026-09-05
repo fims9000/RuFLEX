@@ -21,7 +21,7 @@ from sklearn.ensemble import GradientBoostingClassifier, GradientBoostingRegress
 from sklearn.metrics import accuracy_score, average_precision_score, f1_score, mean_absolute_error, mean_squared_error, precision_score, precision_recall_curve, r2_score, recall_score, roc_auc_score, roc_curve
 
 from ruflex.application.artifacts import ArtifactMetadata, ArtifactRef, ArtifactStore
-from ruflex.application.execution import local_executor
+from ruflex.runtime.backends import resolve_execution_backend
 from ruflex.application.datasets import load_dataset_contract, load_dataset_frame, row_identity
 from ruflex.core.enums import NormalizationMode, TaskType, VariableRole
 from ruflex.core.membership import GaussianMembershipSpec
@@ -1101,17 +1101,32 @@ def _execute_study_job(project_root: Path, job_id: UUID) -> None:
     _persist_study_job(project_root, job)
 
 
+def _study_execution_backend(job: StudyJob):
+    """Resolve persisted backend identity without changing a legacy job."""
+    key = job.execution_backend_key or "local_executor"
+    descriptor, backend = resolve_execution_backend(key)
+    if job.execution_backend_key is not None and (
+        job.execution_backend_version != descriptor.identity.version
+        or job.execution_backend_provider != descriptor.identity.provider
+    ):
+        raise TrainingError("Persisted StudyJob backend identity is incompatible with the active runtime.")
+    return descriptor, backend
+
+
 def _submit_study_job(project_root: Path, job_id: UUID) -> StudyJob:
     # Attaching after a Studio reopen is idempotent: an already active local
     # worker remains the sole executor, and callers simply observe its durable
     # job record rather than submitting duplicate training.
-    local_executor.submit(project_root=project_root, job_id=job_id, operation=lambda: _execute_study_job(project_root, job_id))
+    job = load_study_job(project_root, job_id)
+    _, backend = _study_execution_backend(job)
+    backend.submit(project_root=project_root, job_id=job_id, operation=lambda: _execute_study_job(project_root, job_id))
     return load_study_job(project_root, job_id)
 
 
 def start_study_job(project_root: Path, *, name: str, model_kind: str, seeds: list[int], selection_metric: str, randomness_protocol: str = "LEGACY_COMBINED", split_seed: int | None = None, training_seed: int | None = None, **config) -> StudyJob:
     pairs = _study_seed_pairs(seeds=seeds, randomness_protocol=randomness_protocol, split_seed=split_seed, training_seed=training_seed)
-    job = StudyJob(name=name, model_kind=model_kind, selection_metric=selection_metric, seed_states=[StudySeedState(seed=current_training, split_seed=current_split, training_seed=current_training) for current_split, current_training in pairs], randomness_protocol=randomness_protocol, split_seed=(pairs[0][0] if len({pair[0] for pair in pairs}) == 1 else None), execution_config=config, execution_backend_key="local_executor", execution_backend_version="1", execution_backend_provider="ruflex.builtin")
+    descriptor, _ = resolve_execution_backend()
+    job = StudyJob(name=name, model_kind=model_kind, selection_metric=selection_metric, seed_states=[StudySeedState(seed=current_training, split_seed=current_split, training_seed=current_training) for current_split, current_training in pairs], randomness_protocol=randomness_protocol, split_seed=(pairs[0][0] if len({pair[0] for pair in pairs}) == 1 else None), execution_config=config, execution_backend_key=descriptor.identity.key, execution_backend_version=descriptor.identity.version, execution_backend_provider=descriptor.identity.provider)
     _persist_study_job(project_root, job)
     return _submit_study_job(project_root, job.job_id)
 
@@ -1123,7 +1138,8 @@ def resume_study_job(project_root: Path, job_id: UUID) -> StudyJob:
         raise TrainingError(f"Study job {job_id} is terminal ({job.status}) and cannot be resumed.")
     if job.cancel_requested:
         raise TrainingError("A cancelled Study job cannot be resumed; create a new declared Study instead.")
-    if local_executor.is_active(project_root=project_root, job_id=job_id):
+    _, backend = _study_execution_backend(job)
+    if backend.is_active(project_root=project_root, job_id=job_id):
         return job
     for state in job.seed_states:
         if state.status == "RUNNING":
