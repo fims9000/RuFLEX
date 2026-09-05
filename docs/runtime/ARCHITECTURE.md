@@ -16,14 +16,17 @@ Trusted model adapters implement bounded `fit(FitRequest)` and
 `predict(PredictionRequest)` calls. Explainer adapters implement
 `supports(run_capabilities, task, artifact)` and `explain(ExplainerRequest)`;
 validator adapters return a typed `ValidatorResult`; execution backend adapters
-provide `submit` and `is_active` over persisted work. The core saves
+provide `submit`, `is_active`, `status`, cooperative `cancel`, and `resume`
+over persisted work. The core saves
 `FitResult` bytes through `ArtifactStore`, computes canonical validation
 evidence, and binds resulting objects to immutable `RuntimeIdentity` (`key`,
 `version`, `provider`, `kind`).
 
-Runtime startup registers built-ins, validates installed `ruflex.plugins`
-model-adapter entry-points, then freezes one deterministic snapshot containing
-models, explainers, validators and execution backends. Missing optional
+Runtime startup registers built-ins and validates installed category-specific
+entry points (`ruflex.plugins`/`ruflex.model_adapters`, `ruflex.explainers`,
+`ruflex.validators`, and `ruflex.execution_backends`) before freezing one
+deterministic snapshot containing models, explainers, validators and execution
+backends. Missing optional
 runtimes affect replay operations only; inspectability of persisted projects is
 preserved. The public runtime catalog is read-only and never executes uploaded
 or arbitrary Python code.
