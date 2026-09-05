@@ -664,14 +664,15 @@ def create_permutation_shap_explanation(project_root: Path, run_id: UUID, sample
     return _persist_explanation(project_root, _build_permutation_shap_explanation(project_root, run_id, sample, background_count=background_count, max_evals=max_evals))
 
 
-def _persist_explanation(project_root: Path, explanation: ExplanationContract) -> ExplanationContract:
+def _persist_explanation(project_root: Path, explanation: ExplanationContract, *, runtime=None) -> ExplanationContract:
     run = load_training_run(project_root, explanation.run_id)
-    from ruflex.runtime import builtin_runtime_registry
-    from ruflex.runtime.errors import RuntimeErrorBase
-    try:
-        runtime = builtin_runtime_registry().resolve_component("explainer", explanation.family).identity
-    except RuntimeErrorBase:
-        runtime = None
+    if runtime is None:
+        from ruflex.runtime import builtin_runtime_registry
+        from ruflex.runtime.errors import RuntimeErrorBase
+        try:
+            runtime = builtin_runtime_registry().resolve_component("explainer", explanation.family).identity
+        except RuntimeErrorBase:
+            runtime = None
     explanation = explanation.model_copy(update={
         "schema_version": 3,
         "preprocessing_identity": explanation.preprocessing_identity or _stable_identity("preprocessing", run.normalization),
@@ -746,9 +747,9 @@ def create_runtime_explanation(
     explanation = result.explanation
     if not isinstance(explanation, ExplanationContract):
         raise EvidenceError("Explainer runtime returned an invalid explanation payload.")
-    if explanation.explainer_key != runtime.identity.key:
+    if explanation.explainer_key not in {None, runtime.identity.key}:
         raise EvidenceError("Explainer runtime returned an explanation with mismatched persisted identity.")
-    return explanation
+    return _persist_explanation(project_root, explanation, runtime=runtime.identity)
 
 
 def load_explanation(project_root: Path, explanation_id: UUID) -> ExplanationContract:

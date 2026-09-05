@@ -39,11 +39,11 @@ class _BuiltinExplainerAdapter:
 
         values = request.parameters
         routes = {
-            "occlusion": lambda: evidence.create_occlusion_explanation(request.project_root, request.run_id, request.sample),
-            "integrated_gradients": lambda: evidence.create_integrated_gradients_explanation(request.project_root, request.run_id, request.sample, steps=int(values.get("steps", 64))),
-            "gradient_shap": lambda: evidence.create_gradient_shap_explanation(request.project_root, request.run_id, request.sample, background_count=int(values.get("background_count", 24))),
-            "shap": lambda: evidence.create_permutation_shap_explanation(request.project_root, request.run_id, request.sample, background_count=int(values.get("background_count", 24)), max_evals=None if values.get("max_evals") is None else int(values["max_evals"])),
-            "tree_shap": lambda: evidence.create_tree_shap_explanation(request.project_root, request.run_id, request.sample, background_count=int(values.get("background_count", 32))),
+            "occlusion": lambda: evidence._build_occlusion_explanation(request.project_root, request.run_id, request.sample),
+            "integrated_gradients": lambda: evidence._build_integrated_gradients_explanation(request.project_root, request.run_id, request.sample, steps=int(values.get("steps", 64))),
+            "gradient_shap": lambda: evidence._build_gradient_shap_explanation(request.project_root, request.run_id, request.sample, background_count=int(values.get("background_count", 24))),
+            "shap": lambda: evidence._build_permutation_shap_explanation(request.project_root, request.run_id, request.sample, background_count=int(values.get("background_count", 24)), max_evals=None if values.get("max_evals") is None else int(values["max_evals"])),
+            "tree_shap": lambda: evidence._build_tree_shap_explanation(request.project_root, request.run_id, request.sample, background_count=int(values.get("background_count", 32))),
         }
         return ExplainerResult(explanation=routes[self.descriptor.identity.key]())
 

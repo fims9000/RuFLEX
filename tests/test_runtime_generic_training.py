@@ -13,7 +13,8 @@ from ruflex.application.runtime_training import train_with_adapter
 from ruflex.application.training import load_training_run
 from ruflex.application.datasets import load_transform_pipeline_contract
 from ruflex.application.artifacts import ArtifactRef, ArtifactStore
-from ruflex.runtime.contracts import FitRequest, FitResult, ModelAdapterDescriptor, PredictionRequest, PredictionResult, RuntimeIdentity
+from ruflex.domain.evidence import ExplanationContract, FeatureAttribution
+from ruflex.runtime.contracts import ExplainerDescriptor, ExplainerRequest, ExplainerResult, FitRequest, FitResult, ModelAdapterDescriptor, PredictionRequest, PredictionResult, RuntimeIdentity
 from ruflex.runtime.registry import RuntimeRegistry
 from ruflex.runtime import builtin_runtime_registry
 
@@ -34,6 +35,29 @@ class FixtureAdapter:
     def predict(self, request: PredictionRequest) -> PredictionResult:
         raw = np.asarray(request.features, dtype=float)[:, 0] - .5
         return PredictionResult(prediction=(raw >= 0).astype(float).tolist(), raw_score=raw.tolist(), probability=(1 / (1 + np.exp(-raw))).tolist())
+
+
+@dataclass(frozen=True)
+class FixtureExplainer:
+    descriptor = ExplainerDescriptor(
+        identity=RuntimeIdentity(key="fixture_explainer", version="1", provider="ruflex.tests", kind="explainer"),
+        supported_tasks=("binary_classification",),
+    )
+
+    def supports(self, *, run_capabilities: dict[str, str], task: str, artifact: str) -> tuple[bool, str | None]:
+        return task == "binary_classification", None
+
+    def explain(self, request: ExplainerRequest) -> ExplainerResult:
+        from ruflex.application.training import load_training_run
+        run = load_training_run(request.project_root, request.run_id)
+        value = float(request.sample["x"])
+        return ExplainerResult(explanation=ExplanationContract(
+            run_id=run.run_id, model_kind=run.model_kind, model_artifact_sha256=run.model_artifact_sha256,
+            sample={"x": value}, target=run.target, family="occlusion", method="train_reference_occlusion",
+            prediction=value, reference_definition="fixture train-derived reference", explainer_key="fixture_explainer",
+            explainer_version="1", explainer_provider="ruflex.tests",
+            attributions=[FeatureAttribution(feature="x", observed_value=value, reference_value=0.0, attribution=value)],
+        ))
 
 
 def _project(root: Path) -> None:
@@ -97,6 +121,19 @@ def test_external_adapter_replays_final_test_via_its_persisted_runtime_identity(
     final = evaluate_final_test(tmp_path, evaluation.evaluation_id, threshold_id=threshold.threshold_id)
     assert final.run_id == run.run_id
     assert final.prediction_rows
+
+
+def test_external_explainer_is_persisted_by_the_generic_core_route(tmp_path: Path, monkeypatch) -> None:
+    _project(tmp_path)
+    registry = RuntimeRegistry(); registry.register_model_adapter(FixtureAdapter()); registry.register_component(FixtureExplainer.descriptor, implementation=FixtureExplainer()); registry.freeze()
+    run = train_with_adapter(tmp_path, registry=registry, adapter_key="fixture_adapter", model_kind="fixture_model", seed=4)
+    monkeypatch.setattr("ruflex.runtime.builtin_runtime_registry", lambda: registry)
+    monkeypatch.setattr("ruflex.application.capabilities.builtin_runtime_registry", lambda: registry)
+    from ruflex.application.evidence import create_runtime_explanation, load_explanation
+
+    explanation = create_runtime_explanation(tmp_path, explainer_key="fixture_explainer", run_id=run.run_id, sample={"x": 3.0})
+    assert explanation.explainer_key == "fixture_explainer"
+    assert load_explanation(tmp_path, explanation.explanation_id) == explanation
 
 
 @pytest.mark.parametrize("adapter_key,model_kind,parameters", [
