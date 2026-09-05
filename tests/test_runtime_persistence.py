@@ -38,3 +38,15 @@ def test_legacy_run_without_runtime_identity_remains_inspectable() -> None:
     })
     assert raw.adapter_key is None
     assert negotiate_run_capabilities(raw).decisions[0].status in {"AVAILABLE", "NOT_APPLICABLE"}
+
+
+def test_legacy_run_with_missing_adapter_remains_inspectable_but_unavailable() -> None:
+    raw = TrainingRun.model_validate({
+        "schema_version": 2, "model_kind": "removed_adapter_model", "task": "binary_classification", "target": "target", "feature_columns": ["x"], "seed": 1,
+        "max_epochs": 1, "learning_rate": 0.0, "batch_size": 1, "patience": None,
+        "split": {"seed": 1, "validation_fraction": .2, "test_fraction": .2, "train_count": 1, "validation_count": 1, "test_count": 1},
+        "model_spec": {}, "normalization": {}, "training_summary": {}, "trajectory": [], "validation_metrics": {}, "prediction_preview": [], "model_artifact_sha256": "b" * 64,
+    })
+    decisions = negotiate_run_capabilities(raw).decisions
+    assert {item.status for item in decisions} == {"UNAVAILABLE_RUNTIME"}
+    assert {item.reason_code for item in decisions} == {"CAPABILITY_UNAVAILABLE"}
