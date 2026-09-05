@@ -934,6 +934,8 @@ def train_model(project_root: Path, *, model_kind: str, **config) -> TrainingRun
     # Preserve old API callers while allowing the explicit provenance contract.
     config.setdefault("seed", None)
     if model_kind == "flat_neuro_fuzzy":
+        config.pop("n_estimators", None)
+        config.pop("max_depth", None)
         run = train_flat_neuro_fuzzy(project_root, **config)
     elif model_kind in {"logistic_regression", "linear_regression"}:
         run = train_linear_baseline(
@@ -949,6 +951,7 @@ def train_model(project_root: Path, *, model_kind: str, **config) -> TrainingRun
             seed=config.get("seed"), split_seed=config.get("split_seed"), training_seed=config.get("training_seed"),
             validation_fraction=config["validation_fraction"],
             test_fraction=config["test_fraction"],
+            max_depth=config.get("max_depth"),
         )
     elif model_kind == "random_forest":
         run = train_random_forest(
@@ -956,6 +959,7 @@ def train_model(project_root: Path, *, model_kind: str, **config) -> TrainingRun
             seed=config.get("seed"), split_seed=config.get("split_seed"), training_seed=config.get("training_seed"),
             validation_fraction=config["validation_fraction"],
             test_fraction=config["test_fraction"],
+            n_estimators=config.get("n_estimators") or 25, max_depth=config.get("max_depth"),
         )
     elif model_kind == "gradient_boosting":
         run = train_gradient_boosting(
@@ -963,7 +967,7 @@ def train_model(project_root: Path, *, model_kind: str, **config) -> TrainingRun
             seed=config.get("seed"), split_seed=config.get("split_seed"), training_seed=config.get("training_seed"),
             validation_fraction=config["validation_fraction"],
             test_fraction=config["test_fraction"],
-            learning_rate=config["learning_rate"],
+            n_estimators=config.get("n_estimators") or 50, learning_rate=config["learning_rate"], max_depth=config.get("max_depth") or 3,
         )
     else:
         raise TrainingError(f"Unsupported model kind {model_kind!r}.")

@@ -108,6 +108,8 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
   const [batchSize, setBatchSize] = useState(32);
   const [patience, setPatience] = useState(8);
   const [maxRules, setMaxRules] = useState(8);
+  const [nEstimators, setNEstimators] = useState(25);
+  const [maxDepth, setMaxDepth] = useState<number | null>(null);
   const [seedList, setSeedList] = useState("42, 43, 44");
   const [studyMode, setStudyMode] = useState<"TRAINING_VARIABILITY" | "SPLIT_VARIABILITY" | "COMBINED_VARIABILITY">("TRAINING_VARIABILITY");
   const [splitSeed, setSplitSeed] = useState(42);
@@ -133,6 +135,19 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
   const datasetTask = dataset?.contract.task;
   const catalogKey = (kind: string) => kind === "logistic_regression" || kind === "linear_regression" ? "linear" : kind;
   const compatibleModels = useMemo(() => catalog.filter((entry) => entry.available && entry.capabilities.fit && !!datasetTask && entry.supported_tasks.includes(datasetTask)), [catalog, datasetTask]);
+  const selectedModel = compatibleModels.find((entry) => entry.key === catalogKey(modelKind)) ?? null;
+  const supportsParameter = (name: string) => Boolean(selectedModel?.parameter_constraints[name]);
+  useEffect(() => {
+    const defaults = selectedModel?.defaults;
+    if (!defaults) return;
+    if (typeof defaults.max_epochs === "number") setMaxEpochs(defaults.max_epochs);
+    if (typeof defaults.learning_rate === "number") setLearningRate(defaults.learning_rate);
+    if (typeof defaults.batch_size === "number") setBatchSize(defaults.batch_size);
+    if (typeof defaults.patience === "number") setPatience(defaults.patience);
+    if (typeof defaults.max_rules === "number") setMaxRules(defaults.max_rules);
+    if (typeof defaults.n_estimators === "number") setNEstimators(defaults.n_estimators);
+    if ("max_depth" in defaults) setMaxDepth(typeof defaults.max_depth === "number" ? defaults.max_depth : null);
+  }, [selectedModel?.key]);
   useEffect(() => {
     if (compatibleModels.length && !compatibleModels.some((entry) => entry.key === catalogKey(modelKind))) setModelKind(compatibleModels[0].training_model_kinds[0]);
   }, [compatibleModels, modelKind]);
@@ -173,6 +188,8 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
         validation_fraction: 0.2,
         test_fraction: 0.2,
         max_rules: maxRules,
+        n_estimators: nEstimators,
+        max_depth: maxDepth,
       });
       onRun(result);
     } catch (reason) {
@@ -191,7 +208,7 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
     setError(null);
     try {
       const selectionMetric = dataset?.contract.task === "regression" ? "rmse" : "f1";
-      let job = await studioApi.startStudyJob(project.session_id, { name: `Study ${new Date().toLocaleString()}`, model_kind: trainingModelKind as "flat_neuro_fuzzy" | "logistic_regression" | "linear_regression" | "decision_tree" | "random_forest" | "gradient_boosting", seeds, randomness_protocol: studyMode, split_seed: splitSeed, training_seed: splitSeed, selection_metric: selectionMetric, max_epochs: maxEpochs, learning_rate: learningRate, batch_size: batchSize, patience, validation_fraction: .2, test_fraction: .2, max_rules: maxRules });
+      let job = await studioApi.startStudyJob(project.session_id, { name: `Study ${new Date().toLocaleString()}`, model_kind: trainingModelKind as "flat_neuro_fuzzy" | "logistic_regression" | "linear_regression" | "decision_tree" | "random_forest" | "gradient_boosting", seeds, randomness_protocol: studyMode, split_seed: splitSeed, training_seed: splitSeed, selection_metric: selectionMetric, max_epochs: maxEpochs, learning_rate: learningRate, batch_size: batchSize, patience, validation_fraction: .2, test_fraction: .2, max_rules: maxRules, n_estimators: nEstimators, max_depth: maxDepth });
       await observeStudy(job);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Multi-seed study failed");
@@ -246,11 +263,13 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
           <label className="field-label">Model<select aria-label="Training model" value={modelKind} disabled={running || project.read_only || !compatibleModels.length} onChange={(event) => setModelKind(event.target.value)}>{compatibleModels.map((entry) => <option key={entry.key} value={entry.key === "linear" ? (datasetTask === "regression" ? "linear_regression" : "logistic_regression") : entry.training_model_kinds[0]}>{entry.display_name}</option>)}</select></label>
           <NumberField label="Seed" value={seed} step={1} disabled={running || project.read_only} onChange={setSeed} />
           <NumberField label="Study split seed" value={splitSeed} step={1} disabled={running || project.read_only} onChange={setSplitSeed} />
-          <NumberField label="Epochs" value={maxEpochs} min={1} max={2000} step={1} disabled={running || project.read_only} onChange={setMaxEpochs} />
-          <NumberField label="Learning rate" value={learningRate} min={0.000001} max={1} step={0.001} disabled={running || project.read_only} onChange={setLearningRate} />
-          <NumberField label="Batch size" value={batchSize} min={1} step={1} disabled={running || project.read_only} onChange={setBatchSize} />
-          <NumberField label="Patience" value={patience} min={1} step={1} disabled={running || project.read_only} onChange={setPatience} />
-          <NumberField label="Max rules / layer" value={maxRules} min={1} max={128} step={1} disabled={running || project.read_only} onChange={setMaxRules} />
+          {supportsParameter("max_epochs") && <NumberField label="Epochs" value={maxEpochs} min={1} max={2000} step={1} disabled={running || project.read_only} onChange={setMaxEpochs} />}
+          {supportsParameter("learning_rate") && <NumberField label="Learning rate" value={learningRate} min={0.000001} max={1} step={0.001} disabled={running || project.read_only} onChange={setLearningRate} />}
+          {supportsParameter("batch_size") && <NumberField label="Batch size" value={batchSize} min={1} step={1} disabled={running || project.read_only} onChange={setBatchSize} />}
+          {supportsParameter("patience") && <NumberField label="Patience" value={patience} min={1} step={1} disabled={running || project.read_only} onChange={setPatience} />}
+          {supportsParameter("max_rules") && <NumberField label="Max rules / layer" value={maxRules} min={1} max={128} step={1} disabled={running || project.read_only} onChange={setMaxRules} />}
+          {supportsParameter("n_estimators") && <NumberField label="Trees / estimators" value={nEstimators} min={1} step={1} disabled={running || project.read_only} onChange={setNEstimators} />}
+          {supportsParameter("max_depth") && <label className="field-label">Maximum depth<input aria-label="Maximum depth" type="number" min={1} value={maxDepth ?? ""} placeholder="unlimited" disabled={running || project.read_only} onChange={(event) => setMaxDepth(event.target.value === "" ? null : Number(event.target.value))} /></label>}
           <label className="field-label">Study seeds<input aria-label="Study seeds" value={seedList} disabled={running || project.read_only} onChange={(event) => setSeedList(event.target.value)} /></label>
           <label className="field-label">Study randomness protocol<select aria-label="Study randomness protocol" value={studyMode} disabled={running || project.read_only} onChange={(event) => setStudyMode(event.target.value as typeof studyMode)}><option value="TRAINING_VARIABILITY">Training variability (fixed split)</option><option value="SPLIT_VARIABILITY">Split variability (fixed training seed)</option><option value="COMBINED_VARIABILITY">Combined variability</option></select></label>
         </div>

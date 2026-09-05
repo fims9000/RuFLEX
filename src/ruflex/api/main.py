@@ -206,6 +206,8 @@ class TrainModelRequest(SessionRequest):
     validation_fraction: float = Field(default=0.2, gt=0.0, lt=1.0)
     test_fraction: float = Field(default=0.2, ge=0.0, lt=1.0)
     max_rules: int = Field(default=8, ge=1, le=128)
+    n_estimators: int | None = Field(default=None, ge=1, le=5000)
+    max_depth: int | None = Field(default=None, ge=1, le=1000)
 
 
 class MultiSeedStudyRequest(TrainModelRequest):
@@ -896,6 +898,7 @@ def run_training(request: TrainModelRequest) -> TrainingRun:
             batch_size=request.batch_size, patience=request.patience,
             validation_fraction=request.validation_fraction, test_fraction=request.test_fraction,
             max_rules=request.max_rules,
+            n_estimators=request.n_estimators, max_depth=request.max_depth,
         )
     except ProjectError as error:
         raise _project_error(error) from error
@@ -1357,6 +1360,7 @@ def run_multi_seed_training_study(request: MultiSeedStudyRequest) -> TrainingStu
             learning_rate=request.learning_rate, batch_size=request.batch_size,
             patience=request.patience, validation_fraction=request.validation_fraction,
             test_fraction=request.test_fraction, max_rules=request.max_rules,
+            n_estimators=request.n_estimators, max_depth=request.max_depth,
         )
     except ProjectError as error:
         raise _project_error(error) from error
@@ -1372,7 +1376,7 @@ def start_multi_seed_study_job(request: MultiSeedStudyRequest) -> StudyJob:
         _require_trainable_model(request.model_kind)
         if session.project.read_only:
             raise ProjectReadOnlyError("Project was opened read-only and cannot start a study.")
-        return start_study_job(session.project.root, name=request.name, model_kind=request.model_kind, seeds=request.seeds, selection_metric=request.selection_metric, randomness_protocol=request.randomness_protocol, split_seed=request.split_seed, training_seed=request.training_seed, max_epochs=request.max_epochs, learning_rate=request.learning_rate, batch_size=request.batch_size, patience=request.patience, validation_fraction=request.validation_fraction, test_fraction=request.test_fraction, max_rules=request.max_rules)
+        return start_study_job(session.project.root, name=request.name, model_kind=request.model_kind, seeds=request.seeds, selection_metric=request.selection_metric, randomness_protocol=request.randomness_protocol, split_seed=request.split_seed, training_seed=request.training_seed, max_epochs=request.max_epochs, learning_rate=request.learning_rate, batch_size=request.batch_size, patience=request.patience, validation_fraction=request.validation_fraction, test_fraction=request.test_fraction, max_rules=request.max_rules, n_estimators=request.n_estimators, max_depth=request.max_depth)
     except ProjectError as error:
         raise _project_error(error) from error
     except (TrainingError, ValueError, OSError) as error:

@@ -84,3 +84,14 @@ def test_run_capability_negotiation_is_bound_to_the_persisted_model_artifact(tmp
     assert decisions["occlusion"]["status"] == "AVAILABLE"
     assert decisions["tree_shap"]["reason_code"] == "CAPABILITY_UNAVAILABLE"
     assert decisions["exact_tree_path"]["status"] == "NOT_APPLICABLE"
+
+
+def test_runtime_tree_parameters_reach_the_canonical_training_adapter(tmp_path: Path) -> None:
+    client = TestClient(app)
+    root = tmp_path / "tree-runtime"
+    session_id = client.post("/api/projects", json={"path": str(root), "name": "Tree runtime"}).json()["session_id"]
+    frame = pd.DataFrame({"x": range(40), "y": [index % 5 for index in range(40)], "target": [index % 2 for index in range(40)]})
+    assert client.post("/api/projects/dataset/confirm", json={"session_id": session_id, "csv_text": frame.to_csv(index=False), "target": "target", "task": "binary_classification", "id_columns": []}).status_code == 200
+    response = client.post("/api/projects/training/run", json={"session_id": session_id, "model_kind": "decision_tree", "seed": 42, "max_depth": 1})
+    assert response.status_code == 201, response.text
+    assert response.json()["model_spec"]["max_depth"] <= 1
