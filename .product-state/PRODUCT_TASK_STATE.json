@@ -32,7 +32,10 @@
     "v1_2_unified_runtime",
     "persisted_transform_pipeline_contracts",
     "data_leakage_audit_and_rigor_profiles",
-    "declared_temporal_and_identity_holdout_splits"
+    "declared_temporal_and_identity_holdout_splits",
+    "categorical_train_only_preprocessing",
+    "expanded_scientific_action_inventory",
+    "external_explainer_core_persistence"
   ],
   "active_acceptance": [
     "V1.3 persists SplitContract, train-only TransformPipelineContract and leakage-audit evidence through Studio/API, reopen, Lineage, Assurance and VerificationBundle.",
@@ -40,7 +43,7 @@
     "Keep unrelated article and interrupted S03 work out of the committed product baseline."
   ],
   "blockers": [],
-  "next_executable_work": "Extend BehaviorSpec semantics and add action-inventory browser coverage for V1.3 Data Governance flows; run the broader product QA after that coherent slice.",
+  "next_executable_work": "Add persisted before/after BehaviorSpec revision comparison and its API/Studio route, then run the broader V1.3 product QA.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
