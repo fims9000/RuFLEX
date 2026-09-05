@@ -13,6 +13,7 @@ from ruflex.application.projects import ProjectService
 from ruflex.application.training import list_training_runs
 from ruflex.domain.evidence import ExplanationCheck, ExplanationContract
 from ruflex.domain.project import ProjectIntegrityIssue, ProjectIntegrityReport
+from ruflex.runtime.registry import builtin_runtime_registry
 
 
 def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
@@ -101,6 +102,14 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                 issues.append(ProjectIntegrityIssue(code="IMPORTED_FIS_PROVENANCE_MALFORMED", status="FAIL", path=relative_path, detail=str(error)))
     runs_by_id = {run.run_id: run for run in runs}
     for run in runs:
+        if run.schema_version >= 3:
+            if not all((run.adapter_key, run.adapter_version, run.adapter_provider, run.adapter_kind, run.runtime_capability_snapshot_hash)):
+                issues.append(ProjectIntegrityIssue(code="RUNTIME_BINDING_MISSING", status="FAIL", path=f"runs/{run.run_id}.json", detail="A schema-v3 TrainingRun is missing its required runtime adapter binding."))
+            else:
+                try:
+                    builtin_runtime_registry().resolve_model_adapter(run.adapter_key, version=run.adapter_version)
+                except Exception:
+                    issues.append(ProjectIntegrityIssue(code="RUNTIME_UNAVAILABLE", status="WARN", path=f"runs/{run.run_id}.json", detail="The persisted adapter is unavailable locally; the run remains inspectable but replay is unavailable."))
         verification = store.verify(ArtifactRef(sha256=run.model_artifact_sha256)); checked += 1
         if not verification.valid:
             issues.append(ProjectIntegrityIssue(code="MODEL_ARTIFACT_INVALID", status="FAIL", path=f"runs/{run.run_id}.json", detail=verification.message))
@@ -154,6 +163,8 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                     issues.append(ProjectIntegrityIssue(code="EXPLANATION_ATTRIBUTION_SCHEMA_MISMATCH", status="FAIL", path=relative_path, detail="Explanation attribution feature identity/order does not match its TrainingRun."))
                 if explanation.target != run.target:
                     issues.append(ProjectIntegrityIssue(code="EXPLANATION_TARGET_MISMATCH", status="FAIL", path=relative_path, detail="Explanation target does not match its TrainingRun."))
+                if explanation.schema_version >= 3 and not all((explanation.explainer_key, explanation.explainer_version, explanation.explainer_provider)):
+                    issues.append(ProjectIntegrityIssue(code="EXPLAINER_RUNTIME_BINDING_MISSING", status="FAIL", path=relative_path, detail="A schema-v3 ExplanationContract is missing explainer runtime provenance."))
             except (ValidationError, ValueError, OSError, json.JSONDecodeError) as error:
                 issues.append(ProjectIntegrityIssue(code="EXPLANATION_EVIDENCE_MALFORMED", status="FAIL", path=relative_path, detail=str(error)))
         active_path = explanation_root / "active-explanation.json"
@@ -185,6 +196,8 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                     issues.append(ProjectIntegrityIssue(code="EXPLANATION_CHECK_EXPLANATION_MISSING", status="FAIL", path=relative_path, detail="Explanation check references an explanation that is not present."))
                 elif check.run_id != explanation.run_id:
                     issues.append(ProjectIntegrityIssue(code="EXPLANATION_CHECK_RUN_MISMATCH", status="FAIL", path=relative_path, detail="Explanation check run identity does not match its explanation."))
+                if check.schema_version >= 3 and not all((check.validator_key, check.validator_version, check.validator_provider)):
+                    issues.append(ProjectIntegrityIssue(code="VALIDATOR_RUNTIME_BINDING_MISSING", status="FAIL", path=relative_path, detail="A schema-v3 ExplanationCheck is missing validator runtime provenance."))
             except (ValidationError, ValueError, OSError, json.JSONDecodeError) as error:
                 issues.append(ProjectIntegrityIssue(code="EXPLANATION_CHECK_EVIDENCE_MALFORMED", status="FAIL", path=relative_path, detail=str(error)))
         active_path = check_root / "active-check.json"
