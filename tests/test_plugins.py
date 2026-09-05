@@ -37,6 +37,30 @@ def test_plugin_registry_fails_closed_for_unregistered_or_mismatched_plugins() -
         registry.register(_descriptor(version="2"), _Plugin())
 
 
+def test_entry_point_discovery_requires_the_trusted_descriptor_tuple(monkeypatch: pytest.MonkeyPatch) -> None:
+    class _EntryPoint:
+        name = "fixture"
+        def load(self): return lambda: (_descriptor(), _Plugin())
+    class _EntryPoints(list):
+        def select(self, *, group: str):
+            assert group == "ruflex.plugins"
+            return self
+    monkeypatch.setattr("ruflex.plugins.metadata.entry_points", lambda: _EntryPoints([_EntryPoint()]))
+    registry = PluginRegistry()
+    assert [item.key for item in registry.discover_entry_points()] == ["fixture_validator"]
+
+
+def test_entry_point_discovery_rejects_malformed_integration(monkeypatch: pytest.MonkeyPatch) -> None:
+    class _EntryPoint:
+        name = "bad"
+        def load(self): return lambda: object()
+    class _EntryPoints(list):
+        def select(self, *, group: str): return self
+    monkeypatch.setattr("ruflex.plugins.metadata.entry_points", lambda: _EntryPoints([_EntryPoint()]))
+    with pytest.raises(PluginContractError, match="invalid"):
+        PluginRegistry().discover_entry_points()
+
+
 def test_studio_exposes_only_registered_plugin_descriptors() -> None:
     response = TestClient(app).get("/api/plugins")
 

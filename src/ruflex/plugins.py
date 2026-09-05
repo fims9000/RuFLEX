@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from importlib import metadata
 from typing import Any, Literal, Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -57,6 +58,29 @@ class PluginRegistry:
 
     def list_descriptors(self) -> list[PluginDescriptor]:
         return [self._descriptors[key] for key in sorted(self._descriptors)]
+
+    def discover_entry_points(self, *, group: str = "ruflex.plugins") -> list[PluginDescriptor]:
+        """Load only installed, declared plugin packages through a strict tuple contract.
+
+        This is intentionally not a file-upload or arbitrary-module execution
+        mechanism. Package installation is an operator/trust-boundary action;
+        discovery merely validates integrations already present in the runtime.
+        """
+        entry_points = metadata.entry_points()
+        selected = entry_points.select(group=group) if hasattr(entry_points, "select") else entry_points.get(group, ())
+        discovered: list[PluginDescriptor] = []
+        for entry_point in sorted(selected, key=lambda item: item.name):
+            try:
+                factory = entry_point.load()
+                candidate = factory() if callable(factory) else factory
+                descriptor, implementation = candidate
+                if not isinstance(descriptor, PluginDescriptor):
+                    descriptor = PluginDescriptor.model_validate(descriptor)
+                self.register(descriptor, implementation)
+                discovered.append(descriptor)
+            except (PluginContractError, ValueError, TypeError) as error:
+                raise PluginContractError(f"Plugin entry point {entry_point.name!r} is invalid: {error}") from error
+        return discovered
 
 
 @runtime_checkable
