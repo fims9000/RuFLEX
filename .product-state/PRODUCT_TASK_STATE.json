@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "product_version": "1.1.0",
-  "active_capability": "v1_1_release_complete",
+  "product_version": "1.2.0-rc1",
+  "active_capability": "v1_2_unified_runtime",
   "completed_capabilities": [
     "dataset_contracts",
     "training_and_validation_evidence",
@@ -35,7 +35,7 @@
     "Keep unrelated article and interrupted S03 work out of the committed product baseline."
   ],
   "blockers": [],
-  "next_executable_work": "Await a separate user decision for merge, tag, push, publication, or a new product capability.",
+  "next_executable_work": "Migrate built-in compatibility training bridge to pure ModelAdapter FitRequest/FitResult computation, then integrate runtime-backed capability, explainer, validator and backend registries."
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
