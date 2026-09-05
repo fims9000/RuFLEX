@@ -936,52 +936,23 @@ def list_training_runs(project_root: Path) -> list[TrainingRun]:
 def train_model(project_root: Path, *, model_kind: str, **config) -> TrainingRun:
     """Run one declared catalog adapter and record its wall-clock training time.
 
-    The individual adapters persist their safe artifacts themselves.  This common
-    entry point makes Study execution use exactly the same adapters and protocol
-    constraints as a single Studio training run.
+    The registry resolves a declared adapter before any concrete training code.
+    This common entry point makes Study execution use exactly the same adapter
+    identity and protocol constraints as a single Studio training run.
     """
     started = time.perf_counter()
     config = dict(config)
     # Preserve old API callers while allowing the explicit provenance contract.
     config.setdefault("seed", None)
-    if model_kind == "flat_neuro_fuzzy":
-        config.pop("n_estimators", None)
-        config.pop("max_depth", None)
-        run = train_flat_neuro_fuzzy(project_root, **config)
-    elif model_kind in {"logistic_regression", "linear_regression"}:
-        run = train_linear_baseline(
-            project_root,
-            kind=model_kind,
-            seed=config.get("seed"), split_seed=config.get("split_seed"), training_seed=config.get("training_seed"),
-            validation_fraction=config["validation_fraction"],
-            test_fraction=config["test_fraction"],
-        )
-    elif model_kind == "decision_tree":
-        run = train_decision_tree(
-            project_root,
-            seed=config.get("seed"), split_seed=config.get("split_seed"), training_seed=config.get("training_seed"),
-            validation_fraction=config["validation_fraction"],
-            test_fraction=config["test_fraction"],
-            max_depth=config.get("max_depth"),
-        )
-    elif model_kind == "random_forest":
-        run = train_random_forest(
-            project_root,
-            seed=config.get("seed"), split_seed=config.get("split_seed"), training_seed=config.get("training_seed"),
-            validation_fraction=config["validation_fraction"],
-            test_fraction=config["test_fraction"],
-            n_estimators=config.get("n_estimators") or 25, max_depth=config.get("max_depth"),
-        )
-    elif model_kind == "gradient_boosting":
-        run = train_gradient_boosting(
-            project_root,
-            seed=config.get("seed"), split_seed=config.get("split_seed"), training_seed=config.get("training_seed"),
-            validation_fraction=config["validation_fraction"],
-            test_fraction=config["test_fraction"],
-            n_estimators=config.get("n_estimators") or 50, learning_rate=config["learning_rate"], max_depth=config.get("max_depth") or 3,
-        )
-    else:
-        raise TrainingError(f"Unsupported model kind {model_kind!r}.")
+    from ruflex.runtime.registry import builtin_runtime_registry
+
+    try:
+        adapter = builtin_runtime_registry().resolve_training_model_kind(model_kind)
+        run = adapter.fit_compatibility_project(project_root, model_kind=model_kind, config=config)  # type: ignore[attr-defined]
+    except Exception as error:
+        if isinstance(error, TrainingError):
+            raise
+        raise TrainingError(f"Unsupported or unavailable model adapter for {model_kind!r}.") from error
     run.runtime_seconds = time.perf_counter() - started
     persist_training_run(project_root, run)
     return run
