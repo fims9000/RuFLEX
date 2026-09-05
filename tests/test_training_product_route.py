@@ -174,6 +174,9 @@ def test_study_job_returns_immediately_and_persists_seed_lifecycle(tmp_path: Pat
     listed = client.get(f"/api/projects/{session_id}/training/study-jobs")
     assert listed.status_code == 200 and [item["job_id"] for item in listed.json()] == [job["job_id"]]
     assert job["execution_backend"] == "LOCAL"
+    assert (job["execution_backend_key"], job["execution_backend_version"], job["execution_backend_provider"]) == (
+        "local_executor", "1", "ruflex.builtin",
+    )
     assert job["execution_config"]["max_epochs"] == 1
 
 

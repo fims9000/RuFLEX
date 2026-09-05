@@ -41,6 +41,8 @@ test("PRODUCT-02 performs real neuro-fuzzy training, validation evaluation and r
   await expect(page.getByLabel("Epochs")).toHaveCount(0);
   await page.getByLabel("Training model").selectOption("flat_neuro_fuzzy");
   await expect(page.getByLabel("Epochs")).toBeVisible();
+  await expect(page.getByLabel("Maximum depth")).toHaveCount(0);
+  await expect(page.getByLabel("Trees / estimators")).toHaveCount(0);
   await page.getByLabel("Epochs").fill("2");
   await page.getByLabel("Batch size").fill("16");
   await page.getByRole("button", { name: "Run real training", exact: true }).click();
