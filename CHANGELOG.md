@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.2.0-rc1 — local runtime release candidate
+
+### Added
+
+- Typed adapter identities, immutable runtime snapshots and read-only runtime
+  introspection for model adapters, explainers, validators and backends.
+- Core-owned generic `FitRequest`/`FitResult` persistence for built-in and
+  trusted installed entry-point adapters, with a registry-driven matrix.
+- Persisted runtime provenance for new runs, studies, jobs, explanations and
+  explanation checks, with read-time legacy compatibility.
+- Stable Studio primary action identifiers and a machine-readable inventory.
+
+### Unchanged boundaries
+
+- Dataset roles, train-only preprocessing, final-test firewall, Stability Lab
+  semantics and frozen research artifacts are unchanged.
+
 ## 1.1.0 — unreleased local release candidate
 
 ### Added
