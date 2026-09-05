@@ -112,6 +112,17 @@ def test_posthoc_api_accepts_a_runtime_explainer_key_before_runtime_resolution()
     assert response.json()["detail"] != "Input should be 'occlusion', 'integrated_gradients', 'gradient_shap', 'shap' or 'tree_shap'"
 
 
+def test_direct_explanation_check_route_forwards_the_declared_runtime_validator() -> None:
+    """The synchronous endpoint has the same validator-selection semantics as its job route."""
+    client = TestClient(app)
+    session_id = client.post("/api/projects", json={"path": f"/tmp/ruflex-runtime-validator-key-{uuid4()}", "name": "validator key"}).json()["session_id"]
+    response = client.post("/api/projects/evidence/explanation-checks", json={
+        "session_id": session_id, "explanation_id": str(UUID(int=1)), "validator_key": "fixture_validator",
+    })
+    assert response.status_code == 422
+    assert "VALIDATOR_RUNTIME_UNAVAILABLE" in response.text
+
+
 def test_training_entrypoint_has_no_model_name_dispatch() -> None:
     source = inspect.getsource(train_model)
     assert "if model_kind ==" not in source

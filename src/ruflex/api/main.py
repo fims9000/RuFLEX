@@ -1323,7 +1323,7 @@ def create_posthoc_explanation_check(request: CheckExplanationRequest) -> Explan
         session = service.get(request.session_id)
         if session.project.read_only:
             raise ProjectReadOnlyError("Project was opened read-only and cannot persist an explanation check.")
-        return check_explanation(session.project.root, request.explanation_id)
+        return check_explanation(session.project.root, request.explanation_id, validator_key=request.validator_key)
     except ProjectError as error:
         raise _project_error(error) from error
     except (EvidenceError, ValueError, OSError, FileNotFoundError) as error:
