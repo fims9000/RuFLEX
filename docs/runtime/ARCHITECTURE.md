@@ -1,4 +1,4 @@
-# V1.2 unified runtime architecture
+# V1.3 governed runtime architecture
 
 RuFLEX remains a single local-first product. The runtime layer separates
 canonical scientific/product evidence from replaceable computation adapters.

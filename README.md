@@ -1,4 +1,4 @@
-# RuFLEX V1.2 RC1
+# RuFLEX V1.3 development
 
 **RuFLEX is a local-first engineering Studio for building, inspecting and
 auditing fuzzy, neuro-fuzzy and classical ML systems as persistent evidence
@@ -13,23 +13,28 @@ RuFLEX does not promise to solve underspecification, prove causal explanations,
 guarantee generalization or turn a confidence score into a safety claim. It
 makes the relevant product evidence explicit, linked and inspectable.
 
-## V1.2 unified runtime
+## V1.3 governed runtime
 
-V1.2 makes supported model operations an inspectable adapter runtime rather
-than a set of duplicated frontend/API lists. The Studio asks the FastAPI
+V1.3 extends the unified runtime with persisted data-governance evidence and
+complete job-lifecycle contracts. Supported model operations remain an
+inspectable adapter runtime rather than a set of duplicated frontend/API lists.
+The Studio asks the FastAPI
 boundary which trusted adapters are available for the confirmed task, which
 parameters they actually accept, and which XAI or structural routes are
 applicable. The core owns data roles, train-only preprocessing, artifacts and
 evidence; adapters receive bounded TRAIN/VALIDATION computation requests only.
 Unsupported operations are rejected with typed capability errors.
 
-Trusted installed integrations may be discovered only through the
-`ruflex.plugins` package entry-point group. Each integration must provide a
-validated descriptor and matching implementation identity; arbitrary uploaded
-code, undeclared modules and silent fallback adapters are not execution paths.
+Trusted installed integrations are discovered only at startup through frozen
+model, explainer, validator and execution-backend entry-point categories. Each
+integration must provide a validated descriptor and complete matching adapter
+contract; arbitrary uploaded code, undeclared modules and silent fallback
+adapters are not execution paths. The core persists split contracts,
+train-only transformation contracts and leakage-audit evidence through reopen,
+lineage, Assurance and verification bundles.
 
-The current V1.2 release work is tracked in
-[V1.2 status](docs/PRODUCT_V1_2_STATUS.md). It changes product runtime and QA
+The current implementation state is tracked in
+[V1.3 status](docs/PRODUCT_V1_3_STATUS.md). It changes product runtime and QA
 infrastructure only; it does not revise a frozen research protocol, result or
 scientific claim.
 The corresponding [Studio action inventory and QA map](docs/qa/V1_1_STUDIO_ACTION_INVENTORY.md)

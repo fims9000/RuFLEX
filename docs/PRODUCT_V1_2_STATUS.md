@@ -1,4 +1,8 @@
-# Product V1.2 status
+# Historical product V1.2 status
+
+> Historical document. It describes the V1.2 RC1 target, not the current
+> Product V1.3 development baseline. See `README.md` and
+> `docs/PRODUCT_V1_3_STATUS.md` for the active implementation state.
 
 Target: `1.2.0-rc1` on `feature/v1.2-unified-runtime`.
 
