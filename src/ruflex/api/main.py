@@ -24,7 +24,7 @@ from ruflex.application.datasets import DataAuditReport, DatasetContract, Datase
 from ruflex.application.generalization import ContractFreezeError, ContractLintReport, GeneralizationContract, GeneralizationContractError, NoveltyAxis, ScopeClassification, ScopeRule, SliceAnalysis, SliceDefinition, classify_scope, create_generalization_contract, create_slice_analysis, freeze_generalization_contract, lint_generalization_contract, load_generalization_contract, load_latest_slice_analysis, persist_generalization_contract, recommend_split_families
 from ruflex.application.fis import FISError, create_default_fis, diagnose_fis, evaluate_fis, evaluate_response_surface, list_fis_revisions, load_fis, load_latest_trace, persist_fis, save_trace_artifact
 from ruflex.application.fis_interop import export_matlab_fis, persist_imported_matlab_fis
-from ruflex.application.model_catalog import list_model_catalog, model_capability_contracts
+from ruflex.application.model_catalog import get_model_capability_contract, list_model_catalog, model_capability_contracts
 from ruflex.application.capabilities import RunCapabilityNegotiation, negotiate_run_capabilities
 from ruflex.plugins import PluginDescriptor
 from ruflex.domain.training import AnalysisComparison, AnalysisEvaluation, FinalTestEvaluation, CalibrationTransform, DecisionThresholdPolicy, StudyJob, TrainingRun, TrainingStudy, TreePathEvidence
@@ -195,7 +195,7 @@ class ResponseSurfaceRequest(SessionRequest):
 
 
 class TrainModelRequest(SessionRequest):
-    model_kind: Literal["flat_neuro_fuzzy", "logistic_regression", "linear_regression", "decision_tree", "random_forest", "gradient_boosting"] = "flat_neuro_fuzzy"
+    model_kind: str = Field(default="flat_neuro_fuzzy", pattern=r"^[a-z][a-z0-9_]{2,80}$")
     seed: int = 42
     split_seed: int | None = None
     training_seed: int | None = None
@@ -424,6 +424,12 @@ def _project_error(error: ProjectError) -> HTTPException:
 
 def _session_summary(session: WorkspaceSession) -> ProjectSessionSummary:
     return ProjectSessionSummary(**session.project.summary().model_dump(), session_id=session.session_id)
+
+
+def _require_trainable_model(model_kind: str) -> None:
+    contract = get_model_capability_contract(model_kind)
+    if contract is None or not contract.available or not contract.capabilities.fit:
+        raise HTTPException(status_code=422, detail=f"Model capability is unavailable for training: {model_kind!r}.")
 
 
 @app.get("/api/health")
@@ -872,6 +878,7 @@ def run_training(request: TrainModelRequest) -> TrainingRun:
 
     try:
         session = service.get(request.session_id)
+        _require_trainable_model(request.model_kind)
         if session.project.read_only:
             raise ProjectReadOnlyError("Project was opened read-only and cannot start a training run.")
         return train_model(
@@ -1332,6 +1339,7 @@ def run_multi_seed_training_study(request: MultiSeedStudyRequest) -> TrainingStu
     from ruflex.application.training import TrainingError, run_multi_seed_study
     try:
         session = service.get(request.session_id)
+        _require_trainable_model(request.model_kind)
         if session.project.read_only:
             raise ProjectReadOnlyError("Project was opened read-only and cannot start a study.")
         return run_multi_seed_study(
@@ -1352,6 +1360,7 @@ def start_multi_seed_study_job(request: MultiSeedStudyRequest) -> StudyJob:
     from ruflex.application.training import TrainingError, start_study_job
     try:
         session = service.get(request.session_id)
+        _require_trainable_model(request.model_kind)
         if session.project.read_only:
             raise ProjectReadOnlyError("Project was opened read-only and cannot start a study.")
         return start_study_job(session.project.root, name=request.name, model_kind=request.model_kind, seeds=request.seeds, selection_metric=request.selection_metric, randomness_protocol=request.randomness_protocol, split_seed=request.split_seed, training_seed=request.training_seed, max_epochs=request.max_epochs, learning_rate=request.learning_rate, batch_size=request.batch_size, patience=request.patience, validation_fraction=request.validation_fraction, test_fraction=request.test_fraction, max_rules=request.max_rules)
