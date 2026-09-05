@@ -26,6 +26,11 @@ def test_builtin_runtime_snapshot_is_frozen_and_deterministic() -> None:
         "sklearn_random_forest",
     ]
     assert first == registry.snapshot()
+    assert [item["identity"]["key"] for item in first["explainers"]] == [
+        "gradient_shap", "integrated_gradients", "occlusion", "shap", "tree_shap",
+    ]
+    assert first["validators"][0]["identity"]["key"] == "native_explanation_validator"
+    assert first["backends"][0]["identity"]["key"] == "local_executor"
 
 
 def test_runtime_resolution_fails_closed() -> None:
@@ -36,6 +41,8 @@ def test_runtime_resolution_fails_closed() -> None:
     with pytest.raises(RuntimeVersionMismatchError) as mismatch:
         registry.resolve_model_adapter("sklearn_decision_tree", version="99")
     assert mismatch.value.code == "RUNTIME_VERSION_MISMATCH"
+    with pytest.raises(RuntimeNotFoundError):
+        registry.resolve_component("explainer", "missing")
 
 
 def test_runtime_identity_is_immutable() -> None:

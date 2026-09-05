@@ -516,20 +516,17 @@ def get_runtime_models() -> list[dict[str, object]]:
 
 @app.get("/api/runtime/explainers")
 def get_runtime_explainers() -> list[dict[str, object]]:
-    from ruflex.runtime.explainers import BUILTIN_EXPLAINERS
-    return [item.model_dump(mode="json") for item in BUILTIN_EXPLAINERS]
+    return [item.model_dump(mode="json") for item in builtin_runtime_registry().component_descriptors("explainer")]
 
 
 @app.get("/api/runtime/validators")
 def get_runtime_validators() -> list[dict[str, object]]:
-    from ruflex.runtime.validators import NATIVE_EXPLANATION_VALIDATOR
-    return [NATIVE_EXPLANATION_VALIDATOR.model_dump(mode="json")]
+    return [item.model_dump(mode="json") for item in builtin_runtime_registry().component_descriptors("explanation_validator")]
 
 
 @app.get("/api/runtime/backends")
 def get_runtime_backends() -> list[dict[str, object]]:
-    from ruflex.runtime.backends import LOCAL_EXECUTOR
-    return [LOCAL_EXECUTOR.model_dump(mode="json")]
+    return [item.model_dump(mode="json") for item in builtin_runtime_registry().component_descriptors("execution_backend")]
 
 
 @app.get("/api/runtime/{kind}/{key}")
@@ -537,17 +534,13 @@ def get_runtime_component(kind: str, key: str) -> dict[str, object]:
     try:
         if kind == "models":
             return builtin_runtime_registry().resolve_model_adapter(key).descriptor.model_dump(mode="json")
-        if kind == "explainers":
-            from ruflex.runtime.explainers import BUILTIN_EXPLAINERS
-            return next(item.model_dump(mode="json") for item in BUILTIN_EXPLAINERS if item.identity.key == key)
-        if kind == "validators":
-            from ruflex.runtime.validators import NATIVE_EXPLANATION_VALIDATOR
-            if NATIVE_EXPLANATION_VALIDATOR.identity.key == key:
-                return NATIVE_EXPLANATION_VALIDATOR.model_dump(mode="json")
-        if kind == "backends":
-            from ruflex.runtime.backends import LOCAL_EXECUTOR
-            if LOCAL_EXECUTOR.identity.key == key:
-                return LOCAL_EXECUTOR.model_dump(mode="json")
+        component_kind = {
+            "explainers": "explainer",
+            "validators": "explanation_validator",
+            "backends": "execution_backend",
+        }.get(kind)
+        if component_kind is not None:
+            return builtin_runtime_registry().resolve_component(component_kind, key).model_dump(mode="json")
     except (RuntimeErrorBase, StopIteration) as error:
         raise _runtime_error(error) from error
     raise HTTPException(status_code=404, detail={"code": "RUNTIME_NOT_FOUND", "message": f"Runtime component {kind}/{key!r} is not registered."})

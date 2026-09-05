@@ -35,7 +35,7 @@
     "Keep unrelated article and interrupted S03 work out of the committed product baseline."
   ],
   "blockers": [],
-  "next_executable_work": "Migrate built-in compatibility training bridge to pure ModelAdapter FitRequest/FitResult computation, then integrate runtime-backed capability, explainer, validator and backend registries."
+  "next_executable_work": "Complete runtime-backed explainer, validator, and execution-backend dispatch; then finish compatibility matrices, Studio action coverage, and release QA.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",

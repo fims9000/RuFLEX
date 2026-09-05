@@ -25,7 +25,7 @@ class Job(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: int = 1
+    schema_version: int = 2
     job_id: UUID = Field(default_factory=uuid4)
     kind: str
     status: JobStatus = JobStatus.QUEUED
@@ -38,6 +38,9 @@ class Job(BaseModel):
     output: dict[str, str] = Field(default_factory=dict)
     error: str | None = None
     log: list[str] = Field(default_factory=list)
+    execution_backend_key: str | None = None
+    execution_backend_version: str | None = None
+    execution_backend_provider: str | None = None
 
 
 class JobStateError(ValueError):

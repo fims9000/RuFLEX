@@ -691,8 +691,12 @@ def create_permutation_shap_explanation(project_root: Path, run_id: UUID, sample
 
 def _persist_explanation(project_root: Path, explanation: ExplanationContract) -> ExplanationContract:
     run = load_training_run(project_root, explanation.run_id)
-    from ruflex.runtime.explainers import BUILTIN_EXPLAINERS
-    runtime = next((item.identity for item in BUILTIN_EXPLAINERS if item.identity.key == explanation.family), None)
+    from ruflex.runtime import builtin_runtime_registry
+    from ruflex.runtime.errors import RuntimeErrorBase
+    try:
+        runtime = builtin_runtime_registry().resolve_component("explainer", explanation.family).identity
+    except RuntimeErrorBase:
+        runtime = None
     explanation = explanation.model_copy(update={
         "schema_version": 3,
         "preprocessing_identity": explanation.preprocessing_identity or _stable_identity("preprocessing", run.normalization),
@@ -738,11 +742,13 @@ def create_runtime_explanation(
     execution.  No implicit TreeSHAP fallback is possible.
     """
     from ruflex.application.capabilities import negotiate_run_capabilities
-    from ruflex.runtime.explainers import BUILTIN_EXPLAINERS
+    from ruflex.runtime import builtin_runtime_registry
+    from ruflex.runtime.errors import RuntimeErrorBase
 
-    runtime = next((item for item in BUILTIN_EXPLAINERS if item.identity.key == explainer_key), None)
-    if runtime is None:
-        raise EvidenceError(f"Explainer runtime {explainer_key!r} is not registered.")
+    try:
+        runtime = builtin_runtime_registry().resolve_component("explainer", explainer_key)
+    except RuntimeErrorBase as error:
+        raise EvidenceError(f"EXPLAINER_RUNTIME_UNAVAILABLE: {error.code}: {error.message}") from error
     run = load_training_run(project_root, run_id)
     capability = "shap" if explainer_key == "shap" else explainer_key
     decisions = {item.capability: item for item in negotiate_run_capabilities(run).decisions}
@@ -810,11 +816,20 @@ def get_explanation_validator_plugin(key: str) -> PluginDescriptor:
     return _validator_plugins.descriptor(key)
 
 
-def check_explanation(project_root: Path, explanation_id: UUID) -> ExplanationCheck:
-    """Run the registered product-native validator through the adapter boundary."""
+def check_explanation(
+    project_root: Path, explanation_id: UUID, *, validator_key: str = "native_explanation_validator",
+) -> ExplanationCheck:
+    """Run a frozen typed validator through the compatibility-safe boundary."""
+    from ruflex.runtime import builtin_runtime_registry
+    from ruflex.runtime.errors import RuntimeErrorBase
 
-    validator = _validator_plugins.implementation("native_explanation_validator")
-    return validator.validate(project_root, explanation_id)  # type: ignore[union-attr]
+    try:
+        validator = builtin_runtime_registry().resolve_component("explanation_validator", validator_key)
+    except RuntimeErrorBase as error:
+        raise EvidenceError(f"VALIDATOR_RUNTIME_UNAVAILABLE: {error.code}: {error.message}") from error
+    if validator.identity.key != NativeExplanationValidatorAdapter.key:
+        raise EvidenceError(f"Validator runtime {validator_key!r} has no product-native execution binding.")
+    return _native_check_explanation(project_root, explanation_id, validator_key=validator.identity.key)
 
 
 def _native_check_explanation(project_root: Path, explanation_id: UUID, *, validator_key: str) -> ExplanationCheck:

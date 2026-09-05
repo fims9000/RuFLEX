@@ -5,8 +5,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from uuid import UUID
 
-from ruflex.application.execution import local_executor
 from ruflex.application.jobs import Job, JobStatus, load_job, persist_job
+from ruflex.runtime.backends import resolve_execution_backend
 
 
 class EvidenceJobError(ValueError):
@@ -14,6 +14,24 @@ class EvidenceJobError(ValueError):
 
 
 _METHODS = {"occlusion", "integrated_gradients", "gradient_shap", "shap", "tree_shap"}
+
+
+def _new_job(kind: str, **values) -> Job:
+    descriptor, _ = resolve_execution_backend()
+    return Job(
+        kind=kind,
+        execution_backend_key=descriptor.identity.key,
+        execution_backend_version=descriptor.identity.version,
+        execution_backend_provider=descriptor.identity.provider,
+        **values,
+    )
+
+
+def _submit(project_root: Path, job: Job) -> None:
+    descriptor, backend = resolve_execution_backend(job.execution_backend_key or "local_executor")
+    if (job.execution_backend_version, job.execution_backend_provider) != (descriptor.identity.version, descriptor.identity.provider):
+        raise EvidenceJobError("Persisted job backend identity is incompatible with the active runtime.")
+    backend.submit(project_root=project_root, job_id=job.job_id, operation=lambda: _execute(project_root, job.job_id))
 
 
 def _append(job: Job, message: str) -> None:
@@ -77,33 +95,33 @@ def start_explanation_generation_job(
 ) -> Job:
     if method not in _METHODS:
         raise EvidenceJobError(f"Unsupported explanation method {method!r}.")
-    job = Job(
+    job = _new_job(
         kind="explanation_generation",
         request={"run_id": str(run_id), "sample": sample, "method": method},
         message="Queued for LocalExecutor.",
         log=["Request persisted before LocalExecutor submission."],
     )
     persist_job(project_root, job)
-    local_executor.submit(project_root=project_root, job_id=job.job_id, operation=lambda: _execute(project_root, job.job_id))
+    _submit(project_root, job)
     return load_job(project_root, job.job_id)
 
 
 def start_explanation_check_job(project_root: Path, *, explanation_id: UUID) -> Job:
-    job = Job(
+    job = _new_job(
         kind="explanation_check",
         request={"explanation_id": str(explanation_id)},
         message="Queued for LocalExecutor.",
         log=["Request persisted before LocalExecutor submission."],
     )
     persist_job(project_root, job)
-    local_executor.submit(project_root=project_root, job_id=job.job_id, operation=lambda: _execute(project_root, job.job_id))
+    _submit(project_root, job)
     return load_job(project_root, job.job_id)
 
 
 def _start(project_root: Path, kind: str) -> Job:
-    job = Job(kind=kind, message="Queued for LocalExecutor.", log=["Request persisted before LocalExecutor submission."])
+    job = _new_job(kind, message="Queued for LocalExecutor.", log=["Request persisted before LocalExecutor submission."])
     persist_job(project_root, job)
-    local_executor.submit(project_root=project_root, job_id=job.job_id, operation=lambda: _execute(project_root, job.job_id))
+    _submit(project_root, job)
     return load_job(project_root, job.job_id)
 
 

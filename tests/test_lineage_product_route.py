@@ -83,6 +83,9 @@ def test_lineage_links_persisted_explanation_job_to_its_canonical_output(tmp_pat
     root = _project(tmp_path)
     run = train_decision_tree(root, seed=9)
     job = start_explanation_generation_job(root, run_id=run.run_id, sample={"temperature": 10.0, "pressure": 4.0}, method="occlusion")
+    assert (job.execution_backend_key, job.execution_backend_version, job.execution_backend_provider) == (
+        "local_executor", "1", "ruflex.builtin",
+    )
     for _ in range(100):
         job = load_job(root, job.job_id)
         if job.status not in {JobStatus.QUEUED, JobStatus.RUNNING}:
