@@ -11,7 +11,7 @@ export type ProjectSummary = {
 export type ModelCatalogEntry = { key: string; label: string; family: string; available: boolean; capabilities: Record<string, boolean>; limitation: string | null };
 export type ModelCapabilityContract = {
   key: string; display_name: string; version: string; provider: string; family: string;
-  supported_tasks: string[]; input_modalities: string[]; available: boolean;
+  supported_tasks: string[]; training_model_kinds: string[]; input_modalities: string[]; available: boolean;
   unavailability_reason: string | null; capabilities: Record<string, boolean>;
   supported_explainers: string[]; export_formats: string[]; config_schema: Record<string, unknown>;
   defaults: Record<string, unknown>; parameter_constraints: Record<string, unknown>;

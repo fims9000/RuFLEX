@@ -50,6 +50,7 @@ class ModelCapabilityContract:
     provider: str
     family: str
     supported_tasks: tuple[str, ...]
+    training_model_kinds: tuple[str, ...]
     input_modalities: tuple[str, ...]
     available: bool
     unavailability_reason: str | None
@@ -106,6 +107,7 @@ def model_capability_contracts() -> list[ModelCapabilityContract]:
             key=entry.key, display_name=entry.label, version="1.1.0", provider="ruflex.builtin",
             family=entry.family,
             supported_tasks=("binary_classification", "multiclass_classification", "regression") if trainable else (),
+            training_model_kinds=("logistic_regression", "linear_regression") if entry.key == "linear" else ((entry.key,) if trainable else ()),
             input_modalities=("tabular",), available=entry.available,
             unavailability_reason=None if entry.available else "OPTIONAL_DEPENDENCY_MISSING",
             capabilities=entry.capabilities, supported_explainers=explainers,

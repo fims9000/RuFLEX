@@ -131,11 +131,12 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
   }, [project.session_id, run?.run_id, run?.model_kind]);
   useEffect(() => { studioApi.getModels().then(setCatalog).catch(() => setCatalog([])); }, []);
   const datasetTask = dataset?.contract.task;
+  const catalogKey = (kind: string) => kind === "logistic_regression" || kind === "linear_regression" ? "linear" : kind;
   const compatibleModels = useMemo(() => catalog.filter((entry) => entry.available && entry.capabilities.fit && !!datasetTask && entry.supported_tasks.includes(datasetTask)), [catalog, datasetTask]);
   useEffect(() => {
-    if (compatibleModels.length && !compatibleModels.some((entry) => entry.key === modelKind)) setModelKind(compatibleModels[0].key);
+    if (compatibleModels.length && !compatibleModels.some((entry) => entry.key === catalogKey(modelKind))) setModelKind(compatibleModels[0].training_model_kinds[0]);
   }, [compatibleModels, modelKind]);
-  const trainingModelKind = modelKind === "linear" ? (datasetTask === "regression" ? "linear_regression" : "logistic_regression") : modelKind;
+  const trainingModelKind = modelKind;
   useEffect(() => {
     studioApi.listStudyJobs(project.session_id).then((jobs) => {
       const resumable = jobs.filter((job) => ["QUEUED", "RUNNING"].includes(job.status)).at(-1);
@@ -242,7 +243,7 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
           <dt>Preprocessing</dt><dd>median fill + standardization fitted on train only</dd>
         </dl>
         <div className="training-config-grid">
-          <label className="field-label">Model<select aria-label="Training model" value={modelKind} disabled={running || project.read_only || !compatibleModels.length} onChange={(event) => setModelKind(event.target.value)}>{compatibleModels.map((entry) => <option key={entry.key} value={entry.key}>{entry.display_name}</option>)}</select></label>
+          <label className="field-label">Model<select aria-label="Training model" value={modelKind} disabled={running || project.read_only || !compatibleModels.length} onChange={(event) => setModelKind(event.target.value)}>{compatibleModels.map((entry) => <option key={entry.key} value={entry.key === "linear" ? (datasetTask === "regression" ? "linear_regression" : "logistic_regression") : entry.training_model_kinds[0]}>{entry.display_name}</option>)}</select></label>
           <NumberField label="Seed" value={seed} step={1} disabled={running || project.read_only} onChange={setSeed} />
           <NumberField label="Study split seed" value={splitSeed} step={1} disabled={running || project.read_only} onChange={setSplitSeed} />
           <NumberField label="Epochs" value={maxEpochs} min={1} max={2000} step={1} disabled={running || project.read_only} onChange={setMaxEpochs} />

@@ -31,6 +31,7 @@ def test_model_runtime_contract_exposes_explicit_xai_and_task_support() -> None:
     assert "tree_shap" in tree["supported_explainers"]
     assert "integrated_gradients" not in tree["supported_explainers"]
     assert "binary_classification" in tree["supported_tasks"]
+    assert entries["linear"]["training_model_kinds"] == ["logistic_regression", "linear_regression"]
 
 
 def test_plugin_lookup_fails_closed() -> None:
