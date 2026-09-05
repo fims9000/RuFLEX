@@ -1,4 +1,4 @@
-# RuFLEX
+# RuFLEX V1.1
 
 **RuFLEX is a local-first engineering Studio for building, inspecting and
 auditing fuzzy, neuro-fuzzy and classical ML systems as persistent evidence
@@ -12,6 +12,26 @@ reopened, and what the result does *not* establish.
 RuFLEX does not promise to solve underspecification, prove causal explanations,
 guarantee generalization or turn a confidence score into a safety claim. It
 makes the relevant product evidence explicit, linked and inspectable.
+
+## V1.1 capability runtime
+
+V1.1 makes supported model operations an inspectable runtime contract rather
+than a set of duplicated frontend/API lists. The Studio asks the FastAPI
+boundary which model families are available for the confirmed task, which
+parameters an adapter actually accepts, and which XAI or structural routes are
+applicable. Unsupported operations are rejected with typed capability errors.
+
+Trusted installed integrations may be discovered only through the
+`ruflex.plugins` package entry-point group. Each integration must provide a
+validated descriptor and matching implementation identity; arbitrary uploaded
+code, undeclared modules and silent fallback adapters are not execution paths.
+
+The current V1.1 release work is tracked in
+[V1.1 status](docs/PRODUCT_V1_1_STATUS.md). It changes product runtime and QA
+infrastructure only; it does not revise a frozen research protocol, result or
+scientific claim.
+The corresponding [Studio action inventory and QA map](docs/qa/V1_1_STUDIO_ACTION_INVENTORY.md)
+links real controls to their persisted outcome and browser route.
 
 ## The position
 
@@ -168,6 +188,10 @@ PLAYWRIGHT_BROWSERS_PATH=../.playwright-browsers npx playwright test
 For a fresh tracked-source handoff, use `git archive`; the release QA receipts
 and source archives intentionally exclude local project stores, model binaries,
 raw datasets, credentials and caches.
+
+```bash
+./scripts/verify_source_archive.sh
+```
 
 ## Read-only Python access
 

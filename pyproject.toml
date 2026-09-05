@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ruflex"
-version = "1.0.1"
-description = "RuFLEX platform for hybrid deep fuzzy learning"
+version = "1.1.0"
+description = "RuFLEX Studio platform for persistent fuzzy, neuro-fuzzy and classical ML evidence"
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.11"
