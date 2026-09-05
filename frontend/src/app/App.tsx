@@ -541,6 +541,7 @@ export function App() {
         size="m"
         disabled={project.read_only}
         onClick={updateDescription}
+        data-ruflex-action="project.description.update"
       >
         Update description
       </Button>
@@ -671,6 +672,7 @@ export function App() {
               <Button
                 view="outlined"
                 type="button"
+                data-ruflex-action="project.open"
                 onClick={(event) =>
                   submit(event as unknown as FormEvent, "open")
                 }
@@ -726,7 +728,7 @@ export function App() {
                 </label>
               </div>
               <div className="form-actions">
-                <Button view="outlined" onClick={inspectCsv}>
+                <Button view="outlined" onClick={inspectCsv} data-ruflex-action="dataset.inspect">
                   Inspect dataset
                 </Button>
                 <Button
@@ -749,6 +751,7 @@ export function App() {
                   view="outlined"
                   disabled={project.read_only}
                   onClick={() => datasetFileInputRef.current?.click()}
+                  data-ruflex-action="dataset.import"
                 >
                   Import CSV / XLSX
                 </Button>
@@ -903,6 +906,7 @@ export function App() {
                   view="outlined"
                   disabled={project.read_only}
                   onClick={createGeneralization}
+                  data-ruflex-action="generalization.declare"
                 >
                   Declare generalization contract
                 </Button>
@@ -914,6 +918,7 @@ export function App() {
                     !!generalization.contract.frozen_at
                   }
                   onClick={freezeGeneralization}
+                  data-ruflex-action="generalization.freeze"
                 >
                   Freeze evaluation contract
                 </Button>

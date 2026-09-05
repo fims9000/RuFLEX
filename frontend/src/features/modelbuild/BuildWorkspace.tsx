@@ -953,6 +953,7 @@ export function BuildWorkspace({
             view="action"
             disabled={project.read_only}
             onClick={createDefault}
+            data-ruflex-action="fis.create"
           >
             Create FIS from dataset
           </Button>
@@ -968,6 +969,7 @@ export function BuildWorkspace({
             view="outlined"
             disabled={project.read_only}
             onClick={() => importInputRef.current?.click()}
+            data-ruflex-action="fis.import"
           >
             Import MATLAB .fis
           </Button>
@@ -1046,7 +1048,7 @@ export function BuildWorkspace({
               <option value="sugeno">Type-1 Sugeno</option>
             </select>
           </label>
-          <Button view="outlined" disabled={project.read_only} onClick={save}>
+          <Button view="outlined" disabled={project.read_only} onClick={save} data-ruflex-action="fis.save_revision">
             Save FIS
           </Button>
           <input
@@ -1061,13 +1063,14 @@ export function BuildWorkspace({
             view="outlined"
             disabled={project.read_only}
             onClick={() => importInputRef.current?.click()}
+            data-ruflex-action="fis.import"
           >
             Import MATLAB .fis
           </Button>
-          <Button view="outlined" onClick={exportMatlabFile}>
+          <Button view="outlined" onClick={exportMatlabFile} data-ruflex-action="fis.export">
             Export MATLAB .fis
           </Button>
-          <Button view="action" onClick={run}>
+          <Button view="action" onClick={run} data-ruflex-action="fis.evaluate">
             Run exact inference
           </Button>
         </div>
