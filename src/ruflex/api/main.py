@@ -27,6 +27,8 @@ from ruflex.application.fis_interop import export_matlab_fis, persist_imported_m
 from ruflex.application.model_catalog import get_model_capability_contract, list_model_catalog, model_capability_contracts
 from ruflex.application.capabilities import RunCapabilityNegotiation, negotiate_run_capabilities
 from ruflex.plugins import PluginDescriptor
+from ruflex.runtime import builtin_runtime_registry
+from ruflex.runtime.errors import RuntimeErrorBase
 from ruflex.domain.training import AnalysisComparison, AnalysisEvaluation, FinalTestEvaluation, CalibrationTransform, DecisionThresholdPolicy, StudyJob, TrainingRun, TrainingStudy, TreePathEvidence
 from ruflex.application.jobs import Job
 from ruflex.domain.evidence import ExplanationCheck, ExplanationContract
@@ -424,6 +426,11 @@ def _project_error(error: ProjectError) -> HTTPException:
     return HTTPException(status_code=422, detail=str(error))
 
 
+def _runtime_error(error: RuntimeErrorBase) -> HTTPException:
+    """Stable typed runtime failure with no internal traceback disclosure."""
+    return HTTPException(status_code=422, detail={"code": error.code, "message": error.message})
+
+
 def _session_summary(session: WorkspaceSession) -> ProjectSessionSummary:
     return ProjectSessionSummary(**session.project.summary().model_dump(), session_id=session.session_id)
 
@@ -462,6 +469,26 @@ def get_model(model_kind: str) -> dict:
 @app.get("/api/capabilities")
 def get_capabilities() -> dict[str, object]:
     return {"schema_version": 1, "models": get_models()}
+
+
+@app.get("/api/runtime")
+def get_runtime() -> dict[str, object]:
+    return builtin_runtime_registry().snapshot()
+
+
+@app.get("/api/runtime/models")
+def get_runtime_models() -> list[dict[str, object]]:
+    return [item.model_dump(mode="json") for item in builtin_runtime_registry().model_descriptors()]
+
+
+@app.get("/api/runtime/{kind}/{key}")
+def get_runtime_component(kind: str, key: str) -> dict[str, object]:
+    if kind != "models":
+        raise HTTPException(status_code=404, detail={"code": "RUNTIME_NOT_FOUND", "message": f"Runtime kind {kind!r} is not registered."})
+    try:
+        return builtin_runtime_registry().resolve_model_adapter(key).descriptor.model_dump(mode="json")
+    except RuntimeErrorBase as error:
+        raise _runtime_error(error) from error
 
 
 @app.get("/api/plugins", response_model=list[PluginDescriptor])
