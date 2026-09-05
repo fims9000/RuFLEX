@@ -147,31 +147,6 @@ class _BuiltinAdapter:
             return PredictionResult(prediction=(probability >= .5).astype(float).tolist(), probability=probability.tolist(), score=probability.tolist(), raw_score=np.asarray(raw).tolist())
         return PredictionResult(prediction=np.asarray(raw, dtype=float).tolist(), score=np.asarray(raw, dtype=float).tolist())
 
-    def fit_compatibility_project(self, project_root: Path, *, model_kind: str, config: dict[str, Any]) -> Any:
-        """Temporary bridge for v1.1 artifact codecs during the core migration.
-
-        This method is intentionally private-to-core: it neither exposes a
-        plugin API nor lets an adapter persist arbitrary project objects.  The
-        canonical runtime ``fit(FitRequest)`` remains the durable public
-        contract; this bridge lets existing trustworthy declarative artifact
-        codecs retain their exact scientific semantics while they move behind
-        it one adapter at a time.
-        """
-        from ruflex.application import training
-
-        runners = {
-            "ruflex_flat_neuro_fuzzy": lambda: training.train_flat_neuro_fuzzy(project_root, **{key: value for key, value in config.items() if key not in {"n_estimators", "max_depth"}}),
-            "sklearn_linear": lambda: training.train_linear_baseline(project_root, kind=model_kind, seed=config.get("seed"), split_seed=config.get("split_seed"), training_seed=config.get("training_seed"), validation_fraction=config["validation_fraction"], test_fraction=config["test_fraction"]),
-            "sklearn_decision_tree": lambda: training.train_decision_tree(project_root, seed=config.get("seed"), split_seed=config.get("split_seed"), training_seed=config.get("training_seed"), validation_fraction=config["validation_fraction"], test_fraction=config["test_fraction"], max_depth=config.get("max_depth")),
-            "sklearn_random_forest": lambda: training.train_random_forest(project_root, seed=config.get("seed"), split_seed=config.get("split_seed"), training_seed=config.get("training_seed"), validation_fraction=config["validation_fraction"], test_fraction=config["test_fraction"], n_estimators=config.get("n_estimators") or 25, max_depth=config.get("max_depth")),
-            "sklearn_gradient_boosting": lambda: training.train_gradient_boosting(project_root, seed=config.get("seed"), split_seed=config.get("split_seed"), training_seed=config.get("training_seed"), validation_fraction=config["validation_fraction"], test_fraction=config["test_fraction"], n_estimators=config.get("n_estimators") or 50, learning_rate=config["learning_rate"], max_depth=config.get("max_depth") or 3),
-        }
-        try:
-            return runners[self.descriptor.identity.key]()
-        except KeyError as error:
-            raise RuntimeExecutionError(self.descriptor.identity.key) from error
-
-
 def _tree_artifact(estimator: Any, *, request: FitRequest, model_kind: str) -> dict[str, Any]:
     """Serialize sklearn tree state as safe declarative JSON, not pickle."""
     tree = estimator.tree_
