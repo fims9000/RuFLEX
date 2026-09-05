@@ -20,8 +20,9 @@ async function declaredActions(root: string): Promise<string[]> {
 test("UI action inventory is complete and stable", async ({ page }) => {
   const ids = inventory.map((item) => item.action_id);
   expect(ids).toEqual([
-    "project.create", "dataset.confirm", "training.run", "study.start",
-    "stability.freeze", "final_test.execute", "explanation.generate", "bundle.export",
+    "project.create", "dataset.confirm", "split.freeze", "training.run", "study.start",
+    "evaluation.save", "comparison.study.create", "calibration.fit", "threshold.select", "selective_policy.create", "slice.create",
+    "stability.freeze", "final_test.execute", "explanation.generate", "explanation.check", "behavior.run", "condition_demo.run", "assurance.create", "bundle.export",
   ]);
   for (const item of inventory) {
     expect(item.workspace).not.toEqual("");

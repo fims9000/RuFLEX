@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "test": "node --test tests/api-client.test.mjs",
+    "test": "node --test tests/api-client.test.mjs && vitest run",
+    "test:unit": "vitest run",
     "test:e2e": "playwright test",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
@@ -25,9 +26,13 @@
     "@axe-core/playwright": "^4.11.0",
     "@playwright/test": "^1.62.1",
     "@storybook/react-vite": "^10.5.10",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.5",
+    "jsdom": "^30.0.1",
     "storybook": "^10.5.10",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
   }
 }
