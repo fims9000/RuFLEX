@@ -9,6 +9,9 @@ from ruflex.application.training import train_model
 from ruflex.runtime import builtin_runtime_registry
 from ruflex.runtime.contracts import RuntimeIdentity
 from ruflex.runtime.errors import RuntimeNotFoundError, RuntimeVersionMismatchError
+from ruflex.runtime.errors import RuntimeDependencyMissingError, RuntimeUntrustedError
+from ruflex.runtime.contracts import ModelAdapterDescriptor
+from dataclasses import dataclass
 
 
 def test_builtin_runtime_snapshot_is_frozen_and_deterministic() -> None:
@@ -39,6 +42,26 @@ def test_runtime_identity_is_immutable() -> None:
     identity = RuntimeIdentity(key="fixture_adapter", version="1", provider="ruflex.fixture", kind="model_adapter")
     with pytest.raises(Exception):
         identity.key = "different"  # type: ignore[misc]
+
+
+@dataclass(frozen=True)
+class _UnavailableDependencyAdapter:
+    descriptor = ModelAdapterDescriptor(
+        identity=RuntimeIdentity(key="dependency_fixture", version="1", provider="ruflex.tests", kind="model_adapter"),
+        family="fixture", training_model_kinds=("dependency_fixture_model",), supported_tasks=("binary_classification",),
+        optional_dependencies=("ruflex_dependency_that_cannot_exist",),
+    )
+    def fit(self, request): raise AssertionError("not reached")
+    def predict(self, request): raise AssertionError("not reached")
+
+
+def test_registry_rejects_missing_dependencies_and_untrusted_adapters() -> None:
+    from ruflex.runtime.registry import RuntimeRegistry
+    registry = RuntimeRegistry()
+    with pytest.raises(RuntimeDependencyMissingError):
+        registry.register_model_adapter(_UnavailableDependencyAdapter())
+    with pytest.raises(RuntimeUntrustedError):
+        registry.register_model_adapter(_UnavailableDependencyAdapter(), trusted=False)
 
 
 def test_runtime_api_exposes_frozen_snapshot_and_typed_lookup() -> None:
