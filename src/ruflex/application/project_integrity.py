@@ -12,6 +12,8 @@ from ruflex.application.fis import list_fis_revisions, load_fis
 from ruflex.application.jobs import Job
 from ruflex.application.projects import ProjectService
 from ruflex.application.training import list_training_runs
+from ruflex.application.behavior import _requirement_identity
+from ruflex.domain.behavior import BehaviorRevisionComparison, BehaviorSpec, BehaviorSpecResult
 from ruflex.domain.evidence import ExplanationCheck, ExplanationContract
 from ruflex.domain.project import ProjectIntegrityIssue, ProjectIntegrityReport
 from ruflex.runtime.registry import builtin_runtime_registry
@@ -204,6 +206,59 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                         issues.append(ProjectIntegrityIssue(code="PREPROCESSING_PROVENANCE_MISMATCH", status="FAIL", path=f"runs/{run.run_id}.json", detail="Persisted preprocessing artifact does not match the TrainingRun's train-only normalization and feature schema."))
                 except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError) as error:
                     issues.append(ProjectIntegrityIssue(code="PREPROCESSING_ARTIFACT_MALFORMED", status="FAIL", path=f"runs/{run.run_id}.json", detail=str(error)))
+    behavior_root = base / "evidence" / "behavior-specs"
+    behavior_specs: dict[object, BehaviorSpec] = {}
+    behavior_results: dict[object, BehaviorSpecResult] = {}
+    behavior_comparison_paths: list[Path] = []
+    if behavior_root.exists() and not behavior_root.is_dir():
+        issues.append(ProjectIntegrityIssue(code="BEHAVIOR_EVIDENCE_MALFORMED", status="FAIL", path="evidence/behavior-specs", detail="Behavior evidence path is not a directory."))
+    elif behavior_root.is_dir():
+        for path in sorted(behavior_root.glob("*.json")):
+            if path.name in {"active-spec.json", "active-result.json"}:
+                continue
+            checked += 1
+            relative_path = str(path.relative_to(base))
+            try:
+                if path.name.startswith("result-"):
+                    result = BehaviorSpecResult.model_validate_json(path.read_text(encoding="utf-8"))
+                    if path.name != f"result-{result.result_id}.json":
+                        raise ValueError("BehaviorSpecResult filename does not match its persisted identity.")
+                    behavior_results[result.result_id] = result
+                elif path.name.startswith("comparison-"):
+                    behavior_comparison_paths.append(path)
+                else:
+                    spec = BehaviorSpec.model_validate_json(path.read_text(encoding="utf-8"))
+                    if path.name != f"{spec.spec_id}.json":
+                        raise ValueError("BehaviorSpec filename does not match its persisted identity.")
+                    behavior_specs[spec.spec_id] = spec
+            except (OSError, ValidationError, ValueError) as error:
+                issues.append(ProjectIntegrityIssue(code="BEHAVIOR_EVIDENCE_MALFORMED", status="FAIL", path=relative_path, detail=str(error)))
+        for path in behavior_comparison_paths:
+            relative_path = str(path.relative_to(base))
+            try:
+                comparison = BehaviorRevisionComparison.model_validate_json(path.read_text(encoding="utf-8"))
+                if path.name != f"comparison-{comparison.comparison_id}.json":
+                    raise ValueError("BehaviorRevisionComparison filename does not match its persisted identity.")
+                baseline = behavior_results.get(comparison.baseline_result_id)
+                candidate = behavior_results.get(comparison.candidate_result_id)
+                if baseline is None or candidate is None:
+                    raise ValueError("BehaviorRevisionComparison references a missing BehaviorSpecResult.")
+                baseline_spec = behavior_specs.get(baseline.spec_id)
+                candidate_spec = behavior_specs.get(candidate.spec_id)
+                if baseline_spec is None or candidate_spec is None:
+                    raise ValueError("BehaviorRevisionComparison references a missing BehaviorSpec.")
+                transition = f"{baseline.status}_TO_{candidate.status}"
+                if (
+                    _requirement_identity(baseline_spec) != comparison.requirement_identity
+                    or _requirement_identity(candidate_spec) != comparison.requirement_identity
+                    or comparison.baseline_status != baseline.status
+                    or comparison.candidate_status != candidate.status
+                    or comparison.transition != transition
+                    or comparison.regression_detected != (transition == "PASS_TO_FAIL")
+                ):
+                    raise ValueError("BehaviorRevisionComparison transition or requirement provenance does not match its frozen results.")
+            except (OSError, ValidationError, ValueError) as error:
+                issues.append(ProjectIntegrityIssue(code="BEHAVIOR_EVIDENCE_MALFORMED", status="FAIL", path=relative_path, detail=str(error)))
     explanation_root = base / "evidence" / "explanations"
     explanations: dict[object, ExplanationContract] = {}
     if explanation_root.exists() and not explanation_root.is_dir():

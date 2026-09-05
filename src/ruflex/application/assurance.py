@@ -11,7 +11,8 @@ from ruflex.application.datasets import LeakageAuditReport, TransformPipelineCon
 from ruflex.application.evidence import _atomic_write_text
 from ruflex.application.generalization import GeneralizationContract, SliceAnalysis
 from ruflex.domain.assurance import AssuranceCase, AssuranceClaim, AssuranceGate
-from ruflex.domain.behavior import BehaviorSpec, BehaviorSpecResult
+from ruflex.application.behavior import _requirement_identity
+from ruflex.domain.behavior import BehaviorRevisionComparison, BehaviorSpec, BehaviorSpecResult
 from ruflex.domain.evidence import ExplanationCheck, ExplanationContract, ExplanationReproducibilityAnalysis
 from ruflex.domain.exhaustive import ExhaustiveLabResult
 from ruflex.domain.selective import SelectivePredictionPolicy
@@ -54,6 +55,29 @@ def _has_malformed_object(root: Path, model: type[ModelT]) -> bool:
             UUID(path.stem)
         except ValueError:
             continue
+        try:
+            model.model_validate_json(path.read_text(encoding="utf-8"))
+        except (OSError, ValidationError, ValueError):
+            return True
+    return False
+
+
+def _prefixed_objects(root: Path, prefix: str, model: type[ModelT]) -> list[ModelT]:
+    if not root.is_dir():
+        return []
+    items: list[ModelT] = []
+    for path in root.glob(f"{prefix}*.json"):
+        try:
+            items.append(model.model_validate_json(path.read_text(encoding="utf-8")))
+        except (OSError, ValidationError, ValueError):
+            continue
+    return items
+
+
+def _has_malformed_prefixed_object(root: Path, prefix: str, model: type[ModelT]) -> bool:
+    if not root.is_dir():
+        return False
+    for path in root.glob(f"{prefix}*.json"):
         try:
             model.model_validate_json(path.read_text(encoding="utf-8"))
         except (OSError, ValidationError, ValueError):
@@ -190,9 +214,9 @@ def create_assurance_case(root: Path) -> AssuranceCase:
     status, risk = _evidence_status(present=bool(reproducibility), valid=bool(repro_ok), malformed=_has_malformed_object(reproducibility_root, ExplanationReproducibilityAnalysis), unavailable="Cross-run reproducibility is absent.", invalid="Cross-run reproducibility is incomplete.")
     gates.append(_gate("explanation_reproducibility", status, [f"reproducibility:{x.analysis_id}" for x in reproducibility], risk))
     behavior_root = base / "evidence" / "behavior-specs"; specs = _objects(behavior_root, BehaviorSpec)
-    results = _objects(behavior_root, BehaviorSpecResult)
+    results = _prefixed_objects(behavior_root, "result-", BehaviorSpecResult)
     result_by_spec = {x.spec_id: x for x in results}
-    if _has_malformed_object(behavior_root, BehaviorSpec) or _has_malformed_object(behavior_root, BehaviorSpecResult):
+    if _has_malformed_object(behavior_root, BehaviorSpec) or _has_malformed_prefixed_object(behavior_root, "result-", BehaviorSpecResult):
         gates.append(_gate("behavior_specs", "FAIL", [], "Malformed BehaviorSpec evidence prevents a PASS claim."))
     elif not specs:
         gates.append(_gate("behavior_specs", "NOT_AVAILABLE", [], "No valid BehaviorSpec exists."))
@@ -202,6 +226,36 @@ def create_assurance_case(root: Path) -> AssuranceCase:
         gates.append(_gate("behavior_specs", "FAIL", [f"behavior-result:{result_by_spec[x.spec_id].result_id}" for x in specs], "A persisted BehaviorSpec execution failed."))
     else:
         gates.append(_gate("behavior_specs", "PASS", [f"behavior-result:{result_by_spec[x.spec_id].result_id}" for x in specs]))
+    comparisons = _prefixed_objects(behavior_root, "comparison-", BehaviorRevisionComparison)
+    comparison_malformed = _has_malformed_prefixed_object(behavior_root, "comparison-", BehaviorRevisionComparison)
+    if not comparison_malformed:
+        comparison_malformed = any(path.name != f"comparison-{comparison.comparison_id}.json" for path, comparison in (
+            (path, BehaviorRevisionComparison.model_validate_json(path.read_text(encoding="utf-8")))
+            for path in behavior_root.glob("comparison-*.json")
+        )) if behavior_root.is_dir() else False
+    by_result = {item.result_id: item for item in results}
+    by_spec = {item.spec_id: item for item in specs}
+    comparison_invalid = False
+    for comparison in comparisons:
+        baseline = by_result.get(comparison.baseline_result_id)
+        candidate = by_result.get(comparison.candidate_result_id)
+        baseline_spec = by_spec.get(baseline.spec_id) if baseline else None
+        candidate_spec = by_spec.get(candidate.spec_id) if candidate else None
+        transition = f"{baseline.status}_TO_{candidate.status}" if baseline and candidate else None
+        if (
+            baseline_spec is None or candidate_spec is None
+            or _requirement_identity(baseline_spec) != comparison.requirement_identity
+            or _requirement_identity(candidate_spec) != comparison.requirement_identity
+            or comparison.baseline_status != baseline.status or comparison.candidate_status != candidate.status
+            or comparison.transition != transition or comparison.regression_detected != (transition == "PASS_TO_FAIL")
+        ):
+            comparison_invalid = True
+    if comparison_malformed or comparison_invalid:
+        gates.append(_gate("behavior_revision_comparisons", "FAIL", [], "Malformed or mismatched behavior revision evidence prevents a PASS claim."))
+    elif not comparisons:
+        gates.append(_gate("behavior_revision_comparisons", "NOT_AVAILABLE", [], "No behavior revision comparison has been persisted."))
+    else:
+        gates.append(_gate("behavior_revision_comparisons", "PASS", [f"behavior-comparison:{item.comparison_id}" for item in comparisons]))
     exhaustive_root = base / "evidence" / "exhaustive-lab"; exhaustive = _objects(exhaustive_root, ExhaustiveLabResult)
     exhaustive_ok = exhaustive and all(x.exactness_label in {"EXACT_FINITE_STRUCTURE", "EXACT_ON_DECLARED_DISCRETE_GRID"} for x in exhaustive)
     status, risk = _evidence_status(present=bool(exhaustive), valid=bool(exhaustive_ok), malformed=_has_malformed_object(exhaustive_root, ExhaustiveLabResult), unavailable="Exhaustive evidence is absent.", invalid="Exhaustive evidence has an invalid exactness label.")

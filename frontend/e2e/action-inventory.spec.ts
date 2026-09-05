@@ -19,7 +19,7 @@ async function declaredActions(root: string): Promise<string[]> {
 
 test("UI action inventory is complete and stable", async ({ page }) => {
   const ids = inventory.map((item) => item.action_id);
-  expect(ids).toHaveLength(39);
+  expect(ids).toHaveLength(40);
   expect(new Set(ids).size).toBe(ids.length);
   for (const item of inventory) {
     expect(item.workspace).not.toEqual("");

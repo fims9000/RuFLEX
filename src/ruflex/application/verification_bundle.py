@@ -10,12 +10,13 @@ from typing import Any
 from pydantic import BaseModel, ValidationError
 
 from ruflex.application.assurance import load_latest_assurance_case
+from ruflex.application.behavior import _requirement_identity
 from ruflex.application.evidence import _atomic_write_text
 from ruflex.application.lineage import build_project_lineage
 from ruflex.domain.verification import VerificationBundle, VerificationBundleValidation
 from ruflex.application.datasets import DataAuditReport, DatasetContract, DatasetProfile, LeakageAuditReport, SplitContract, TransformPipelineContract, _transform_pipeline_identity
 from ruflex.domain.assurance import AssuranceCase
-from ruflex.domain.behavior import BehaviorSpec, BehaviorSpecResult
+from ruflex.domain.behavior import BehaviorRevisionComparison, BehaviorSpec, BehaviorSpecResult
 from ruflex.domain.evidence import ExplanationCheck, ExplanationContract, ExplanationReproducibilityAnalysis
 from ruflex.application.generalization import GeneralizationContract
 from ruflex.domain.selective import SelectivePredictionPolicy
@@ -66,6 +67,7 @@ def _model_for_entry(name: str) -> type[BaseModel] | None:
     if name.startswith("evidence/explanations/"): return ExplanationContract
     if name.startswith("evidence/explanation-checks/"): return ExplanationCheck
     if name.startswith("evidence/explanation-reproducibility/"): return ExplanationReproducibilityAnalysis
+    if name.startswith("evidence/behavior-specs/comparison-"): return BehaviorRevisionComparison
     if name.startswith("evidence/behavior-specs/result-"): return BehaviorSpecResult
     if name.startswith("evidence/behavior-specs/"): return BehaviorSpec
     if name.startswith("evidence/assurance/"): return AssuranceCase
@@ -94,12 +96,15 @@ def _read_bundle_entries(source: Path) -> tuple[dict[str, bytes], str | None, li
 
 def _validate_relationships(objects: list[BaseModel]) -> list[str]:
     by_type: dict[type[BaseModel], set[str]] = {}
+    objects_by_type: dict[type[BaseModel], dict[str, BaseModel]] = {}
     for object_ in objects:
         identifier_field = {
-            SplitContract: "split_id", TransformPipelineContract: "pipeline_id", LeakageAuditReport: "audit_id", TrainingRun: "run_id", TrainingStudy: "study_id", AnalysisEvaluation: "evaluation_id", CalibrationTransform: "calibration_id", DecisionThresholdPolicy: "threshold_id", SelectivePredictionPolicy: "policy_id", StudyStabilityAnalysis: "analysis_id", StabilityGatePolicy: "policy_id", FinalTestEvaluation: "final_test_id", ExplanationContract: "explanation_id", ExplanationCheck: "check_id", ExplanationReproducibilityAnalysis: "analysis_id", BehaviorSpec: "spec_id", BehaviorSpecResult: "result_id", AssuranceCase: "assurance_id",
+            SplitContract: "split_id", TransformPipelineContract: "pipeline_id", LeakageAuditReport: "audit_id", TrainingRun: "run_id", TrainingStudy: "study_id", AnalysisEvaluation: "evaluation_id", CalibrationTransform: "calibration_id", DecisionThresholdPolicy: "threshold_id", SelectivePredictionPolicy: "policy_id", StudyStabilityAnalysis: "analysis_id", StabilityGatePolicy: "policy_id", FinalTestEvaluation: "final_test_id", ExplanationContract: "explanation_id", ExplanationCheck: "check_id", ExplanationReproducibilityAnalysis: "analysis_id", BehaviorSpec: "spec_id", BehaviorSpecResult: "result_id", BehaviorRevisionComparison: "comparison_id", AssuranceCase: "assurance_id",
         }.get(type(object_))
         identifier = getattr(object_, identifier_field) if identifier_field else None
-        if identifier is not None: by_type.setdefault(type(object_), set()).add(str(identifier))
+        if identifier is not None:
+            by_type.setdefault(type(object_), set()).add(str(identifier))
+            objects_by_type.setdefault(type(object_), {})[str(identifier)] = object_
     def exists(model: type[BaseModel], value: Any) -> bool: return value is None or str(value) in by_type.get(model, set())
     errors: list[str] = []
     for object_ in objects:
@@ -113,6 +118,21 @@ def _validate_relationships(objects: list[BaseModel]) -> list[str]:
         elif isinstance(object_, SelectivePredictionPolicy) and (not exists(AnalysisEvaluation, object_.evaluation_id) or not exists(TrainingRun, object_.run_id) or not exists(DecisionThresholdPolicy, object_.class_threshold_id)): errors.append(f"Selective policy {object_.policy_id} has broken frozen-policy provenance.")
         elif isinstance(object_, ExplanationContract) and not exists(TrainingRun, object_.run_id): errors.append(f"Explanation {object_.explanation_id} references missing TrainingRun {object_.run_id}.")
         elif isinstance(object_, ExplanationCheck) and (not exists(ExplanationContract, object_.explanation_id) or not exists(TrainingRun, object_.run_id)): errors.append(f"Explanation check {object_.check_id} has broken evidence provenance.")
+        elif isinstance(object_, BehaviorRevisionComparison):
+            baseline = objects_by_type.get(BehaviorSpecResult, {}).get(str(object_.baseline_result_id))
+            candidate = objects_by_type.get(BehaviorSpecResult, {}).get(str(object_.candidate_result_id))
+            baseline_spec = objects_by_type.get(BehaviorSpec, {}).get(str(baseline.spec_id)) if isinstance(baseline, BehaviorSpecResult) else None
+            candidate_spec = objects_by_type.get(BehaviorSpec, {}).get(str(candidate.spec_id)) if isinstance(candidate, BehaviorSpecResult) else None
+            transition = f"{baseline.status}_TO_{candidate.status}" if isinstance(baseline, BehaviorSpecResult) and isinstance(candidate, BehaviorSpecResult) else None
+            if (
+                not isinstance(baseline, BehaviorSpecResult) or not isinstance(candidate, BehaviorSpecResult)
+                or not isinstance(baseline_spec, BehaviorSpec) or not isinstance(candidate_spec, BehaviorSpec)
+                or _requirement_identity(baseline_spec) != object_.requirement_identity
+                or _requirement_identity(candidate_spec) != object_.requirement_identity
+                or object_.baseline_status != baseline.status or object_.candidate_status != candidate.status
+                or object_.transition != transition or object_.regression_detected != (transition == "PASS_TO_FAIL")
+            ):
+                errors.append(f"Behavior revision comparison {object_.comparison_id} has broken result provenance.")
         elif isinstance(object_, StabilityGatePolicy) and (not exists(StudyStabilityAnalysis, object_.stability_analysis_id) or not exists(TrainingRun, object_.selected_run_id) or not exists(AnalysisEvaluation, object_.evaluation_id) or not exists(DecisionThresholdPolicy, object_.class_threshold_id)): errors.append(f"Stability gate {object_.policy_id} has broken frozen-policy provenance.")
     return errors
 

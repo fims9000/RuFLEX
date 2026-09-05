@@ -25,7 +25,7 @@ from ruflex.domain.training import (
 )
 from ruflex.application.generalization import GeneralizationContract, SliceAnalysis
 from ruflex.domain.assurance import AssuranceCase
-from ruflex.domain.behavior import BehaviorSpec, BehaviorSpecResult
+from ruflex.domain.behavior import BehaviorRevisionComparison, BehaviorSpec, BehaviorSpecResult
 from ruflex.domain.evidence import ExplanationReproducibilityAnalysis
 from ruflex.domain.exhaustive import ExhaustiveLabResult
 from ruflex.domain.selective import SelectivePredictionPolicy
@@ -468,6 +468,12 @@ def build_project_lineage(project_root: Path) -> LineageGraph:
     for result in behavior_results:
         node = add_node(LineageNode(id=_node_id("behavior-result", result.result_id), kind="behavior_spec_result", label=f"BehaviorSpec {result.status}", detail=result.detail, target="EVIDENCE", object_id=str(result.result_id), status=result.status))
         add_edge(behavior_nodes.get(result.spec_id), node, "executed_as")
+    behavior_result_nodes = {result.result_id: _node_id("behavior-result", result.result_id) for result in behavior_results}
+    behavior_comparisons = [item for item in _json_models(behavior_root, BehaviorRevisionComparison) if isinstance(item, BehaviorRevisionComparison)]
+    for comparison in behavior_comparisons:
+        node = add_node(LineageNode(id=_node_id("behavior-comparison", comparison.comparison_id), kind="behavior_revision_comparison", label=comparison.transition.replace("_", " "), detail="regression detected" if comparison.regression_detected else "revision transition", target="EVIDENCE", object_id=str(comparison.comparison_id), status="FAIL" if comparison.regression_detected else "PASS"))
+        add_edge(behavior_result_nodes.get(comparison.baseline_result_id), node, "baseline_for")
+        add_edge(behavior_result_nodes.get(comparison.candidate_result_id), node, "candidate_for")
 
     exhaustive = [item for item in _json_models(root / "evidence" / "exhaustive-lab", ExhaustiveLabResult, exclude=("active-result.json",)) if isinstance(item, ExhaustiveLabResult)]
     for item in exhaustive:

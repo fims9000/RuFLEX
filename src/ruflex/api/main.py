@@ -1522,6 +1522,15 @@ def compare_behavior_results_route(request: CompareBehaviorResultsRequest) -> Be
         raise HTTPException(status_code=422, detail=str(error)) from error
 
 
+@app.get("/api/projects/{session_id}/evidence/behavior-specs/comparisons", response_model=list[BehaviorRevisionComparison])
+def list_behavior_revision_comparisons_route(session_id: UUID) -> list[BehaviorRevisionComparison]:
+    from ruflex.application.behavior import list_behavior_revision_comparisons
+    try:
+        return list_behavior_revision_comparisons(service.get(session_id).project.root)
+    except ProjectError as error:
+        raise _project_error(error) from error
+
+
 @app.post("/api/projects/training/studies", response_model=TrainingStudy, status_code=201)
 def run_multi_seed_training_study(request: MultiSeedStudyRequest) -> TrainingStudy:
     from ruflex.application.training import TrainingError, run_multi_seed_study

@@ -138,7 +138,12 @@ def load_behavior_spec(project_root: Path, spec_id: UUID) -> BehaviorSpec:
 def list_behavior_specs(project_root: Path) -> list[BehaviorSpec]:
     root = _root(project_root)
     return sorted(
-        (BehaviorSpec.model_validate_json(path.read_text()) for path in root.glob("*.json") if path.name not in {"active-spec.json", "active-result.json"} and not path.name.startswith("result-")),
+        (
+            BehaviorSpec.model_validate_json(path.read_text())
+            for path in root.glob("*.json")
+            if path.name not in {"active-spec.json", "active-result.json"}
+            and not path.name.startswith(("result-", "comparison-"))
+        ),
         key=lambda spec: spec.created_at,
         reverse=True,
     )
@@ -149,6 +154,15 @@ def list_behavior_results(project_root: Path) -> list[BehaviorSpecResult]:
     return sorted(
         (BehaviorSpecResult.model_validate_json(path.read_text()) for path in root.glob("result-*.json")),
         key=lambda result: result.created_at,
+        reverse=True,
+    )
+
+
+def list_behavior_revision_comparisons(project_root: Path) -> list[BehaviorRevisionComparison]:
+    root = _root(project_root)
+    return sorted(
+        (BehaviorRevisionComparison.model_validate_json(path.read_text()) for path in root.glob("comparison-*.json")),
+        key=lambda comparison: comparison.created_at,
         reverse=True,
     )
 

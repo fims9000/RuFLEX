@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 import time
 
@@ -207,6 +208,45 @@ def test_behavior_spec_is_revision_bound_persists_and_reopens(tmp_path: Path) ->
     readonly = client.post("/api/projects/open", json={"path": str(root), "read_only": True}).json()["session_id"]
     denied = client.post("/api/projects/evidence/behavior-specs/run", json={"session_id": readonly, "spec_id": spec.json()["spec_id"]})
     assert denied.status_code == 403
+
+
+def test_behavior_revision_comparison_is_persisted_and_rejects_changed_requirements(tmp_path: Path) -> None:
+    client = TestClient(app); root = tmp_path / "behavior-comparison"; session_id = _project_with_data(client, root)
+    run = _train(client, session_id, "logistic_regression")
+    payload = {"session_id": session_id, "run_id": run["run_id"], "name": "Probability range", "kind": "output_range", "sample": {"temperature": 25.0, "torque": 48.0, "vibration": .6}, "minimum": 0.0, "maximum": 1.0, "rationale": "Binary probability must be bounded."}
+    first = client.post("/api/projects/evidence/behavior-specs", json=payload); second = client.post("/api/projects/evidence/behavior-specs", json=payload)
+    assert first.status_code == second.status_code == 201
+    baseline = client.post("/api/projects/evidence/behavior-specs/run", json={"session_id": session_id, "spec_id": first.json()["spec_id"]})
+    candidate = client.post("/api/projects/evidence/behavior-specs/run", json={"session_id": session_id, "spec_id": second.json()["spec_id"]})
+    compared = client.post("/api/projects/evidence/behavior-specs/compare", json={"session_id": session_id, "baseline_result_id": baseline.json()["result_id"], "candidate_result_id": candidate.json()["result_id"]})
+    assert compared.status_code == 201, compared.text
+    assert compared.json()["transition"] == "PASS_TO_PASS"
+    assert client.get(f"/api/projects/{session_id}/evidence/behavior-specs/comparisons").json()[0]["comparison_id"] == compared.json()["comparison_id"]
+    assert client.get(f"/api/projects/{session_id}/integrity").json()["status"] == "PASS"
+    assert client.post("/api/projects/close", json={"session_id": session_id}).status_code == 204
+    reopened = client.post("/api/projects/open", json={"path": str(root), "read_only": False}).json()["session_id"]
+    assert len(client.get(f"/api/projects/{reopened}/evidence/behavior-specs").json()) == 2
+    assert client.get(f"/api/projects/{reopened}/evidence/behavior-specs/comparisons").json()[0]["comparison_id"] == compared.json()["comparison_id"]
+    assurance = client.post("/api/projects/evidence/assurance-cases", json={"session_id": reopened})
+    assert assurance.status_code == 201
+    assert next(gate for gate in assurance.json()["gates"] if gate["key"] == "behavior_revision_comparisons")["status"] == "PASS"
+    bundle = client.post("/api/projects/evidence/verification-bundles", json={"session_id": reopened})
+    assert bundle.status_code == 201
+    from ruflex.application.verification_bundle import validate_verification_bundle
+    assert validate_verification_bundle(Path(bundle.json()["path"])).status == "PASS"
+    readonly = client.post("/api/projects/open", json={"path": str(root), "read_only": True}).json()["session_id"]
+    assert client.post("/api/projects/evidence/behavior-specs/compare", json={"session_id": readonly, "baseline_result_id": baseline.json()["result_id"], "candidate_result_id": candidate.json()["result_id"]}).status_code == 403
+    changed = client.post("/api/projects/evidence/behavior-specs", json={**payload, "session_id": reopened, "name": "Changed requirement", "maximum": .9})
+    changed_result = client.post("/api/projects/evidence/behavior-specs/run", json={"session_id": reopened, "spec_id": changed.json()["spec_id"]})
+    rejected = client.post("/api/projects/evidence/behavior-specs/compare", json={"session_id": reopened, "baseline_result_id": baseline.json()["result_id"], "candidate_result_id": changed_result.json()["result_id"]})
+    assert rejected.status_code == 422
+    comparison_path = root / "evidence" / "behavior-specs" / f"comparison-{compared.json()['comparison_id']}.json"
+    corrupted = json.loads(comparison_path.read_text()); corrupted["transition"] = "PASS_TO_FAIL"
+    comparison_path.write_text(json.dumps(corrupted))
+    assert client.get(f"/api/projects/{reopened}/integrity").json()["status"] == "FAIL"
+    corrupt_assurance = client.post("/api/projects/evidence/assurance-cases", json={"session_id": reopened})
+    assert corrupt_assurance.status_code == 201
+    assert next(gate for gate in corrupt_assurance.json()["gates"] if gate["key"] == "behavior_revision_comparisons")["status"] == "FAIL"
 
 
 def test_extended_behavior_specs_persist_pair_and_batch_observations(tmp_path: Path) -> None:

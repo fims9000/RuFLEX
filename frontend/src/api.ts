@@ -504,6 +504,8 @@ export const studioApi = {
     request<BehaviorSpecResult[]>(`/api/projects/${sessionId}/evidence/behavior-specs/results`),
   compareBehaviorResults: (sessionId: string, baselineResultId: string, candidateResultId: string) =>
     request<BehaviorRevisionComparison>("/api/projects/evidence/behavior-specs/compare", { session_id: sessionId, baseline_result_id: baselineResultId, candidate_result_id: candidateResultId }),
+  listBehaviorRevisionComparisons: (sessionId: string) =>
+    request<BehaviorRevisionComparison[]>(`/api/projects/${sessionId}/evidence/behavior-specs/comparisons`),
   createSelectivePolicy: (sessionId: string, evaluationId: string, confidenceCutoff: number, calibrationId: string | null, thresholdId: string | null) =>
     request<SelectivePredictionPolicy>("/api/projects/analyses/selective-policies", { session_id: sessionId, evaluation_id: evaluationId, confidence_cutoff: confidenceCutoff, calibration_id: calibrationId, threshold_id: thresholdId }),
   createStudyStabilityAnalysis: (sessionId: string, studyId: string, evaluationId: string | null, thresholdId: string | null, highConfidenceThreshold = .9, unstableAgreementThreshold = .8) =>

@@ -35,7 +35,8 @@
     "declared_temporal_and_identity_holdout_splits",
     "categorical_train_only_preprocessing",
     "expanded_scientific_action_inventory",
-    "external_explainer_core_persistence"
+    "external_explainer_core_persistence",
+    "persisted_behavior_revision_comparisons"
   ],
   "active_acceptance": [
     "V1.3 persists SplitContract, train-only TransformPipelineContract and leakage-audit evidence through Studio/API, reopen, Lineage, Assurance and VerificationBundle.",
@@ -43,7 +44,7 @@
     "Keep unrelated article and interrupted S03 work out of the committed product baseline."
   ],
   "blockers": [],
-  "next_executable_work": "Add persisted before/after BehaviorSpec revision comparison and its API/Studio route, then run the broader V1.3 product QA.",
+  "next_executable_work": "Exercise the external-runtime governed golden route end-to-end: declared group split, train-only transforms, validation policy, external explanation, close/reopen, final-test replay, lineage and portable bundle.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",

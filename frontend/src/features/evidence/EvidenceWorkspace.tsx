@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   DatasetState,
   BehaviorSpec,
+  BehaviorRevisionComparison,
   BehaviorSpecResult,
   ExplanationReproducibilityAnalysis,
   ExhaustiveLabResult,
@@ -102,6 +103,10 @@ export function EvidenceWorkspace({
   const [direction, setDirection] = useState<"nondecreasing" | "nonincreasing">("nondecreasing");
   const [behaviorSpec, setBehaviorSpec] = useState<BehaviorSpec | null>(null);
   const [behaviorResult, setBehaviorResult] = useState<BehaviorSpecResult | null>(restoredBehaviorResult);
+  const [behaviorResults, setBehaviorResults] = useState<BehaviorSpecResult[]>([]);
+  const [behaviorComparison, setBehaviorComparison] = useState<BehaviorRevisionComparison | null>(null);
+  const [baselineBehaviorResultId, setBaselineBehaviorResultId] = useState("");
+  const [candidateBehaviorResultId, setCandidateBehaviorResultId] = useState("");
   const [reproducibility, setReproducibility] = useState<ExplanationReproducibilityAnalysis | null>(restoredReproducibility);
   const [persistedExplanations, setPersistedExplanations] = useState<ExplanationContract[]>([]);
   const [selectedExplanationIds, setSelectedExplanationIds] = useState<string[]>([]);
@@ -117,6 +122,14 @@ export function EvidenceWorkspace({
 
   useEffect(() => { setSample(initialSample); setComparisonSample(initialSample); }, [initialSample]);
   useEffect(() => setBehaviorResult(restoredBehaviorResult), [restoredBehaviorResult?.result_id]);
+  useEffect(() => {
+    studioApi.listBehaviorResults(project.session_id).then((results) => {
+      setBehaviorResults(results);
+      setBaselineBehaviorResultId((current) => current || results[1]?.result_id || "");
+      setCandidateBehaviorResultId((current) => current || results[0]?.result_id || "");
+    }).catch(() => setBehaviorResults([]));
+    studioApi.listBehaviorRevisionComparisons(project.session_id).then((comparisons) => setBehaviorComparison(comparisons[0] ?? null)).catch(() => setBehaviorComparison(null));
+  }, [project.session_id, behaviorResult?.result_id]);
   useEffect(() => setReproducibility(restoredReproducibility), [restoredReproducibility?.analysis_id]);
   useEffect(() => setExhaustive(restoredExhaustive), [restoredExhaustive?.result_id]);
   useEffect(() => setAssurance(restoredAssurance), [restoredAssurance?.assurance_id]);
@@ -255,6 +268,15 @@ export function EvidenceWorkspace({
       });
       setBehaviorSpec(created); const result = await studioApi.runBehaviorSpec(project.session_id, created.spec_id); setBehaviorResult(result); onBehaviorResult(result);
     } catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
+    finally { setBusy(false); }
+  }
+
+  async function compareBehaviorRevisions() {
+    if (!baselineBehaviorResultId || !candidateBehaviorResultId) return;
+    setBusy(true); setError(null);
+    try {
+      setBehaviorComparison(await studioApi.compareBehaviorResults(project.session_id, baselineBehaviorResultId, candidateBehaviorResultId));
+    } catch (reason) { setError(reason instanceof Error ? reason.message : "Could not compare BehaviorSpec revisions"); }
     finally { setBusy(false); }
   }
 
@@ -407,6 +429,7 @@ export function EvidenceWorkspace({
           {(["monotonic_pair", "invariance_pair", "symmetry_pair", "bounded_perturbation", "categorical_invariance", "required_order", "batch_regression_suite"] as string[]).includes(behaviorKind) && <><p className="field-help">Define both cases explicitly. RuFLEX does not infer a pairwise requirement from a single sample.</p><div className="evidence-sample-grid">{run.feature_columns.map((feature) => <label className="field-label" key={`comparison-${feature}`}>Comparison {feature}<input aria-label={`Behavior comparison ${feature}`} type="number" value={comparisonSample[feature] ?? ""} onChange={(event) => setComparisonSample((current) => ({ ...current, [feature]: event.target.value }))} /></label>)}</div></>}
           <Button view="action" disabled={busy || project.read_only} onClick={createAndRunBehavior} data-ruflex-action="behavior.run">{busy ? "Running…" : "Create and run BehaviorSpec"}</Button>
           {behaviorResult && <div className="trace-card" data-testid="behavior-result"><div className="evidence-check-header"><strong>{behaviorSpec?.name ?? "Persisted BehaviorSpec"}</strong><StatusBadge tone={behaviorResult.status === "PASS" ? "success" : "danger"}>{behaviorResult.status}</StatusBadge></div><p>{behaviorResult.detail}</p><small>{behaviorResult.run_id ? `Run ${behaviorResult.run_id.slice(0, 12)} · artifact ${behaviorResult.model_artifact_sha256?.slice(0, 12)}` : `FIS revision ${behaviorResult.fis_semantic_hash?.slice(0, 12)}`}</small></div>}
+          <section className="trace-card"><strong>Revision transition</strong><p>Compare two executions of the exact same persisted behavior requirement across model or FIS revisions. A PASS → FAIL transition is retained as regression evidence.</p><div className="training-config-grid"><label className="field-label">Baseline result<select aria-label="Behavior baseline result" value={baselineBehaviorResultId} onChange={(event) => setBaselineBehaviorResultId(event.target.value)}><option value="">Choose result</option>{behaviorResults.map((item) => <option key={item.result_id} value={item.result_id}>{item.result_id.slice(0, 8)} · {item.status}</option>)}</select></label><label className="field-label">Candidate result<select aria-label="Behavior candidate result" value={candidateBehaviorResultId} onChange={(event) => setCandidateBehaviorResultId(event.target.value)}><option value="">Choose result</option>{behaviorResults.map((item) => <option key={item.result_id} value={item.result_id}>{item.result_id.slice(0, 8)} · {item.status}</option>)}</select></label></div><Button view="outlined" disabled={busy || project.read_only || !baselineBehaviorResultId || !candidateBehaviorResultId || baselineBehaviorResultId === candidateBehaviorResultId} onClick={compareBehaviorRevisions} data-ruflex-action="behavior.revision.compare">Compare revisions</Button>{behaviorComparison && <p><strong>{behaviorComparison.transition.replaceAll("_", " ")}</strong> · {behaviorComparison.regression_detected ? "regression retained as evidence" : "no PASS-to-FAIL regression in this transition"}</p>}</section>
         </>}
       </section>
       <section className="evidence-section"><div className="feature-toolbar compact-toolbar"><div><span className="eyebrow">CONDITION MONITORING DEMO</span><h3>Telemetry decision support with review and scope safeguards</h3><p>Telemetry → frozen class/selective policy → scope → explanation check → AssuranceCase → VerificationBundle → ACCEPT / REVIEW / OUT-OF-SCOPE. This is not targeting or actuator control.</p></div><Button view="action" disabled={busy || project.read_only || !run || !selectivePolicy} onClick={runConditionDemo} data-ruflex-action="condition_demo.run">Run telemetry demonstration</Button></div>{!selectivePolicy && <p className="property-description">A validation-derived selective policy is required before this demonstration can make an ACCEPT/REVIEW decision.</p>}{demo && <div className="trace-card" data-testid="condition-monitoring-demo"><StatusBadge tone={demo.decision === "ACCEPT" ? "success" : demo.decision === "OUT_OF_SCOPE" ? "danger" : "warning"}>{demo.decision}</StatusBadge><p>Class {demo.predicted_class} · probability {demo.probability.toFixed(4)} · confidence {demo.confidence.toFixed(4)} · scope {demo.scope_disposition}</p><small className="mono">Explanation {demo.explanation_id?.slice(0, 12)} · check {demo.explanation_check_id?.slice(0, 12)} · AssuranceCase {demo.assurance_id?.slice(0, 12)} · VerificationBundle {demo.verification_bundle_sha256?.slice(0, 12)}</small><p>{demo.explanation_note}</p><small>{demo.safety_note}</small></div>}</section>
