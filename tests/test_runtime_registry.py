@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import pytest
+import inspect
 from fastapi.testclient import TestClient
 
 from ruflex.api.main import app
+from ruflex.application.training import train_model
 from ruflex.runtime import builtin_runtime_registry
 from ruflex.runtime.contracts import RuntimeIdentity
 from ruflex.runtime.errors import RuntimeNotFoundError, RuntimeVersionMismatchError
@@ -60,3 +62,10 @@ def test_runtime_api_declares_explainers_validator_and_backend() -> None:
     assert {item["identity"]["key"] for item in client.get("/api/runtime/explainers").json()} >= {"occlusion", "tree_shap", "integrated_gradients"}
     assert client.get("/api/runtime/validators").json()[0]["identity"]["key"] == "native_explanation_validator"
     assert client.get("/api/runtime/backends").json()[0]["identity"]["key"] == "local_executor"
+
+
+def test_training_entrypoint_has_no_model_name_dispatch() -> None:
+    source = inspect.getsource(train_model)
+    assert "if model_kind ==" not in source
+    assert "elif model_kind" not in source
+    assert "resolve_training_model_kind" in source
