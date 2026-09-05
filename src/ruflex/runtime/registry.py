@@ -9,7 +9,10 @@ from typing import Any
 
 from ruflex.runtime.contracts import (
     ExecutionBackendDescriptor,
+    ExecutionBackendAdapter,
+    ExplainerAdapter,
     ExplainerDescriptor,
+    ExplanationValidatorAdapter,
     ModelAdapter,
     ModelAdapterDescriptor,
     RuntimeIdentity,
@@ -132,19 +135,37 @@ class RuntimeRegistry:
         canonical = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
         return {"schema_version": 2, "frozen": self._frozen, **payload, "sha256": hashlib.sha256(canonical).hexdigest()}
 
-    def discover_entry_points(self, *, group: str = "ruflex.plugins") -> list[ModelAdapterDescriptor]:
+    def discover_entry_points(self, *, group: str | None = None) -> list[ModelAdapterDescriptor | ExplainerDescriptor | ValidatorDescriptor | ExecutionBackendDescriptor]:
+        """Discover trusted runtime components by their declared category.
+
+        ``ruflex.plugins`` remains a model-adapter compatibility group. New
+        plugins use category-specific groups, so an explainer/validator/backend
+        can enter the same frozen capability snapshot without pretending to be
+        a trainable model.
+        """
         if self._frozen:
             raise RuntimeDuplicateError("runtime_snapshot")
+        groups = (group,) if group is not None else (
+            "ruflex.plugins", "ruflex.model_adapters", "ruflex.explainers",
+            "ruflex.validators", "ruflex.execution_backends",
+        )
         points = metadata.entry_points()
-        selected = points.select(group=group) if hasattr(points, "select") else points.get(group, ())
-        discovered: list[ModelAdapterDescriptor] = []
-        for point in sorted(selected, key=lambda item: item.name):
-            candidate = point.load()
-            adapter = candidate() if callable(candidate) else candidate
-            if not isinstance(adapter, ModelAdapter):
-                raise TypeError(f"Runtime entry point {point.name!r} does not provide a ModelAdapter.")
-            self.register_model_adapter(adapter)
-            discovered.append(adapter.descriptor)
+        discovered: list[ModelAdapterDescriptor | ExplainerDescriptor | ValidatorDescriptor | ExecutionBackendDescriptor] = []
+        for entry_group in groups:
+            selected = points.select(group=entry_group) if hasattr(points, "select") else points.get(entry_group, ())
+            for point in sorted(selected, key=lambda item: item.name):
+                candidate = point.load(); adapter = candidate() if callable(candidate) else candidate
+                if entry_group in {"ruflex.plugins", "ruflex.model_adapters"}:
+                    if not isinstance(adapter, ModelAdapter): raise TypeError(f"Runtime entry point {point.name!r} does not provide a ModelAdapter.")
+                    self.register_model_adapter(adapter); discovered.append(adapter.descriptor); continue
+                if entry_group == "ruflex.explainers":
+                    if not isinstance(adapter, ExplainerAdapter): raise TypeError(f"Runtime entry point {point.name!r} does not provide an ExplainerAdapter.")
+                elif entry_group == "ruflex.validators":
+                    if not isinstance(adapter, ExplanationValidatorAdapter): raise TypeError(f"Runtime entry point {point.name!r} does not provide an ExplanationValidatorAdapter.")
+                elif entry_group == "ruflex.execution_backends":
+                    if not isinstance(adapter, ExecutionBackendAdapter): raise TypeError(f"Runtime entry point {point.name!r} does not provide an ExecutionBackendAdapter.")
+                else: raise RuntimeNotFoundError(entry_group)
+                self.register_component(adapter.descriptor, implementation=adapter); discovered.append(adapter.descriptor)
         return discovered
 
 

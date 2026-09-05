@@ -7,7 +7,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ValidationError
 
-from ruflex.application.datasets import DatasetContract, load_dataset_contract, load_dataset_profile
+from ruflex.application.datasets import DatasetContract, SplitContract, list_split_contracts, load_dataset_contract, load_dataset_profile
 from ruflex.application.jobs import Job
 from ruflex.domain.evidence import ExplanationCheck, ExplanationContract
 from ruflex.domain.fis import FISSpec
@@ -97,6 +97,19 @@ def build_project_lineage(project_root: Path) -> LineageGraph:
     except (OSError, ValueError, ValidationError):
         contract = None  # type: ignore[assignment]
 
+    split_nodes: dict[str, str] = {}
+    try:
+        for split in list_split_contracts(root):
+            node = add_node(LineageNode(
+                id=_node_id("split-contract", split.split_id), kind="split_contract",
+                label=f"{split.family} SplitContract", detail=f"seed {split.split_seed} · {len(split.role_source_rows['train'])}/{len(split.role_source_rows['validation'])}/{len(split.role_source_rows['test'])}",
+                target="DATA", object_id=str(split.split_id), status="FROZEN",
+            ))
+            split_nodes[str(split.split_id)] = node
+            add_edge(dataset_node, node, "partitioned_as")
+    except (OSError, ValueError, ValidationError):
+        pass
+
     # FIS revisions are true semantic revisions. We show them as a chain, but
     # do not invent a dataset -> FIS edge because imported FIS files may be
     # independent of the active dataset.
@@ -169,6 +182,8 @@ def build_project_lineage(project_root: Path) -> LineageGraph:
         run_nodes[run.run_id] = node
         if dataset_node and run.dataset_fingerprint and contract is not None and run.dataset_fingerprint == contract.dataset_fingerprint:
             add_edge(dataset_node, node, "trained_on")
+        if run.split.split_contract_id is not None:
+            add_edge(split_nodes.get(run.split.split_contract_id), node, "assigns_membership_for")
         if run.preprocessing_artifact_sha256 is not None:
             preprocessing_node = preprocessing_nodes.get(run.preprocessing_artifact_sha256)
             if preprocessing_node is None:

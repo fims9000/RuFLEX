@@ -12,7 +12,7 @@ from pathlib import Path
 import numpy as np
 
 from ruflex.application.artifacts import ArtifactMetadata, ArtifactStore
-from ruflex.application.datasets import load_dataset_contract, load_dataset_frame
+from ruflex.application.datasets import load_dataset_contract, load_dataset_frame, load_split_contract
 from ruflex.application.training import (
     _baseline_metrics, _normalization_dict, _persist_preprocessing_artifact,
     _provenance, _resolve_randomness, _split_identity, _validation_payload,
@@ -31,6 +31,7 @@ def train_with_adapter(
     model_kind: str, seed: int | None = None, split_seed: int | None = None,
     training_seed: int | None = None, validation_fraction: float = .2,
     test_fraction: float = .2, parameters: dict | None = None,
+    split_contract_id: str | None = None,
 ) -> TrainingRun:
     """Execute one trusted adapter while retaining the core data firewall."""
     adapter = registry.resolve_model_adapter(adapter_key)
@@ -41,10 +42,17 @@ def train_with_adapter(
         raise RuntimeIncompatibleError(f"Adapter {adapter_key!r} does not support task {contract.task!r}.")
     resolved_split, resolved_training, protocol = _resolve_randomness(seed=seed, split_seed=split_seed, training_seed=training_seed)
     frame = load_dataset_frame(project_root)
+    split_contract = load_split_contract(project_root, split_contract_id) if split_contract_id else None
+    if split_contract is not None:
+        if split_contract.split_seed != resolved_split:
+            raise RuntimeIncompatibleError("The requested split_seed does not match the immutable SplitContract.")
+        if split_contract.validation_fraction != validation_fraction or split_contract.test_fraction != test_fraction:
+            raise RuntimeIncompatibleError("Training fractions must match the immutable SplitContract.")
     split = TabularDataset.from_dataframe(frame).split(DatasetConfig(
         target_column=contract.target, feature_columns=tuple(contract.feature_columns),
         validation_fraction=validation_fraction, test_fraction=test_fraction,
         normalization=NormalizationMode.STANDARD, fill_missing="median", random_state=resolved_split,
+        explicit_split_source_rows=(None if split_contract is None else split_contract.role_source_rows),
     ))
     if split.validation_features.shape[0] == 0:
         raise RuntimeIncompatibleError("The resolved validation split is empty.")
@@ -53,7 +61,7 @@ def train_with_adapter(
         task=contract.task, feature_names=tuple(contract.feature_columns),
         X_train=np.asarray(split.train_features), y_train=np.asarray(split.train_targets),
         X_validation=np.asarray(split.validation_features), y_validation=np.asarray(split.validation_targets),
-        split_identity=_split_identity(contract.dataset_fingerprint, split), split_seed=resolved_split,
+        split_identity=(_split_identity(contract.dataset_fingerprint, split) if split_contract is None else split_contract.split_identity), split_seed=resolved_split,
         training_seed=resolved_training, validated_parameters=dict(parameters or {}),
         preprocessing_identity=preprocessing_sha,
     )
@@ -106,7 +114,7 @@ def train_with_adapter(
         training_seed=resolved_training, randomness_protocol=protocol,
         max_epochs=int(training_summary.get("epochs_ran", 1)), learning_rate=float((parameters or {}).get("learning_rate", 0.0)),
         batch_size=int((parameters or {}).get("batch_size", len(split.train_features))), patience=(parameters or {}).get("patience"),
-        split=_provenance(contract, split, split_seed=resolved_split, validation_fraction=validation_fraction, test_fraction=test_fraction),
+        split=_provenance(contract, split, split_seed=resolved_split, validation_fraction=validation_fraction, test_fraction=test_fraction, split_contract=split_contract),
         model_spec={"model_kind": model_kind, **result.model_spec}, normalization=_normalization_dict(split.normalization),
         preprocessing_artifact_sha256=preprocessing_sha, training_summary=training_summary, trajectory=trajectory,
         validation_metrics=metrics, prediction_preview=preview, confusion_matrix=confusion, calibration=calibration,

@@ -1,6 +1,6 @@
 import { EChartsOption } from "echarts";
 import { useEffect, useMemo, useState } from "react";
-import { DatasetState, ModelCapabilityContract, ProjectSummary, RunCapabilityNegotiation, StudyJob, TrainingRun, TrainingStudy, TreePathEvidence, studioApi } from "../../api";
+import { DatasetState, ModelCapabilityContract, ProjectSummary, RunCapabilityNegotiation, SplitContract, StudyJob, TrainingRun, TrainingStudy, TreePathEvidence, studioApi } from "../../api";
 import { ChartSurface } from "../../charts/ChartSurface";
 import { Button, EmptyState, StatusBadge } from "../../components/StudioPrimitives";
 import { StudioTheme } from "../../design/tokens";
@@ -113,6 +113,9 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
   const [seedList, setSeedList] = useState("42, 43, 44");
   const [studyMode, setStudyMode] = useState<"TRAINING_VARIABILITY" | "SPLIT_VARIABILITY" | "COMBINED_VARIABILITY">("TRAINING_VARIABILITY");
   const [splitSeed, setSplitSeed] = useState(42);
+  const [splitFamily, setSplitFamily] = useState<"RANDOM" | "GROUP">("RANDOM");
+  const [groupColumn, setGroupColumn] = useState("");
+  const [splitContract, setSplitContract] = useState<SplitContract | null>(null);
   const [study, setStudy] = useState<TrainingStudy | null>(restoredStudy);
   const [studyJob, setStudyJob] = useState<StudyJob | null>(null);
   const [running, setRunning] = useState(false);
@@ -132,6 +135,13 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
       setTreeEvidence(evidence.run_id === run.run_id ? evidence : null);
     }).catch(() => setTreeEvidence(null));
   }, [project.session_id, run?.run_id, run?.model_kind]);
+  useEffect(() => {
+    studioApi.listSplitContracts(project.session_id).then((contracts) => {
+      const current = contracts.at(-1) ?? null;
+      setSplitContract(current);
+      if (current) { setSplitFamily(current.family === "GROUP" ? "GROUP" : "RANDOM"); setGroupColumn(current.group_column ?? ""); setSplitSeed(current.split_seed); }
+    }).catch(() => setSplitContract(null));
+  }, [project.session_id]);
   useEffect(() => {
     if (!run) { setRunCapabilities(null); return; }
     studioApi.getTrainingRunCapabilities(project.session_id, run.run_id).then(setRunCapabilities).catch(() => setRunCapabilities(null));
@@ -186,7 +196,7 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
     try {
       const result = await studioApi.runTraining(project.session_id, {
         model_kind: trainingModelKind,
-        seed,
+        seed, split_seed: splitContract?.split_seed ?? null, training_seed: seed, split_contract_id: splitContract?.split_id ?? null,
         max_epochs: maxEpochs,
         learning_rate: learningRate,
         batch_size: batchSize,
@@ -204,6 +214,15 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
       setRunning(false);
     }
   }
+  async function freezeSplitContract() {
+    setRunning(true); setError(null);
+    try {
+      if (splitFamily === "GROUP" && !groupColumn) throw new Error("Choose the group identity column before freezing a GROUP split.");
+      const created = await studioApi.createSplitContract(project.session_id, { family: splitFamily, split_seed: splitSeed, validation_fraction: .2, test_fraction: .2, group_column: splitFamily === "GROUP" ? groupColumn : null });
+      setSplitContract(created);
+    } catch (reason) { setError(reason instanceof Error ? reason.message : "Could not freeze split contract"); }
+    finally { setRunning(false); }
+  }
   async function trainStudy() {
     const seeds = [...new Set(seedList.split(",").map((value) => Number(value.trim())).filter(Number.isInteger))];
     if (seeds.length < 3) {
@@ -214,7 +233,8 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
     setError(null);
     try {
       const selectionMetric = dataset?.contract.task === "regression" ? "rmse" : "f1";
-      let job = await studioApi.startStudyJob(project.session_id, { name: `Study ${new Date().toLocaleString()}`, model_kind: trainingModelKind, seeds, randomness_protocol: studyMode, split_seed: splitSeed, training_seed: splitSeed, selection_metric: selectionMetric, max_epochs: maxEpochs, learning_rate: learningRate, batch_size: batchSize, patience, validation_fraction: .2, test_fraction: .2, max_rules: maxRules, n_estimators: nEstimators, max_depth: maxDepth });
+      if (splitContract && studyMode !== "TRAINING_VARIABILITY") throw new Error("A frozen SplitContract can be used only with fixed-split training variability studies.");
+      let job = await studioApi.startStudyJob(project.session_id, { name: `Study ${new Date().toLocaleString()}`, model_kind: trainingModelKind, seeds, randomness_protocol: studyMode, split_seed: splitContract?.split_seed ?? splitSeed, training_seed: splitSeed, split_contract_id: splitContract?.split_id ?? null, selection_metric: selectionMetric, max_epochs: maxEpochs, learning_rate: learningRate, batch_size: batchSize, patience, validation_fraction: .2, test_fraction: .2, max_rules: maxRules, n_estimators: nEstimators, max_depth: maxDepth });
       await observeStudy(job);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Multi-seed study failed");
@@ -263,12 +283,15 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
           <dt>Task</dt><dd>{dataset.contract.task}</dd>
           <dt>Features</dt><dd>{dataset.contract.feature_columns.join(", ")}</dd>
           <dt>Split</dt><dd>60% train · 20% validation · 20% locked test</dd>
+          <dt>Frozen split</dt><dd>{splitContract ? `${splitContract.family} · ${splitContract.split_id.slice(0, 8)}` : "No explicit contract — legacy random holdout"}</dd>
           <dt>Preprocessing</dt><dd>median fill + standardization fitted on train only</dd>
         </dl>
         <div className="training-config-grid">
           <label className="field-label">Model<select aria-label="Training model" value={modelKind} disabled={running || project.read_only || !compatibleModels.length} onChange={(event) => setModelKind(event.target.value)}>{compatibleModels.map((entry) => <option key={entry.key} value={entry.key === "linear" ? (datasetTask === "regression" ? "linear_regression" : "logistic_regression") : entry.training_model_kinds[0]}>{entry.display_name}</option>)}</select></label>
           <NumberField label="Seed" value={seed} step={1} disabled={running || project.read_only} onChange={setSeed} />
           <NumberField label="Study split seed" value={splitSeed} step={1} disabled={running || project.read_only} onChange={setSplitSeed} />
+          <label className="field-label">Split family<select aria-label="Split family" value={splitFamily} disabled={running || project.read_only} onChange={(event) => setSplitFamily(event.target.value as "RANDOM" | "GROUP")}><option value="RANDOM">Random holdout</option><option value="GROUP">Group holdout</option></select></label>
+          {splitFamily === "GROUP" && <label className="field-label">Group identity<select aria-label="Group identity column" value={groupColumn} disabled={running || project.read_only} onChange={(event) => setGroupColumn(event.target.value)}><option value="">Choose column</option>{dataset.profile.columns.map((column) => <option key={column.name} value={column.name}>{column.name}</option>)}</select></label>}
           {supportsParameter("max_epochs") && <NumberField label="Epochs" value={maxEpochs} min={1} max={2000} step={1} disabled={running || project.read_only} onChange={setMaxEpochs} />}
           {supportsParameter("learning_rate") && <NumberField label="Learning rate" value={learningRate} min={0.000001} max={1} step={0.001} disabled={running || project.read_only} onChange={setLearningRate} />}
           {supportsParameter("batch_size") && <NumberField label="Batch size" value={batchSize} min={1} step={1} disabled={running || project.read_only} onChange={setBatchSize} />}
@@ -279,10 +302,11 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
           <label className="field-label">Study seeds<input aria-label="Study seeds" value={seedList} disabled={running || project.read_only} onChange={(event) => setSeedList(event.target.value)} /></label>
           <label className="field-label">Study randomness protocol<select aria-label="Study randomness protocol" value={studyMode} disabled={running || project.read_only} onChange={(event) => setStudyMode(event.target.value as typeof studyMode)}><option value="TRAINING_VARIABILITY">Training variability (fixed split)</option><option value="SPLIT_VARIABILITY">Split variability (fixed training seed)</option><option value="COMBINED_VARIABILITY">Combined variability</option></select></label>
         </div>
+        <Button view="outlined" disabled={running || project.read_only} onClick={freezeSplitContract} data-ruflex-action="split.freeze">Freeze {splitFamily} SplitContract</Button>
         <Button view="action" disabled={running || project.read_only} onClick={train} data-ruflex-action="training.run">{running ? "Training…" : "Run real training"}</Button>
         <Button view="outlined" disabled={running || project.read_only} onClick={trainStudy} data-ruflex-action="study.start">{running ? "Training…" : "Run multi-seed study"}</Button>
         {studyJob && <div className="info-message"><strong>Study job {studyJob.status}</strong> · LocalExecutor · {studyJob.seed_states.map((state) => `seed ${state.seed}: ${state.status}`).join(" · ")} {(["QUEUED", "RUNNING"].includes(studyJob.status)) && <><Button view="flat" size="s" onClick={resumeStudy}>Resume persisted study</Button><Button view="flat" size="s" onClick={cancelStudy}>Cancel study</Button></>} {studyJob.recovery_note && <small>{studyJob.recovery_note}</small>}</div>}
-        <div className="info-message">Training variability fixes split membership and varies only model randomness. Split and combined modes are separate sensitivity protocols. Selection is validation-only and never reads the locked test split.</div>
+        <div className="info-message">A frozen SplitContract assigns exact source rows before fitting. GROUP keeps each declared identity in one role. It makes split membership auditable; it does not by itself establish generalization validity.</div>
         {project.read_only && <div className="info-message">Read-only projects cannot start training runs.</div>}
       </section>
 

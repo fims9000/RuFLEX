@@ -22,7 +22,9 @@ from sklearn.metrics import accuracy_score, average_precision_score, f1_score, m
 
 from ruflex.application.artifacts import ArtifactMetadata, ArtifactRef, ArtifactStore
 from ruflex.runtime.backends import resolve_execution_backend
-from ruflex.application.datasets import load_dataset_contract, load_dataset_frame, row_identity
+from ruflex.runtime.contracts import PredictionRequest
+from ruflex.runtime.registry import builtin_runtime_registry
+from ruflex.application.datasets import load_dataset_contract, load_dataset_frame, load_split_contract, row_identity
 from ruflex.core.enums import NormalizationMode, TaskType, VariableRole
 from ruflex.core.membership import GaussianMembershipSpec
 from ruflex.core.variables import VariableSpec
@@ -77,11 +79,17 @@ def _split_identity(dataset_fingerprint: str | None, split) -> str:
     return hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
 
 
-def _provenance(contract, split, *, split_seed: int, validation_fraction: float, test_fraction: float) -> SplitProvenance:
+def _provenance(contract, split, *, split_seed: int, validation_fraction: float, test_fraction: float, split_contract=None) -> SplitProvenance:
     return SplitProvenance(
+        family=("random_holdout" if split_contract is None else split_contract.family.lower()),
         seed=split_seed,
         split_seed=split_seed,
-        split_identity=_split_identity(contract.dataset_fingerprint, split),
+        split_identity=(_split_identity(contract.dataset_fingerprint, split) if split_contract is None else split_contract.split_identity),
+        split_contract_id=(None if split_contract is None else str(split_contract.split_id)),
+        group_column=(None if split_contract is None else split_contract.group_column),
+        time_column=(None if split_contract is None else split_contract.time_column),
+        site_column=(None if split_contract is None else split_contract.site_column),
+        role_identity_hashes=({} if split_contract is None else dict(split_contract.role_identity_hashes)),
         validation_fraction=validation_fraction,
         test_fraction=test_fraction,
         train_count=int(split.train_features.shape[0]),
@@ -955,6 +963,7 @@ def train_model(project_root: Path, *, model_kind: str, **config) -> TrainingRun
             model_kind=model_kind, seed=config.get("seed"), split_seed=config.get("split_seed"),
             training_seed=config.get("training_seed"), validation_fraction=config.get("validation_fraction", .2),
             test_fraction=config.get("test_fraction", .2), parameters=config,
+            split_contract_id=config.get("split_contract_id"),
         )
     except Exception as error:
         if isinstance(error, TrainingError):
@@ -1035,6 +1044,8 @@ def cancel_study_job(project_root: Path, job_id: UUID) -> StudyJob:
     if job.status in {"SUCCEEDED", "FAILED", "CANCELLED"}:
         return job
     job.cancel_requested = True
+    _, backend = _study_execution_backend(job)
+    backend.cancel(project_root=project_root, job_id=job_id)
     _study_job_cancellations.setdefault(job_id, Event()).set()
     _persist_study_job(project_root, job)
     return job
@@ -1149,7 +1160,8 @@ def resume_study_job(project_root: Path, job_id: UUID) -> StudyJob:
     job.recovery_count += 1
     job.recovery_note = "Explicitly resumed from persisted local execution state; completed seed identities were retained."
     _persist_study_job(project_root, job)
-    return _submit_study_job(project_root, job.job_id)
+    backend.resume(project_root=project_root, job_id=job.job_id, operation=lambda: _execute_study_job(project_root, job.job_id))
+    return load_study_job(project_root, job.job_id)
 
 
 def load_training_study(project_root: Path, study_id: UUID) -> TrainingStudy:
@@ -1424,19 +1436,6 @@ def _latest_threshold_for_run(project_root: Path, run_id: UUID) -> DecisionThres
     return max(matches, key=lambda item: item.created_at) if matches else None
 
 
-def _tree_declarative_output(tree: dict, vector: np.ndarray, *, task: str) -> float:
-    node = 0
-    while int(tree["children_left"][node]) != -1:
-        feature_index = int(tree["feature_index"][node])
-        threshold = float(tree["threshold"][node])
-        node = int(tree["children_left"][node]) if float(vector[feature_index]) <= threshold else int(tree["children_right"][node])
-    values = np.asarray(tree["values"][node], dtype=float).reshape(-1)
-    if task == TaskType.BINARY_CLASSIFICATION.value:
-        total = float(values.sum())
-        return 0.5 if total <= 0.0 else float(values[1] / total)
-    return float(values[0])
-
-
 def _predict_persisted_run_normalized(
     project_root: Path,
     run: TrainingRun,
@@ -1453,62 +1452,28 @@ def _predict_persisted_run_normalized(
     if matrix.shape[1] != len(run.feature_columns):
         raise TrainingError("Final-test features do not match the frozen TrainingRun feature order.")
 
-    if run.model_kind == "flat_neuro_fuzzy":
-        spec = ShallowModelSpec.from_dict(run.model_spec)
-        model = FlatNeuroFuzzyModel(spec)
-        with ArtifactStore(project_root).open(ArtifactRef(sha256=run.model_artifact_sha256)) as handle:
-            raw_bundle = handle.read()
-        with tempfile.NamedTemporaryFile(prefix="ruflex-final-test-", suffix=".pt", delete=False) as handle:
-            handle.write(raw_bundle)
-            bundle_path = Path(handle.name)
-        try:
-            model.load_bundle(bundle_path)
-            return np.asarray(model.predict(matrix), dtype=float).reshape(-1)
-        finally:
-            bundle_path.unlink(missing_ok=True)
-
+    if not all((run.adapter_key, run.adapter_version, run.adapter_provider, run.preprocessing_artifact_sha256)):
+        raise TrainingError("Final-test replay requires persisted runtime adapter and preprocessing bindings.")
+    try:
+        adapter = builtin_runtime_registry().resolve_model_adapter(run.adapter_key, version=run.adapter_version)
+    except Exception as error:
+        raise TrainingError("The persisted runtime adapter is unavailable for final-test replay.") from error
+    if adapter.descriptor.identity.provider != run.adapter_provider or run.model_kind not in adapter.descriptor.training_model_kinds:
+        raise TrainingError("The persisted runtime adapter identity is incompatible with the frozen TrainingRun.")
     with ArtifactStore(project_root).open(ArtifactRef(sha256=run.model_artifact_sha256)) as handle:
-        payload = json.loads(handle.read().decode("utf-8"))
-
-    if run.model_kind in {"logistic_regression", "linear_regression"}:
-        coefficients = np.asarray(payload["coefficients"], dtype=float).reshape(-1)
-        return np.asarray(matrix @ coefficients + float(payload["intercept"]), dtype=float).reshape(-1)
-
-    if run.model_kind == "decision_tree":
-        outputs = np.asarray([
-            _tree_declarative_output(payload["tree"], row, task=run.task) for row in matrix
-        ], dtype=float)
-        if run.task == TaskType.BINARY_CLASSIFICATION.value:
-            clipped = np.clip(outputs, 1e-12, 1.0 - 1e-12)
-            return np.log(clipped / (1.0 - clipped))
-        return outputs
-
-    if run.model_kind == "random_forest":
-        outputs = np.asarray([
-            float(np.mean([_tree_declarative_output(tree, row, task=run.task) for tree in payload["trees"]]))
-            for row in matrix
-        ], dtype=float)
-        if run.task == TaskType.BINARY_CLASSIFICATION.value:
-            clipped = np.clip(outputs, 1e-12, 1.0 - 1e-12)
-            return np.log(clipped / (1.0 - clipped))
-        return outputs
-
-    if run.model_kind == "gradient_boosting":
-        initial = payload.get("initial_raw_prediction")
-        if initial is None:
-            raise TrainingError(
-                "This Gradient Boosting artifact predates reproducible ensemble replay. Retrain it before final-test evaluation."
-            )
-        learning_rate = float(payload["parameters"]["learning_rate"])
-        return np.asarray([
-            float(initial) + learning_rate * sum(
-                _tree_declarative_output(tree, row, task=TaskType.REGRESSION.value)
-                for tree in payload["trees"]
-            )
-            for row in matrix
-        ], dtype=float)
-
-    raise TrainingError(f"Final-test replay is unavailable for model kind {run.model_kind!r}.")
+        result = adapter.predict(PredictionRequest(
+            task=run.task, feature_names=tuple(run.feature_columns), features=matrix,
+            artifact=handle.read(), model_spec=run.model_spec,
+            preprocessing_identity=run.preprocessing_artifact_sha256,
+        ))
+    if run.task == TaskType.REGRESSION.value:
+        return np.asarray(result.prediction, dtype=float).reshape(-1)
+    if result.raw_score is not None:
+        return np.asarray(result.raw_score, dtype=float).reshape(-1)
+    if result.probability is None:
+        raise TrainingError("Binary runtime adapter replay must return a raw score or probability.")
+    probability = np.clip(np.asarray(result.probability, dtype=float).reshape(-1), 1e-12, 1.0 - 1e-12)
+    return np.log(probability / (1.0 - probability))
 
 
 def evaluate_final_test(
@@ -1624,6 +1589,7 @@ def evaluate_final_test(
         prior_final_tests.append(prior)
 
     frame = load_dataset_frame(project_root)
+    split_contract = load_split_contract(project_root, run.split.split_contract_id) if run.split.split_contract_id else None
     split = TabularDataset.from_dataframe(frame).split(DatasetConfig(
         target_column=run.target,
         feature_columns=tuple(run.feature_columns),
@@ -1632,11 +1598,17 @@ def evaluate_final_test(
         normalization=NormalizationMode(run.normalization["mode"]),
         fill_missing="median",
         random_state=run.split.split_seed if run.split.split_seed is not None else run.seed,
+        explicit_split_source_rows=(None if split_contract is None else split_contract.role_source_rows),
     ))
     if split.test_features.shape[0] == 0:
         raise TrainingError("The frozen TrainingRun has no final-test rows to evaluate.")
     if len(split.test_indices) != run.split.test_count:
         raise TrainingError("Reconstructed final-test row count does not match the frozen TrainingRun provenance.")
+    if split_contract is not None:
+        if split_contract.split_identity != run.split.split_identity or split_contract.family.lower() != run.split.family:
+            raise TrainingError("The persisted SplitContract no longer matches the frozen TrainingRun provenance.")
+        if set(int(value) for value in split.test_indices) != set(split_contract.role_source_rows["test"]):
+            raise TrainingError("Final-test rows no longer match the immutable SplitContract.")
     reconstructed_preprocessing = _stable_identity("preprocessing", split.normalization.to_dict())
     expected_preprocessing = _stable_identity("preprocessing", run.normalization)
     if reconstructed_preprocessing != expected_preprocessing:

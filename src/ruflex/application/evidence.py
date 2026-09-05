@@ -20,6 +20,8 @@ from ruflex.domain.evidence import ExplanationCheck, ExplanationCheckItem, Expla
 from ruflex.models.flat_nf.model import FlatNeuroFuzzyModel
 from ruflex.models.specs import ShallowModelSpec
 from ruflex.plugins import PluginDescriptor, PluginRegistry
+from ruflex.runtime.contracts import PredictionRequest
+from ruflex.runtime.registry import builtin_runtime_registry
 
 
 class EvidenceError(RuntimeError):
@@ -114,26 +116,20 @@ def _artifact_payload(project_root: Path, sha256: str) -> dict:
         return json.loads(handle.read().decode("utf-8"))
 
 
-def _predict_classical(project_root: Path, run, sample: dict[str, float]) -> float:
-    vector = _normalized_vector(run, sample).reshape(-1)
-    payload = _artifact_payload(project_root, run.model_artifact_sha256)
-    if run.model_kind in {"logistic_regression", "linear_regression"}:
-        raw = float(np.dot(np.asarray(payload["coefficients"], dtype=float), vector) + float(payload["intercept"]))
-        return _sigmoid(raw) if run.task == "binary_classification" else raw
-    if run.model_kind == "decision_tree":
-        return _tree_output(payload["tree"], vector, task=run.task)
-    if run.model_kind == "random_forest":
-        predictions = [_tree_output(tree, vector, task=run.task) for tree in payload["trees"]]
-        return float(np.mean(predictions))
-    if run.model_kind == "gradient_boosting":
-        initial = payload.get("initial_raw_prediction")
-        if initial is None:
-            raise EvidenceError("This legacy Gradient Boosting artifact predates reproducible ensemble inference evidence. Retrain the model revision first.")
-        raw = float(initial) + float(payload["parameters"]["learning_rate"]) * sum(
-            _tree_output(tree, vector, task="regression") for tree in payload["trees"]
-        )
-        return _sigmoid(raw) if run.task == "binary_classification" else raw
-    raise EvidenceError(f"Safe declarative prediction is unavailable for model kind {run.model_kind!r}.")
+def _adapter_predict_normalized(project_root: Path, run, values: np.ndarray):
+    """Replay any persisted runtime adapter; evidence code owns no model-kind map."""
+    if not all((run.adapter_key, run.adapter_version, run.adapter_provider, run.preprocessing_artifact_sha256)):
+        raise EvidenceError("Explanation replay requires a persisted adapter and preprocessing identity.")
+    try:
+        adapter = builtin_runtime_registry().resolve_model_adapter(run.adapter_key, version=run.adapter_version)
+    except Exception as error:
+        raise EvidenceError("The persisted model adapter is unavailable for explanation replay.") from error
+    if adapter.descriptor.identity.provider != run.adapter_provider or run.model_kind not in adapter.descriptor.training_model_kinds:
+        raise EvidenceError("The persisted model adapter does not match the requested ExplanationContract.")
+    matrix = np.asarray(values, dtype=float)
+    if matrix.ndim == 1: matrix = matrix.reshape(1, -1)
+    with ArtifactStore(project_root).open(ArtifactRef(sha256=run.model_artifact_sha256)) as handle:
+        return adapter.predict(PredictionRequest(task=run.task, feature_names=tuple(run.feature_columns), features=matrix, artifact=handle.read(), model_spec=run.model_spec, preprocessing_identity=run.preprocessing_artifact_sha256))
 
 
 def _load_anfis_model(project_root: Path, run) -> FlatNeuroFuzzyModel:
@@ -185,9 +181,11 @@ def _training_background_normalized(project_root: Path, run, *, maximum: int = 3
 
 def predict_run_sample(project_root: Path, run_id: UUID, sample: dict[str, float]) -> float:
     run = load_training_run(project_root, run_id)
-    if run.model_kind == "flat_neuro_fuzzy":
-        return _predict_anfis(project_root, run, sample)
-    return _predict_classical(project_root, run, sample)
+    result = _adapter_predict_normalized(project_root, run, _normalized_vector(run, sample))
+    if run.task == "binary_classification":
+        if result.probability is not None: return float(result.probability[0])
+        if result.raw_score is not None: return _sigmoid(float(result.raw_score[0]))
+    return float(result.prediction[0])
 
 
 def _predict_normalized_batch(project_root: Path, run, values: np.ndarray) -> np.ndarray:
@@ -196,34 +194,11 @@ def _predict_normalized_batch(project_root: Path, run, values: np.ndarray) -> np
         matrix = matrix.reshape(1, -1)
     if matrix.shape[1] != len(run.feature_columns):
         raise EvidenceError("Explanation predictor received an incompatible feature matrix.")
-    if run.model_kind == "flat_neuro_fuzzy":
-        model = _load_anfis_model(project_root, run)
-        raw = np.asarray(model.predict(matrix), dtype=float).reshape(-1)
-        return 1.0 / (1.0 + np.exp(-np.clip(raw, -60.0, 60.0))) if run.task == "binary_classification" else raw
-    payload = _artifact_payload(project_root, run.model_artifact_sha256)
-    if run.model_kind in {"logistic_regression", "linear_regression"}:
-        coefficients = np.asarray(payload["coefficients"], dtype=float).reshape(-1)
-        raw = matrix @ coefficients + float(payload["intercept"])
-        return 1.0 / (1.0 + np.exp(-np.clip(raw, -60.0, 60.0))) if run.task == "binary_classification" else raw
-    if run.model_kind == "decision_tree":
-        return np.asarray([_tree_output(payload["tree"], row, task=run.task) for row in matrix], dtype=float)
-    if run.model_kind == "random_forest":
-        return np.asarray([
-            float(np.mean([_tree_output(tree, row, task=run.task) for tree in payload["trees"]]))
-            for row in matrix
-        ], dtype=float)
-    if run.model_kind == "gradient_boosting":
-        initial = payload.get("initial_raw_prediction")
-        if initial is None:
-            raise EvidenceError("This legacy Gradient Boosting artifact predates reproducible ensemble inference evidence. Retrain the model revision first.")
-        raw_values = np.asarray([
-            float(initial) + float(payload["parameters"]["learning_rate"]) * sum(
-                _tree_output(tree, row, task="regression") for tree in payload["trees"]
-            )
-            for row in matrix
-        ], dtype=float)
-        return 1.0 / (1.0 + np.exp(-np.clip(raw_values, -60.0, 60.0))) if run.task == "binary_classification" else raw_values
-    raise EvidenceError(f"SHAP prediction is unavailable for model kind {run.model_kind!r}.")
+    result = _adapter_predict_normalized(project_root, run, matrix)
+    if run.task == "binary_classification":
+        if result.probability is not None: return np.asarray(result.probability, dtype=float).reshape(-1)
+        if result.raw_score is not None: return 1.0 / (1.0 + np.exp(-np.clip(np.asarray(result.raw_score, dtype=float), -60.0, 60.0)))
+    return np.asarray(result.prediction, dtype=float).reshape(-1)
 
 
 def _build_occlusion_explanation(project_root: Path, run_id: UUID, sample: dict[str, float]) -> ExplanationContract:

@@ -4,6 +4,8 @@ from pathlib import Path
 from typing import Literal
 import pandas as pd
 from pydantic import BaseModel, Field
+from sklearn.model_selection import GroupShuffleSplit
+from uuid import UUID, uuid4
 from ruflex.application.artifacts import ArtifactMetadata, ArtifactRef, ArtifactStore
 ROW_IDENTITY_SCHEME = "dataset-fingerprint/source-row/v1"
 
@@ -21,6 +23,32 @@ class DatasetContract(BaseModel):
  dataset_fingerprint:str; source_artifact_sha256:str; target:str; task:Literal['regression','binary_classification','multiclass_classification']; feature_columns:list[str]; id_columns:list[str]=Field(default_factory=list); source_format:Literal['csv','xlsx']='csv'; row_identity_scheme:str=ROW_IDENTITY_SCHEME; role_decisions:dict[str,Literal['target','feature','id']]=Field(default_factory=dict)
  def compare_schema(self,frame:pd.DataFrame):
   expected=set(self.feature_columns)|set(self.id_columns)|{self.target}; actual=set(frame.columns); return SchemaComparison(compatible=expected==actual,missing_columns=sorted(expected-actual),unexpected_columns=sorted(actual-expected))
+class SplitContract(BaseModel):
+ """Immutable, dataset-bound membership contract for a scientific split.
+
+ ``role_source_rows`` is the source of truth.  Training receives those exact
+ rows rather than re-running a random splitter, so reopen/final-test replay
+ cannot silently change group membership.
+ """
+ schema_version:int=1
+ split_id:UUID=Field(default_factory=uuid4)
+ dataset_fingerprint:str
+ dataset_artifact_sha256:str
+ family:Literal['RANDOM','GROUP','TEMPORAL','SITE_HOLDOUT','DEVICE_HOLDOUT','SPATIAL','REGIME']
+ split_seed:int
+ validation_fraction:float=Field(gt=0.,lt=1.)
+ test_fraction:float=Field(ge=0.,lt=1.)
+ group_column:str|None=None
+ time_column:str|None=None
+ site_column:str|None=None
+ role_source_rows:dict[Literal['train','validation','test'],list[int]]
+ role_identity_hashes:dict[Literal['train','validation','test'],str]
+ split_identity:str
+ scientific_note:str=(
+  'This contract records exact source-row membership. It makes the declared split family auditable; it does not establish external validity by itself.'
+ )
+
+ def role_rows(self, role:str)->tuple[int,...]: return tuple(self.role_source_rows[role])
 class AuditFinding(BaseModel): code:str; severity:str; scope:str; evidence:dict; remediation:str; check_version:str='1'
 class DataAuditReport(BaseModel): dataset_fingerprint:str; findings:list[AuditFinding]
 def _is_id_candidate(name: str) -> bool:
@@ -64,6 +92,91 @@ def persist_dataset_contract(project_root:Path,contract:DatasetContract,report:D
  _persist_json(root,"dataset-contract.json",contract)
  _persist_json(root,"data-audit.json",report)
  if profile is not None: _persist_json(root,"dataset-profile.json",profile)
+
+def _split_root(project_root:Path)->Path:
+ root=Path(project_root).resolve()/"data"/"splits"; root.mkdir(parents=True,exist_ok=True); return root
+
+def _rows_hash(dataset_fingerprint:str, rows:list[int])->str:
+ payload={"dataset_fingerprint":dataset_fingerprint,"source_rows":sorted(int(row) for row in rows)}
+ return hashlib.sha256(json.dumps(payload,sort_keys=True,separators=(",",":" )).encode()).hexdigest()
+
+def _split_identity(contract:DatasetContract, *, family:str, split_seed:int, group_column:str|None, role_rows:dict[str,list[int]])->str:
+ payload={"dataset_fingerprint":contract.dataset_fingerprint,"family":family,"split_seed":split_seed,"group_column":group_column,"roles":{key:sorted(value) for key,value in sorted(role_rows.items())}}
+ return hashlib.sha256(json.dumps(payload,sort_keys=True,separators=(",",":" )).encode()).hexdigest()
+
+def _validate_role_rows(rows:dict[str,list[int]])->None:
+ expected={"train","validation","test"}
+ if set(rows)!=expected: raise DatasetConfirmationError("Split roles must be exactly train, validation and test.")
+ sets={role:set(values) for role,values in rows.items()}
+ if any(len(values)!=len(sets[role]) for role,values in rows.items()): raise DatasetConfirmationError("Split contract contains duplicate source rows.")
+ if sets["train"] & sets["validation"] or sets["train"] & sets["test"] or sets["validation"] & sets["test"]: raise DatasetConfirmationError("Split contract roles must be disjoint.")
+ if not sets["train"] or not sets["validation"]: raise DatasetConfirmationError("Split contract requires non-empty TRAIN and VALIDATION roles.")
+
+def create_split_contract(project_root:Path, *, family:Literal['RANDOM','GROUP','TEMPORAL','SITE_HOLDOUT','DEVICE_HOLDOUT','SPATIAL','REGIME'], split_seed:int, validation_fraction:float=.2, test_fraction:float=.2, group_column:str|None=None, time_column:str|None=None, site_column:str|None=None)->SplitContract:
+ """Materialize a declared split before fitting, with exact persisted rows.
+
+ The first V1.3 implementation intentionally supports RANDOM and GROUP.  The
+ other declared families are schema-valid but rejected here rather than being
+ silently approximated by a random row split.
+ """
+ contract=load_dataset_contract(project_root); frame=load_dataset_frame(project_root)
+ if validation_fraction<=0 or test_fraction<0 or validation_fraction+test_fraction>=1: raise DatasetConfirmationError("Split fractions must be positive/valid and sum to less than one.")
+ if family not in {'RANDOM','GROUP'}: raise DatasetConfirmationError(f"Split family {family} is declared but not executable in this release; no random fallback is permitted.")
+ eligible=frame.loc[frame[contract.target].notna()].copy()
+ if eligible.empty: raise DatasetConfirmationError("No target-labelled rows are available for a split contract.")
+ source_rows=[int(row) for row in eligible.index]
+ if family=='GROUP':
+  if not group_column or group_column not in frame.columns: raise DatasetConfirmationError("GROUP split requires an existing group column.")
+  if eligible[group_column].isna().any(): raise DatasetConfirmationError("GROUP split cannot assign rows with missing group identity.")
+  groups=eligible[group_column].astype(str).to_numpy()
+  if len(set(groups))<3: raise DatasetConfirmationError("GROUP split requires at least three distinct groups.")
+  outer=GroupShuffleSplit(n_splits=1,test_size=test_fraction,random_state=int(split_seed))
+  remaining_positions,test_positions=next(outer.split(eligible,groups=groups))
+  remaining=eligible.iloc[remaining_positions]; remaining_groups=groups[remaining_positions]
+  effective_validation=validation_fraction/(1.-test_fraction)
+  inner=GroupShuffleSplit(n_splits=1,test_size=effective_validation,random_state=int(split_seed)+1)
+  train_positions,validation_positions=next(inner.split(remaining,groups=remaining_groups))
+  role_rows={"train":[int(row) for row in remaining.iloc[train_positions].index],"validation":[int(row) for row in remaining.iloc[validation_positions].index],"test":[int(row) for row in eligible.iloc[test_positions].index]}
+  group_sets={role:set(frame.loc[indices,group_column].astype(str)) for role,indices in role_rows.items()}
+  if group_sets['train']&group_sets['validation'] or group_sets['train']&group_sets['test'] or group_sets['validation']&group_sets['test']: raise DatasetConfirmationError("GROUP split generation produced overlapping group identities.")
+ else:
+  # This is deterministic and preserves legacy RANDOM semantics without
+  # exposing future family declarations as random fallbacks.
+  import numpy as np
+  generator=np.random.default_rng(int(split_seed)); shuffled=np.asarray(source_rows,dtype=int); generator.shuffle(shuffled)
+  test_count=round(len(shuffled)*test_fraction); validation_count=round(len(shuffled)*validation_fraction)
+  role_rows={"test":sorted(int(row) for row in shuffled[:test_count]),"validation":sorted(int(row) for row in shuffled[test_count:test_count+validation_count]),"train":sorted(int(row) for row in shuffled[test_count+validation_count:])}
+ _validate_role_rows(role_rows)
+ hashes={role:_rows_hash(contract.dataset_fingerprint,rows) for role,rows in role_rows.items()}
+ result=SplitContract(dataset_fingerprint=contract.dataset_fingerprint,dataset_artifact_sha256=contract.source_artifact_sha256,family=family,split_seed=int(split_seed),validation_fraction=validation_fraction,test_fraction=test_fraction,group_column=group_column,time_column=time_column,site_column=site_column,role_source_rows={role:sorted(rows) for role,rows in role_rows.items()},role_identity_hashes=hashes,split_identity=_split_identity(contract,family=family,split_seed=int(split_seed),group_column=group_column,role_rows=role_rows))
+ _persist_json(_split_root(project_root),f"{result.split_id}.json",result)
+ _atomic_split_pointer(Path(project_root).resolve()/"data"/"active-split-contract.json",result)
+ return result
+
+def _atomic_split_pointer(path:Path,contract:SplitContract)->None:
+ path.parent.mkdir(parents=True,exist_ok=True)
+ fd,temp=tempfile.mkstemp(prefix='.split-',dir=path.parent)
+ try:
+  with os.fdopen(fd,'w',encoding='utf-8') as handle: handle.write(json.dumps({"split_id":str(contract.split_id),"split_identity":contract.split_identity},sort_keys=True)); handle.flush(); os.fsync(handle.fileno())
+  os.replace(temp,path)
+ finally: Path(temp).unlink(missing_ok=True)
+
+def load_split_contract(project_root:Path,split_id:UUID|str|None=None)->SplitContract:
+ if split_id is None:
+  pointer=json.loads((Path(project_root).resolve()/"data"/"active-split-contract.json").read_text(encoding='utf-8')); split_id=pointer['split_id']
+ path=_split_root(project_root)/f"{split_id}.json"; result=SplitContract.model_validate_json(path.read_text(encoding='utf-8'))
+ contract=load_dataset_contract(project_root)
+ if result.dataset_fingerprint!=contract.dataset_fingerprint or result.dataset_artifact_sha256!=contract.source_artifact_sha256: raise DatasetConfirmationError("Split contract does not belong to the active DatasetContract revision.")
+ _validate_role_rows(result.role_source_rows)
+ if any(result.role_identity_hashes[role]!=_rows_hash(contract.dataset_fingerprint,result.role_source_rows[role]) for role in ('train','validation','test')): raise DatasetConfirmationError("Split contract role identity hashes are malformed.")
+ return result
+
+def list_split_contracts(project_root:Path)->list[SplitContract]:
+ contracts=[]
+ for path in _split_root(project_root).glob('*.json'):
+  try: contracts.append(load_split_contract(project_root,path.stem))
+  except (OSError,ValueError,DatasetConfirmationError): continue
+ return sorted(contracts,key=lambda item:str(item.split_id))
 
 def persist_dataset_bytes(project_root:Path,data:bytes,*,original_name:str="dataset.csv",media_type:str="text/csv")->ArtifactRef:
  return ArtifactStore(project_root).ingest_bytes(data,metadata=ArtifactMetadata(media_type=media_type,source_kind="upload",original_name=original_name))

@@ -20,6 +20,10 @@ class DatasetConfig:
     normalization: NormalizationMode = NormalizationMode.STANDARD
     fill_missing: str = "median"
     random_state: int = 42
+    # An application-owned SplitContract supplies exact source-row memberships.
+    # Keeping this primitive type here avoids making the low-level data module
+    # depend on persistence/application services.
+    explicit_split_source_rows: dict[str, list[int]] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -30,6 +34,7 @@ class DatasetConfig:
             "normalization": self.normalization.value,
             "fill_missing": self.fill_missing,
             "random_state": self.random_state,
+            "explicit_split_source_rows": self.explicit_split_source_rows,
         }
 
     @classmethod
@@ -43,6 +48,7 @@ class DatasetConfig:
             normalization=NormalizationMode(payload.get("normalization", NormalizationMode.STANDARD.value)),
             fill_missing=payload.get("fill_missing", "median"),
             random_state=int(payload.get("random_state", 42)),
+            explicit_split_source_rows=payload.get("explicit_split_source_rows"),
         )
 
 
@@ -157,7 +163,25 @@ class TabularDataset:
         if validation_fraction + test_fraction >= 1.0:
             raise ValueError("validation_fraction + test_fraction must be < 1.0.")
 
-        if test_fraction > 0.0:
+        explicit = config.explicit_split_source_rows
+        if explicit is not None:
+            if set(explicit) != {"train", "validation", "test"}:
+                raise ValueError("Explicit split membership must contain train, validation and test roles.")
+            allowed = set(int(value) for value in source_indices)
+            role_sets = {role: set(int(value) for value in rows) for role, rows in explicit.items()}
+            if any(not values <= allowed for values in role_sets.values()):
+                raise ValueError("Explicit split membership refers to rows unavailable after target/missing filtering.")
+            if role_sets["train"] & role_sets["validation"] or role_sets["train"] & role_sets["test"] or role_sets["validation"] & role_sets["test"]:
+                raise ValueError("Explicit split membership roles must be disjoint.")
+            if role_sets["train"] | role_sets["validation"] | role_sets["test"] != allowed:
+                raise ValueError("Explicit split membership must account for every eligible source row.")
+            train_indices = np.asarray(sorted(role_sets["train"]), dtype=int)
+            validation_indices = np.asarray(sorted(role_sets["validation"]), dtype=int)
+            test_indices = np.asarray(sorted(role_sets["test"]), dtype=int)
+            train_targets = cleaned.loc[list(train_indices), config.target_column].to_numpy(dtype=float).reshape(-1, 1)
+            validation_targets = cleaned.loc[list(validation_indices), config.target_column].to_numpy(dtype=float).reshape(-1, 1)
+            test_targets = cleaned.loc[list(test_indices), config.target_column].to_numpy(dtype=float).reshape(-1, 1)
+        elif test_fraction > 0.0:
             train_indices, test_indices, train_targets, test_targets = train_test_split(
                 source_indices, targets, test_size=test_fraction, random_state=config.random_state
             )
@@ -168,7 +192,10 @@ class TabularDataset:
             test_targets = np.empty((0, 1), dtype=float)
 
         effective_validation = validation_fraction / max(1.0 - test_fraction, 1e-12)
-        if effective_validation > 0.0:
+        if explicit is not None:
+            # The immutable contract has already assigned all three roles.
+            pass
+        elif effective_validation > 0.0:
             train_indices, validation_indices, train_targets, validation_targets = train_test_split(
                 train_indices,
                 train_targets,

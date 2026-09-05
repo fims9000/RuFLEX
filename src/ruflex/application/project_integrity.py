@@ -7,7 +7,7 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from ruflex.application.artifacts import ArtifactRecord, ArtifactRef, ArtifactStore
-from ruflex.application.datasets import DatasetContract, DatasetProfile, load_data_audit, load_dataset_contract, load_dataset_profile
+from ruflex.application.datasets import DatasetConfirmationError, DatasetContract, DatasetProfile, SplitContract, load_data_audit, load_dataset_contract, load_dataset_profile, load_split_contract
 from ruflex.application.fis import list_fis_revisions, load_fis
 from ruflex.application.jobs import Job
 from ruflex.application.projects import ProjectService
@@ -40,6 +40,18 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
             issues.append(ProjectIntegrityIssue(code="DATASET_EVIDENCE_MALFORMED", status="FAIL", path="data", detail=str(error)))
     elif any((base / "data").glob("*.json")):
         issues.append(ProjectIntegrityIssue(code="DATASET_EVIDENCE_INCOMPLETE", status="FAIL", path="data", detail="Dataset evidence exists but the canonical DatasetContract is missing."))
+    split_root = base / "data" / "splits"
+    if split_root.exists() and not split_root.is_dir():
+        issues.append(ProjectIntegrityIssue(code="SPLIT_CONTRACT_EVIDENCE_MALFORMED", status="FAIL", path="data/splits", detail="Split-contract evidence path is not a directory."))
+    elif split_root.is_dir():
+        for path in sorted(split_root.glob("*.json")):
+            checked += 1
+            try:
+                split = SplitContract.model_validate_json(path.read_text(encoding="utf-8"))
+                if path.stem != str(split.split_id): raise ValueError("SplitContract filename does not match its persisted identity.")
+                load_split_contract(base, split.split_id)
+            except (FileNotFoundError, ValidationError, ValueError, DatasetConfirmationError, OSError) as error:
+                issues.append(ProjectIntegrityIssue(code="SPLIT_CONTRACT_EVIDENCE_MALFORMED", status="FAIL", path=str(path.relative_to(base)), detail=str(error)))
     try:
         runs = list_training_runs(base); checked += len(runs)
     except (ValidationError, ValueError, FileNotFoundError) as error:
@@ -123,6 +135,15 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                 issues.append(ProjectIntegrityIssue(code="MODEL_ARTIFACT_METADATA_MALFORMED", status="FAIL", path=f"runs/{run.run_id}.json", detail=str(error)))
         if contract is not None and (run.dataset_fingerprint != contract.dataset_fingerprint or run.dataset_artifact_sha256 != contract.source_artifact_sha256):
             issues.append(ProjectIntegrityIssue(code="RUN_DATASET_MISMATCH", status="FAIL", path=f"runs/{run.run_id}.json", detail="TrainingRun dataset identity does not match the active DatasetContract."))
+        if run.split.split_contract_id is not None:
+            try:
+                split_contract = load_split_contract(base, run.split.split_contract_id); checked += 1
+                if split_contract.split_identity != run.split.split_identity or split_contract.family.lower() != run.split.family:
+                    raise DatasetConfirmationError("TrainingRun split provenance differs from its immutable SplitContract.")
+                if dict(split_contract.role_identity_hashes) != dict(run.split.role_identity_hashes):
+                    raise DatasetConfirmationError("TrainingRun role identity hashes differ from its immutable SplitContract.")
+            except (FileNotFoundError, ValidationError, ValueError, DatasetConfirmationError) as error:
+                issues.append(ProjectIntegrityIssue(code="SPLIT_CONTRACT_PROVENANCE_MISMATCH", status="FAIL", path=f"runs/{run.run_id}.json", detail=str(error)))
         if run.preprocessing_artifact_sha256 is not None:
             verification = store.verify(ArtifactRef(sha256=run.preprocessing_artifact_sha256)); checked += 1
             if not verification.valid:

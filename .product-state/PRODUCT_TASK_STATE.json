@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "product_version": "1.2.0-rc1",
-  "active_capability": null,
+  "product_version": "1.3.0-dev",
+  "active_capability": "data_governance_and_runtime_lifecycle",
   "completed_capabilities": [
     "dataset_contracts",
     "training_and_validation_evidence",
@@ -32,11 +32,12 @@
     "v1_2_unified_runtime"
   ],
   "active_acceptance": [
-    "V1.2 unified runtime is release-gated locally; exact source archive and release-side receipt are present.",
+    "V1.3 begins with an immutable SplitContract: real GROUP membership, train-only preprocessing, reopen, final-test replay, Lineage and VerificationBundle must use the same persisted roles.",
+    "Persisted model adapter identity must replay generic Evidence and final-test inference without model-kind dispatch in those lifecycle functions.",
     "Keep unrelated article and interrupted S03 work out of the committed product baseline."
   ],
   "blockers": [],
-  "next_executable_work": "No automatic V1.2 capability change is authorized after the RC1 release gate.",
+  "next_executable_work": "Continue the V1.3 data-governance slice: persisted transform pipeline and leakage/rigor evidence after the verified GROUP SplitContract and adapter lifecycle checkpoint.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",

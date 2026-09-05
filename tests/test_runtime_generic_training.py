@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from ruflex.application.datasets import build_dataset_contract, inspect_dataset, persist_dataset_bytes, persist_dataset_contract, run_data_audit
+from ruflex.application.datasets import build_dataset_contract, create_split_contract, inspect_dataset, persist_dataset_bytes, persist_dataset_contract, run_data_audit
 from ruflex.application.runtime_training import train_with_adapter
 from ruflex.application.training import load_training_run
 from ruflex.application.artifacts import ArtifactRef, ArtifactStore
@@ -54,6 +54,44 @@ def test_generic_core_service_persists_external_adapter_without_project_access(t
     assert reopened.model_kind == "fixture_model"
     assert reopened.preprocessing_artifact_sha256
     assert reopened.split.test_status == "LOCKED_NOT_EVALUATED"
+
+
+def test_external_adapter_receives_a_persisted_group_split_without_test_access(tmp_path: Path) -> None:
+    frame = pd.DataFrame({"patient_id": [f"p{index // 3}" for index in range(45)], "x": range(45), "target": [index % 2 for index in range(45)]})
+    source = persist_dataset_bytes(tmp_path, frame.to_csv(index=False).encode())
+    profile = inspect_dataset(frame, source_artifact_sha256=source.sha256)
+    contract = build_dataset_contract(profile, target="target", task="binary_classification", id_columns=["patient_id"])
+    persist_dataset_contract(tmp_path, contract, run_data_audit(contract, frame), profile)
+    split = create_split_contract(tmp_path, family="GROUP", group_column="patient_id", split_seed=13)
+    registry = RuntimeRegistry(); registry.register_model_adapter(FixtureAdapter()); registry.freeze()
+    run = train_with_adapter(tmp_path, registry=registry, adapter_key="fixture_adapter", model_kind="fixture_model", split_seed=13, training_seed=31, split_contract_id=str(split.split_id))
+    assert run.split.family == "group"
+    assert run.split.split_contract_id == str(split.split_id)
+    assert run.split.role_identity_hashes == split.role_identity_hashes
+    assert run.split.test_count == len(split.role_source_rows["test"])
+
+
+def test_external_adapter_replays_through_evidence_without_model_kind_branches(tmp_path: Path, monkeypatch) -> None:
+    _project(tmp_path)
+    registry = RuntimeRegistry(); registry.register_model_adapter(FixtureAdapter()); registry.freeze()
+    run = train_with_adapter(tmp_path, registry=registry, adapter_key="fixture_adapter", model_kind="fixture_model", seed=4)
+    monkeypatch.setattr("ruflex.application.evidence.builtin_runtime_registry", lambda: registry)
+    from ruflex.application.evidence import predict_run_sample
+    probability = predict_run_sample(tmp_path, run.run_id, {"x": 3.0})
+    assert 0.0 <= probability <= 1.0
+
+
+def test_external_adapter_replays_final_test_via_its_persisted_runtime_identity(tmp_path: Path, monkeypatch) -> None:
+    _project(tmp_path)
+    registry = RuntimeRegistry(); registry.register_model_adapter(FixtureAdapter()); registry.freeze()
+    run = train_with_adapter(tmp_path, registry=registry, adapter_key="fixture_adapter", model_kind="fixture_model", seed=4)
+    from ruflex.application.training import create_validation_evaluation, evaluate_final_test, select_validation_threshold
+    monkeypatch.setattr("ruflex.application.training.builtin_runtime_registry", lambda: registry)
+    evaluation = create_validation_evaluation(tmp_path, run.run_id)
+    threshold = select_validation_threshold(tmp_path, evaluation.evaluation_id)
+    final = evaluate_final_test(tmp_path, evaluation.evaluation_id, threshold_id=threshold.threshold_id)
+    assert final.run_id == run.run_id
+    assert final.prediction_rows
 
 
 @pytest.mark.parametrize("adapter_key,model_kind,parameters", [

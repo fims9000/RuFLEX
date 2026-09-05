@@ -20,7 +20,7 @@ from typing import Any, Literal
 
 from ruflex.application.projects import ProjectError, ProjectReadOnlyError, ProjectService
 from ruflex.application.artifacts import ArtifactMetadata, ArtifactRecord, ArtifactRef, ArtifactStore
-from ruflex.application.datasets import DataAuditReport, DatasetContract, DatasetProfile, build_dataset_contract, inspect_dataset, load_data_audit, load_dataset_contract, load_dataset_frame, load_dataset_profile, persist_dataset_bytes, persist_dataset_contract, run_data_audit
+from ruflex.application.datasets import DataAuditReport, DatasetContract, DatasetProfile, SplitContract, build_dataset_contract, create_split_contract, inspect_dataset, list_split_contracts, load_data_audit, load_dataset_contract, load_dataset_frame, load_dataset_profile, load_split_contract, persist_dataset_bytes, persist_dataset_contract, run_data_audit
 from ruflex.application.generalization import ContractFreezeError, ContractLintReport, GeneralizationContract, GeneralizationContractError, NoveltyAxis, ScopeClassification, ScopeRule, SliceAnalysis, SliceDefinition, classify_scope, create_generalization_contract, create_slice_analysis, freeze_generalization_contract, lint_generalization_contract, load_generalization_contract, load_latest_slice_analysis, persist_generalization_contract, recommend_split_families
 from ruflex.application.fis import FISError, create_default_fis, diagnose_fis, evaluate_fis, evaluate_response_surface, list_fis_revisions, load_fis, load_latest_trace, persist_fis, save_trace_artifact
 from ruflex.application.fis_interop import export_matlab_fis, persist_imported_matlab_fis
@@ -112,6 +112,15 @@ class DatasetConfirmation(BaseModel):
     contract: DatasetContract
     audit: DataAuditReport
 
+class CreateSplitContractRequest(SessionRequest):
+    family: Literal["RANDOM", "GROUP", "TEMPORAL", "SITE_HOLDOUT", "DEVICE_HOLDOUT", "SPATIAL", "REGIME"]
+    split_seed: int = 42
+    validation_fraction: float = Field(default=.2, gt=0., lt=1.)
+    test_fraction: float = Field(default=.2, ge=0., lt=1.)
+    group_column: str | None = None
+    time_column: str | None = None
+    site_column: str | None = None
+
 
 class CreateGeneralizationContractRequest(SessionRequest):
     intended_use: str = Field(min_length=1)
@@ -202,6 +211,7 @@ class TrainModelRequest(SessionRequest):
     seed: int = 42
     split_seed: int | None = None
     training_seed: int | None = None
+    split_contract_id: UUID | None = None
     max_epochs: int = Field(default=20, ge=1, le=2000)
     learning_rate: float = Field(default=0.01, gt=0.0, le=1.0)
     batch_size: int = Field(default=32, ge=1, le=100000)
@@ -725,6 +735,41 @@ def get_dataset_state(session_id: UUID) -> DatasetState:
         raise HTTPException(status_code=422, detail=f"Stored dataset could not be loaded: {error}") from error
 
 
+@app.post("/api/projects/dataset/splits", response_model=SplitContract, status_code=201)
+def create_project_split_contract(request: CreateSplitContractRequest) -> SplitContract:
+    try:
+        session = service.get(request.session_id)
+        if session.project.read_only:
+            raise ProjectReadOnlyError("Project was opened read-only and cannot create a split contract.")
+        return create_split_contract(
+            session.project.root, family=request.family, split_seed=request.split_seed,
+            validation_fraction=request.validation_fraction, test_fraction=request.test_fraction,
+            group_column=request.group_column, time_column=request.time_column, site_column=request.site_column,
+        )
+    except ProjectError as error:
+        raise _project_error(error) from error
+    except (ValueError, OSError) as error:
+        raise HTTPException(status_code=422, detail=f"Split-contract creation failed: {error}") from error
+
+
+@app.get("/api/projects/{session_id}/dataset/splits", response_model=list[SplitContract])
+def list_project_split_contracts(session_id: UUID) -> list[SplitContract]:
+    try:
+        return list_split_contracts(service.get(session_id).project.root)
+    except ProjectError as error:
+        raise _project_error(error) from error
+
+
+@app.get("/api/projects/{session_id}/dataset/splits/{split_id}", response_model=SplitContract)
+def get_project_split_contract(session_id: UUID, split_id: UUID) -> SplitContract:
+    try:
+        return load_split_contract(service.get(session_id).project.root, split_id)
+    except ProjectError as error:
+        raise _project_error(error) from error
+    except (FileNotFoundError, ValueError, OSError) as error:
+        raise HTTPException(status_code=404, detail=f"Split contract is unavailable: {error}") from error
+
+
 @app.get("/api/projects/{session_id}/dataset/features/{feature_name}/range")
 def get_dataset_feature_range(session_id: UUID, feature_name: str) -> dict[str, float]:
     try:
@@ -979,6 +1024,7 @@ def run_training(request: TrainModelRequest) -> TrainingRun:
             max_epochs=request.max_epochs, learning_rate=request.learning_rate,
             batch_size=request.batch_size, patience=request.patience,
             validation_fraction=request.validation_fraction, test_fraction=request.test_fraction,
+            split_contract_id=(None if request.split_contract_id is None else str(request.split_contract_id)),
             max_rules=request.max_rules,
             n_estimators=request.n_estimators, max_depth=request.max_depth,
         )
@@ -1427,6 +1473,7 @@ def run_multi_seed_training_study(request: MultiSeedStudyRequest) -> TrainingStu
             learning_rate=request.learning_rate, batch_size=request.batch_size,
             patience=request.patience, validation_fraction=request.validation_fraction,
             test_fraction=request.test_fraction, max_rules=request.max_rules,
+            split_contract_id=(None if request.split_contract_id is None else str(request.split_contract_id)),
             n_estimators=request.n_estimators, max_depth=request.max_depth,
         )
     except ProjectError as error:
@@ -1443,7 +1490,7 @@ def start_multi_seed_study_job(request: MultiSeedStudyRequest) -> StudyJob:
         _require_trainable_model(request.model_kind, request.adapter_key)
         if session.project.read_only:
             raise ProjectReadOnlyError("Project was opened read-only and cannot start a study.")
-        return start_study_job(session.project.root, name=request.name, model_kind=request.model_kind, seeds=request.seeds, selection_metric=request.selection_metric, randomness_protocol=request.randomness_protocol, split_seed=request.split_seed, training_seed=request.training_seed, max_epochs=request.max_epochs, learning_rate=request.learning_rate, batch_size=request.batch_size, patience=request.patience, validation_fraction=request.validation_fraction, test_fraction=request.test_fraction, max_rules=request.max_rules, n_estimators=request.n_estimators, max_depth=request.max_depth)
+        return start_study_job(session.project.root, name=request.name, model_kind=request.model_kind, seeds=request.seeds, selection_metric=request.selection_metric, randomness_protocol=request.randomness_protocol, split_seed=request.split_seed, training_seed=request.training_seed, split_contract_id=(None if request.split_contract_id is None else str(request.split_contract_id)), max_epochs=request.max_epochs, learning_rate=request.learning_rate, batch_size=request.batch_size, patience=request.patience, validation_fraction=request.validation_fraction, test_fraction=request.test_fraction, max_rules=request.max_rules, n_estimators=request.n_estimators, max_depth=request.max_depth)
     except ProjectError as error:
         raise _project_error(error) from error
     except (TrainingError, ValueError, OSError) as error:

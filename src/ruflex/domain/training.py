@@ -20,12 +20,19 @@ class EpochPoint(BaseModel):
 class SplitProvenance(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    family: Literal["random_holdout"] = "random_holdout"
+    # Legacy runs have random_holdout. New runs bind an application-owned
+    # SplitContract family and exact role membership before model fitting.
+    family: str = "random_holdout"
     # `seed` is retained for RC2.1 project compatibility.  New objects record
     # the seed that controls membership explicitly as `split_seed`.
     seed: int
     split_seed: int | None = None
     split_identity: str | None = None
+    split_contract_id: str | None = None
+    group_column: str | None = None
+    time_column: str | None = None
+    site_column: str | None = None
+    role_identity_hashes: dict[str, str] = Field(default_factory=dict)
     validation_fraction: float
     test_fraction: float
     train_count: int

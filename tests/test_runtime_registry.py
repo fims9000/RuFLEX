@@ -7,10 +7,9 @@ from fastapi.testclient import TestClient
 from ruflex.api.main import app
 from ruflex.application.training import train_model
 from ruflex.runtime import builtin_runtime_registry
-from ruflex.runtime.contracts import RuntimeIdentity
 from ruflex.runtime.errors import RuntimeNotFoundError, RuntimeVersionMismatchError
 from ruflex.runtime.errors import RuntimeDependencyMissingError, RuntimeUntrustedError
-from ruflex.runtime.contracts import ModelAdapterDescriptor
+from ruflex.runtime.contracts import ExplainerDescriptor, ExplainerResult, RuntimeIdentity, ModelAdapterDescriptor
 from dataclasses import dataclass
 
 
@@ -109,3 +108,21 @@ def test_explanation_and_validator_entrypoints_resolve_typed_runtime_implementat
     assert "resolve_component_implementation" in explainer_source
     assert "builders =" not in explainer_source
     assert "resolve_component_implementation" in validator_source
+
+
+def test_category_specific_explainer_entrypoint_is_registered_as_a_component(monkeypatch) -> None:
+    from ruflex.runtime.registry import RuntimeRegistry
+    class FixtureExplainer:
+        descriptor = ExplainerDescriptor(identity=RuntimeIdentity(key="fixture_explainer", version="1", provider="ruflex.tests", kind="explainer"), supported_tasks=("binary_classification",))
+        def supports(self, *, run_capabilities, task, artifact): return True, None
+        def explain(self, request): return ExplainerResult(explanation={"fixture": True})
+    class Point:
+        name = "fixture_explainer"
+        def load(self): return FixtureExplainer
+    class Points:
+        def select(self, *, group): return [Point()] if group == "ruflex.explainers" else []
+    monkeypatch.setattr("ruflex.runtime.registry.metadata.entry_points", lambda: Points())
+    registry = RuntimeRegistry()
+    discovered = registry.discover_entry_points(group="ruflex.explainers")
+    assert [item.identity.key for item in discovered] == ["fixture_explainer"]
+    assert registry.resolve_component_implementation("explainer", "fixture_explainer").descriptor.identity.kind == "explainer"

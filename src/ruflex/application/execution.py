@@ -27,6 +27,7 @@ class LocalExecutor:
     name = "LOCAL"
     _lock = Lock()
     _threads: dict[tuple[Path, UUID], Thread] = {}
+    _cancel_requested: set[tuple[Path, UUID]] = set()
 
     def is_active(self, *, project_root: Path, job_id: UUID) -> bool:
         with self._lock:
@@ -47,8 +48,27 @@ class LocalExecutor:
                         self._threads.pop(key, None)
             thread = Thread(target=runner, name=f"ruflex-{job_id}", daemon=True)
             self._threads[key] = thread
+            self._cancel_requested.discard(key)
             thread.start()
         return True
+
+    def status(self, *, project_root: Path, job_id: UUID) -> str:
+        return "ACTIVE" if self.is_active(project_root=project_root, job_id=job_id) else "IDLE"
+
+    def cancel(self, *, project_root: Path, job_id: UUID) -> bool:
+        """Record a cooperative cancellation request without killing a thread.
+
+        Persisted job services remain the source of truth and own the actual
+        operation-specific stop state; this backend records delivery rather
+        than claiming unsafe forceful thread termination.
+        """
+        key = (Path(project_root).resolve(), job_id)
+        with self._lock:
+            self._cancel_requested.add(key)
+        return True
+
+    def resume(self, *, project_root: Path, job_id: UUID, operation: Callable[[], None]) -> bool:
+        return self.submit(project_root=project_root, job_id=job_id, operation=operation)
 
 
 local_executor = LocalExecutor()
