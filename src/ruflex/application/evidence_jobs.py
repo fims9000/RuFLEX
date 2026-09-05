@@ -57,7 +57,7 @@ def _execute(project_root: Path, job_id: UUID) -> None:
             output = {"explanation_id": _generate(project_root, job.request)}
         elif job.kind == "explanation_check":
             from ruflex.application.evidence import check_explanation
-            result = check_explanation(project_root, UUID(job.request["explanation_id"]))
+            result = check_explanation(project_root, UUID(job.request["explanation_id"]), validator_key=job.request["validator_key"])
             output = {"check_id": str(result.check_id)}
         elif job.kind == "assurance_case":
             from ruflex.application.assurance import create_assurance_case
@@ -107,10 +107,16 @@ def start_explanation_generation_job(
     return load_job(project_root, job.job_id)
 
 
-def start_explanation_check_job(project_root: Path, *, explanation_id: UUID) -> Job:
+def start_explanation_check_job(project_root: Path, *, explanation_id: UUID, validator_key: str = "native_explanation_validator") -> Job:
+    from ruflex.runtime import builtin_runtime_registry
+    from ruflex.runtime.errors import RuntimeErrorBase
+    try:
+        builtin_runtime_registry().resolve_component("explanation_validator", validator_key)
+    except RuntimeErrorBase as error:
+        raise EvidenceJobError(f"Validator runtime is unavailable: {error.code}: {error.message}") from error
     job = _new_job(
         kind="explanation_check",
-        request={"explanation_id": str(explanation_id)},
+        request={"explanation_id": str(explanation_id), "validator_key": validator_key},
         message="Queued for LocalExecutor.",
         log=["Request persisted before LocalExecutor submission."],
     )

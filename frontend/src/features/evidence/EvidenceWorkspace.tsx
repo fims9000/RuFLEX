@@ -17,6 +17,7 @@ import {
   PluginDescriptor,
   RunCapabilityNegotiation,
   RuntimeExplainerDescriptor,
+  RuntimeValidatorDescriptor,
   ProductJob,
   ProjectSummary,
   TrainingRun,
@@ -120,6 +121,8 @@ export function EvidenceWorkspace({
   const [capabilityNegotiation, setCapabilityNegotiation] = useState<RunCapabilityNegotiation | null>(null);
   const [validatorPlugins, setValidatorPlugins] = useState<PluginDescriptor[]>([]);
   const [runtimeExplainers, setRuntimeExplainers] = useState<RuntimeExplainerDescriptor[]>([]);
+  const [runtimeValidators, setRuntimeValidators] = useState<RuntimeValidatorDescriptor[]>([]);
+  const [validatorKey, setValidatorKey] = useState("native_explanation_validator");
 
   useEffect(() => { setSample(initialSample); setComparisonSample(initialSample); }, [initialSample]);
   useEffect(() => setBehaviorResult(restoredBehaviorResult), [restoredBehaviorResult?.result_id]);
@@ -141,6 +144,10 @@ export function EvidenceWorkspace({
     studioApi.getModelCatalog().then(setCatalog).catch(() => setCatalog([]));
     studioApi.getPluginCatalog().then(setValidatorPlugins).catch(() => setValidatorPlugins([]));
     studioApi.getRuntimeExplainers().then(setRuntimeExplainers).catch(() => setRuntimeExplainers([]));
+    studioApi.getRuntimeValidators().then((validators) => {
+      setRuntimeValidators(validators);
+      if (!validators.some((validator) => validator.identity.key === validatorKey)) setValidatorKey(validators[0]?.identity.key ?? "native_explanation_validator");
+    }).catch(() => setRuntimeValidators([]));
   }, []);
   useEffect(() => {
     if (!run) { setCapabilityNegotiation(null); return; }
@@ -235,7 +242,7 @@ export function EvidenceWorkspace({
     setBusy(true);
     setError(null);
     try {
-      let job = await studioApi.startExplanationCheckJob(project.session_id, explanation.explanation_id);
+      let job = await studioApi.startExplanationCheckJob(project.session_id, explanation.explanation_id, validatorKey);
       setExplanationJob(job);
       for (let attempt = 0; attempt < 120 && ["queued", "running"].includes(job.status); attempt += 1) {
         await new Promise((resolve) => window.setTimeout(resolve, 100));
@@ -413,6 +420,7 @@ export function EvidenceWorkspace({
         <section className="evidence-section">
           <div className="feature-toolbar compact-toolbar">
             <div><span className="eyebrow">CHECK EXPLANATION</span><h3>Available technical checks</h3></div>
+            <label className="field-label">Validator<select aria-label="Explanation validator" value={validatorKey} disabled={busy || project.read_only || !runtimeValidators.length} onChange={(event) => setValidatorKey(event.target.value)}>{runtimeValidators.map((validator) => <option key={validator.identity.key} value={validator.identity.key}>{validator.identity.key} · {validator.identity.provider}</option>)}</select></label>
             <Button view="outlined" disabled={busy || project.read_only} onClick={check} data-ruflex-action="explanation.check">Run explanation checks</Button>
           </div>
           {explanationCheck ? (

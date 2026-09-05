@@ -20,6 +20,7 @@ export type ModelCapabilityContract = {
 export type PluginDescriptor = { key: string; version: string; kind: "model_adapter" | "explainer" | "explanation_validator" | "metric" | "exporter" | "execution_backend"; capabilities: Record<string, boolean>; config_schema: Record<string, unknown>; input_schema: Record<string, unknown>; output_schema: Record<string, unknown>; trusted: boolean; scientific_note: string };
 export type ExecutionBackendDescriptor = { identity: { key: string; version: string; provider: string; kind: "execution_backend" }; supports_cancel: boolean; supports_resume: boolean };
 export type RuntimeExplainerDescriptor = { identity: { key: string; version: string; provider: string; kind: "explainer" }; supported_tasks: string[] };
+export type RuntimeValidatorDescriptor = { identity: { key: string; version: string; provider: string; kind: "explanation_validator" } };
 export type RunCapabilityNegotiation = {
   schema_version: number;
   run_id: string;
@@ -489,8 +490,8 @@ export const studioApi = {
     request<ExplanationContract>(`/api/projects/${sessionId}/evidence/explanations/${explanationId}`),
   checkExplanation: (sessionId: string, explanationId: string) =>
     request<ExplanationCheck>("/api/projects/evidence/explanation-checks", { session_id: sessionId, explanation_id: explanationId }),
-  startExplanationCheckJob: (sessionId: string, explanationId: string) =>
-    request<ProductJob>("/api/projects/evidence/explanation-check-jobs", { session_id: sessionId, explanation_id: explanationId }),
+  startExplanationCheckJob: (sessionId: string, explanationId: string, validatorKey = "native_explanation_validator") =>
+    request<ProductJob>("/api/projects/evidence/explanation-check-jobs", { session_id: sessionId, explanation_id: explanationId, validator_key: validatorKey }),
   getLatestExplanationCheck: (sessionId: string) =>
     request<ExplanationCheck>(`/api/projects/${sessionId}/evidence/explanation-checks/latest`),
   getExplanationCheck: (sessionId: string, checkId: string) =>
@@ -568,6 +569,7 @@ export const studioApi = {
     request<TrainingStudy>(`/api/projects/${sessionId}/training/studies/${studyId}`),
   getRuntimeBackends: () => request<ExecutionBackendDescriptor[]>("/api/runtime/backends"),
   getRuntimeExplainers: () => request<RuntimeExplainerDescriptor[]>("/api/runtime/explainers"),
+  getRuntimeValidators: () => request<RuntimeValidatorDescriptor[]>("/api/runtime/validators"),
   startStudyJob: (sessionId: string, config: { name: string; model_kind: string; adapter_key?: string | null; seeds: number[]; randomness_protocol?: "LEGACY_COMBINED" | "TRAINING_VARIABILITY" | "SPLIT_VARIABILITY" | "COMBINED_VARIABILITY"; split_seed?: number | null; training_seed?: number | null; split_contract_id?: string | null; execution_backend_key?: string; selection_metric: string; max_epochs: number; learning_rate: number; batch_size: number; patience: number | null; validation_fraction: number; test_fraction: number; max_rules: number; n_estimators?: number; max_depth?: number | null }) =>
     request<StudyJob>("/api/projects/training/study-jobs", { session_id: sessionId, ...config }),
   getStudyJob: (sessionId: string, jobId: string) =>
