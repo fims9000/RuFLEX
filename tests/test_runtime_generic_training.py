@@ -13,6 +13,11 @@ from ruflex.application.runtime_training import train_with_adapter
 from ruflex.application.training import load_training_run
 from ruflex.application.datasets import load_transform_pipeline_contract
 from ruflex.application.artifacts import ArtifactRef, ArtifactStore
+from ruflex.application.assurance import create_assurance_case
+from ruflex.application.lineage import build_project_lineage
+from ruflex.application.projects import ProjectService
+from ruflex.application.selective import create_selective_policy
+from ruflex.application.verification_bundle import export_verification_bundle, validate_verification_bundle
 from ruflex.domain.evidence import ExplanationContract, FeatureAttribution
 from ruflex.runtime.contracts import ExplainerDescriptor, ExplainerRequest, ExplainerResult, FitRequest, FitResult, ModelAdapterDescriptor, PredictionRequest, PredictionResult, RuntimeIdentity
 from ruflex.runtime.registry import RuntimeRegistry
@@ -158,6 +163,55 @@ def test_external_explainer_is_persisted_by_the_generic_core_route(tmp_path: Pat
     explanation = create_runtime_explanation(tmp_path, explainer_key="fixture_explainer", run_id=run.run_id, sample={"x": 3.0})
     assert explanation.explainer_key == "fixture_explainer"
     assert load_explanation(tmp_path, explanation.explanation_id) == explanation
+
+
+def test_external_runtime_governed_golden_route_reopens_and_exports_portable_evidence(tmp_path: Path, monkeypatch) -> None:
+    """Exercise the generic lifecycle with an external adapter, not a built-in branch."""
+    root = tmp_path / "external-governed-route"
+    ProjectService().create(root, name="External governed route")
+    frame = pd.DataFrame({
+        "patient_id": [f"p{index // 3}" for index in range(45)],
+        "x": range(45),
+        "target": [index % 2 for index in range(45)],
+    })
+    source = persist_dataset_bytes(root, frame.to_csv(index=False).encode())
+    profile = inspect_dataset(frame, source_artifact_sha256=source.sha256)
+    contract = build_dataset_contract(profile, target="target", task="binary_classification", id_columns=["patient_id"])
+    persist_dataset_contract(root, contract, run_data_audit(contract, frame), profile)
+    split = create_split_contract(root, family="GROUP", group_column="patient_id", split_seed=13)
+    registry = RuntimeRegistry()
+    registry.register_model_adapter(FixtureAdapter())
+    registry.register_component(FixtureExplainer.descriptor, implementation=FixtureExplainer())
+    registry.freeze()
+    run = train_with_adapter(
+        root, registry=registry, adapter_key="fixture_adapter", model_kind="fixture_model",
+        split_seed=13, training_seed=31, split_contract_id=str(split.split_id),
+    )
+    monkeypatch.setattr("ruflex.application.training.builtin_runtime_registry", lambda: registry)
+    monkeypatch.setattr("ruflex.runtime.builtin_runtime_registry", lambda: registry)
+    monkeypatch.setattr("ruflex.application.capabilities.builtin_runtime_registry", lambda: registry)
+    from ruflex.application.evidence import create_runtime_explanation, load_explanation
+    from ruflex.application.training import TrainingError, create_validation_evaluation, evaluate_final_test, select_validation_threshold
+
+    evaluation = create_validation_evaluation(root, run.run_id)
+    threshold = select_validation_threshold(root, evaluation.evaluation_id)
+    policy = create_selective_policy(root, evaluation.evaluation_id, confidence_cutoff=.6, threshold_id=threshold.threshold_id)
+    explanation = create_runtime_explanation(root, explainer_key="fixture_explainer", run_id=run.run_id, sample={"x": 3.0})
+    final = evaluate_final_test(root, evaluation.evaluation_id, threshold_id=threshold.threshold_id, selective_policy_id=policy.policy_id)
+    with pytest.raises(TrainingError, match="cannot be tuned after final-test access"):
+        create_selective_policy(root, evaluation.evaluation_id, confidence_cutoff=.7, threshold_id=threshold.threshold_id)
+
+    reopened = ProjectService().open(root, read_only=True)
+    assert reopened.read_only
+    assert load_training_run(root, run.run_id).split.split_contract_id == str(split.split_id)
+    assert load_explanation(root, explanation.explanation_id).explainer_key == "fixture_explainer"
+    lineage = build_project_lineage(root)
+    assert {"dataset", "training_run", "evaluation", "decision_threshold", "selective_policy", "explanation", "final_test_evaluation"} <= {node.kind for node in lineage.nodes}
+    assurance = create_assurance_case(root)
+    exported = export_verification_bundle(root)
+    assert final.run_id == run.run_id
+    assert assurance.assurance_id
+    assert validate_verification_bundle(Path(exported["path"])).status == "PASS"
 
 
 @pytest.mark.parametrize("adapter_key,model_kind,parameters", [
