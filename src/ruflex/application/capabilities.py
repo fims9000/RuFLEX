@@ -74,15 +74,19 @@ def negotiate_run_capabilities(run: TrainingRun) -> RunCapabilityNegotiation:
             decisions=[CapabilityDecision(capability=capability, status="UNAVAILABLE_RUNTIME", reason_code="CAPABILITY_UNAVAILABLE", detail="The persisted run has no resolvable trusted runtime adapter.") for capability in _CAPABILITY_ORDER],
         )
     try:
-        builtin_runtime_registry().resolve_model_adapter(identity.key, version=identity.version)
+        adapter = builtin_runtime_registry().resolve_model_adapter(identity.key, version=identity.version)
     except Exception:
         return RunCapabilityNegotiation(
             run_id=run.run_id, model_kind=run.model_kind, model_artifact_sha256=run.model_artifact_sha256,
             decisions=[CapabilityDecision(capability=capability, status="UNAVAILABLE_RUNTIME", reason_code="CAPABILITY_UNAVAILABLE", detail="The persisted runtime adapter is unavailable in this installation.") for capability in _CAPABILITY_ORDER],
         )
-    catalog = {entry["key"]: entry for entry in list_model_catalog()}
-    entry = catalog.get(_catalog_key(run))
-    capabilities = {} if entry is None else entry["capabilities"]
+    # New evidence is runtime-declared.  The catalog fallback is retained only
+    # for a legacy payload that predates adapter provenance.
+    capabilities = dict(adapter.descriptor.capabilities)
+    if run.adapter_key is None:
+        catalog = {entry["key"]: entry for entry in list_model_catalog()}
+        entry = catalog.get(_catalog_key(run))
+        capabilities = {} if entry is None else entry["capabilities"]
     label = run.model_kind.replace("_", " ")
     decisions: list[CapabilityDecision] = []
     for capability in _CAPABILITY_ORDER:
