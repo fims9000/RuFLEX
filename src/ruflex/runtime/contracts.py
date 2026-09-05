@@ -1,7 +1,10 @@
 """Pure typed contracts for the RuFLEX runtime trust boundary."""
 from __future__ import annotations
 
+from collections.abc import Callable
+from pathlib import Path
 from typing import Any, Literal, Protocol, runtime_checkable
+from uuid import UUID
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field
@@ -132,9 +135,51 @@ class ValidatorResult(BaseModel):
     limits: dict[str, Any] = Field(default_factory=dict)
 
 
+class ExplainerRequest(BaseModel):
+    """Core-bound post-hoc explanation request; no adapter owns persistence."""
+    model_config = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
+
+    project_root: Path
+    run_id: UUID
+    sample: dict[str, float]
+    parameters: dict[str, int | float | str | bool] = Field(default_factory=dict)
+    task: Task
+    run_capabilities: dict[str, str] = Field(default_factory=dict)
+
+
+class ExplainerResult(BaseModel):
+    """Adapter output returned to the application-owned contract persistence path."""
+    model_config = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
+
+    explanation: Any
+
+
 @runtime_checkable
 class ModelAdapter(Protocol):
     descriptor: ModelAdapterDescriptor
 
     def fit(self, request: FitRequest) -> FitResult: ...
     def predict(self, request: PredictionRequest) -> PredictionResult: ...
+
+
+@runtime_checkable
+class ExplainerAdapter(Protocol):
+    descriptor: ExplainerDescriptor
+
+    def supports(self, *, run_capabilities: dict[str, str], task: Task, artifact: str) -> tuple[bool, str | None]: ...
+    def explain(self, request: ExplainerRequest) -> ExplainerResult: ...
+
+
+@runtime_checkable
+class ExplanationValidatorAdapter(Protocol):
+    descriptor: ValidatorDescriptor
+
+    def validate(self, request: ValidatorRequest) -> ValidatorResult: ...
+
+
+@runtime_checkable
+class ExecutionBackendAdapter(Protocol):
+    descriptor: ExecutionBackendDescriptor
+
+    def submit(self, *, project_root: Path, job_id: UUID, operation: Callable[[], None]) -> bool: ...
+    def is_active(self, *, project_root: Path, job_id: UUID) -> bool: ...

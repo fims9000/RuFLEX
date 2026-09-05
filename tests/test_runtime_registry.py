@@ -99,3 +99,13 @@ def test_training_entrypoint_has_no_model_name_dispatch() -> None:
     assert "if model_kind ==" not in source
     assert "elif model_kind" not in source
     assert "resolve_training_model_kind" in source
+
+
+def test_explanation_and_validator_entrypoints_resolve_typed_runtime_implementations() -> None:
+    from ruflex.application.evidence import check_explanation, create_runtime_explanation
+
+    explainer_source = inspect.getsource(create_runtime_explanation)
+    validator_source = inspect.getsource(check_explanation)
+    assert "resolve_component_implementation" in explainer_source
+    assert "builders =" not in explainer_source
+    assert "resolve_component_implementation" in validator_source

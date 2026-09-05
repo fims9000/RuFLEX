@@ -747,6 +747,7 @@ def create_runtime_explanation(
 
     try:
         runtime = builtin_runtime_registry().resolve_component("explainer", explainer_key)
+        adapter = builtin_runtime_registry().resolve_component_implementation("explainer", explainer_key)
     except RuntimeErrorBase as error:
         raise EvidenceError(f"EXPLAINER_RUNTIME_UNAVAILABLE: {error.code}: {error.message}") from error
     run = load_training_run(project_root, run_id)
@@ -755,15 +756,24 @@ def create_runtime_explanation(
     decision = decisions.get(capability)
     if decision is not None and decision.status != "AVAILABLE":
         raise EvidenceError(f"CAPABILITY_UNAVAILABLE: {decision.detail}")
-    values = dict(parameters or {})
-    builders = {
-        "occlusion": lambda: create_occlusion_explanation(project_root, run_id, sample),
-        "integrated_gradients": lambda: create_integrated_gradients_explanation(project_root, run_id, sample, steps=int(values.get("steps", 64))),
-        "gradient_shap": lambda: create_gradient_shap_explanation(project_root, run_id, sample, background_count=int(values.get("background_count", 24))),
-        "shap": lambda: create_permutation_shap_explanation(project_root, run_id, sample, background_count=int(values.get("background_count", 24)), max_evals=None if values.get("max_evals") is None else int(values["max_evals"])),
-        "tree_shap": lambda: create_tree_shap_explanation(project_root, run_id, sample, background_count=int(values.get("background_count", 32))),
-    }
-    return builders[explainer_key]()
+    from ruflex.runtime.contracts import ExplainerRequest
+
+    capability_states = {name: item.status for name, item in decisions.items()}
+    supported, reason = adapter.supports(  # type: ignore[union-attr]
+        run_capabilities=capability_states, task=run.task, artifact=run.model_artifact_sha256,
+    )
+    if not supported:
+        raise EvidenceError(f"CAPABILITY_UNAVAILABLE: {reason or 'Explainer runtime is not applicable.'}")
+    result = adapter.explain(ExplainerRequest(  # type: ignore[union-attr]
+        project_root=Path(project_root).resolve(), run_id=run_id, sample=sample,
+        parameters=dict(parameters or {}), task=run.task, run_capabilities=capability_states,
+    ))
+    explanation = result.explanation
+    if not isinstance(explanation, ExplanationContract):
+        raise EvidenceError("Explainer runtime returned an invalid explanation payload.")
+    if explanation.explainer_key != runtime.identity.key:
+        raise EvidenceError("Explainer runtime returned an explanation with mismatched persisted identity.")
+    return explanation
 
 
 def load_explanation(project_root: Path, explanation_id: UUID) -> ExplanationContract:
@@ -825,11 +835,18 @@ def check_explanation(
 
     try:
         validator = builtin_runtime_registry().resolve_component("explanation_validator", validator_key)
+        implementation = builtin_runtime_registry().resolve_component_implementation("explanation_validator", validator_key)
     except RuntimeErrorBase as error:
         raise EvidenceError(f"VALIDATOR_RUNTIME_UNAVAILABLE: {error.code}: {error.message}") from error
-    if validator.identity.key != NativeExplanationValidatorAdapter.key:
-        raise EvidenceError(f"Validator runtime {validator_key!r} has no product-native execution binding.")
-    return _native_check_explanation(project_root, explanation_id, validator_key=validator.identity.key)
+    from ruflex.runtime.contracts import ValidatorRequest
+
+    result = implementation.validate(ValidatorRequest(  # type: ignore[union-attr]
+        explanation_id=str(explanation_id), input_bindings={"project_root": str(Path(project_root).resolve())},
+    ))
+    check_id = result.limits.get("check_id")
+    if result.validator_identity != validator.identity or not isinstance(check_id, str):
+        raise EvidenceError("Validator runtime returned an invalid typed result binding.")
+    return load_explanation_check(project_root, UUID(check_id))
 
 
 def _native_check_explanation(project_root: Path, explanation_id: UUID, *, validator_key: str) -> ExplanationCheck:

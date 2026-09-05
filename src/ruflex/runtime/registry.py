@@ -26,6 +26,11 @@ class RuntimeRegistry:
             "explanation_validator": {},
             "execution_backend": {},
         }
+        self._component_implementations: dict[str, dict[str, object]] = {
+            "explainer": {},
+            "explanation_validator": {},
+            "execution_backend": {},
+        }
         self._frozen = False
 
     def register_model_adapter(self, adapter: ModelAdapter, *, trusted: bool = True) -> None:
@@ -46,6 +51,7 @@ class RuntimeRegistry:
         self,
         descriptor: ExplainerDescriptor | ValidatorDescriptor | ExecutionBackendDescriptor,
         *,
+        implementation: object | None = None,
         trusted: bool = True,
     ) -> None:
         """Register a non-model runtime component before snapshot freeze.
@@ -61,6 +67,8 @@ class RuntimeRegistry:
         if self._frozen or identity.key in self._components[identity.kind]:
             raise RuntimeDuplicateError(identity.key)
         self._components[identity.kind][identity.key] = descriptor
+        if implementation is not None:
+            self._component_implementations[identity.kind][identity.key] = implementation
 
     def freeze(self) -> "RuntimeRegistry":
         self._frozen = True
@@ -105,6 +113,14 @@ class RuntimeRegistry:
             raise RuntimeVersionMismatchError(key, version)
         return descriptor
 
+    def resolve_component_implementation(self, kind: str, key: str, *, version: str | None = None) -> object:
+        """Resolve a component only after its descriptor/version gate passes."""
+        self.resolve_component(kind, key, version=version)
+        try:
+            return self._component_implementations[kind][key]
+        except KeyError as error:
+            raise RuntimeNotFoundError(key) from error
+
     def snapshot(self) -> dict[str, Any]:
         models = [descriptor.model_dump(mode="json") for descriptor in self.model_descriptors()]
         components = {
@@ -139,17 +155,17 @@ def builtin_runtime_registry() -> RuntimeRegistry:
     global _builtin_registry
     if _builtin_registry is None:
         from ruflex.runtime.builtins import builtin_model_adapters
-        from ruflex.runtime.backends import LOCAL_EXECUTOR
-        from ruflex.runtime.explainers import BUILTIN_EXPLAINERS
-        from ruflex.runtime.validators import NATIVE_EXPLANATION_VALIDATOR
+        from ruflex.runtime.backends import LOCAL_EXECUTOR, local_execution_backend_adapter
+        from ruflex.runtime.explainers import builtin_explainer_adapters
+        from ruflex.runtime.validators import NATIVE_EXPLANATION_VALIDATOR, native_explanation_validator_adapter
 
         registry = RuntimeRegistry()
         for adapter in builtin_model_adapters():
             registry.register_model_adapter(adapter)
-        for descriptor in BUILTIN_EXPLAINERS:
-            registry.register_component(descriptor)
-        registry.register_component(NATIVE_EXPLANATION_VALIDATOR)
-        registry.register_component(LOCAL_EXECUTOR)
+        for adapter in builtin_explainer_adapters():
+            registry.register_component(adapter.descriptor, implementation=adapter)
+        registry.register_component(NATIVE_EXPLANATION_VALIDATOR, implementation=native_explanation_validator_adapter())
+        registry.register_component(LOCAL_EXECUTOR, implementation=local_execution_backend_adapter())
         # Installed entry-point packages cross the trust boundary only through
         # the same descriptor validation as built-ins, before the snapshot is
         # frozen. No discovery occurs in the middle of a run.
