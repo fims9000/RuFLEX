@@ -33,7 +33,7 @@ from ruflex.domain.training import AnalysisComparison, AnalysisEvaluation, Final
 from ruflex.application.jobs import Job
 from ruflex.domain.evidence import ExplanationCheck, ExplanationContract
 from ruflex.domain.evidence import ExplanationReproducibilityAnalysis
-from ruflex.domain.behavior import BehaviorSpec, BehaviorSpecResult
+from ruflex.domain.behavior import BehaviorRevisionComparison, BehaviorSpec, BehaviorSpecResult
 from ruflex.domain.selective import SelectiveDecision, SelectivePredictionPolicy
 from ruflex.domain.stability import StabilityGateApplication, StabilityGatePolicy, StudyStabilityAnalysis
 from ruflex.domain.demo import ConditionMonitoringDemo
@@ -354,6 +354,11 @@ class CreateBehaviorSpecRequest(SessionRequest):
 
 class RunBehaviorSpecRequest(SessionRequest):
     spec_id: UUID
+
+
+class CompareBehaviorResultsRequest(SessionRequest):
+    baseline_result_id: UUID
+    candidate_result_id: UUID
 
 
 class CreateSliceAnalysisRequest(SessionRequest):
@@ -1501,6 +1506,20 @@ def list_behavior_results_route(session_id: UUID) -> list[BehaviorSpecResult]:
         return list_behavior_results(service.get(session_id).project.root)
     except ProjectError as error:
         raise _project_error(error) from error
+
+
+@app.post("/api/projects/evidence/behavior-specs/compare", response_model=BehaviorRevisionComparison, status_code=201)
+def compare_behavior_results_route(request: CompareBehaviorResultsRequest) -> BehaviorRevisionComparison:
+    from ruflex.application.behavior import BehaviorSpecError, compare_behavior_results
+    try:
+        session = service.get(request.session_id)
+        if session.project.read_only:
+            raise ProjectReadOnlyError("Project was opened read-only and cannot persist BehaviorSpec comparison evidence.")
+        return compare_behavior_results(session.project.root, request.baseline_result_id, request.candidate_result_id)
+    except ProjectError as error:
+        raise _project_error(error) from error
+    except (BehaviorSpecError, ValueError, OSError, FileNotFoundError) as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
 
 
 @app.post("/api/projects/training/studies", response_model=TrainingStudy, status_code=201)

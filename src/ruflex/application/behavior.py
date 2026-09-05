@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 from uuid import UUID
@@ -7,7 +8,7 @@ from uuid import UUID
 from ruflex.application.evidence import _atomic_write_text, predict_run_sample
 from ruflex.application.training import load_training_run
 from ruflex.application.fis import evaluate_fis, list_fis_revisions, load_fis
-from ruflex.domain.behavior import BehaviorObservation, BehaviorSpec, BehaviorSpecResult
+from ruflex.domain.behavior import BehaviorObservation, BehaviorRevisionComparison, BehaviorSpec, BehaviorSpecResult
 
 
 class BehaviorSpecError(ValueError):
@@ -18,6 +19,35 @@ def _root(project_root: Path) -> Path:
     root = Path(project_root).resolve() / "evidence" / "behavior-specs"
     root.mkdir(parents=True, exist_ok=True)
     return root
+
+
+def _requirement_identity(spec: BehaviorSpec) -> str:
+    payload = spec.model_dump(mode="json", exclude={"spec_id", "created_at", "run_id", "model_artifact_sha256", "fis_id", "fis_semantic_hash"})
+    return "behavior-requirement:" + hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
+def compare_behavior_results(project_root: Path, baseline_result_id: UUID, candidate_result_id: UUID) -> BehaviorRevisionComparison:
+    results = {item.result_id: item for item in list_behavior_results(project_root)}
+    try:
+        baseline, candidate = results[baseline_result_id], results[candidate_result_id]
+    except KeyError as error:
+        raise BehaviorSpecError("Both persisted BehaviorSpec results are required for a revision comparison.") from error
+    if baseline.result_id == candidate.result_id:
+        raise BehaviorSpecError("BehaviorSpec revision comparison requires two distinct results.")
+    baseline_spec, candidate_spec = load_behavior_spec(project_root, baseline.spec_id), load_behavior_spec(project_root, candidate.spec_id)
+    baseline_requirement, candidate_requirement = _requirement_identity(baseline_spec), _requirement_identity(candidate_spec)
+    if baseline_requirement != candidate_requirement:
+        raise BehaviorSpecError("BehaviorSpec results do not represent the same frozen requirement.")
+    transition = f"{baseline.status}_TO_{candidate.status}"
+    comparison = BehaviorRevisionComparison(
+        requirement_identity=baseline_requirement, baseline_result_id=baseline.result_id, candidate_result_id=candidate.result_id,
+        baseline_status=baseline.status, candidate_status=candidate.status, transition=transition,
+        regression_detected=transition == "PASS_TO_FAIL",
+        baseline_binding=str(baseline.model_artifact_sha256 or baseline.fis_semantic_hash),
+        candidate_binding=str(candidate.model_artifact_sha256 or candidate.fis_semantic_hash),
+    )
+    _atomic_write_text(_root(project_root) / f"comparison-{comparison.comparison_id}.json", comparison.model_dump_json(indent=2))
+    return comparison
 
 
 def create_behavior_spec(project_root: Path, payload: dict) -> BehaviorSpec:

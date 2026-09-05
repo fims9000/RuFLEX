@@ -68,3 +68,24 @@ class BehaviorSpecResult(BaseModel):
     comparison_output: float | None = None
     detail: str
     observations: list[BehaviorObservation] = Field(default_factory=list)
+
+
+class BehaviorRevisionComparison(BaseModel):
+    """Read-only transition evidence for the same requirement across revisions."""
+    model_config = ConfigDict(extra="forbid")
+    schema_version: int = 1
+    comparison_id: UUID = Field(default_factory=uuid4)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    requirement_identity: str
+    baseline_result_id: UUID
+    candidate_result_id: UUID
+    baseline_status: Literal["PASS", "FAIL"]
+    candidate_status: Literal["PASS", "FAIL"]
+    transition: Literal["PASS_TO_PASS", "PASS_TO_FAIL", "FAIL_TO_PASS", "FAIL_TO_FAIL"]
+    regression_detected: bool
+    baseline_binding: str
+    candidate_binding: str
+    scientific_note: str = (
+        "This comparison reports a frozen requirement's status transition across two persisted revisions. "
+        "It does not establish causal attribution for the revision or validate untested requirements."
+    )

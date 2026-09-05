@@ -133,6 +133,12 @@ export type BehaviorSpecResult = {
   result_id: string; created_at?: string; spec_id: string; run_id: string | null; model_artifact_sha256: string | null; fis_id: string | null; fis_semantic_hash: string | null;
   status: "PASS" | "FAIL"; observed_output: number; comparison_output: number | null; detail: string; observations?: Array<{ name: string; output: number; status: "PASS" | "FAIL"; detail: string }>;
 };
+export type BehaviorRevisionComparison = {
+  comparison_id: string; requirement_identity: string; baseline_result_id: string; candidate_result_id: string;
+  baseline_status: "PASS" | "FAIL"; candidate_status: "PASS" | "FAIL";
+  transition: "PASS_TO_PASS" | "PASS_TO_FAIL" | "FAIL_TO_PASS" | "FAIL_TO_FAIL";
+  regression_detected: boolean; baseline_binding: string; candidate_binding: string; scientific_note: string;
+};
 export type SelectivePredictionPolicy = {
   policy_id: string; evaluation_id: string; run_id: string; calibration_id: string | null;
   class_threshold_id: string; class_threshold: number; fit_sample_identity: string;
@@ -496,6 +502,8 @@ export const studioApi = {
     request<BehaviorSpec[]>(`/api/projects/${sessionId}/evidence/behavior-specs`),
   listBehaviorResults: (sessionId: string) =>
     request<BehaviorSpecResult[]>(`/api/projects/${sessionId}/evidence/behavior-specs/results`),
+  compareBehaviorResults: (sessionId: string, baselineResultId: string, candidateResultId: string) =>
+    request<BehaviorRevisionComparison>("/api/projects/evidence/behavior-specs/compare", { session_id: sessionId, baseline_result_id: baselineResultId, candidate_result_id: candidateResultId }),
   createSelectivePolicy: (sessionId: string, evaluationId: string, confidenceCutoff: number, calibrationId: string | null, thresholdId: string | null) =>
     request<SelectivePredictionPolicy>("/api/projects/analyses/selective-policies", { session_id: sessionId, evaluation_id: evaluationId, confidence_cutoff: confidenceCutoff, calibration_id: calibrationId, threshold_id: thresholdId }),
   createStudyStabilityAnalysis: (sessionId: string, studyId: string, evaluationId: string | null, thresholdId: string | null, highConfidenceThreshold = .9, unstableAgreementThreshold = .8) =>
