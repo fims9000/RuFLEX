@@ -14,7 +14,11 @@ class EvidenceJobError(ValueError):
 
 
 def _new_job(kind: str, *, execution_backend_key: str = "local_executor", **values) -> Job:
-    descriptor, _ = resolve_execution_backend(execution_backend_key)
+    from ruflex.runtime.errors import RuntimeErrorBase
+    try:
+        descriptor, _ = resolve_execution_backend(execution_backend_key)
+    except RuntimeErrorBase as error:
+        raise EvidenceJobError(f"Execution backend is unavailable: {error.code}: {error.message}") from error
     return Job(
         kind=kind,
         execution_backend_key=descriptor.identity.key,
@@ -25,7 +29,11 @@ def _new_job(kind: str, *, execution_backend_key: str = "local_executor", **valu
 
 
 def _submit(project_root: Path, job: Job) -> None:
-    descriptor, backend = resolve_execution_backend(job.execution_backend_key or "local_executor")
+    from ruflex.runtime.errors import RuntimeErrorBase
+    try:
+        descriptor, backend = resolve_execution_backend(job.execution_backend_key or "local_executor")
+    except RuntimeErrorBase as error:
+        raise EvidenceJobError(f"Persisted execution backend is unavailable: {error.code}: {error.message}") from error
     if (job.execution_backend_version, job.execution_backend_provider) != (descriptor.identity.version, descriptor.identity.provider):
         raise EvidenceJobError("Persisted job backend identity is incompatible with the active runtime.")
     backend.submit(project_root=project_root, job_id=job.job_id, operation=lambda: _execute(project_root, job.job_id))
@@ -126,16 +134,21 @@ def start_explanation_check_job(project_root: Path, *, explanation_id: UUID, val
     return load_job(project_root, job.job_id)
 
 
-def _start(project_root: Path, kind: str) -> Job:
-    job = _new_job(kind, message="Queued for LocalExecutor.", log=["Request persisted before LocalExecutor submission."])
+def _start(project_root: Path, kind: str, *, execution_backend_key: str = "local_executor") -> Job:
+    job = _new_job(
+        kind,
+        execution_backend_key=execution_backend_key,
+        message="Queued for frozen execution backend.",
+        log=["Request persisted before execution-backend submission."],
+    )
     persist_job(project_root, job)
     _submit(project_root, job)
     return load_job(project_root, job.job_id)
 
 
-def start_assurance_case_job(project_root: Path) -> Job:
-    return _start(project_root, "assurance_case")
+def start_assurance_case_job(project_root: Path, *, execution_backend_key: str = "local_executor") -> Job:
+    return _start(project_root, "assurance_case", execution_backend_key=execution_backend_key)
 
 
-def start_verification_bundle_export_job(project_root: Path) -> Job:
-    return _start(project_root, "verification_bundle_export")
+def start_verification_bundle_export_job(project_root: Path, *, execution_backend_key: str = "local_executor") -> Job:
+    return _start(project_root, "verification_bundle_export", execution_backend_key=execution_backend_key)

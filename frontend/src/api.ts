@@ -532,10 +532,10 @@ export const studioApi = {
   runExhaustiveLab: (sessionId: string, kind: ExhaustiveLabResult["kind"], runId: string | null, gridPoints = 3, maxStates = 10000) => request<ExhaustiveLabResult>("/api/projects/evidence/exhaustive-lab", { session_id: sessionId, kind, run_id: runId, grid_points: gridPoints, max_states: maxStates }),
   getLatestExhaustiveLab: (sessionId: string) => request<ExhaustiveLabResult>(`/api/projects/${sessionId}/evidence/exhaustive-lab/latest`),
   createAssuranceCase: (sessionId: string) => request<AssuranceCase>("/api/projects/evidence/assurance-cases", { session_id: sessionId }),
-  startAssuranceCaseJob: (sessionId: string) => request<ProductJob>("/api/projects/evidence/assurance-jobs", { session_id: sessionId }),
+  startAssuranceCaseJob: (sessionId: string, executionBackendKey = "local_executor") => request<ProductJob>("/api/projects/evidence/assurance-jobs", { session_id: sessionId, execution_backend_key: executionBackendKey }),
   getLatestAssuranceCase: (sessionId: string) => request<AssuranceCase>(`/api/projects/${sessionId}/evidence/assurance-cases/latest`),
   exportVerificationBundle: (sessionId: string) => request<{ path: string; sha256: string; entry_count: number }>("/api/projects/evidence/verification-bundles", { session_id: sessionId }),
-  startVerificationBundleJob: (sessionId: string) => request<ProductJob>("/api/projects/evidence/verification-bundle-jobs", { session_id: sessionId }),
+  startVerificationBundleJob: (sessionId: string, executionBackendKey = "local_executor") => request<ProductJob>("/api/projects/evidence/verification-bundle-jobs", { session_id: sessionId, execution_backend_key: executionBackendKey }),
   validateVerificationBundle: (path: string) => request<VerificationBundleValidation>("/api/verification-bundles/validate", { path }),
   runMultiSeedStudy: (
     sessionId: string,

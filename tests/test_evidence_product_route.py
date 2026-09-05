@@ -470,6 +470,43 @@ def test_assurance_case_is_persisted_independent_gate_evidence(tmp_path: Path) -
         assert exported_fis["operators"]["centroid_sampling"] == "midpoint_cells"
 
 
+def test_assurance_and_bundle_jobs_persist_the_selected_execution_backend(tmp_path: Path) -> None:
+    """All asynchronous evidence operations carry backend provenance, not only XAI jobs."""
+    client = TestClient(app)
+    root = tmp_path / "evidence-backend-provenance"
+    session_id = _project_with_data(client, root)
+
+    assurance = client.post(
+        "/api/projects/evidence/assurance-jobs",
+        json={"session_id": session_id, "execution_backend_key": "local_executor"},
+    )
+    assert assurance.status_code == 202, assurance.text
+    assurance_job = assurance.json()
+    assert assurance_job["execution_backend_key"] == "local_executor"
+    assert assurance_job["execution_backend_provider"] == "ruflex.builtin"
+
+    for _ in range(100):
+        assurance_job = client.get(f"/api/projects/{session_id}/evidence/explanation-jobs/{assurance_job['job_id']}").json()
+        if assurance_job["status"] not in {"queued", "running"}:
+            break
+        time.sleep(0.02)
+    assert assurance_job["status"] == "succeeded", assurance_job
+
+    bundle = client.post(
+        "/api/projects/evidence/verification-bundle-jobs",
+        json={"session_id": session_id, "execution_backend_key": "local_executor"},
+    )
+    assert bundle.status_code == 202, bundle.text
+    assert bundle.json()["execution_backend_key"] == "local_executor"
+
+    unknown = client.post(
+        "/api/projects/evidence/assurance-jobs",
+        json={"session_id": session_id, "execution_backend_key": "missing_backend"},
+    )
+    assert unknown.status_code == 422
+    assert "RUNTIME_NOT_FOUND" in unknown.text
+
+
 def test_verification_bundle_validates_portably_and_fails_closed_on_tampering(tmp_path: Path) -> None:
     from ruflex.application.verification_bundle import validate_verification_bundle
     from ruflex.sdk.studio import validate_bundle
