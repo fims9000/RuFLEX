@@ -113,7 +113,7 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
   const [seedList, setSeedList] = useState("42, 43, 44");
   const [studyMode, setStudyMode] = useState<"TRAINING_VARIABILITY" | "SPLIT_VARIABILITY" | "COMBINED_VARIABILITY">("TRAINING_VARIABILITY");
   const [splitSeed, setSplitSeed] = useState(42);
-  const [splitFamily, setSplitFamily] = useState<"RANDOM" | "GROUP">("RANDOM");
+  const [splitFamily, setSplitFamily] = useState<SplitContract["family"]>("RANDOM");
   const [groupColumn, setGroupColumn] = useState("");
   const [rigorProfile, setRigorProfile] = useState<"EXPLORATORY" | "RESEARCH" | "HIGH_STAKES">("RESEARCH");
   const [splitContract, setSplitContract] = useState<SplitContract | null>(null);
@@ -140,7 +140,7 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
     studioApi.listSplitContracts(project.session_id).then((contracts) => {
       const current = contracts.at(-1) ?? null;
       setSplitContract(current);
-      if (current) { setSplitFamily(current.family === "GROUP" ? "GROUP" : "RANDOM"); setGroupColumn(current.group_column ?? ""); setSplitSeed(current.split_seed); }
+      if (current) { setSplitFamily(current.family); setGroupColumn(current.group_column ?? current.time_column ?? current.site_column ?? current.device_column ?? current.spatial_column ?? current.regime_column ?? ""); setSplitSeed(current.split_seed); }
     }).catch(() => setSplitContract(null));
   }, [project.session_id]);
   useEffect(() => {
@@ -219,8 +219,9 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
   async function freezeSplitContract() {
     setRunning(true); setError(null);
     try {
-      if (splitFamily === "GROUP" && !groupColumn) throw new Error("Choose the group identity column before freezing a GROUP split.");
-      const created = await studioApi.createSplitContract(project.session_id, { family: splitFamily, split_seed: splitSeed, validation_fraction: .2, test_fraction: .2, group_column: splitFamily === "GROUP" ? groupColumn : null });
+      if (splitFamily !== "RANDOM" && !groupColumn) throw new Error("Choose the declared identity column before freezing this split.");
+      const identity = splitFamily === "GROUP" ? { group_column: groupColumn } : splitFamily === "TEMPORAL" ? { time_column: groupColumn } : splitFamily === "SITE_HOLDOUT" ? { site_column: groupColumn } : splitFamily === "DEVICE_HOLDOUT" ? { device_column: groupColumn } : splitFamily === "SPATIAL" ? { spatial_column: groupColumn } : splitFamily === "REGIME" ? { regime_column: groupColumn } : {};
+      const created = await studioApi.createSplitContract(project.session_id, { family: splitFamily, split_seed: splitSeed, validation_fraction: .2, test_fraction: .2, ...identity });
       setSplitContract(created);
     } catch (reason) { setError(reason instanceof Error ? reason.message : "Could not freeze split contract"); }
     finally { setRunning(false); }
@@ -292,8 +293,8 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
           <label className="field-label">Model<select aria-label="Training model" value={modelKind} disabled={running || project.read_only || !compatibleModels.length} onChange={(event) => setModelKind(event.target.value)}>{compatibleModels.map((entry) => <option key={entry.key} value={entry.key === "linear" ? (datasetTask === "regression" ? "linear_regression" : "logistic_regression") : entry.training_model_kinds[0]}>{entry.display_name}</option>)}</select></label>
           <NumberField label="Seed" value={seed} step={1} disabled={running || project.read_only} onChange={setSeed} />
           <NumberField label="Study split seed" value={splitSeed} step={1} disabled={running || project.read_only} onChange={setSplitSeed} />
-          <label className="field-label">Split family<select aria-label="Split family" value={splitFamily} disabled={running || project.read_only} onChange={(event) => setSplitFamily(event.target.value as "RANDOM" | "GROUP")}><option value="RANDOM">Random holdout</option><option value="GROUP">Group holdout</option></select></label>
-          {splitFamily === "GROUP" && <label className="field-label">Group identity<select aria-label="Group identity column" value={groupColumn} disabled={running || project.read_only} onChange={(event) => setGroupColumn(event.target.value)}><option value="">Choose column</option>{dataset.profile.columns.map((column) => <option key={column.name} value={column.name}>{column.name}</option>)}</select></label>}
+          <label className="field-label">Split family<select aria-label="Split family" value={splitFamily} disabled={running || project.read_only} onChange={(event) => setSplitFamily(event.target.value as SplitContract["family"])}><option value="RANDOM">Random holdout</option><option value="GROUP">Group holdout</option><option value="TEMPORAL">Temporal holdout</option><option value="SITE_HOLDOUT">Site holdout</option><option value="DEVICE_HOLDOUT">Device holdout</option><option value="SPATIAL">Spatial-block holdout</option><option value="REGIME">Regime holdout</option></select></label>
+          {splitFamily !== "RANDOM" && <label className="field-label">{splitFamily === "TEMPORAL" ? "Time" : "Declared identity"}<select aria-label="Split identity column" value={groupColumn} disabled={running || project.read_only} onChange={(event) => setGroupColumn(event.target.value)}><option value="">Choose column</option>{dataset.profile.columns.map((column) => <option key={column.name} value={column.name}>{column.name}</option>)}</select></label>}
           <label className="field-label">Rigor profile<select aria-label="Rigor profile" value={rigorProfile} disabled={running || project.read_only} onChange={(event) => setRigorProfile(event.target.value as typeof rigorProfile)}><option value="EXPLORATORY">Exploratory</option><option value="RESEARCH">Research</option><option value="HIGH_STAKES">High stakes</option></select></label>
           {supportsParameter("max_epochs") && <NumberField label="Epochs" value={maxEpochs} min={1} max={2000} step={1} disabled={running || project.read_only} onChange={setMaxEpochs} />}
           {supportsParameter("learning_rate") && <NumberField label="Learning rate" value={learningRate} min={0.000001} max={1} step={0.001} disabled={running || project.read_only} onChange={setLearningRate} />}

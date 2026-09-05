@@ -445,7 +445,7 @@ export const studioApi = {
       session_id: sessionId,
       ...config,
     }),
-  createSplitContract: (sessionId: string, config: { family: "RANDOM" | "GROUP" | "TEMPORAL" | "SITE_HOLDOUT" | "DEVICE_HOLDOUT" | "SPATIAL" | "REGIME"; split_seed: number; validation_fraction: number; test_fraction: number; group_column?: string | null }) =>
+  createSplitContract: (sessionId: string, config: { family: "RANDOM" | "GROUP" | "TEMPORAL" | "SITE_HOLDOUT" | "DEVICE_HOLDOUT" | "SPATIAL" | "REGIME"; split_seed: number; validation_fraction: number; test_fraction: number; group_column?: string | null; time_column?: string | null; site_column?: string | null; device_column?: string | null; spatial_column?: string | null; regime_column?: string | null }) =>
     request<SplitContract>("/api/projects/dataset/splits", { session_id: sessionId, ...config }),
   listSplitContracts: (sessionId: string) => request<SplitContract[]>(`/api/projects/${sessionId}/dataset/splits`),
   getLatestTraining: (sessionId: string) =>
@@ -638,6 +638,11 @@ export type SplitContract = {
   validation_fraction: number;
   test_fraction: number;
   group_column: string | null;
+  time_column: string | null;
+  site_column: string | null;
+  device_column: string | null;
+  spatial_column: string | null;
+  regime_column: string | null;
   role_source_rows: Record<"train" | "validation" | "test", number[]>;
   role_identity_hashes: Record<"train" | "validation" | "test", string>;
   split_identity: string;
