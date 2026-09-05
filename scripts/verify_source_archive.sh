@@ -19,7 +19,8 @@ fi
   PYTHONPATH=src "$python_bin" -m compileall -q src/ruflex
   PYTHONPATH=src "$python_bin" -m pytest -q \
     tests/test_model_catalog.py tests/test_plugins.py tests/test_training_product_route.py \
-    tests/test_runtime_registry.py tests/test_runtime_entrypoint_plugin.py tests/test_runtime_model_adapter_matrix.py
+    tests/test_runtime_registry.py tests/test_runtime_entrypoint_plugin.py tests/test_runtime_model_adapter_matrix.py \
+    tests/test_runtime_explainer_matrix.py
 )
 (
   cd "$archive_root/frontend"

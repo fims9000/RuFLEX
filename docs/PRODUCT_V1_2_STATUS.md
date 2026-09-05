@@ -11,8 +11,10 @@ Target: `1.2.0-rc1` on `feature/v1.2-unified-runtime`.
   and no TEST input in `FitRequest`;
 - read-time compatibility for legacy run evidence and persisted runtime fields
   for new runs/studies/jobs/explanations/checks;
-- runtime introspection API, external entry-point fixture coverage, model matrix,
-  registry-routed explanation creation and Studio primary-action inventory.
+- runtime introspection API, external entry-point fixture coverage,
+  registry-derived model and explainer matrices, registry-routed explanation
+  creation/validation/backend execution, Studio primary-action inventory and
+  axe accessibility baseline.
 
 ## Still required before RC completion
 
