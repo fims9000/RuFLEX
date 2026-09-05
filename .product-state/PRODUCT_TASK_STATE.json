@@ -44,7 +44,10 @@
     "runtime_component_implementation_contract_enforcement",
     "selectable_persisted_execution_backend_for_study_jobs",
     "explicit_external_model_adapter_api_and_studio_binding",
-    "runtime_explainer_studio_and_api_selection"
+    "runtime_explainer_studio_and_api_selection",
+    "runtime_validator_studio_and_api_selection",
+    "execution_backend_provenance_all_evidence_jobs",
+    "final_test_studio_component_boundary"
   ],
   "active_acceptance": [
     "V1.3 persists SplitContract, train-only TransformPipelineContract and leakage-audit evidence through Studio/API, reopen, Lineage, Assurance and VerificationBundle.",
@@ -52,7 +55,7 @@
     "Keep unrelated article and interrupted S03 work out of the committed product baseline."
   ],
   "blockers": [],
-  "next_executable_work": "Continue the next bounded V1.3 governance/runtime slice from verified persisted contracts; retain the completed broad regression and fresh tracked-source archive QA as baseline evidence.",
+  "next_executable_work": "Rebuild an exact tracked-source archive at the current V1.3 HEAD and repeat the fresh archive frontend/browser smoke after the persisted-evidence backend typing correction.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -71,7 +74,7 @@
     "typed_api_errors": "PASS: typed FastAPI error payloads preserve legacy detail; Python suite, frontend unit and Vite build passed",
     "typed_capability_negotiation": "PASS: run-bound capability API, Studio evidence presentation, Python suite, frontend build, and Evidence close/reopen browser route",
     "native_explanation_validator_adapter": "PASS: persisted validator categories and native adapter boundary, focused evidence route tests, frontend build, and Evidence browser route",
-    "current_cycle_full_qa": "PASS: exact HEAD full Python suite and compileall; frontend unit/Vite/Storybook; full 26-spec Playwright suite plus current lifecycle/Evidence route; diff check; fresh tracked-source archive focused artifact/FIS/explanation integrity tests, npm ci, Vite build, and 10 Studio browser checks using the declared RuFLEX Python/browser runtime (archive SHA-256 8e3b9c7d5b2b4c972c2480f1303242a59589512e140850da42ff18da7232c886)",
+    "current_cycle_full_qa": "PASS: exact HEAD Python suite reached 100%; frontend client/unit, Vite and Storybook; full 28-spec Playwright matrix; first archive smoke exposed and then fixed the missing ProductJob execution-backend TypeScript fields. Final archive rebuild remains the next exact action.",
     "plugin_contracts_and_read_only_sdk": "PASS: registered native validator descriptor is available through FastAPI, Studio and read-only SDK; focused Python and Evidence browser tests passed",
     "imported_fis_provenance_integrity": "PASS: project integrity now verifies MATLAB FIS import receipt schema, imported source artifact hash/provenance, and semantic binding to the persisted FIS; focused integrity and FIS tests passed",
     "explanation_evidence_reopen_integrity": "PASS: project integrity now fails closed for malformed or detached persisted ExplanationContract/ExplanationCheck evidence and unresolved active pointers; focused evidence/integrity tests passed",
