@@ -438,6 +438,14 @@ def _session_summary(session: WorkspaceSession) -> ProjectSessionSummary:
 
 def _require_trainable_model(model_kind: str, adapter_key: str | None = None) -> None:
     contract = get_model_capability_contract(model_kind)
+    if contract is None and adapter_key is not None:
+        try:
+            adapter = builtin_runtime_registry().resolve_model_adapter(adapter_key)
+        except RuntimeErrorBase as error:
+            raise _runtime_error(error) from error
+        if not adapter.descriptor.available or not adapter.descriptor.capabilities.get("fit", False) or model_kind not in adapter.descriptor.training_model_kinds:
+            raise HTTPException(status_code=422, detail={"code": "RUNTIME_INCOMPATIBLE", "message": f"Adapter {adapter_key!r} is incompatible with model kind {model_kind!r}."})
+        return
     if contract is None or not contract.available or not contract.capabilities.fit:
         raise HTTPException(status_code=422, detail=f"Model capability is unavailable for training: {model_kind!r}.")
     if adapter_key is not None:
@@ -462,16 +470,33 @@ def get_model_catalog() -> list[dict]:
 @app.get("/api/models")
 def get_models() -> list[dict]:
     """Trusted runtime contracts for dynamic model selection clients."""
-    return [contract.to_dict() for contract in model_capability_contracts()]
+    contracts = [contract.to_dict() for contract in model_capability_contracts()]
+    known = {item["key"] for item in contracts}
+    for descriptor in builtin_runtime_registry().model_descriptors():
+        if descriptor.identity.provider == "ruflex.builtin" or descriptor.identity.key in known:
+            continue
+        contracts.append({
+            "key": descriptor.identity.key, "display_name": descriptor.identity.key.replace("_", " ").title(), "version": descriptor.identity.version,
+            "provider": descriptor.identity.provider, "family": descriptor.family, "supported_tasks": list(descriptor.supported_tasks),
+            "training_model_kinds": list(descriptor.training_model_kinds), "input_modalities": list(descriptor.input_modalities),
+            "available": descriptor.available, "unavailability_reason": descriptor.unavailability_reason,
+            "capabilities": descriptor.capabilities, "supported_explainers": list(descriptor.supported_explainers), "export_formats": [],
+            "config_schema": descriptor.config_schema, "defaults": descriptor.defaults, "parameter_constraints": descriptor.parameter_constraints,
+            "optional_dependencies": list(descriptor.optional_dependencies), "evidence_objects_produced": list(descriptor.evidence_objects_produced), "limitations": list(descriptor.limitations),
+        })
+    return contracts
 
 
 @app.get("/api/models/{model_kind}")
 def get_model(model_kind: str) -> dict:
     """Resolve a concrete training key through the runtime capability source."""
     contract = get_model_capability_contract(model_kind)
-    if contract is None:
-        raise HTTPException(status_code=404, detail=f"Model capability is unavailable: {model_kind!r} is not registered.")
-    return contract.to_dict()
+    if contract is not None:
+        return contract.to_dict()
+    for descriptor in builtin_runtime_registry().model_descriptors():
+        if model_kind in descriptor.training_model_kinds or model_kind == descriptor.identity.key:
+            return next(item for item in get_models() if item["key"] == descriptor.identity.key)
+    raise HTTPException(status_code=404, detail=f"Model capability is unavailable: {model_kind!r} is not registered.")
 
 
 @app.get("/api/capabilities")

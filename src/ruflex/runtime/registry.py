@@ -85,5 +85,9 @@ def builtin_runtime_registry() -> RuntimeRegistry:
         registry = RuntimeRegistry()
         for adapter in builtin_model_adapters():
             registry.register_model_adapter(adapter)
+        # Installed entry-point packages cross the trust boundary only through
+        # the same descriptor validation as built-ins, before the snapshot is
+        # frozen. No discovery occurs in the middle of a run.
+        registry.discover_entry_points()
         _builtin_registry = registry.freeze()
     return _builtin_registry
