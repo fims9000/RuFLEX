@@ -115,6 +115,7 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
   const [splitSeed, setSplitSeed] = useState(42);
   const [splitFamily, setSplitFamily] = useState<"RANDOM" | "GROUP">("RANDOM");
   const [groupColumn, setGroupColumn] = useState("");
+  const [rigorProfile, setRigorProfile] = useState<"EXPLORATORY" | "RESEARCH" | "HIGH_STAKES">("RESEARCH");
   const [splitContract, setSplitContract] = useState<SplitContract | null>(null);
   const [study, setStudy] = useState<TrainingStudy | null>(restoredStudy);
   const [studyJob, setStudyJob] = useState<StudyJob | null>(null);
@@ -197,6 +198,7 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
       const result = await studioApi.runTraining(project.session_id, {
         model_kind: trainingModelKind,
         seed, split_seed: splitContract?.split_seed ?? null, training_seed: seed, split_contract_id: splitContract?.split_id ?? null,
+        rigor_profile: rigorProfile,
         max_epochs: maxEpochs,
         learning_rate: learningRate,
         batch_size: batchSize,
@@ -292,6 +294,7 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
           <NumberField label="Study split seed" value={splitSeed} step={1} disabled={running || project.read_only} onChange={setSplitSeed} />
           <label className="field-label">Split family<select aria-label="Split family" value={splitFamily} disabled={running || project.read_only} onChange={(event) => setSplitFamily(event.target.value as "RANDOM" | "GROUP")}><option value="RANDOM">Random holdout</option><option value="GROUP">Group holdout</option></select></label>
           {splitFamily === "GROUP" && <label className="field-label">Group identity<select aria-label="Group identity column" value={groupColumn} disabled={running || project.read_only} onChange={(event) => setGroupColumn(event.target.value)}><option value="">Choose column</option>{dataset.profile.columns.map((column) => <option key={column.name} value={column.name}>{column.name}</option>)}</select></label>}
+          <label className="field-label">Rigor profile<select aria-label="Rigor profile" value={rigorProfile} disabled={running || project.read_only} onChange={(event) => setRigorProfile(event.target.value as typeof rigorProfile)}><option value="EXPLORATORY">Exploratory</option><option value="RESEARCH">Research</option><option value="HIGH_STAKES">High stakes</option></select></label>
           {supportsParameter("max_epochs") && <NumberField label="Epochs" value={maxEpochs} min={1} max={2000} step={1} disabled={running || project.read_only} onChange={setMaxEpochs} />}
           {supportsParameter("learning_rate") && <NumberField label="Learning rate" value={learningRate} min={0.000001} max={1} step={0.001} disabled={running || project.read_only} onChange={setLearningRate} />}
           {supportsParameter("batch_size") && <NumberField label="Batch size" value={batchSize} min={1} step={1} disabled={running || project.read_only} onChange={setBatchSize} />}
@@ -324,6 +327,7 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
             <code>{run.model_artifact_sha256.slice(0, 24)}…</code>
             {run.preprocessing_artifact_sha256 && <><StatusBadge tone="success">train-only preprocessing persisted</StatusBadge><code>{run.preprocessing_artifact_sha256.slice(0, 24)}…</code></>}
             {run.transform_pipeline_id && <><StatusBadge tone="success">transform pipeline frozen</StatusBadge><code>{run.transform_pipeline_id.slice(0, 12)}…</code></>}
+            {run.leakage_audit_id && <><StatusBadge tone="success">leakage audit persisted</StatusBadge><code>{run.leakage_audit_id.slice(0, 12)}…</code></>}
             <span>seed {run.seed}</span>
             <span>{run.split.train_count}/{run.split.validation_count}/{run.split.test_count} rows</span>
           </div>

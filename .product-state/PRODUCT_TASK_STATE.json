@@ -29,15 +29,17 @@
     "capability_runtime",
     "source_archive_ci",
     "v1_1_release_quality",
-    "v1_2_unified_runtime"
+    "v1_2_unified_runtime",
+    "persisted_transform_pipeline_contracts",
+    "data_leakage_audit_and_rigor_profiles"
   ],
   "active_acceptance": [
-    "V1.3 begins with an immutable SplitContract: real GROUP membership, train-only preprocessing, reopen, final-test replay, Lineage and VerificationBundle must use the same persisted roles.",
-    "Persisted model adapter identity must replay generic Evidence and final-test inference without model-kind dispatch in those lifecycle functions.",
+    "V1.3 persists SplitContract, train-only TransformPipelineContract and leakage-audit evidence through Studio/API, reopen, Lineage, Assurance and VerificationBundle.",
+    "Persisted model adapter identity replays generic Evidence and final-test inference without model-kind dispatch in lifecycle functions.",
     "Keep unrelated article and interrupted S03 work out of the committed product baseline."
   ],
   "blockers": [],
-  "next_executable_work": "Continue the V1.3 data-governance slice: persisted transform pipeline and leakage/rigor evidence after the verified GROUP SplitContract and adapter lifecycle checkpoint.",
+  "next_executable_work": "Advance V1.3 from tabular random/group governance to declared temporal/site/device/spatial/regime split contracts, then extend BehaviorSpec and broad Studio action E2E coverage.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",

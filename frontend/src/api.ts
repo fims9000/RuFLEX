@@ -429,6 +429,7 @@ export const studioApi = {
       split_seed?: number | null;
       training_seed?: number | null;
       split_contract_id?: string | null;
+      rigor_profile?: "EXPLORATORY" | "RESEARCH" | "HIGH_STAKES";
       max_epochs: number;
       learning_rate: number;
       batch_size: number;
@@ -1126,6 +1127,7 @@ export type TrainingRun = {
   normalization: Record<string, unknown>;
   preprocessing_artifact_sha256: string | null;
   transform_pipeline_id?: string | null;
+  leakage_audit_id?: string | null;
   training_summary: {
     source: string;
     epochs_ran: number;

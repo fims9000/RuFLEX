@@ -20,7 +20,7 @@ from typing import Any, Literal
 
 from ruflex.application.projects import ProjectError, ProjectReadOnlyError, ProjectService
 from ruflex.application.artifacts import ArtifactMetadata, ArtifactRecord, ArtifactRef, ArtifactStore
-from ruflex.application.datasets import DataAuditReport, DatasetContract, DatasetProfile, SplitContract, TransformPipelineContract, build_dataset_contract, create_split_contract, inspect_dataset, list_split_contracts, list_transform_pipeline_contracts, load_data_audit, load_dataset_contract, load_dataset_frame, load_dataset_profile, load_split_contract, load_transform_pipeline_contract, persist_dataset_bytes, persist_dataset_contract, run_data_audit
+from ruflex.application.datasets import DataAuditReport, DatasetContract, DatasetProfile, LeakageAuditReport, SplitContract, TransformPipelineContract, build_dataset_contract, create_split_contract, inspect_dataset, list_leakage_audits, list_split_contracts, list_transform_pipeline_contracts, load_data_audit, load_dataset_contract, load_dataset_frame, load_dataset_profile, load_leakage_audit, load_split_contract, load_transform_pipeline_contract, persist_dataset_bytes, persist_dataset_contract, run_data_audit
 from ruflex.application.generalization import ContractFreezeError, ContractLintReport, GeneralizationContract, GeneralizationContractError, NoveltyAxis, ScopeClassification, ScopeRule, SliceAnalysis, SliceDefinition, classify_scope, create_generalization_contract, create_slice_analysis, freeze_generalization_contract, lint_generalization_contract, load_generalization_contract, load_latest_slice_analysis, persist_generalization_contract, recommend_split_families
 from ruflex.application.fis import FISError, create_default_fis, diagnose_fis, evaluate_fis, evaluate_response_surface, list_fis_revisions, load_fis, load_latest_trace, persist_fis, save_trace_artifact
 from ruflex.application.fis_interop import export_matlab_fis, persist_imported_matlab_fis
@@ -212,6 +212,7 @@ class TrainModelRequest(SessionRequest):
     split_seed: int | None = None
     training_seed: int | None = None
     split_contract_id: UUID | None = None
+    rigor_profile: Literal["EXPLORATORY", "RESEARCH", "HIGH_STAKES"] = "RESEARCH"
     max_epochs: int = Field(default=20, ge=1, le=2000)
     learning_rate: float = Field(default=0.01, gt=0.0, le=1.0)
     batch_size: int = Field(default=32, ge=1, le=100000)
@@ -788,6 +789,24 @@ def get_project_transform_pipeline(session_id: UUID, pipeline_id: UUID) -> Trans
         raise HTTPException(status_code=404, detail=f"Transform pipeline is unavailable: {error}") from error
 
 
+@app.get("/api/projects/{session_id}/dataset/leakage-audits", response_model=list[LeakageAuditReport])
+def list_project_leakage_audits(session_id: UUID) -> list[LeakageAuditReport]:
+    try:
+        return list_leakage_audits(service.get(session_id).project.root)
+    except ProjectError as error:
+        raise _project_error(error) from error
+
+
+@app.get("/api/projects/{session_id}/dataset/leakage-audits/{audit_id}", response_model=LeakageAuditReport)
+def get_project_leakage_audit(session_id: UUID, audit_id: UUID) -> LeakageAuditReport:
+    try:
+        return load_leakage_audit(service.get(session_id).project.root, audit_id)
+    except ProjectError as error:
+        raise _project_error(error) from error
+    except (FileNotFoundError, ValueError, OSError) as error:
+        raise HTTPException(status_code=404, detail=f"Leakage audit is unavailable: {error}") from error
+
+
 @app.get("/api/projects/{session_id}/dataset/features/{feature_name}/range")
 def get_dataset_feature_range(session_id: UUID, feature_name: str) -> dict[str, float]:
     try:
@@ -1043,6 +1062,7 @@ def run_training(request: TrainModelRequest) -> TrainingRun:
             batch_size=request.batch_size, patience=request.patience,
             validation_fraction=request.validation_fraction, test_fraction=request.test_fraction,
             split_contract_id=(None if request.split_contract_id is None else str(request.split_contract_id)),
+            rigor_profile=request.rigor_profile,
             max_rules=request.max_rules,
             n_estimators=request.n_estimators, max_depth=request.max_depth,
         )

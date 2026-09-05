@@ -7,7 +7,7 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from ruflex.application.artifacts import ArtifactRecord, ArtifactRef, ArtifactStore
-from ruflex.application.datasets import DatasetConfirmationError, DatasetContract, DatasetProfile, SplitContract, TransformPipelineContract, load_data_audit, load_dataset_contract, load_dataset_profile, load_split_contract, load_transform_pipeline_contract
+from ruflex.application.datasets import DatasetConfirmationError, DatasetContract, DatasetProfile, LeakageAuditReport, SplitContract, TransformPipelineContract, load_data_audit, load_dataset_contract, load_dataset_profile, load_leakage_audit, load_split_contract, load_transform_pipeline_contract
 from ruflex.application.fis import list_fis_revisions, load_fis
 from ruflex.application.jobs import Job
 from ruflex.application.projects import ProjectService
@@ -64,6 +64,18 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                 load_transform_pipeline_contract(base, pipeline.pipeline_id)
             except (FileNotFoundError, ValidationError, ValueError, DatasetConfirmationError, OSError) as error:
                 issues.append(ProjectIntegrityIssue(code="TRANSFORM_PIPELINE_EVIDENCE_MALFORMED", status="FAIL", path=str(path.relative_to(base)), detail=str(error)))
+    leakage_root = base / "data" / "leakage-audits"
+    if leakage_root.exists() and not leakage_root.is_dir():
+        issues.append(ProjectIntegrityIssue(code="LEAKAGE_AUDIT_EVIDENCE_MALFORMED", status="FAIL", path="data/leakage-audits", detail="Leakage-audit evidence path is not a directory."))
+    elif leakage_root.is_dir():
+        for path in sorted(leakage_root.glob("*.json")):
+            checked += 1
+            try:
+                audit = LeakageAuditReport.model_validate_json(path.read_text(encoding="utf-8"))
+                if path.stem != str(audit.audit_id): raise ValueError("LeakageAuditReport filename does not match its persisted identity.")
+                load_leakage_audit(base, audit.audit_id)
+            except (FileNotFoundError, ValidationError, ValueError, DatasetConfirmationError, OSError) as error:
+                issues.append(ProjectIntegrityIssue(code="LEAKAGE_AUDIT_EVIDENCE_MALFORMED", status="FAIL", path=str(path.relative_to(base)), detail=str(error)))
     try:
         runs = list_training_runs(base); checked += len(runs)
     except (ValidationError, ValueError, FileNotFoundError) as error:
@@ -163,6 +175,13 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                     raise DatasetConfirmationError("TransformPipelineContract does not match TrainingRun preprocessing provenance.")
             except (FileNotFoundError, ValidationError, ValueError, DatasetConfirmationError) as error:
                 issues.append(ProjectIntegrityIssue(code="TRANSFORM_PIPELINE_PROVENANCE_MISMATCH", status="FAIL", path=f"runs/{run.run_id}.json", detail=str(error)))
+        if run.leakage_audit_id is not None:
+            try:
+                audit = load_leakage_audit(base, run.leakage_audit_id); checked += 1
+                if audit.status == "FAIL" or audit.transform_pipeline_id != run.transform_pipeline_id or audit.split_contract_id != run.split.split_contract_id:
+                    raise DatasetConfirmationError("LeakageAuditReport does not match TrainingRun provenance.")
+            except (FileNotFoundError, ValidationError, ValueError, DatasetConfirmationError) as error:
+                issues.append(ProjectIntegrityIssue(code="LEAKAGE_AUDIT_PROVENANCE_MISMATCH", status="FAIL", path=f"runs/{run.run_id}.json", detail=str(error)))
         if run.preprocessing_artifact_sha256 is not None:
             verification = store.verify(ArtifactRef(sha256=run.preprocessing_artifact_sha256)); checked += 1
             if not verification.valid:

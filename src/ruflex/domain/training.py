@@ -128,6 +128,7 @@ class TrainingRun(BaseModel):
     # legacy project reopen; newly trained runs must carry this binding.
     preprocessing_artifact_sha256: str | None = None
     transform_pipeline_id: str | None = None
+    leakage_audit_id: str | None = None
     training_summary: dict
     trajectory: list[EpochPoint]
     validation_metrics: dict[str, float]

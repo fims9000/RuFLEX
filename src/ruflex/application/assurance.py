@@ -7,7 +7,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ValidationError
 
-from ruflex.application.datasets import TransformPipelineContract, load_dataset_contract, load_transform_pipeline_contract
+from ruflex.application.datasets import LeakageAuditReport, TransformPipelineContract, load_dataset_contract, load_leakage_audit, load_transform_pipeline_contract
 from ruflex.application.evidence import _atomic_write_text
 from ruflex.application.generalization import GeneralizationContract, SliceAnalysis
 from ruflex.domain.assurance import AssuranceCase, AssuranceClaim, AssuranceGate
@@ -90,6 +90,10 @@ def create_assurance_case(root: Path) -> AssuranceCase:
     transform_ok = all(load_transform_pipeline_contract(base, item.pipeline_id).pipeline_identity == item.pipeline_identity for item in transforms)
     status, risk = _evidence_status(present=bool(transforms), valid=bool(transform_ok), malformed=_has_malformed_object(transforms_root, TransformPipelineContract), unavailable="No persisted train-only transform pipeline exists.", invalid="Transform pipeline provenance is invalid.")
     gates.append(_gate("transform_pipeline", status, [f"transform-pipeline:{x.pipeline_id}" for x in transforms], risk))
+    leakage_root = base / "data" / "leakage-audits"; leakage_audits = _objects(leakage_root, LeakageAuditReport)
+    leakage_ok = leakage_audits and all(load_leakage_audit(base, item.audit_id).status != "FAIL" for item in leakage_audits)
+    status, risk = _evidence_status(present=bool(leakage_audits), valid=bool(leakage_ok), malformed=_has_malformed_object(leakage_root, LeakageAuditReport), unavailable="No persisted data-leakage audit exists.", invalid="A persisted data-leakage audit failed or is invalid.")
+    gates.append(_gate("data_leakage_audit", status, [f"leakage-audit:{x.audit_id}" for x in leakage_audits], risk))
     studies_root = base / "studies"; studies = _objects(studies_root, TrainingStudy)
     status, risk = _evidence_status(present=bool(studies), valid=any(len(x.seed_runs) >= 3 for x in studies), malformed=_has_malformed_object(studies_root, TrainingStudy), unavailable="No valid multi-seed study exists.", invalid="No study contains sufficient seed-run evidence.")
     gates.append(_gate("multi_seed_evidence", status, [f"study:{x.study_id}" for x in studies], risk))

@@ -12,7 +12,7 @@ from pathlib import Path
 import numpy as np
 
 from ruflex.application.artifacts import ArtifactMetadata, ArtifactStore
-from ruflex.application.datasets import create_transform_pipeline_contract, load_dataset_contract, load_dataset_frame, load_split_contract
+from ruflex.application.datasets import create_transform_pipeline_contract, load_dataset_contract, load_dataset_frame, load_split_contract, run_leakage_audit
 from ruflex.application.training import (
     _baseline_metrics, _normalization_dict, _persist_preprocessing_artifact,
     _provenance, _resolve_randomness, _split_identity, _validation_payload,
@@ -58,6 +58,9 @@ def train_with_adapter(
         raise RuntimeIncompatibleError("The resolved validation split is empty.")
     preprocessing_sha = _persist_preprocessing_artifact(project_root, contract, split)
     transform_pipeline = create_transform_pipeline_contract(project_root, contract=contract, split=split, preprocessing_artifact_sha256=preprocessing_sha, split_contract_id=(None if split_contract is None else str(split_contract.split_id)))
+    leakage_audit = run_leakage_audit(project_root, split_contract_id=(None if split_contract is None else str(split_contract.split_id)), transform_pipeline_id=str(transform_pipeline.pipeline_id), rigor_profile=str((parameters or {}).get("rigor_profile", "RESEARCH")).upper())
+    if leakage_audit.status == "FAIL":
+        raise RuntimeIncompatibleError("Data-leakage audit failed; training is blocked until declared provenance is corrected.")
     request = FitRequest(
         task=contract.task, feature_names=tuple(contract.feature_columns),
         X_train=np.asarray(split.train_features), y_train=np.asarray(split.train_targets),
@@ -117,7 +120,7 @@ def train_with_adapter(
         batch_size=int((parameters or {}).get("batch_size", len(split.train_features))), patience=(parameters or {}).get("patience"),
         split=_provenance(contract, split, split_seed=resolved_split, validation_fraction=validation_fraction, test_fraction=test_fraction, split_contract=split_contract),
         model_spec={"model_kind": model_kind, **result.model_spec}, normalization=_normalization_dict(split.normalization),
-        preprocessing_artifact_sha256=preprocessing_sha, transform_pipeline_id=str(transform_pipeline.pipeline_id), training_summary=training_summary, trajectory=trajectory,
+        preprocessing_artifact_sha256=preprocessing_sha, transform_pipeline_id=str(transform_pipeline.pipeline_id), leakage_audit_id=str(leakage_audit.audit_id), training_summary=training_summary, trajectory=trajectory,
         validation_metrics=metrics, prediction_preview=preview, confusion_matrix=confusion, calibration=calibration,
         model_artifact_sha256=artifact.sha256, adapter_key=identity.key, adapter_version=identity.version,
         adapter_provider=identity.provider, adapter_kind=identity.kind, runtime_capability_snapshot_hash=registry.snapshot()["sha256"],

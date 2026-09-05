@@ -68,6 +68,16 @@ class TransformPipelineContract(BaseModel):
  fit_role:Literal['TRAIN']='TRAIN'
  pipeline_identity:str
  scientific_note:str='Transforms are fitted only on TRAIN rows. This provenance boundary does not independently detect every possible data leak.'
+class LeakageAuditReport(BaseModel):
+ schema_version:int=1
+ audit_id:UUID=Field(default_factory=uuid4)
+ dataset_fingerprint:str
+ rigor_profile:Literal['EXPLORATORY','RESEARCH','HIGH_STAKES']='RESEARCH'
+ split_contract_id:str|None=None
+ transform_pipeline_id:str|None=None
+ status:Literal['PASS','WARN','FAIL']
+ findings:list['AuditFinding']=Field(default_factory=list)
+ scientific_note:str='This audit verifies declared provenance invariants. It does not prove absence of every semantic or deployment-specific leakage path.'
 class AuditFinding(BaseModel): code:str; severity:str; scope:str; evidence:dict; remediation:str; check_version:str='1'
 class DataAuditReport(BaseModel): dataset_fingerprint:str; findings:list[AuditFinding]
 def _is_id_candidate(name: str) -> bool:
@@ -237,6 +247,39 @@ def list_transform_pipeline_contracts(project_root:Path)->list[TransformPipeline
   try: pipelines.append(load_transform_pipeline_contract(project_root,path.stem))
   except (OSError,ValueError,DatasetConfirmationError): continue
  return sorted(pipelines,key=lambda item:str(item.pipeline_id))
+
+def _leakage_root(project_root:Path)->Path:
+ root=Path(project_root).resolve()/'data'/'leakage-audits'; root.mkdir(parents=True,exist_ok=True); return root
+
+def run_leakage_audit(project_root:Path, *, split_contract_id:str|None, transform_pipeline_id:str, rigor_profile:Literal['EXPLORATORY','RESEARCH','HIGH_STAKES']='RESEARCH')->LeakageAuditReport:
+ """Fail closed on structural data-leakage signals before a fitted model is persisted."""
+ contract=load_dataset_contract(project_root); findings:list[AuditFinding]=[]
+ if contract.target in contract.feature_columns: findings.append(AuditFinding(code='TARGET_IN_FEATURES',severity='fail',scope='dataset',evidence={'target':contract.target},remediation='Remove the target from model feature columns.'))
+ pipeline=load_transform_pipeline_contract(project_root,transform_pipeline_id)
+ if pipeline.feature_order!=contract.feature_columns: findings.append(AuditFinding(code='FEATURE_ORDER_MISMATCH',severity='fail',scope='transform',evidence={},remediation='Rebuild a transform pipeline for the active DatasetContract.'))
+ if pipeline.fit_role!='TRAIN' or any(step.fit_role!='TRAIN' for step in pipeline.steps): findings.append(AuditFinding(code='NON_TRAIN_TRANSFORM_FIT',severity='fail',scope='transform',evidence={},remediation='Fit all preprocessing steps on TRAIN only.'))
+ if pipeline.split_contract_id!=split_contract_id: findings.append(AuditFinding(code='SPLIT_PIPELINE_BINDING_MISMATCH',severity='fail',scope='provenance',evidence={},remediation='Bind the transform pipeline to the same immutable split contract.'))
+ if split_contract_id is not None:
+  split=load_split_contract(project_root,split_contract_id)
+  if split.family=='GROUP' and not split.group_column: findings.append(AuditFinding(code='GROUP_IDENTITY_MISSING',severity='fail',scope='split',evidence={},remediation='Declare the group identity used by the GROUP split.'))
+ findings.extend(run_data_audit(contract,load_dataset_frame(project_root)).findings)
+ status='FAIL' if any(item.severity=='fail' for item in findings) else ('WARN' if findings else 'PASS')
+ result=LeakageAuditReport(dataset_fingerprint=contract.dataset_fingerprint,rigor_profile=rigor_profile,split_contract_id=split_contract_id,transform_pipeline_id=transform_pipeline_id,status=status,findings=findings)
+ _persist_json(_leakage_root(project_root),f'{result.audit_id}.json',result); return result
+
+def load_leakage_audit(project_root:Path,audit_id:UUID|str)->LeakageAuditReport:
+ result=LeakageAuditReport.model_validate_json((_leakage_root(project_root)/f'{audit_id}.json').read_text(encoding='utf-8'))
+ if result.dataset_fingerprint!=load_dataset_contract(project_root).dataset_fingerprint: raise DatasetConfirmationError('Leakage audit does not belong to the active DatasetContract revision.')
+ if result.transform_pipeline_id: load_transform_pipeline_contract(project_root,result.transform_pipeline_id)
+ if result.split_contract_id: load_split_contract(project_root,result.split_contract_id)
+ return result
+
+def list_leakage_audits(project_root:Path)->list[LeakageAuditReport]:
+ audits=[]
+ for path in _leakage_root(project_root).glob('*.json'):
+  try: audits.append(load_leakage_audit(project_root,path.stem))
+  except (OSError,ValueError,DatasetConfirmationError): continue
+ return sorted(audits,key=lambda item:str(item.audit_id))
 
 def persist_dataset_bytes(project_root:Path,data:bytes,*,original_name:str="dataset.csv",media_type:str="text/csv")->ArtifactRef:
  return ArtifactStore(project_root).ingest_bytes(data,metadata=ArtifactMetadata(media_type=media_type,source_kind="upload",original_name=original_name))

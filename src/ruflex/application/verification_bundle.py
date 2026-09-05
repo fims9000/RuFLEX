@@ -13,7 +13,7 @@ from ruflex.application.assurance import load_latest_assurance_case
 from ruflex.application.evidence import _atomic_write_text
 from ruflex.application.lineage import build_project_lineage
 from ruflex.domain.verification import VerificationBundle, VerificationBundleValidation
-from ruflex.application.datasets import DataAuditReport, DatasetContract, DatasetProfile, SplitContract, TransformPipelineContract, _transform_pipeline_identity
+from ruflex.application.datasets import DataAuditReport, DatasetContract, DatasetProfile, LeakageAuditReport, SplitContract, TransformPipelineContract, _transform_pipeline_identity
 from ruflex.domain.assurance import AssuranceCase
 from ruflex.domain.behavior import BehaviorSpec, BehaviorSpecResult
 from ruflex.domain.evidence import ExplanationCheck, ExplanationContract, ExplanationReproducibilityAnalysis
@@ -51,6 +51,7 @@ def _model_for_entry(name: str) -> type[BaseModel] | None:
     if name == "data/dataset-audit.json": return DataAuditReport
     if name.startswith("data/splits/"): return SplitContract
     if name.startswith("data/transforms/"): return TransformPipelineContract
+    if name.startswith("data/leakage-audits/"): return LeakageAuditReport
     if name.startswith("runs/"): return TrainingRun
     if name.startswith("studies/"): return TrainingStudy
     if name.startswith("analyses/evaluations/"): return AnalysisEvaluation
@@ -95,7 +96,7 @@ def _validate_relationships(objects: list[BaseModel]) -> list[str]:
     by_type: dict[type[BaseModel], set[str]] = {}
     for object_ in objects:
         identifier_field = {
-            SplitContract: "split_id", TransformPipelineContract: "pipeline_id", TrainingRun: "run_id", TrainingStudy: "study_id", AnalysisEvaluation: "evaluation_id", CalibrationTransform: "calibration_id", DecisionThresholdPolicy: "threshold_id", SelectivePredictionPolicy: "policy_id", StudyStabilityAnalysis: "analysis_id", StabilityGatePolicy: "policy_id", FinalTestEvaluation: "final_test_id", ExplanationContract: "explanation_id", ExplanationCheck: "check_id", ExplanationReproducibilityAnalysis: "analysis_id", BehaviorSpec: "spec_id", BehaviorSpecResult: "result_id", AssuranceCase: "assurance_id",
+            SplitContract: "split_id", TransformPipelineContract: "pipeline_id", LeakageAuditReport: "audit_id", TrainingRun: "run_id", TrainingStudy: "study_id", AnalysisEvaluation: "evaluation_id", CalibrationTransform: "calibration_id", DecisionThresholdPolicy: "threshold_id", SelectivePredictionPolicy: "policy_id", StudyStabilityAnalysis: "analysis_id", StabilityGatePolicy: "policy_id", FinalTestEvaluation: "final_test_id", ExplanationContract: "explanation_id", ExplanationCheck: "check_id", ExplanationReproducibilityAnalysis: "analysis_id", BehaviorSpec: "spec_id", BehaviorSpecResult: "result_id", AssuranceCase: "assurance_id",
         }.get(type(object_))
         identifier = getattr(object_, identifier_field) if identifier_field else None
         if identifier is not None: by_type.setdefault(type(object_), set()).add(str(identifier))
@@ -104,6 +105,7 @@ def _validate_relationships(objects: list[BaseModel]) -> list[str]:
     for object_ in objects:
         if isinstance(object_, TrainingRun) and object_.split.split_contract_id is not None and not exists(SplitContract, object_.split.split_contract_id): errors.append(f"TrainingRun {object_.run_id} references missing SplitContract {object_.split.split_contract_id}.")
         if isinstance(object_, TrainingRun) and object_.transform_pipeline_id is not None and not exists(TransformPipelineContract, object_.transform_pipeline_id): errors.append(f"TrainingRun {object_.run_id} references missing TransformPipelineContract {object_.transform_pipeline_id}.")
+        if isinstance(object_, TrainingRun) and object_.leakage_audit_id is not None and not exists(LeakageAuditReport, object_.leakage_audit_id): errors.append(f"TrainingRun {object_.run_id} references missing LeakageAuditReport {object_.leakage_audit_id}.")
         if isinstance(object_, TransformPipelineContract) and object_.pipeline_identity != _transform_pipeline_identity(object_): errors.append(f"TransformPipelineContract {object_.pipeline_id} has an invalid immutable pipeline identity.")
         if isinstance(object_, AnalysisEvaluation) and not exists(TrainingRun, object_.run_id): errors.append(f"Evaluation {object_.evaluation_id} references missing TrainingRun {object_.run_id}.")
         elif isinstance(object_, CalibrationTransform) and (not exists(AnalysisEvaluation, object_.evaluation_id) or not exists(TrainingRun, object_.run_id)): errors.append(f"Calibration {object_.calibration_id} has a broken evaluation/run reference.")
@@ -171,6 +173,8 @@ def _declarative_paths(base: Path) -> list[Path]:
     if split_root.is_dir(): result.extend(path for path in sorted(split_root.glob("*.json")) if path.is_file())
     transform_root = base / "data" / "transforms"
     if transform_root.is_dir(): result.extend(path for path in sorted(transform_root.glob("*.json")) if path.is_file())
+    leakage_root = base / "data" / "leakage-audits"
+    if leakage_root.is_dir(): result.extend(path for path in sorted(leakage_root.glob("*.json")) if path.is_file())
     for directory in _EVIDENCE_DIRS:
         root = base / directory
         if not root.is_dir(): continue
