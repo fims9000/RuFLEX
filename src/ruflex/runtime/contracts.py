@@ -95,6 +95,43 @@ class PredictionResult(BaseModel):
     raw_score: list[float] | None = None
 
 
+class ExplainerDescriptor(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    identity: RuntimeIdentity
+    supported_tasks: tuple[Task, ...]
+    required_capabilities: tuple[str, ...] = ()
+    parameters_schema: dict[str, Any] = Field(default_factory=dict)
+    limitations: tuple[str, ...] = ()
+
+
+class ValidatorDescriptor(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    identity: RuntimeIdentity
+    checks: tuple[str, ...]
+    limitations: tuple[str, ...] = ()
+
+
+class ExecutionBackendDescriptor(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    identity: RuntimeIdentity
+    supports_cancel: bool = False
+    supports_resume: bool = False
+
+
+class ValidatorRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    explanation_id: str
+    input_bindings: dict[str, str] = Field(default_factory=dict)
+
+
+class ValidatorResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    status: Literal["PASS", "FAIL", "NOT_APPLICABLE", "ERROR"]
+    validator_identity: RuntimeIdentity
+    checks: list[dict[str, Any]] = Field(default_factory=list)
+    limits: dict[str, Any] = Field(default_factory=dict)
+
+
 @runtime_checkable
 class ModelAdapter(Protocol):
     descriptor: ModelAdapterDescriptor

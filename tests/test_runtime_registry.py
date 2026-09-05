@@ -51,3 +51,10 @@ def test_runtime_api_exposes_frozen_snapshot_and_typed_lookup() -> None:
     missing = client.get("/api/runtime/models/missing")
     assert missing.status_code == 422
     assert missing.json()["detail"]["code"] == "RUNTIME_NOT_FOUND"
+
+
+def test_runtime_api_declares_explainers_validator_and_backend() -> None:
+    client = TestClient(app)
+    assert {item["identity"]["key"] for item in client.get("/api/runtime/explainers").json()} >= {"occlusion", "tree_shap", "integrated_gradients"}
+    assert client.get("/api/runtime/validators").json()[0]["identity"]["key"] == "native_explanation_validator"
+    assert client.get("/api/runtime/backends").json()[0]["identity"]["key"] == "local_executor"

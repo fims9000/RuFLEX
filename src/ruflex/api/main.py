@@ -481,6 +481,24 @@ def get_runtime_models() -> list[dict[str, object]]:
     return [item.model_dump(mode="json") for item in builtin_runtime_registry().model_descriptors()]
 
 
+@app.get("/api/runtime/explainers")
+def get_runtime_explainers() -> list[dict[str, object]]:
+    from ruflex.runtime.explainers import BUILTIN_EXPLAINERS
+    return [item.model_dump(mode="json") for item in BUILTIN_EXPLAINERS]
+
+
+@app.get("/api/runtime/validators")
+def get_runtime_validators() -> list[dict[str, object]]:
+    from ruflex.runtime.validators import NATIVE_EXPLANATION_VALIDATOR
+    return [NATIVE_EXPLANATION_VALIDATOR.model_dump(mode="json")]
+
+
+@app.get("/api/runtime/backends")
+def get_runtime_backends() -> list[dict[str, object]]:
+    from ruflex.runtime.backends import LOCAL_EXECUTOR
+    return [LOCAL_EXECUTOR.model_dump(mode="json")]
+
+
 @app.get("/api/runtime/{kind}/{key}")
 def get_runtime_component(kind: str, key: str) -> dict[str, object]:
     if kind != "models":
