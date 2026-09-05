@@ -947,7 +947,7 @@ def list_training_runs(project_root: Path) -> list[TrainingRun]:
     return sorted(runs, key=lambda run: run.created_at)
 
 
-def train_model(project_root: Path, *, model_kind: str, **config) -> TrainingRun:
+def train_model(project_root: Path, *, model_kind: str, adapter_key: str | None = None, **config) -> TrainingRun:
     """Run one declared catalog adapter and record its wall-clock training time.
 
     The registry resolves a declared adapter before any concrete training code.
@@ -963,7 +963,9 @@ def train_model(project_root: Path, *, model_kind: str, **config) -> TrainingRun
 
     try:
         registry = builtin_runtime_registry()
-        adapter = registry.resolve_training_model_kind(model_kind)
+        adapter = registry.resolve_model_adapter(adapter_key) if adapter_key is not None else registry.resolve_training_model_kind(model_kind)
+        if model_kind not in adapter.descriptor.training_model_kinds:
+            raise TrainingError(f"Adapter {adapter.descriptor.identity.key!r} cannot train model kind {model_kind!r}.")
         run = train_with_adapter(
             project_root, registry=registry, adapter_key=adapter.descriptor.identity.key,
             model_kind=model_kind, seed=config.get("seed"), split_seed=config.get("split_seed"),

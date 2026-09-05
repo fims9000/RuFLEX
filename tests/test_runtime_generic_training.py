@@ -141,6 +141,16 @@ def test_external_adapter_replays_through_evidence_without_model_kind_branches(t
     assert 0.0 <= probability <= 1.0
 
 
+def test_train_model_uses_an_explicit_external_adapter_identity(tmp_path: Path, monkeypatch) -> None:
+    _project(tmp_path)
+    registry = RuntimeRegistry(); registry.register_model_adapter(FixtureAdapter()); registry.freeze()
+    monkeypatch.setattr("ruflex.runtime.registry.builtin_runtime_registry", lambda: registry)
+    from ruflex.application.training import train_model
+
+    run = train_model(tmp_path, model_kind="fixture_model", adapter_key="fixture_adapter", seed=4)
+    assert (run.model_kind, run.adapter_key, run.adapter_provider) == ("fixture_model", "fixture_adapter", "ruflex.tests")
+
+
 def test_external_adapter_replays_final_test_via_its_persisted_runtime_identity(tmp_path: Path, monkeypatch) -> None:
     _project(tmp_path)
     registry = RuntimeRegistry(); registry.register_model_adapter(FixtureAdapter()); registry.freeze()

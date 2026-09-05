@@ -155,9 +155,9 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
     if (!backends.some((backend) => backend.identity.key === executionBackendKey)) setExecutionBackendKey(backends[0]?.identity.key ?? "local_executor");
   }).catch(() => setExecutionBackends([])); }, []);
   const datasetTask = dataset?.contract.task;
-  const catalogKey = (kind: string) => kind === "logistic_regression" || kind === "linear_regression" ? "linear" : kind;
   const compatibleModels = useMemo(() => catalog.filter((entry) => entry.available && entry.capabilities.fit && !!datasetTask && entry.supported_tasks.includes(datasetTask)), [catalog, datasetTask]);
-  const selectedModel = compatibleModels.find((entry) => entry.key === catalogKey(modelKind)) ?? null;
+  const selectedModel = compatibleModels.find((entry) => entry.training_model_kinds.includes(modelKind)) ?? null;
+  const selectedAdapterKey = selectedModel?.provider === "ruflex.builtin" ? null : selectedModel?.key ?? null;
   const supportsParameter = (name: string) => Boolean(selectedModel?.parameter_constraints[name]);
   const canExactTreePath = runCapabilities?.decisions.some((decision) => decision.capability === "exact_tree_path" && decision.status === "AVAILABLE") ?? false;
   useEffect(() => {
@@ -172,7 +172,7 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
     if ("max_depth" in defaults) setMaxDepth(typeof defaults.max_depth === "number" ? defaults.max_depth : null);
   }, [selectedModel?.key]);
   useEffect(() => {
-    if (compatibleModels.length && !compatibleModels.some((entry) => entry.key === catalogKey(modelKind))) setModelKind(compatibleModels[0].training_model_kinds[0]);
+    if (compatibleModels.length && !compatibleModels.some((entry) => entry.training_model_kinds.includes(modelKind))) setModelKind(compatibleModels[0].training_model_kinds[0]);
   }, [compatibleModels, modelKind]);
   const trainingModelKind = modelKind;
   useEffect(() => {
@@ -202,7 +202,7 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
     setError(null);
     try {
       const result = await studioApi.runTraining(project.session_id, {
-        model_kind: trainingModelKind,
+        model_kind: trainingModelKind, adapter_key: selectedAdapterKey,
         seed, split_seed: splitContract?.split_seed ?? null, training_seed: seed, split_contract_id: splitContract?.split_id ?? null,
         rigor_profile: rigorProfile,
         max_epochs: maxEpochs,
@@ -243,7 +243,7 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
     try {
       const selectionMetric = dataset?.contract.task === "regression" ? "rmse" : "f1";
       if (splitContract && studyMode !== "TRAINING_VARIABILITY") throw new Error("A frozen SplitContract can be used only with fixed-split training variability studies.");
-      let job = await studioApi.startStudyJob(project.session_id, { name: `Study ${new Date().toLocaleString()}`, model_kind: trainingModelKind, seeds, randomness_protocol: studyMode, split_seed: splitContract?.split_seed ?? splitSeed, training_seed: splitSeed, split_contract_id: splitContract?.split_id ?? null, execution_backend_key: executionBackendKey, selection_metric: selectionMetric, max_epochs: maxEpochs, learning_rate: learningRate, batch_size: batchSize, patience, validation_fraction: .2, test_fraction: .2, max_rules: maxRules, n_estimators: nEstimators, max_depth: maxDepth });
+      let job = await studioApi.startStudyJob(project.session_id, { name: `Study ${new Date().toLocaleString()}`, model_kind: trainingModelKind, adapter_key: selectedAdapterKey, seeds, randomness_protocol: studyMode, split_seed: splitContract?.split_seed ?? splitSeed, training_seed: splitSeed, split_contract_id: splitContract?.split_id ?? null, execution_backend_key: executionBackendKey, selection_metric: selectionMetric, max_epochs: maxEpochs, learning_rate: learningRate, batch_size: batchSize, patience, validation_fraction: .2, test_fraction: .2, max_rules: maxRules, n_estimators: nEstimators, max_depth: maxDepth });
       await observeStudy(job);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Multi-seed study failed");
