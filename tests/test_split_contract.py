@@ -8,11 +8,13 @@ from ruflex.api.main import app
 from ruflex.application.datasets import (
     DatasetConfirmationError,
     build_dataset_contract,
+    create_transform_pipeline_contract,
     create_split_contract,
     inspect_dataset,
     load_split_contract,
     persist_dataset_bytes,
     persist_dataset_contract,
+    run_leakage_audit,
 )
 from ruflex.application.datasets import run_data_audit
 from ruflex.application.lineage import build_project_lineage
@@ -72,6 +74,59 @@ def test_temporal_and_site_contracts_materialize_exact_nonrandom_roles(tmp_path)
     role_sites = {role: set(frame.loc[rows, "site"]) for role, rows in site.role_source_rows.items()}
     assert not (role_sites["train"] & role_sites["validation"])
     assert not (role_sites["train"] & role_sites["test"])
+
+
+def test_temporal_split_rejects_shared_boundary_timestamp(tmp_path) -> None:
+    frame = _frame().assign(event_time=[index // 2 for index in range(45)])
+    artifact = persist_dataset_bytes(tmp_path, frame.to_csv(index=False).encode(), original_name="boundary-times.csv")
+    profile = inspect_dataset(frame, source_artifact_sha256=artifact.sha256)
+    contract = build_dataset_contract(profile, target="target", task="binary_classification", id_columns=["patient_id"])
+    persist_dataset_contract(tmp_path, contract, report=run_data_audit(contract, frame), profile=profile)
+
+    with pytest.raises(DatasetConfirmationError, match="strict forward role boundaries"):
+        create_split_contract(tmp_path, family="TEMPORAL", time_column="event_time", split_seed=19)
+
+
+def test_leakage_audit_records_target_derived_feature_signal(tmp_path) -> None:
+    frame = pd.DataFrame({
+        "x": [0.0, 1.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0],
+        "target_copy": [0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
+        "target": [0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
+    })
+    artifact = persist_dataset_bytes(tmp_path, frame.to_csv(index=False).encode(), original_name="audit.csv")
+    profile = inspect_dataset(frame, source_artifact_sha256=artifact.sha256)
+    contract = build_dataset_contract(profile, target="target", task="binary_classification")
+    persist_dataset_contract(tmp_path, contract, report=run_data_audit(contract, frame), profile=profile)
+    split_contract = create_split_contract(tmp_path, family="RANDOM", split_seed=19)
+    split = TabularDataset.from_dataframe(frame).split(DatasetConfig(
+        target_column="target", feature_columns=tuple(contract.feature_columns), explicit_split_source_rows=split_contract.role_source_rows,
+    ))
+    pipeline = create_transform_pipeline_contract(tmp_path, contract=contract, split=split, preprocessing_artifact_sha256="a" * 64, split_contract_id=str(split_contract.split_id))
+    audit = run_leakage_audit(tmp_path, split_contract_id=str(split_contract.split_id), transform_pipeline_id=str(pipeline.pipeline_id))
+
+    assert audit.status == "WARN"
+    assert {finding.code for finding in audit.findings} >= {"TARGET_DERIVED_FEATURE"}
+
+
+def test_leakage_audit_records_conflicting_duplicate_feature_vectors(tmp_path) -> None:
+    frame = pd.DataFrame({
+        "x": [0.0, 0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0],
+        "z": [3.0, 3.0, 2.0, 1.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0],
+        "target": [0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
+    })
+    artifact = persist_dataset_bytes(tmp_path, frame.to_csv(index=False).encode(), original_name="duplicates.csv")
+    profile = inspect_dataset(frame, source_artifact_sha256=artifact.sha256)
+    contract = build_dataset_contract(profile, target="target", task="binary_classification")
+    persist_dataset_contract(tmp_path, contract, report=run_data_audit(contract, frame), profile=profile)
+    split_contract = create_split_contract(tmp_path, family="RANDOM", split_seed=19)
+    split = TabularDataset.from_dataframe(frame).split(DatasetConfig(
+        target_column="target", feature_columns=tuple(contract.feature_columns), explicit_split_source_rows=split_contract.role_source_rows,
+    ))
+    pipeline = create_transform_pipeline_contract(tmp_path, contract=contract, split=split, preprocessing_artifact_sha256="b" * 64, split_contract_id=str(split_contract.split_id))
+    audit = run_leakage_audit(tmp_path, split_contract_id=str(split_contract.split_id), transform_pipeline_id=str(pipeline.pipeline_id))
+
+    assert audit.status == "WARN"
+    assert "NEAR_DUPLICATE_ROWS" in {finding.code for finding in audit.findings}
 
 
 def test_split_contract_api_survives_close_reopen_and_training_uses_it(tmp_path) -> None:

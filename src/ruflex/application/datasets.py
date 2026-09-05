@@ -183,6 +183,9 @@ def create_split_contract(project_root:Path, *, family:Literal['RANDOM','GROUP',
   ordered=eligible.assign(__source_row=eligible.index).sort_values([time_column,'__source_row'],kind='stable')
   test_count=round(len(ordered)*test_fraction); validation_count=round(len(ordered)*validation_fraction)
   role_rows={'train':[int(row) for row in ordered.iloc[:len(ordered)-test_count-validation_count].index],'validation':[int(row) for row in ordered.iloc[len(ordered)-test_count-validation_count:len(ordered)-test_count].index],'test':[int(row) for row in ordered.iloc[len(ordered)-test_count:].index]}
+  role_times={role:frame.loc[rows,time_column] for role,rows in role_rows.items()}
+  if not (role_times['train'].max() < role_times['validation'].min() and role_times['validation'].max() < role_times['test'].min()):
+   raise DatasetConfirmationError('TEMPORAL split requires strict forward role boundaries with no shared boundary timestamp.')
  else:
   # This is deterministic and preserves legacy RANDOM semantics without
   # exposing future family declarations as random fallbacks.
@@ -282,10 +285,33 @@ def run_leakage_audit(project_root:Path, *, split_contract_id:str|None, transfor
  if pipeline.feature_order!=contract.feature_columns: findings.append(AuditFinding(code='FEATURE_ORDER_MISMATCH',severity='fail',scope='transform',evidence={},remediation='Rebuild a transform pipeline for the active DatasetContract.'))
  if pipeline.fit_role!='TRAIN' or any(step.fit_role!='TRAIN' for step in pipeline.steps): findings.append(AuditFinding(code='NON_TRAIN_TRANSFORM_FIT',severity='fail',scope='transform',evidence={},remediation='Fit all preprocessing steps on TRAIN only.'))
  if pipeline.split_contract_id!=split_contract_id: findings.append(AuditFinding(code='SPLIT_PIPELINE_BINDING_MISMATCH',severity='fail',scope='provenance',evidence={},remediation='Bind the transform pipeline to the same immutable split contract.'))
+ frame=load_dataset_frame(project_root)
+ numeric_target=pd.to_numeric(frame[contract.target],errors='coerce')
+ for feature in contract.feature_columns:
+  numeric_feature=pd.to_numeric(frame[feature],errors='coerce')
+  valid=numeric_feature.notna() & numeric_target.notna()
+  if valid.any() and (numeric_feature[valid].equals(numeric_target[valid]) or numeric_feature[valid].equals(1.0-numeric_target[valid])):
+   findings.append(AuditFinding(code='TARGET_DERIVED_FEATURE',severity='warning',scope='feature',evidence={'feature':feature,'relationship':'exact_target_or_binary_complement'},remediation='Remove, justify, or explicitly document this target-derived feature before confirmatory use.'))
+ feature_columns=list(contract.feature_columns)
+ labelled_frame=frame.loc[frame[contract.target].notna(),feature_columns+[contract.target]]
+ if feature_columns:
+  target_cardinality=labelled_frame.groupby(feature_columns,dropna=False,sort=False)[contract.target].nunique(dropna=True)
+  conflicting_vectors=target_cardinality[target_cardinality>1]
+  if not conflicting_vectors.empty:
+   conflicting_rows=int(labelled_frame.set_index(feature_columns).index.isin(conflicting_vectors.index).sum())
+   findings.append(AuditFinding(code='NEAR_DUPLICATE_ROWS',severity='warning',scope='dataset',evidence={'count':conflicting_rows,'conflicting_feature_vectors':int(len(conflicting_vectors)),'method':'exact_feature_vector_duplicate_with_multiple_targets'},remediation='Inspect duplicate or conflicting entity records before interpreting validation results.'))
  if split_contract_id is not None:
   split=load_split_contract(project_root,split_contract_id)
   if split.family=='GROUP' and not split.group_column: findings.append(AuditFinding(code='GROUP_IDENTITY_MISSING',severity='fail',scope='split',evidence={},remediation='Declare the group identity used by the GROUP split.'))
- findings.extend(run_data_audit(contract,load_dataset_frame(project_root)).findings)
+  identity_column={'GROUP':split.group_column,'SITE_HOLDOUT':split.site_column,'DEVICE_HOLDOUT':split.device_column,'SPATIAL':split.spatial_column,'REGIME':split.regime_column}.get(split.family)
+  if identity_column:
+   identities={role:set(frame.loc[rows,identity_column].astype(str)) for role,rows in split.role_source_rows.items()}
+   overlap=(identities['train']&identities['validation']) | (identities['train']&identities['test']) | (identities['validation']&identities['test'])
+   if overlap: findings.append(AuditFinding(code='DUPLICATE_ENTITY_ACROSS_SPLITS',severity='fail',scope='split',evidence={'identity_column':identity_column,'count':len(overlap)},remediation='Regenerate a disjoint identity holdout split.'))
+  if split.family=='TEMPORAL':
+   values={role:frame.loc[rows,split.time_column] for role,rows in split.role_source_rows.items()}
+   if not (values['train'].max() < values['validation'].min() and values['validation'].max() < values['test'].min()): findings.append(AuditFinding(code='TEMPORAL_LEAKAGE',severity='fail',scope='split',evidence={'time_column':split.time_column},remediation='Use strict forward holdout roles with no boundary-time overlap.'))
+ findings.extend(run_data_audit(contract,frame).findings)
  status='FAIL' if any(item.severity=='fail' for item in findings) else ('WARN' if findings else 'PASS')
  result=LeakageAuditReport(dataset_fingerprint=contract.dataset_fingerprint,rigor_profile=rigor_profile,split_contract_id=split_contract_id,transform_pipeline_id=transform_pipeline_id,status=status,findings=findings)
  _persist_json(_leakage_root(project_root),f'{result.audit_id}.json',result); return result
