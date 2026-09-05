@@ -319,7 +319,7 @@ class CreateOcclusionExplanationRequest(SessionRequest):
 class CreatePosthocExplanationRequest(SessionRequest):
     run_id: UUID
     sample: dict[str, float] = Field(min_length=1)
-    method: Literal["occlusion", "integrated_gradients", "gradient_shap", "shap", "tree_shap"] = "occlusion"
+    method: str = Field(default="occlusion", pattern=r"^[a-z][a-z0-9_]{2,80}$")
 
 
 class CheckExplanationRequest(SessionRequest):

@@ -5,7 +5,7 @@ import inspect
 from fastapi.testclient import TestClient
 from collections.abc import Callable
 from pathlib import Path
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from ruflex.api.main import app
 from ruflex.application.training import train_model
@@ -100,6 +100,16 @@ def test_runtime_api_declares_explainers_validator_and_backend() -> None:
     assert {item["identity"]["key"] for item in client.get("/api/runtime/explainers").json()} >= {"occlusion", "tree_shap", "integrated_gradients"}
     assert client.get("/api/runtime/validators").json()[0]["identity"]["key"] == "native_explanation_validator"
     assert client.get("/api/runtime/backends").json()[0]["identity"]["key"] == "local_executor"
+
+
+def test_posthoc_api_accepts_a_runtime_explainer_key_before_runtime_resolution() -> None:
+    client = TestClient(app)
+    session_id = client.post("/api/projects", json={"path": f"/tmp/ruflex-runtime-explainer-key-{uuid4()}", "name": "runtime key"}).json()["session_id"]
+    response = client.post("/api/projects/evidence/explanations", json={
+        "session_id": session_id, "run_id": str(UUID(int=1)), "sample": {"x": 1.0}, "method": "fixture_explainer",
+    })
+    assert response.status_code == 422
+    assert response.json()["detail"] != "Input should be 'occlusion', 'integrated_gradients', 'gradient_shap', 'shap' or 'tree_shap'"
 
 
 def test_training_entrypoint_has_no_model_name_dispatch() -> None:

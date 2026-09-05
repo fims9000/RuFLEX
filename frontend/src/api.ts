@@ -19,6 +19,7 @@ export type ModelCapabilityContract = {
 };
 export type PluginDescriptor = { key: string; version: string; kind: "model_adapter" | "explainer" | "explanation_validator" | "metric" | "exporter" | "execution_backend"; capabilities: Record<string, boolean>; config_schema: Record<string, unknown>; input_schema: Record<string, unknown>; output_schema: Record<string, unknown>; trusted: boolean; scientific_note: string };
 export type ExecutionBackendDescriptor = { identity: { key: string; version: string; provider: string; kind: "execution_backend" }; supports_cancel: boolean; supports_resume: boolean };
+export type RuntimeExplainerDescriptor = { identity: { key: string; version: string; provider: string; kind: "explainer" }; supported_tasks: string[] };
 export type RunCapabilityNegotiation = {
   schema_version: number;
   run_id: string;
@@ -472,9 +473,9 @@ export const studioApi = {
     request<TreePathEvidence>(`/api/projects/${sessionId}/evidence/tree-path/${evidenceId}`),
   createOcclusionExplanation: (sessionId: string, runId: string, sample: Record<string, number>) =>
     request<ExplanationContract>("/api/projects/evidence/explanations/occlusion", { session_id: sessionId, run_id: runId, sample }),
-  createPosthocExplanation: (sessionId: string, runId: string, sample: Record<string, number>, method: "occlusion" | "integrated_gradients" | "gradient_shap" | "shap" | "tree_shap") =>
+  createPosthocExplanation: (sessionId: string, runId: string, sample: Record<string, number>, method: string) =>
     request<ExplanationContract>("/api/projects/evidence/explanations", { session_id: sessionId, run_id: runId, sample, method }),
-  startPosthocExplanationJob: (sessionId: string, runId: string, sample: Record<string, number>, method: "occlusion" | "integrated_gradients" | "gradient_shap" | "shap" | "tree_shap") =>
+  startPosthocExplanationJob: (sessionId: string, runId: string, sample: Record<string, number>, method: string) =>
     request<ProductJob>("/api/projects/evidence/explanation-jobs", { session_id: sessionId, run_id: runId, sample, method }),
   getPosthocExplanationJob: (sessionId: string, jobId: string) =>
     request<ProductJob>(`/api/projects/${sessionId}/evidence/explanation-jobs/${jobId}`),
@@ -566,6 +567,7 @@ export const studioApi = {
   getTrainingStudy: (sessionId: string, studyId: string) =>
     request<TrainingStudy>(`/api/projects/${sessionId}/training/studies/${studyId}`),
   getRuntimeBackends: () => request<ExecutionBackendDescriptor[]>("/api/runtime/backends"),
+  getRuntimeExplainers: () => request<RuntimeExplainerDescriptor[]>("/api/runtime/explainers"),
   startStudyJob: (sessionId: string, config: { name: string; model_kind: string; adapter_key?: string | null; seeds: number[]; randomness_protocol?: "LEGACY_COMBINED" | "TRAINING_VARIABILITY" | "SPLIT_VARIABILITY" | "COMBINED_VARIABILITY"; split_seed?: number | null; training_seed?: number | null; split_contract_id?: string | null; execution_backend_key?: string; selection_metric: string; max_epochs: number; learning_rate: number; batch_size: number; patience: number | null; validation_fraction: number; test_fraction: number; max_rules: number; n_estimators?: number; max_depth?: number | null }) =>
     request<StudyJob>("/api/projects/training/study-jobs", { session_id: sessionId, ...config }),
   getStudyJob: (sessionId: string, jobId: string) =>

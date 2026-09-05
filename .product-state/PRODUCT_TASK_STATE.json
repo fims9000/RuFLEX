@@ -43,7 +43,8 @@
     "complete_execution_backend_lifecycle_contract",
     "runtime_component_implementation_contract_enforcement",
     "selectable_persisted_execution_backend_for_study_jobs",
-    "explicit_external_model_adapter_api_and_studio_binding"
+    "explicit_external_model_adapter_api_and_studio_binding",
+    "runtime_explainer_studio_and_api_selection"
   ],
   "active_acceptance": [
     "V1.3 persists SplitContract, train-only TransformPipelineContract and leakage-audit evidence through Studio/API, reopen, Lineage, Assurance and VerificationBundle.",
@@ -81,6 +82,7 @@
     "execution_backend_lifecycle_contract": "PASS: application ExecutionBackend and built-in runtime adapter expose the same submit/is_active/status/cancel/resume lifecycle; an external entry-point backend is discovered and exercised through the frozen registry boundary (56 focused product/runtime tests).",
     "runtime_component_contract_enforcement": "PASS: direct runtime component registration rejects incomplete implementations rather than relying only on entry-point discovery; focused runtime/product route tests passed.",
     "selectable_execution_backend": "PASS: StudyJob accepts and persists an explicitly selected registered backend identity through API/Studio configuration; an external synchronous backend executes a real multi-seed job without local-executor substitution.",
-    "explicit_external_model_adapter": "PASS: API and Studio pass a selected external adapter identity into generic training and StudyJob execution config; train_model resolves that exact adapter and persists its runtime provenance."
+    "explicit_external_model_adapter": "PASS: API and Studio pass a selected external adapter identity into generic training and StudyJob execution config; train_model resolves that exact adapter and persists its runtime provenance.",
+    "runtime_explainer_selection": "PASS: Studio exposes applicable external runtime explainers without treating them as built-in capabilities, and the post-hoc API accepts a runtime explainer key before the frozen registry performs compatibility resolution."
   }
 }

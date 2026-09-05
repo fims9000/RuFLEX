@@ -16,6 +16,7 @@ import {
   ModelCatalogEntry,
   PluginDescriptor,
   RunCapabilityNegotiation,
+  RuntimeExplainerDescriptor,
   ProductJob,
   ProjectSummary,
   TrainingRun,
@@ -90,8 +91,7 @@ export function EvidenceWorkspace({
   }, [dataset, run?.run_id]);
   const [sample, setSample] = useState<Record<string, string>>(initialSample);
   const [comparisonSample, setComparisonSample] = useState<Record<string, string>>(initialSample);
-  type EvidenceMethod = "occlusion" | "integrated_gradients" | "gradient_shap" | "shap" | "tree_shap";
-  const [method, setMethod] = useState<EvidenceMethod>("occlusion");
+  const [method, setMethod] = useState("occlusion");
   const [catalog, setCatalog] = useState<ModelCatalogEntry[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -119,6 +119,7 @@ export function EvidenceWorkspace({
   const [explanationJob, setExplanationJob] = useState<ProductJob | null>(null);
   const [capabilityNegotiation, setCapabilityNegotiation] = useState<RunCapabilityNegotiation | null>(null);
   const [validatorPlugins, setValidatorPlugins] = useState<PluginDescriptor[]>([]);
+  const [runtimeExplainers, setRuntimeExplainers] = useState<RuntimeExplainerDescriptor[]>([]);
 
   useEffect(() => { setSample(initialSample); setComparisonSample(initialSample); }, [initialSample]);
   useEffect(() => setBehaviorResult(restoredBehaviorResult), [restoredBehaviorResult?.result_id]);
@@ -139,6 +140,7 @@ export function EvidenceWorkspace({
   useEffect(() => {
     studioApi.getModelCatalog().then(setCatalog).catch(() => setCatalog([]));
     studioApi.getPluginCatalog().then(setValidatorPlugins).catch(() => setValidatorPlugins([]));
+    studioApi.getRuntimeExplainers().then(setRuntimeExplainers).catch(() => setRuntimeExplainers([]));
   }, []);
   useEffect(() => {
     if (!run) { setCapabilityNegotiation(null); return; }
@@ -155,9 +157,9 @@ export function EvidenceWorkspace({
     if (capabilityNegotiation) {
       return capabilityNegotiation.decisions
         .filter((decision) => decision.status === "AVAILABLE" && decision.capability !== "exact_tree_path")
-        .map((decision) => decision.capability as EvidenceMethod);
+        .map((decision) => decision.capability);
     }
-    const methods: EvidenceMethod[] = [];
+    const methods: string[] = [];
     if (modelCapabilities.occlusion) methods.push("occlusion");
     if (modelCapabilities.shap) methods.push("shap");
     if (modelCapabilities.tree_shap) methods.push("tree_shap");
@@ -165,10 +167,16 @@ export function EvidenceWorkspace({
     if (modelCapabilities.gradient_shap) methods.push("gradient_shap");
     return methods;
   }, [capabilityNegotiation, modelCapabilities]);
+  const selectableMethods = useMemo(() => {
+    const external = runtimeExplainers
+      .filter((explainer) => explainer.identity.provider !== "ruflex.builtin" && !!run && explainer.supported_tasks.includes(run.task))
+      .map((explainer) => explainer.identity.key);
+    return [...new Set([...availableMethods, ...external])];
+  }, [availableMethods, run?.task, runtimeExplainers]);
   useEffect(() => {
-    if (!run || availableMethods.length === 0) return;
-    if (!availableMethods.includes(method)) setMethod(availableMethods[0]);
-  }, [run?.run_id, availableMethods, method]);
+    if (!run || selectableMethods.length === 0) return;
+    if (!selectableMethods.includes(method)) setMethod(selectableMethods[0]);
+  }, [run?.run_id, selectableMethods, method]);
 
   function numericSample() {
     if (!run) throw new Error("Select a trained model run first.");
@@ -344,8 +352,8 @@ export function EvidenceWorkspace({
         ) : (
           <>
             <label className="field-label evidence-method-select">Method
-              <select aria-label="Explanation method" value={method} onChange={(event) => setMethod(event.target.value as EvidenceMethod)}>
-                {availableMethods.map((candidate) => <option value={candidate} key={candidate}>{candidate === "occlusion" ? "Occlusion" : candidate === "shap" ? "SHAP · permutation" : candidate === "tree_shap" ? "TreeSHAP" : candidate === "integrated_gradients" ? "Integrated Gradients" : "GradientSHAP"}</option>)}
+              <select aria-label="Explanation method" value={method} onChange={(event) => setMethod(event.target.value)}>
+                {selectableMethods.map((candidate) => <option value={candidate} key={candidate}>{candidate === "occlusion" ? "Occlusion" : candidate === "shap" ? "SHAP · permutation" : candidate === "tree_shap" ? "TreeSHAP" : candidate === "integrated_gradients" ? "Integrated Gradients" : candidate === "gradient_shap" ? "GradientSHAP" : `${candidate} · runtime explainer`}</option>)}
               </select>
             </label>
             <div className="evidence-sample-grid">
@@ -361,7 +369,7 @@ export function EvidenceWorkspace({
               ))}
             </div>
             <div className="evidence-actions">
-              <Button view="action" disabled={busy || project.read_only || availableMethods.length === 0} onClick={generate} data-ruflex-action="explanation.generate">{busy ? "Generating…" : "Generate explanation"}</Button>
+              <Button view="action" disabled={busy || project.read_only || selectableMethods.length === 0} onClick={generate} data-ruflex-action="explanation.generate">{busy ? "Generating…" : "Generate explanation"}</Button>
               <span className="property-description">{run.model_kind} · run {run.run_id.slice(0, 8)}</span>
             </div>
             {capabilityNegotiation && <div className="trace-card" data-testid="run-capability-negotiation"><strong>Run capability contract</strong><div className="property-list">{capabilityNegotiation.decisions.map((decision) => <div key={decision.capability}><span>{decision.capability.replaceAll("_", " ")}</span><span><StatusBadge tone={decision.status === "AVAILABLE" ? "success" : "info"}>{decision.status}</StatusBadge> {decision.detail}</span></div>)}</div></div>}
