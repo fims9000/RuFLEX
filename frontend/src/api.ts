@@ -476,8 +476,8 @@ export const studioApi = {
     request<ExplanationContract>("/api/projects/evidence/explanations/occlusion", { session_id: sessionId, run_id: runId, sample }),
   createPosthocExplanation: (sessionId: string, runId: string, sample: Record<string, number>, method: string) =>
     request<ExplanationContract>("/api/projects/evidence/explanations", { session_id: sessionId, run_id: runId, sample, method }),
-  startPosthocExplanationJob: (sessionId: string, runId: string, sample: Record<string, number>, method: string) =>
-    request<ProductJob>("/api/projects/evidence/explanation-jobs", { session_id: sessionId, run_id: runId, sample, method }),
+  startPosthocExplanationJob: (sessionId: string, runId: string, sample: Record<string, number>, method: string, executionBackendKey = "local_executor") =>
+    request<ProductJob>("/api/projects/evidence/explanation-jobs", { session_id: sessionId, run_id: runId, sample, method, execution_backend_key: executionBackendKey }),
   getPosthocExplanationJob: (sessionId: string, jobId: string) =>
     request<ProductJob>(`/api/projects/${sessionId}/evidence/explanation-jobs/${jobId}`),
   cancelEvidenceJob: (sessionId: string, jobId: string) =>
@@ -490,8 +490,8 @@ export const studioApi = {
     request<ExplanationContract>(`/api/projects/${sessionId}/evidence/explanations/${explanationId}`),
   checkExplanation: (sessionId: string, explanationId: string) =>
     request<ExplanationCheck>("/api/projects/evidence/explanation-checks", { session_id: sessionId, explanation_id: explanationId }),
-  startExplanationCheckJob: (sessionId: string, explanationId: string, validatorKey = "native_explanation_validator") =>
-    request<ProductJob>("/api/projects/evidence/explanation-check-jobs", { session_id: sessionId, explanation_id: explanationId, validator_key: validatorKey }),
+  startExplanationCheckJob: (sessionId: string, explanationId: string, validatorKey = "native_explanation_validator", executionBackendKey = "local_executor") =>
+    request<ProductJob>("/api/projects/evidence/explanation-check-jobs", { session_id: sessionId, explanation_id: explanationId, validator_key: validatorKey, execution_backend_key: executionBackendKey }),
   getLatestExplanationCheck: (sessionId: string) =>
     request<ExplanationCheck>(`/api/projects/${sessionId}/evidence/explanation-checks/latest`),
   getExplanationCheck: (sessionId: string, checkId: string) =>

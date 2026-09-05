@@ -18,6 +18,7 @@ import {
   RunCapabilityNegotiation,
   RuntimeExplainerDescriptor,
   RuntimeValidatorDescriptor,
+  ExecutionBackendDescriptor,
   ProductJob,
   ProjectSummary,
   TrainingRun,
@@ -123,6 +124,8 @@ export function EvidenceWorkspace({
   const [runtimeExplainers, setRuntimeExplainers] = useState<RuntimeExplainerDescriptor[]>([]);
   const [runtimeValidators, setRuntimeValidators] = useState<RuntimeValidatorDescriptor[]>([]);
   const [validatorKey, setValidatorKey] = useState("native_explanation_validator");
+  const [executionBackends, setExecutionBackends] = useState<ExecutionBackendDescriptor[]>([]);
+  const [executionBackendKey, setExecutionBackendKey] = useState("local_executor");
 
   useEffect(() => { setSample(initialSample); setComparisonSample(initialSample); }, [initialSample]);
   useEffect(() => setBehaviorResult(restoredBehaviorResult), [restoredBehaviorResult?.result_id]);
@@ -148,6 +151,10 @@ export function EvidenceWorkspace({
       setRuntimeValidators(validators);
       if (!validators.some((validator) => validator.identity.key === validatorKey)) setValidatorKey(validators[0]?.identity.key ?? "native_explanation_validator");
     }).catch(() => setRuntimeValidators([]));
+    studioApi.getRuntimeBackends().then((backends) => {
+      setExecutionBackends(backends);
+      if (!backends.some((backend) => backend.identity.key === executionBackendKey)) setExecutionBackendKey(backends[0]?.identity.key ?? "local_executor");
+    }).catch(() => setExecutionBackends([]));
   }, []);
   useEffect(() => {
     if (!run) { setCapabilityNegotiation(null); return; }
@@ -220,7 +227,7 @@ export function EvidenceWorkspace({
     setBusy(true);
     setError(null);
     try {
-      let job = await studioApi.startPosthocExplanationJob(project.session_id, run.run_id, numericSample(), method);
+      let job = await studioApi.startPosthocExplanationJob(project.session_id, run.run_id, numericSample(), method, executionBackendKey);
       setExplanationJob(job);
       for (let attempt = 0; attempt < 120 && ["queued", "running"].includes(job.status); attempt += 1) {
         await new Promise((resolve) => window.setTimeout(resolve, 100));
@@ -242,7 +249,7 @@ export function EvidenceWorkspace({
     setBusy(true);
     setError(null);
     try {
-      let job = await studioApi.startExplanationCheckJob(project.session_id, explanation.explanation_id, validatorKey);
+      let job = await studioApi.startExplanationCheckJob(project.session_id, explanation.explanation_id, validatorKey, executionBackendKey);
       setExplanationJob(job);
       for (let attempt = 0; attempt < 120 && ["queued", "running"].includes(job.status); attempt += 1) {
         await new Promise((resolve) => window.setTimeout(resolve, 100));
@@ -363,6 +370,7 @@ export function EvidenceWorkspace({
                 {selectableMethods.map((candidate) => <option value={candidate} key={candidate}>{candidate === "occlusion" ? "Occlusion" : candidate === "shap" ? "SHAP · permutation" : candidate === "tree_shap" ? "TreeSHAP" : candidate === "integrated_gradients" ? "Integrated Gradients" : candidate === "gradient_shap" ? "GradientSHAP" : `${candidate} · runtime explainer`}</option>)}
               </select>
             </label>
+            <label className="field-label evidence-method-select">Execution backend<select aria-label="Evidence execution backend" value={executionBackendKey} disabled={busy || project.read_only || !executionBackends.length} onChange={(event) => setExecutionBackendKey(event.target.value)}>{executionBackends.map((backend) => <option key={backend.identity.key} value={backend.identity.key}>{backend.identity.key} · {backend.identity.provider}</option>)}</select></label>
             <div className="evidence-sample-grid">
               {run.feature_columns.map((feature) => (
                 <label className="field-label" key={feature}>
