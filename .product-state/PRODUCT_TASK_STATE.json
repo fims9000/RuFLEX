@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "product_version": "1.1.0",
-  "active_capability": "v1_1_release_quality_audit",
+  "active_capability": "v1_1_release_complete",
   "completed_capabilities": [
     "dataset_contracts",
     "training_and_validation_evidence",
@@ -27,14 +27,15 @@
     "artifact_metadata_integrity",
     "fis_reopen_integrity",
     "capability_runtime",
-    "source_archive_ci"
+    "source_archive_ci",
+    "v1_1_release_quality"
   ],
   "active_acceptance": [
-    "Finish the V1.1 full regression, visual, archive and CI-source audit from exact HEAD.",
+    "V1.1 runtime release candidate is locally committed and release-gated.",
     "Keep unrelated article and interrupted S03 work out of the committed product baseline."
   ],
   "blockers": [],
-  "next_executable_work": "Run the final exact-HEAD V1.1 verification matrix and package a local source archive; do not push, merge or tag.",
+  "next_executable_work": "Await a separate user decision for merge, tag, push, publication, or a new product capability.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -58,6 +59,7 @@
     "imported_fis_provenance_integrity": "PASS: project integrity now verifies MATLAB FIS import receipt schema, imported source artifact hash/provenance, and semantic binding to the persisted FIS; focused integrity and FIS tests passed",
     "explanation_evidence_reopen_integrity": "PASS: project integrity now fails closed for malformed or detached persisted ExplanationContract/ExplanationCheck evidence and unresolved active pointers; focused evidence/integrity tests passed",
     "artifact_metadata_integrity": "PASS: ArtifactStore verifies canonical metadata SHA, byte size and relative blob path as well as blob content; focused and full Python tests passed",
-    "fis_reopen_integrity": "PASS: project integrity validates persisted FIS semantic identity, revision history and active pointer before import provenance is accepted; focused and full Python tests passed"
+    "fis_reopen_integrity": "PASS: project integrity validates persisted FIS semantic identity, revision history and active pointer before import provenance is accepted; focused and full Python tests passed",
+    "v1_1_release_quality": "PASS: capability runtime/API/SDK/Studio dynamic selection, archive smoke and 26-route Playwright matrix; exact release receipt is docs/qa/V1_1_RELEASE_QA.md"
   }
 }
