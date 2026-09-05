@@ -39,7 +39,8 @@
     "persisted_behavior_revision_comparisons",
     "external_runtime_governed_golden_route",
     "stability_protocol_ui_and_read_only_component_coverage",
-    "durable_real_studio_screenshot_evidence"
+    "durable_real_studio_screenshot_evidence",
+    "complete_execution_backend_lifecycle_contract"
   ],
   "active_acceptance": [
     "V1.3 persists SplitContract, train-only TransformPipelineContract and leakage-audit evidence through Studio/API, reopen, Lineage, Assurance and VerificationBundle.",
@@ -47,7 +48,7 @@
     "Keep unrelated article and interrupted S03 work out of the committed product baseline."
   ],
   "blockers": [],
-  "next_executable_work": "Run the broader V1.3 regression and fresh tracked-source archive QA; resolve only verified regressions before the next capability slice.",
+  "next_executable_work": "Continue the next bounded V1.3 governance/runtime slice from verified persisted contracts; retain the completed broad regression and fresh tracked-source archive QA as baseline evidence.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -73,6 +74,7 @@
     "artifact_metadata_integrity": "PASS: ArtifactStore verifies canonical metadata SHA, byte size and relative blob path as well as blob content; focused and full Python tests passed",
     "fis_reopen_integrity": "PASS: project integrity validates persisted FIS semantic identity, revision history and active pointer before import provenance is accepted; focused and full Python tests passed",
     "v1_1_release_quality": "PASS: capability runtime/API/SDK/Studio dynamic selection, archive smoke and 26-route Playwright matrix; exact release receipt is docs/qa/V1_1_RELEASE_QA.md",
-    "v1_3_current_cycle": "PASS: full Python suite reached 100%; frontend unit, Vite and Storybook builds passed; focused external-runtime golden route and full real Studio product-evidence/visual checks passed. Product screenshots 01-19 were explicitly recaptured; ordinary Playwright writes evidence only to test output."
+    "v1_3_current_cycle": "PASS: full Python suite reached 100%; frontend unit, Vite and Storybook builds passed; focused external-runtime golden route and full real Studio product-evidence/visual checks passed. Product screenshots 01-19 were explicitly recaptured; ordinary Playwright writes evidence only to test output.",
+    "execution_backend_lifecycle_contract": "PASS: application ExecutionBackend and built-in runtime adapter expose the same submit/is_active/status/cancel/resume lifecycle; an external entry-point backend is discovered and exercised through the frozen registry boundary (56 focused product/runtime tests)."
   }
 }

@@ -3,13 +3,22 @@ from __future__ import annotations
 import pytest
 import inspect
 from fastapi.testclient import TestClient
+from collections.abc import Callable
+from pathlib import Path
+from uuid import UUID
 
 from ruflex.api.main import app
 from ruflex.application.training import train_model
 from ruflex.runtime import builtin_runtime_registry
 from ruflex.runtime.errors import RuntimeNotFoundError, RuntimeVersionMismatchError
 from ruflex.runtime.errors import RuntimeDependencyMissingError, RuntimeUntrustedError
-from ruflex.runtime.contracts import ExplainerDescriptor, ExplainerResult, RuntimeIdentity, ModelAdapterDescriptor
+from ruflex.runtime.contracts import (
+    ExecutionBackendDescriptor,
+    ExplainerDescriptor,
+    ExplainerResult,
+    RuntimeIdentity,
+    ModelAdapterDescriptor,
+)
 from dataclasses import dataclass
 
 
@@ -126,3 +135,55 @@ def test_category_specific_explainer_entrypoint_is_registered_as_a_component(mon
     discovered = registry.discover_entry_points(group="ruflex.explainers")
     assert [item.identity.key for item in discovered] == ["fixture_explainer"]
     assert registry.resolve_component_implementation("explainer", "fixture_explainer").descriptor.identity.kind == "explainer"
+
+
+def test_category_specific_execution_backend_entrypoint_has_full_lifecycle_contract(monkeypatch) -> None:
+    from ruflex.runtime.registry import RuntimeRegistry
+
+    class FixtureExecutionBackend:
+        descriptor = ExecutionBackendDescriptor(
+            identity=RuntimeIdentity(
+                key="fixture_execution_backend", version="1", provider="ruflex.tests", kind="execution_backend",
+            ),
+            supports_cancel=True,
+            supports_resume=True,
+        )
+
+        def submit(self, *, project_root: Path, job_id: UUID, operation: Callable[[], None]) -> bool:
+            operation()
+            return True
+
+        def is_active(self, *, project_root: Path, job_id: UUID) -> bool:
+            return False
+
+        def status(self, *, project_root: Path, job_id: UUID) -> str:
+            return "IDLE"
+
+        def cancel(self, *, project_root: Path, job_id: UUID) -> bool:
+            return True
+
+        def resume(self, *, project_root: Path, job_id: UUID, operation: Callable[[], None]) -> bool:
+            return self.submit(project_root=project_root, job_id=job_id, operation=operation)
+
+    class Point:
+        name = "fixture_execution_backend"
+
+        def load(self):
+            return FixtureExecutionBackend
+
+    class Points:
+        def select(self, *, group):
+            return [Point()] if group == "ruflex.execution_backends" else []
+
+    monkeypatch.setattr("ruflex.runtime.registry.metadata.entry_points", lambda: Points())
+    registry = RuntimeRegistry()
+    discovered = registry.discover_entry_points(group="ruflex.execution_backends")
+    assert [item.identity.key for item in discovered] == ["fixture_execution_backend"]
+    backend = registry.resolve_component_implementation("execution_backend", "fixture_execution_backend")
+    completed: list[bool] = []
+    assert backend.submit(project_root=Path("/tmp"), job_id=UUID(int=1), operation=lambda: completed.append(True)) is True
+    assert completed == [True]
+    assert backend.status(project_root=Path("/tmp"), job_id=UUID(int=1)) == "IDLE"
+    assert backend.cancel(project_root=Path("/tmp"), job_id=UUID(int=1)) is True
+    assert backend.resume(project_root=Path("/tmp"), job_id=UUID(int=1), operation=lambda: completed.append(True)) is True
+    assert completed == [True, True]

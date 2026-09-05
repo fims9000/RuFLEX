@@ -4,6 +4,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 from uuid import UUID
 
 from ruflex.runtime.contracts import ExecutionBackendAdapter, ExecutionBackendDescriptor, RuntimeIdentity
@@ -30,7 +31,7 @@ class _LocalExecutionBackendAdapter:
 
         return local_executor.is_active(project_root=project_root, job_id=job_id)
 
-    def status(self, *, project_root: Path, job_id: UUID) -> str:
+    def status(self, *, project_root: Path, job_id: UUID) -> Literal["ACTIVE", "IDLE"]:
         from ruflex.application.execution import local_executor
         return local_executor.status(project_root=project_root, job_id=job_id)
 

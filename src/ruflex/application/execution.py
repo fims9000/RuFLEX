@@ -4,16 +4,20 @@ from __future__ import annotations
 from collections.abc import Callable
 from pathlib import Path
 from threading import Lock, Thread
-from typing import Protocol
+from typing import Literal, Protocol
 from uuid import UUID
 
 
 class ExecutionBackend(Protocol):
-    """Small product boundary; job semantics remain owned by the application service."""
+    """Product lifecycle boundary; services retain canonical persisted job state."""
 
     name: str
 
     def submit(self, *, project_root: Path, job_id: UUID, operation: Callable[[], None]) -> bool: ...
+    def is_active(self, *, project_root: Path, job_id: UUID) -> bool: ...
+    def status(self, *, project_root: Path, job_id: UUID) -> Literal["ACTIVE", "IDLE"]: ...
+    def cancel(self, *, project_root: Path, job_id: UUID) -> bool: ...
+    def resume(self, *, project_root: Path, job_id: UUID, operation: Callable[[], None]) -> bool: ...
 
 
 class LocalExecutor:
@@ -52,7 +56,7 @@ class LocalExecutor:
             thread.start()
         return True
 
-    def status(self, *, project_root: Path, job_id: UUID) -> str:
+    def status(self, *, project_root: Path, job_id: UUID) -> Literal["ACTIVE", "IDLE"]:
         return "ACTIVE" if self.is_active(project_root=project_root, job_id=job_id) else "IDLE"
 
     def cancel(self, *, project_root: Path, job_id: UUID) -> bool:
