@@ -3,7 +3,7 @@
 :root, [data-ruflex-theme="light"] {
   color-scheme: light;
   --rf-bg-app: #F4F1EB; --rf-bg-canvas: #F7F5F0; --rf-bg-surface: #FCFBF8; --rf-bg-surface-2: #F8F6F1; --rf-bg-surface-3: #EFEBE3; --rf-bg-hover: #ECE8DF;
-  --rf-border: #D8D2C8; --rf-border-strong: #C6BFB4; --rf-text: #1B1B19; --rf-text-secondary: #66635D; --rf-text-muted: #77736B;
+  --rf-border: #D8D2C8; --rf-border-strong: #C6BFB4; --rf-text: #1B1B19; --rf-text-secondary: #66635D; --rf-text-muted: #66635D;
   --rf-accent: #4D5FC7; --rf-accent-hover: #4556BA; --rf-accent-active: #3C4EA9; --rf-accent-soft: #E8EAFB; --rf-focus: #6475DD;
   --rf-success: #246B4E; --rf-success-bg: #E3F2EA; --rf-warning: #8A570E; --rf-warning-bg: #FFF2D5; --rf-danger: #A33B3B; --rf-danger-bg: #FCE8E8; --rf-info: #2F6690; --rf-info-bg: #E8F1F7;
 }
