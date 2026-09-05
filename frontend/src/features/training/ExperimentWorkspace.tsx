@@ -1,6 +1,6 @@
 import { EChartsOption } from "echarts";
 import { useEffect, useMemo, useState } from "react";
-import { DatasetState, ModelCatalogEntry, ProjectSummary, StudyJob, TrainingRun, TrainingStudy, TreePathEvidence, studioApi } from "../../api";
+import { DatasetState, ModelCapabilityContract, ProjectSummary, StudyJob, TrainingRun, TrainingStudy, TreePathEvidence, studioApi } from "../../api";
 import { ChartSurface } from "../../charts/ChartSurface";
 import { Button, EmptyState, StatusBadge } from "../../components/StudioPrimitives";
 import { StudioTheme } from "../../design/tokens";
@@ -102,7 +102,7 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
   onStudy: (study: TrainingStudy) => void;
 }) {
   const [seed, setSeed] = useState(42);
-  const [modelKind, setModelKind] = useState<"flat_neuro_fuzzy" | "logistic_regression" | "linear_regression" | "decision_tree" | "random_forest" | "gradient_boosting">("flat_neuro_fuzzy");
+  const [modelKind, setModelKind] = useState("flat_neuro_fuzzy");
   const [maxEpochs, setMaxEpochs] = useState(20);
   const [learningRate, setLearningRate] = useState(0.01);
   const [batchSize, setBatchSize] = useState(32);
@@ -117,7 +117,7 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
   const [error, setError] = useState<string | null>(null);
   const [treeSample, setTreeSample] = useState<Record<string, string>>({});
   const [treeEvidence, setTreeEvidence] = useState<TreePathEvidence | null>(null);
-  const [catalog, setCatalog] = useState<ModelCatalogEntry[]>([]);
+  const [catalog, setCatalog] = useState<ModelCapabilityContract[]>([]);
   const option = useMemo(() => run ? trajectoryOption(run) : null, [run]);
   const statistics = useMemo(() => study ? studyStatistics(study) : null, [study]);
   useEffect(() => {
@@ -129,7 +129,13 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
       setTreeEvidence(evidence.run_id === run.run_id ? evidence : null);
     }).catch(() => setTreeEvidence(null));
   }, [project.session_id, run?.run_id, run?.model_kind]);
-  useEffect(() => { studioApi.getModelCatalog().then(setCatalog).catch(() => setCatalog([])); }, []);
+  useEffect(() => { studioApi.getModels().then(setCatalog).catch(() => setCatalog([])); }, []);
+  const datasetTask = dataset?.contract.task;
+  const compatibleModels = useMemo(() => catalog.filter((entry) => entry.available && entry.capabilities.fit && !!datasetTask && entry.supported_tasks.includes(datasetTask)), [catalog, datasetTask]);
+  useEffect(() => {
+    if (compatibleModels.length && !compatibleModels.some((entry) => entry.key === modelKind)) setModelKind(compatibleModels[0].key);
+  }, [compatibleModels, modelKind]);
+  const trainingModelKind = modelKind === "linear" ? (datasetTask === "regression" ? "linear_regression" : "logistic_regression") : modelKind;
   useEffect(() => {
     studioApi.listStudyJobs(project.session_id).then((jobs) => {
       const resumable = jobs.filter((job) => ["QUEUED", "RUNNING"].includes(job.status)).at(-1);
@@ -157,7 +163,7 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
     setError(null);
     try {
       const result = await studioApi.runTraining(project.session_id, {
-        model_kind: modelKind,
+        model_kind: trainingModelKind as "flat_neuro_fuzzy" | "logistic_regression" | "linear_regression" | "decision_tree" | "random_forest" | "gradient_boosting",
         seed,
         max_epochs: maxEpochs,
         learning_rate: learningRate,
@@ -184,7 +190,7 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
     setError(null);
     try {
       const selectionMetric = dataset?.contract.task === "regression" ? "rmse" : "f1";
-      let job = await studioApi.startStudyJob(project.session_id, { name: `Study ${new Date().toLocaleString()}`, model_kind: modelKind, seeds, randomness_protocol: studyMode, split_seed: splitSeed, training_seed: splitSeed, selection_metric: selectionMetric, max_epochs: maxEpochs, learning_rate: learningRate, batch_size: batchSize, patience, validation_fraction: .2, test_fraction: .2, max_rules: maxRules });
+      let job = await studioApi.startStudyJob(project.session_id, { name: `Study ${new Date().toLocaleString()}`, model_kind: trainingModelKind as "flat_neuro_fuzzy" | "logistic_regression" | "linear_regression" | "decision_tree" | "random_forest" | "gradient_boosting", seeds, randomness_protocol: studyMode, split_seed: splitSeed, training_seed: splitSeed, selection_metric: selectionMetric, max_epochs: maxEpochs, learning_rate: learningRate, batch_size: batchSize, patience, validation_fraction: .2, test_fraction: .2, max_rules: maxRules });
       await observeStudy(job);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Multi-seed study failed");
@@ -236,7 +242,7 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
           <dt>Preprocessing</dt><dd>median fill + standardization fitted on train only</dd>
         </dl>
         <div className="training-config-grid">
-          <label className="field-label">Model<select aria-label="Training model" value={modelKind} disabled={running || project.read_only} onChange={(event) => setModelKind(event.target.value as typeof modelKind)}><option value="flat_neuro_fuzzy">ANFIS / Flat neuro-fuzzy</option>{dataset.contract.task === "binary_classification" ? <option value="logistic_regression">Logistic regression baseline</option> : <option value="linear_regression">Linear regression baseline</option>}<option value="decision_tree">Decision Tree baseline</option><option value="random_forest">Random Forest baseline</option><option value="gradient_boosting">Gradient Boosting baseline</option></select></label>
+          <label className="field-label">Model<select aria-label="Training model" value={modelKind} disabled={running || project.read_only || !compatibleModels.length} onChange={(event) => setModelKind(event.target.value)}>{compatibleModels.map((entry) => <option key={entry.key} value={entry.key}>{entry.display_name}</option>)}</select></label>
           <NumberField label="Seed" value={seed} step={1} disabled={running || project.read_only} onChange={setSeed} />
           <NumberField label="Study split seed" value={splitSeed} step={1} disabled={running || project.read_only} onChange={setSplitSeed} />
           <NumberField label="Epochs" value={maxEpochs} min={1} max={2000} step={1} disabled={running || project.read_only} onChange={setMaxEpochs} />
@@ -282,7 +288,7 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
         </>}
       </section>
     </div>
-    <section className="comparison-card"><span className="eyebrow">MODEL CATALOG · DECLARED CAPABILITIES</span><div className="data-table-wrap"><table className="data-table"><thead><tr><th>model</th><th>family</th><th>available</th><th>capabilities</th><th>evidence boundary</th></tr></thead><tbody>{catalog.map((entry) => <tr key={entry.key}><td>{entry.label}</td><td>{entry.family}</td><td>{entry.available ? "available" : "not available"}</td><td>{Object.entries(entry.capabilities).filter(([, value]) => value).map(([key]) => key).join(", ") || "—"}</td><td>{entry.limitation ?? "—"}</td></tr>)}</tbody></table></div></section>
+    <section className="comparison-card"><span className="eyebrow">MODEL RUNTIME · DECLARED CAPABILITIES</span><div className="data-table-wrap"><table className="data-table"><thead><tr><th>model</th><th>family</th><th>available</th><th>capabilities</th><th>evidence boundary</th></tr></thead><tbody>{catalog.map((entry) => <tr key={entry.key}><td>{entry.display_name}</td><td>{entry.family}</td><td>{entry.available ? "available" : entry.unavailability_reason ?? "not available"}</td><td>{Object.entries(entry.capabilities).filter(([, value]) => value).map(([key]) => key).join(", ") || "—"}</td><td>{entry.limitations.join(" ") || "—"}</td></tr>)}</tbody></table></div></section>
     <StabilityLab project={project} study={study} theme={theme} />
     {error && <div className="error" role="alert">{error}</div>}
   </section>;

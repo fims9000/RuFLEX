@@ -767,6 +767,11 @@ def list_explanation_validator_plugins() -> list[PluginDescriptor]:
     return _validator_plugins.list_descriptors()
 
 
+def get_explanation_validator_plugin(key: str) -> PluginDescriptor:
+    """Read-only descriptor lookup for the plugin runtime API."""
+    return _validator_plugins.descriptor(key)
+
+
 def check_explanation(project_root: Path, explanation_id: UUID) -> ExplanationCheck:
     """Run the registered product-native validator through the adapter boundary."""
 

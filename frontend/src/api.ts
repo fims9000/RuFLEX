@@ -9,6 +9,14 @@ export type ProjectSummary = {
   modified_at: string;
 };
 export type ModelCatalogEntry = { key: string; label: string; family: string; available: boolean; capabilities: Record<string, boolean>; limitation: string | null };
+export type ModelCapabilityContract = {
+  key: string; display_name: string; version: string; provider: string; family: string;
+  supported_tasks: string[]; input_modalities: string[]; available: boolean;
+  unavailability_reason: string | null; capabilities: Record<string, boolean>;
+  supported_explainers: string[]; export_formats: string[]; config_schema: Record<string, unknown>;
+  defaults: Record<string, unknown>; parameter_constraints: Record<string, unknown>;
+  optional_dependencies: string[]; evidence_objects_produced: string[]; limitations: string[];
+};
 export type PluginDescriptor = { key: string; version: string; kind: "model_adapter" | "explainer" | "explanation_validator" | "metric" | "exporter" | "execution_backend"; capabilities: Record<string, boolean>; config_schema: Record<string, unknown>; input_schema: Record<string, unknown>; output_schema: Record<string, unknown>; trusted: boolean; scientific_note: string };
 export type RunCapabilityNegotiation = {
   schema_version: number;
@@ -221,6 +229,8 @@ async function requestText(path: string): Promise<string> {
 export const studioApi = {
   health: () => request<{ status: string }>("/api/health"),
   getModelCatalog: () => request<ModelCatalogEntry[]>("/api/model-catalog"),
+  getModels: () => request<ModelCapabilityContract[]>("/api/models"),
+  getCapabilities: () => request<{ schema_version: number; models: ModelCapabilityContract[] }>("/api/capabilities"),
   getPluginCatalog: () => request<PluginDescriptor[]>("/api/plugins"),
   createProject: (path: string, name: string) =>
     request<ProjectSummary>("/api/projects", { path, name }),

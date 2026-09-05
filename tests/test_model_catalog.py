@@ -19,6 +19,28 @@ def test_model_catalog_exposes_capabilities_without_claiming_unavailable_adapter
     assert entries["linear"]["capabilities"]["fit"] is True
 
 
+def test_model_runtime_contract_exposes_explicit_xai_and_task_support() -> None:
+    response = TestClient(app).get("/api/capabilities")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["schema_version"] == 1
+    entries = {entry["key"]: entry for entry in payload["models"]}
+    tree = entries["decision_tree"]
+    assert tree["available"] is True
+    assert tree["capabilities"]["exact_tree_path"] is True
+    assert "tree_shap" in tree["supported_explainers"]
+    assert "integrated_gradients" not in tree["supported_explainers"]
+    assert "binary_classification" in tree["supported_tasks"]
+
+
+def test_plugin_lookup_fails_closed() -> None:
+    client = TestClient(app)
+    assert client.get("/api/plugins/native_explanation_validator").status_code == 200
+    missing = client.get("/api/plugins/not_registered")
+    assert missing.status_code == 404
+    assert missing.json()["code"] == "CAPABILITY_UNAVAILABLE"
+
+
 def test_run_capability_negotiation_is_bound_to_the_persisted_model_artifact(tmp_path: Path) -> None:
     client = TestClient(app)
     root = tmp_path / "capabilities"

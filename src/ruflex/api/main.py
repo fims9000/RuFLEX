@@ -24,7 +24,7 @@ from ruflex.application.datasets import DataAuditReport, DatasetContract, Datase
 from ruflex.application.generalization import ContractFreezeError, ContractLintReport, GeneralizationContract, GeneralizationContractError, NoveltyAxis, ScopeClassification, ScopeRule, SliceAnalysis, SliceDefinition, classify_scope, create_generalization_contract, create_slice_analysis, freeze_generalization_contract, lint_generalization_contract, load_generalization_contract, load_latest_slice_analysis, persist_generalization_contract, recommend_split_families
 from ruflex.application.fis import FISError, create_default_fis, diagnose_fis, evaluate_fis, evaluate_response_surface, list_fis_revisions, load_fis, load_latest_trace, persist_fis, save_trace_artifact
 from ruflex.application.fis_interop import export_matlab_fis, persist_imported_matlab_fis
-from ruflex.application.model_catalog import list_model_catalog
+from ruflex.application.model_catalog import list_model_catalog, model_capability_contracts
 from ruflex.application.capabilities import RunCapabilityNegotiation, negotiate_run_capabilities
 from ruflex.plugins import PluginDescriptor
 from ruflex.domain.training import AnalysisComparison, AnalysisEvaluation, FinalTestEvaluation, CalibrationTransform, DecisionThresholdPolicy, StudyJob, TrainingRun, TrainingStudy, TreePathEvidence
@@ -436,11 +436,31 @@ def get_model_catalog() -> list[dict]:
     return list_model_catalog()
 
 
+@app.get("/api/models")
+def get_models() -> list[dict]:
+    """Trusted runtime contracts for dynamic model selection clients."""
+    return [contract.to_dict() for contract in model_capability_contracts()]
+
+
+@app.get("/api/capabilities")
+def get_capabilities() -> dict[str, object]:
+    return {"schema_version": 1, "models": get_models()}
+
+
 @app.get("/api/plugins", response_model=list[PluginDescriptor])
 def get_plugin_catalog() -> list[PluginDescriptor]:
     from ruflex.application.evidence import list_explanation_validator_plugins
 
     return list_explanation_validator_plugins()
+
+
+@app.get("/api/plugins/{key}", response_model=PluginDescriptor)
+def get_plugin(key: str) -> PluginDescriptor:
+    from ruflex.application.evidence import get_explanation_validator_plugin
+    try:
+        return get_explanation_validator_plugin(key)
+    except Exception as error:
+        raise HTTPException(status_code=404, detail=f"Plugin capability is unavailable: {key!r} is not registered.") from error
 
 
 @app.post("/api/projects", response_model=ProjectSessionSummary, status_code=201)

@@ -40,6 +40,36 @@ class ModelCatalogEntry:
     limitation: str | None = None
 
 
+@dataclass(frozen=True)
+class ModelCapabilityContract:
+    """The trusted runtime contract used by new API and Studio clients."""
+
+    key: str
+    display_name: str
+    version: str
+    provider: str
+    family: str
+    supported_tasks: tuple[str, ...]
+    input_modalities: tuple[str, ...]
+    available: bool
+    unavailability_reason: str | None
+    capabilities: ModelCapabilities
+    supported_explainers: tuple[str, ...]
+    export_formats: tuple[str, ...]
+    config_schema: dict
+    defaults: dict
+    parameter_constraints: dict
+    optional_dependencies: tuple[str, ...]
+    evidence_objects_produced: tuple[str, ...]
+    limitations: tuple[str, ...]
+
+    def to_dict(self) -> dict:
+        payload = asdict(self)
+        for key in ("supported_tasks", "input_modalities", "supported_explainers", "export_formats", "optional_dependencies", "evidence_objects_produced", "limitations"):
+            payload[key] = list(payload[key])
+        return payload
+
+
 def _capabilities(**values: bool) -> ModelCapabilities:
     """Reject misspelled capability keys while leaving false values explicit."""
 
@@ -59,3 +89,35 @@ _ENTRIES = (
 
 def list_model_catalog() -> list[dict]:
     return [asdict(entry) for entry in _ENTRIES]
+
+
+def model_capability_contracts() -> list[ModelCapabilityContract]:
+    """Return deterministic built-in runtime declarations without name guessing."""
+    contracts: list[ModelCapabilityContract] = []
+    for entry in _ENTRIES:
+        explainers = tuple(name for name, enabled in (
+            ("occlusion", entry.capabilities.occlusion), ("shap", entry.capabilities.shap),
+            ("tree_shap", entry.capabilities.tree_shap),
+            ("integrated_gradients", entry.capabilities.integrated_gradients),
+            ("gradient_shap", entry.capabilities.gradient_shap),
+        ) if enabled)
+        trainable = entry.capabilities.fit
+        contracts.append(ModelCapabilityContract(
+            key=entry.key, display_name=entry.label, version="1.1.0", provider="ruflex.builtin",
+            family=entry.family,
+            supported_tasks=("binary_classification", "multiclass_classification", "regression") if trainable else (),
+            input_modalities=("tabular",), available=entry.available,
+            unavailability_reason=None if entry.available else "OPTIONAL_DEPENDENCY_MISSING",
+            capabilities=entry.capabilities, supported_explainers=explainers,
+            export_formats=("matlab_fis",) if entry.capabilities.export_fis else (),
+            config_schema={"type": "object", "additionalProperties": False}, defaults={"seed": 42},
+            parameter_constraints={}, optional_dependencies=(),
+            evidence_objects_produced=("TrainingRun", "ModelArtifact") if trainable else ("FISSpec", "FISEvaluation"),
+            limitations=tuple(item for item in (entry.limitation,) if item),
+        ))
+    return contracts
+
+
+def get_model_capability_contract(model_kind: str) -> ModelCapabilityContract | None:
+    key = "linear" if model_kind in {"logistic_regression", "linear_regression"} else model_kind
+    return next((item for item in model_capability_contracts() if item.key == key), None)
