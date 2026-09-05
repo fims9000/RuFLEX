@@ -81,6 +81,19 @@ def train_with_adapter(
     preview, confusion, calibration = _validation_payload(contract.task, split.validation_targets, raw, source_rows=split.validation_indices, dataset_fingerprint=contract.dataset_fingerprint)
     metrics = _baseline_metrics(contract.task, split.validation_targets, raw)
     loss = metrics["mse"] if contract.task == "regression" else 1.0 - metrics["accuracy"]
+    training_summary = {
+        "source": adapter.descriptor.identity.key,
+        "epochs_ran": 1,
+        "best_epoch": 1,
+        "monitor_name": "validation_loss",
+        "best_monitor_value": loss,
+        "train_loss": loss,
+        "train_metrics": {},
+        "validation_loss": loss,
+        "history": [],
+        **result.training_summary,
+        "validation_metrics": metrics,
+    }
     trajectory = [EpochPoint.model_validate(item) for item in result.trajectory] or [
         EpochPoint(epoch=0, train_loss=loss, validation_loss=loss, validation_metrics=metrics),
         EpochPoint(epoch=1, train_loss=loss, validation_loss=loss, validation_metrics=metrics),
@@ -91,11 +104,11 @@ def train_with_adapter(
         dataset_fingerprint=contract.dataset_fingerprint, dataset_artifact_sha256=contract.source_artifact_sha256,
         feature_columns=list(contract.feature_columns), seed=resolved_training, split_seed=resolved_split,
         training_seed=resolved_training, randomness_protocol=protocol,
-        max_epochs=int(result.training_summary.get("epochs_ran", 1)), learning_rate=float((parameters or {}).get("learning_rate", 0.0)),
+        max_epochs=int(training_summary.get("epochs_ran", 1)), learning_rate=float((parameters or {}).get("learning_rate", 0.0)),
         batch_size=int((parameters or {}).get("batch_size", len(split.train_features))), patience=(parameters or {}).get("patience"),
         split=_provenance(contract, split, split_seed=resolved_split, validation_fraction=validation_fraction, test_fraction=test_fraction),
         model_spec={"model_kind": model_kind, **result.model_spec}, normalization=_normalization_dict(split.normalization),
-        preprocessing_artifact_sha256=preprocessing_sha, training_summary={**result.training_summary, "validation_metrics": metrics}, trajectory=trajectory,
+        preprocessing_artifact_sha256=preprocessing_sha, training_summary=training_summary, trajectory=trajectory,
         validation_metrics=metrics, prediction_preview=preview, confusion_matrix=confusion, calibration=calibration,
         model_artifact_sha256=artifact.sha256, adapter_key=identity.key, adapter_version=identity.version,
         adapter_provider=identity.provider, adapter_kind=identity.kind, runtime_capability_snapshot_hash=registry.snapshot()["sha256"],
