@@ -1168,13 +1168,13 @@ def start_posthoc_explanation_check_job(request: CheckExplanationRequest) -> Job
 
 @app.post("/api/projects/evidence/explanations/occlusion", response_model=ExplanationContract, status_code=201)
 def create_posthoc_occlusion_explanation(request: CreateOcclusionExplanationRequest) -> ExplanationContract:
-    from ruflex.application.evidence import EvidenceError, create_occlusion_explanation
+    from ruflex.application.evidence import EvidenceError, create_runtime_explanation
 
     try:
         session = service.get(request.session_id)
         if session.project.read_only:
             raise ProjectReadOnlyError("Project was opened read-only and cannot persist an explanation.")
-        return create_occlusion_explanation(session.project.root, request.run_id, request.sample)
+        return create_runtime_explanation(session.project.root, explainer_key="occlusion", run_id=request.run_id, sample=request.sample)
     except ProjectError as error:
         raise _project_error(error) from error
     except (EvidenceError, ValueError, OSError, FileNotFoundError) as error:
