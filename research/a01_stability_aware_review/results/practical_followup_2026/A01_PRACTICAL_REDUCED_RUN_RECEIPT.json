@@ -1,1 +1,20 @@
-{"files":{"A01_PRACTICAL_REDUCED_RUN.md":"b6bf77a761b6a9de2564d38a61e5fa42dc78197530a1272c37456ab1aa995e69","A01_PRACTICAL_REDUCED_RUN_RESULTS.json":"08841a42834ebe19d1b1f7c68e7c555419eb550a99482274b69c30a26f9279fc","E03_reduced_run_tradeoff.svg":"d3456d9f529fffda46802fbcfe49516bf6868d9f85de66d5ad9a7855eeccb953","E04_operational_workflow.svg":"edf228d2f7c16d8232c17d635dbf550f1ae67263a4ceff8e2557504cc3c4fb11","T13_reduced_run_practical_tradeoff.csv":"805eff80c0fa01a9ae32d6cf4e65caf0d48cc99aad4557fe0c551607be1e7136","T14_reduced_run_macro_summary.csv":"56d4315a867b1b0aac793277febccc468800d1bdfa06813eb2b9fdf4c7a3bd1f","T15_bank_dt_illustrative_cases.csv":"e87da0ab54fa0409fcdd436da92daa4a79afae51b7f4b71f78de68b3ed8dcb9a"},"role":"POST_HOC_EXPLORATORY_PRACTICAL_ANALYSIS","schema_version":1}
+{
+  "schema_version": 2,
+  "role": "POST_HOC_EXPLORATORY_PRACTICAL_ANALYSIS",
+  "source_validation_bundle_sha256": "435ed839fd7e5e97daaa227adf2f652777908e99e5a19f93fb171ad947c980d8",
+  "frozen_confirmatory_results_modified": false,
+  "training_performed": false,
+  "threshold_or_policy_refitting_performed": false,
+  "additional_final_test_opening_performed": false,
+  "files": [
+    "A01_PRACTICAL_REDUCED_RUN.md",
+    "A01_PRACTICAL_REDUCED_RUN_QA.md",
+    "A01_PRACTICAL_REDUCED_RUN_RESULTS.json",
+    "E03_reduced_run_tradeoff.svg",
+    "E04_operational_workflow.svg",
+    "T13_reduced_run_practical_tradeoff.csv",
+    "T14_reduced_run_macro_summary.csv",
+    "T15_bank_dt_illustrative_cases.csv"
+  ],
+  "note": "This is a branch-level inventory of the post-hoc reduced-run practical analysis; it does not amend the frozen confirmatory A01 evidence."
+}
