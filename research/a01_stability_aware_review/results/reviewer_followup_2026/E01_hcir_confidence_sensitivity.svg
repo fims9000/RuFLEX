@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="560" viewBox="0 0 900 560">
+<rect width="100%" height="100%" fill="white"/>
+<style>text{font-family:Arial,sans-serif;fill:#111} .small{font-size:13px}.axis{stroke:#222;stroke-width:1.2}</style>
+<text x="450" y="30" text-anchor="middle" font-size="22">HCIR sensitivity to confidence threshold</text>
+<text x="450" y="50" text-anchor="middle" class="small">agreement threshold = 0.80; validation data</text>
+<line x1="95" y1="60" x2="95" y2="485" class="axis"/>
+<line x1="95" y1="485" x2="650" y2="485" class="axis"/>
+<line x1="90" y1="485.0" x2="650" y2="485.0" stroke="#dddddd" stroke-width="1"/>
+<text x="85" y="489.0" text-anchor="end" class="small">0.0%</text>
+<line x1="90" y1="400.0" x2="650" y2="400.0" stroke="#dddddd" stroke-width="1"/>
+<text x="85" y="404.0" text-anchor="end" class="small">1.4%</text>
+<line x1="90" y1="315.0" x2="650" y2="315.0" stroke="#dddddd" stroke-width="1"/>
+<text x="85" y="319.0" text-anchor="end" class="small">2.8%</text>
+<line x1="90" y1="230.0" x2="650" y2="230.0" stroke="#dddddd" stroke-width="1"/>
+<text x="85" y="234.0" text-anchor="end" class="small">4.3%</text>
+<line x1="90" y1="145.0" x2="650" y2="145.0" stroke="#dddddd" stroke-width="1"/>
+<text x="85" y="149.0" text-anchor="end" class="small">5.7%</text>
+<line x1="90" y1="60.0" x2="650" y2="60.0" stroke="#dddddd" stroke-width="1"/>
+<text x="85" y="64.0" text-anchor="end" class="small">7.1%</text>
+<line x1="95.0" y1="485" x2="95.0" y2="490" class="axis"/>
+<text x="95.0" y="510" text-anchor="middle" class="small">0.85</text>
+<line x1="372.5" y1="485" x2="372.5" y2="490" class="axis"/>
+<text x="372.5" y="510" text-anchor="middle" class="small">0.90</text>
+<line x1="650.0" y1="485" x2="650.0" y2="490" class="axis"/>
+<text x="650.0" y="510" text-anchor="middle" class="small">0.95</text>
+<text x="372.5" y="542" text-anchor="middle" class="small">High-confidence threshold</text>
+<text x="22" y="272.5" text-anchor="middle" class="small" transform="rotate(-90 22 272.5)">HCIR</text>
+<polyline points="95.0,431.3 372.5,431.3 650.0,431.3" fill="none" stroke="#111111" stroke-width="2.2"/>
+<circle cx="95.0" cy="431.3" r="3.5" fill="white" stroke="#111111" stroke-width="2"/>
+<circle cx="372.5" cy="431.3" r="3.5" fill="white" stroke="#111111" stroke-width="2"/>
+<circle cx="650.0" cy="431.3" r="3.5" fill="white" stroke="#111111" stroke-width="2"/>
+<line x1="675" y1="70" x2="703" y2="70" stroke="#111111" stroke-width="2.2"/>
+<text x="711" y="74" class="small">ai4i_2020 / decision_tree</text>
+<polyline points="95.0,389.3 372.5,485.0 650.0,485.0" fill="none" stroke="#444444" stroke-width="2.2" stroke-dasharray="8,4"/>
+<circle cx="95.0" cy="389.3" r="3.5" fill="white" stroke="#444444" stroke-width="2"/>
+<circle cx="372.5" cy="485.0" r="3.5" fill="white" stroke="#444444" stroke-width="2"/>
+<circle cx="650.0" cy="485.0" r="3.5" fill="white" stroke="#444444" stroke-width="2"/>
+<line x1="675" y1="118" x2="703" y2="118" stroke="#444444" stroke-width="2.2" stroke-dasharray="8,4"/>
+<text x="711" y="122" class="small">ai4i_2020 / flat_neuro_fuzzy</text>
+<polyline points="95.0,478.7 372.5,485.0 650.0,485.0" fill="none" stroke="#777777" stroke-width="2.2" stroke-dasharray="3,3"/>
+<circle cx="95.0" cy="478.7" r="3.5" fill="white" stroke="#777777" stroke-width="2"/>
+<circle cx="372.5" cy="485.0" r="3.5" fill="white" stroke="#777777" stroke-width="2"/>
+<circle cx="650.0" cy="485.0" r="3.5" fill="white" stroke="#777777" stroke-width="2"/>
+<line x1="675" y1="166" x2="703" y2="166" stroke="#777777" stroke-width="2.2" stroke-dasharray="3,3"/>
+<text x="711" y="170" class="small">ai4i_2020 / random_forest</text>
+<polyline points="95.0,115.4 372.5,115.4 650.0,115.4" fill="none" stroke="#999999" stroke-width="2.2" stroke-dasharray="10,3,2,3"/>
+<circle cx="95.0" cy="115.4" r="3.5" fill="white" stroke="#999999" stroke-width="2"/>
+<circle cx="372.5" cy="115.4" r="3.5" fill="white" stroke="#999999" stroke-width="2"/>
+<circle cx="650.0" cy="115.4" r="3.5" fill="white" stroke="#999999" stroke-width="2"/>
+<line x1="675" y1="214" x2="703" y2="214" stroke="#999999" stroke-width="2.2" stroke-dasharray="10,3,2,3"/>
+<text x="711" y="218" class="small">uci_bank_marketing / decision_tree</text>
+<polyline points="95.0,464.4 372.5,478.8 650.0,483.7" fill="none" stroke="#222222" stroke-width="2.2" stroke-dasharray="5,2"/>
+<circle cx="95.0" cy="464.4" r="3.5" fill="white" stroke="#222222" stroke-width="2"/>
+<circle cx="372.5" cy="478.8" r="3.5" fill="white" stroke="#222222" stroke-width="2"/>
+<circle cx="650.0" cy="483.7" r="3.5" fill="white" stroke="#222222" stroke-width="2"/>
+<line x1="675" y1="262" x2="703" y2="262" stroke="#222222" stroke-width="2.2" stroke-dasharray="5,2"/>
+<text x="711" y="266" class="small">uci_bank_marketing / random_forest</text>
+<polyline points="95.0,432.6 372.5,432.6 650.0,432.6" fill="none" stroke="#666666" stroke-width="2.2" stroke-dasharray="2,2"/>
+<circle cx="95.0" cy="432.6" r="3.5" fill="white" stroke="#666666" stroke-width="2"/>
+<circle cx="372.5" cy="432.6" r="3.5" fill="white" stroke="#666666" stroke-width="2"/>
+<circle cx="650.0" cy="432.6" r="3.5" fill="white" stroke="#666666" stroke-width="2"/>
+<line x1="675" y1="310" x2="703" y2="310" stroke="#666666" stroke-width="2.2" stroke-dasharray="2,2"/>
+<text x="711" y="314" class="small">wisconsin_diagnostic / decision_tree</text>
+</svg>
