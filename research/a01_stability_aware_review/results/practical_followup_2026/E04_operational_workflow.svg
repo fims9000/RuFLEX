@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="330" viewBox="0 0 980 330">
+<rect width="100%" height="100%" fill="white"/>
+<style>text{font-family:Arial,sans-serif;fill:#111}.h{font-size:18px;font-weight:700}.b{font-size:14px}.box{fill:#f7f7f7;stroke:#333;stroke-width:1.5}.arrow{stroke:#333;stroke-width:1.8;fill:none;marker-end:url(#m)}</style>
+<defs><marker id="m" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#333"/></marker></defs>
+<text x="490" y="28" text-anchor="middle" font-size="22">Operational use of cross-run reproducibility</text>
+<rect class="box" x="35" y="85" rx="10" width="170" height="105"/><text class="h" x="120" y="118" text-anchor="middle">Selected model</text><text class="b" x="120" y="145" text-anchor="middle">Production prediction</text><text class="b" x="120" y="166" text-anchor="middle">+ raw confidence</text>
+<rect class="box" x="285" y="65" rx="10" width="210" height="145"/><text class="h" x="390" y="98" text-anchor="middle">Frozen auxiliary runs</text><text class="b" x="390" y="126" text-anchor="middle">No voting on final class</text><text class="b" x="390" y="150" text-anchor="middle">Agreement across retraining</text><text class="b" x="390" y="174" text-anchor="middle">Probability dispersion</text>
+<rect class="box" x="575" y="65" rx="10" width="185" height="145"/><text class="h" x="667" y="98" text-anchor="middle">Review gate</text><text class="b" x="667" y="128" text-anchor="middle">confidence >= 0.90</text><text class="b" x="667" y="151" text-anchor="middle">agreement >= 0.80</text><text class="b" x="667" y="174" text-anchor="middle">probability SD <= 0.15</text>
+<rect class="box" x="830" y="52" rx="10" width="120" height="75"/><text class="h" x="890" y="84" text-anchor="middle">ACCEPT</text><text class="b" x="890" y="106" text-anchor="middle">Use prediction</text>
+<rect class="box" x="830" y="170" rx="10" width="120" height="88"/><text class="h" x="890" y="202" text-anchor="middle">REVIEW</text><text class="b" x="890" y="225" text-anchor="middle">Human / extra</text><text class="b" x="890" y="244" text-anchor="middle">verification</text>
+<path class="arrow" d="M205 138 L285 138"/><path class="arrow" d="M495 138 L575 138"/><path class="arrow" d="M760 112 C790 112 792 89 830 89"/><path class="arrow" d="M760 165 C790 165 792 214 830 214"/>
+<text class="b" x="490" y="295" text-anchor="middle">Cross-run evidence diagnoses reproducibility; it does not replace the selected model prediction.</text>
+</svg>
