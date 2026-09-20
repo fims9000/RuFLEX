@@ -22,6 +22,17 @@ For completeness, a post-hoc descriptive calculation was also performed for the 
 
 The operational run was selected by maximum validation F1. In imbalanced settings, this criterion can favor runs with a particular precision-recall and confidence profile; the present study does not evaluate whether alternative model-selection criteria would lead to different stability or routing results.
 
+
+## Suggested practical reduced-run paragraph
+
+A post-hoc validation-only subsampling analysis retained the selected operational run and replaced the other 19-run reproducibility calculation by smaller frozen subsets. With 10 total runs (the selected run plus nine auxiliary runs), the reduced gate reproduced the full 20-run gate decision with 99.89% macro agreement across the 15 cells and recovered 97.04% of full-reference review cases while using 9/19 = 47.37% of the auxiliary-fit count. With 15 total runs, gate-decision agreement reached 99.98% and review recall 99.87% at 14/19 = 73.68% of the auxiliary-fit count. These values quantify approximation to the frozen 20-run reference; they do not establish a universal minimum run count or hardware-normalized compute saving.
+
+## Practical interpretation
+
+The deployed class still comes exclusively from the selected model. Auxiliary runs provide reproducibility evidence only; they do not vote on or replace the prediction. The reduced-run experiment therefore addresses the practical cost of measuring the diagnostic signal rather than changing the predictor.
+
+Five Bank Marketing Decision Tree examples were retained as illustrative cases. The set intentionally contains both correct and incorrect 100%-confidence selected-model predictions with full-run agreement ranging from 10% to 75%. This is useful precisely because it shows that disagreement is a review diagnostic rather than an error label.
+
 ## What should not be changed
 
 The frozen confirmatory claims, `A01_FINAL_RESULTS.json`, thresholds, policies, model fits, and final-test results should remain unchanged. The exploratory checks above are supplementary evidence added after reviewer feedback.
