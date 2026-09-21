@@ -1,0 +1,22 @@
+{
+  "schema_version": 2,
+  "role": "POST_HOC_EXPLORATORY_REVIEWER_FOLLOWUP",
+  "source_validation_bundle_sha256": "435ed839fd7e5e97daaa227adf2f652777908e99e5a19f93fb171ad947c980d8",
+  "source_final_bundle_sha256": "3f12fb95f6027d3eb6e978d3cd3d64c832a49725d772caacc209807a30715f1d",
+  "frozen_confirmatory_results_modified": false,
+  "training_performed": false,
+  "threshold_or_policy_refitting_performed": false,
+  "additional_final_test_opening_performed": false,
+  "files": [
+    "A01_REVIEWER_FOLLOWUP.md",
+    "A01_REVIEWER_FOLLOWUP_QA.md",
+    "A01_REVIEWER_FOLLOWUP_RESULTS.json",
+    "ARTICLE_INTEGRATION_NOTES.md",
+    "E01_hcir_confidence_sensitivity.svg",
+    "T09_hcir_threshold_sensitivity.csv",
+    "T10_hcir_independence_reference.csv",
+    "T11_probability_std_sensitivity.csv",
+    "T12_bank_marketing_dt_fnr_posthoc.json"
+  ],
+  "note": "This branch receipt inventories the reviewer-follow-up package. The integration notes were extended after the original local package was built, so package-era per-file hashes are intentionally not reused here."
+}

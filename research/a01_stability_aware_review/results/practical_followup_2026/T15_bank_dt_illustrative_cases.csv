@@ -1,0 +1,6 @@
+dataset_id,model_family,case_id,target,selected_prediction,selected_confidence,full_selected_run_agreement,full_probability_std,selected_prediction_correct,k3_hc_disagreement_detection_probability,k5_hc_disagreement_detection_probability,k10_hc_disagreement_detection_probability,k15_hc_disagreement_detection_probability
+uci_bank_marketing,decision_tree,source:17908,0,1,0.9999999999989999,0.1,0.29999999999939997,False,1.0,1.0,1.0,1.0
+uci_bank_marketing,decision_tree,source:19670,1,0,0.999999999999,0.5,0.49999999999899997,False,0.7894736842105263,0.749,0.981,1.0
+uci_bank_marketing,decision_tree,source:27736,1,0,0.999999999999,0.75,0.4330127018913532,False,0.4678362573099415,0.275,0.456,0.612
+uci_bank_marketing,decision_tree,source:28135,0,0,0.999999999999,0.1,0.2999999999994,True,1.0,1.0,1.0,1.0
+uci_bank_marketing,decision_tree,source:12131,0,0,0.999999999999,0.75,0.4330127018913532,True,0.4678362573099415,0.268,0.458,0.606

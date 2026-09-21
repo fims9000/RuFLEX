@@ -53,6 +53,7 @@ or compatibility context, not the Product V1.0.1 entrypoint.
   300 fixed fits over 15 dataset/model cells; H3 is `SUPPORTS_H3` in one cell,
   `CONTRADICTS_H3` in one, and `INCONCLUSIVE` in 13. See
   [`research/a01_stability_aware_review/`](../research/a01_stability_aware_review/).
+- **A01 reviewer follow-up (post hoc / exploratory):** frozen validation and final-test evidence was reused without retraining, refitting, or reopening the final test. Reviewer-requested threshold sensitivity, an HCIR independence reference, Bank Marketing Decision Tree FNR, and a reduced-run practical approximation study are recorded under `research/a01_stability_aware_review/results/reviewer_followup_2026/` and `research/a01_stability_aware_review/results/practical_followup_2026/`. These additions do not modify the frozen confirmatory A01 result.
 
 ## Interpretation limits
 
