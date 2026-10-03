@@ -367,3 +367,88 @@ def test_generic_core_service_executes_builtin_native_adapters(tmp_path: Path, a
     assert result.probability is not None
     assert result.raw_score is not None
     assert np.allclose(result.probability, 1.0 / (1.0 + np.exp(-np.asarray(result.raw_score))), rtol=1e-10, atol=1e-12)
+
+
+@pytest.mark.parametrize(("model_kind", "parameters"), [
+    ("flat_neuro_fuzzy", {"max_epochs": 2, "batch_size": 16, "patience": 2, "max_rules": 3, "learning_rate": .01}),
+    ("logistic_regression", {}),
+    ("linear_regression", {}),
+    ("decision_tree", {"max_depth": 3}),
+    ("random_forest", {"n_estimators": 4, "max_depth": 3}),
+    ("gradient_boosting", {"n_estimators": 4, "learning_rate": .1, "max_depth": 2}),
+])
+def test_native_adapter_fit_and_replay_preserve_pre_dispatch_numeric_semantics(
+    tmp_path: Path, model_kind: str, parameters: dict,
+) -> None:
+    """Compare adapter dispatch with the retained pre-dispatch fit implementations."""
+    from ruflex.application.evidence import predict_run_sample
+    from ruflex.application.training import (
+        create_validation_evaluation,
+        evaluate_final_test,
+        select_validation_threshold,
+        train_decision_tree,
+        train_flat_neuro_fuzzy,
+        train_gradient_boosting,
+        train_linear_baseline,
+        train_model,
+        train_random_forest,
+    )
+
+    task = "regression" if model_kind == "linear_regression" else "binary_classification"
+    frame = pd.DataFrame({
+        "x": np.arange(60, dtype=float),
+        "target": (0.25 * np.arange(60) + np.sin(np.arange(60) / 5.0)) if task == "regression" else (np.arange(60) >= 30).astype(int),
+    })
+    source = persist_dataset_bytes(tmp_path, frame.to_csv(index=False).encode())
+    profile = inspect_dataset(frame, source_artifact_sha256=source.sha256)
+    contract = build_dataset_contract(profile, target="target", task=task)
+    persist_dataset_contract(tmp_path, contract, run_data_audit(contract, frame), profile)
+
+    seed_args = {"split_seed": 17, "training_seed": 23, "seed": 23}
+    if model_kind == "flat_neuro_fuzzy":
+        before = train_flat_neuro_fuzzy(tmp_path, **seed_args, **parameters)
+    elif model_kind in {"logistic_regression", "linear_regression"}:
+        before = train_linear_baseline(tmp_path, kind=model_kind, **seed_args)
+    elif model_kind == "decision_tree":
+        before = train_decision_tree(tmp_path, **seed_args, **parameters)
+    elif model_kind == "random_forest":
+        before = train_random_forest(tmp_path, **seed_args, **parameters)
+    else:
+        before = train_gradient_boosting(tmp_path, **seed_args, **parameters)
+    after = train_model(tmp_path, model_kind=model_kind, **seed_args, **parameters)
+
+    assert before.feature_columns == after.feature_columns
+    assert before.split.split_identity == after.split.split_identity
+    numerical_tolerance = 1e-5 if model_kind == "flat_neuro_fuzzy" else 1e-12
+    # The canonical generic path adds secondary calibration/ROC metrics that
+    # older model-specific TrainingRun summaries did not always persist.
+    shared_metrics = before.validation_metrics.keys() & after.validation_metrics.keys()
+    assert shared_metrics
+    for metric in shared_metrics:
+        assert after.validation_metrics[metric] == pytest.approx(before.validation_metrics[metric], abs=numerical_tolerance)
+    assert len(before.prediction_preview) == len(after.prediction_preview)
+    for old_row, new_row in zip(before.prediction_preview, after.prediction_preview, strict=True):
+        assert new_row.source_row == old_row.source_row
+        assert new_row.target == pytest.approx(old_row.target, abs=1e-12)
+        assert new_row.prediction == pytest.approx(old_row.prediction, abs=numerical_tolerance)
+        assert new_row.probability == pytest.approx(old_row.probability, abs=numerical_tolerance)
+        assert new_row.predicted_label == old_row.predicted_label
+
+    old_evaluation = create_validation_evaluation(tmp_path, before.run_id)
+    new_evaluation = create_validation_evaluation(tmp_path, after.run_id)
+    old_threshold = select_validation_threshold(tmp_path, old_evaluation.evaluation_id) if task == "binary_classification" else None
+    new_threshold = select_validation_threshold(tmp_path, new_evaluation.evaluation_id) if task == "binary_classification" else None
+    old_final = evaluate_final_test(tmp_path, old_evaluation.evaluation_id, threshold_id=None if old_threshold is None else old_threshold.threshold_id)
+    new_final = evaluate_final_test(tmp_path, new_evaluation.evaluation_id, threshold_id=None if new_threshold is None else new_threshold.threshold_id)
+    assert len(old_final.prediction_rows) == len(new_final.prediction_rows)
+    for old_row, new_row in zip(old_final.prediction_rows, new_final.prediction_rows, strict=True):
+        assert new_row.source_row == old_row.source_row
+        assert new_row.target == pytest.approx(old_row.target, abs=1e-12)
+        assert new_row.prediction == pytest.approx(old_row.prediction, abs=numerical_tolerance)
+        assert new_row.probability == pytest.approx(old_row.probability, abs=numerical_tolerance)
+        assert new_row.predicted_label == old_row.predicted_label
+
+    sample = {"x": float(frame.loc[old_final.prediction_rows[0].source_row, "x"])}
+    assert predict_run_sample(tmp_path, after.run_id, sample) == pytest.approx(
+        predict_run_sample(tmp_path, before.run_id, sample), abs=numerical_tolerance,
+    )
