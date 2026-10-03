@@ -22,7 +22,6 @@ from sklearn.metrics import accuracy_score, average_precision_score, f1_score, m
 
 from ruflex.application.artifacts import ArtifactMetadata, ArtifactRef, ArtifactStore
 from ruflex.runtime.backends import resolve_execution_backend
-from ruflex.runtime.contracts import PredictionRequest
 from ruflex.runtime.registry import builtin_runtime_registry
 from ruflex.application.datasets import load_dataset_contract, load_dataset_frame, load_split_contract, load_transform_pipeline_contract, row_identity
 from ruflex.core.enums import NormalizationMode, TaskType, VariableRole
@@ -907,18 +906,13 @@ def train_flat_neuro_fuzzy(
     return run
 
 
-def persist_training_run(project_root: Path, run: TrainingRun) -> None:
+def persist_training_run(project_root: Path, run: TrainingRun, *, registry=None) -> None:
     # Binding belongs to canonical persistence, never to a runtime adapter.
-    # A compatibility failure is intentionally non-destructive for historical
-    # model kinds; their evidence remains inspectable but unavailable to new
-    # runtime operations.
+    # New/legacy-unbound runs must be bound deterministically; malformed or
+    # partial provenance fails closed instead of persisting an unusable run.
     from ruflex.runtime.compatibility import bind_new_run_to_runtime
 
-    if run.adapter_key is None:
-        try:
-            bind_new_run_to_runtime(run)
-        except Exception:
-            pass
+    bind_new_run_to_runtime(run, registry=registry)
     path = _run_path(project_root, run.run_id)
     _atomic_write_text(path, run.model_dump_json(indent=2))
     _atomic_write_text(
@@ -928,7 +922,8 @@ def persist_training_run(project_root: Path, run: TrainingRun) -> None:
 
 
 def load_training_run(project_root: Path, run_id: UUID) -> TrainingRun:
-    return TrainingRun.model_validate_json(_run_path(project_root, run_id).read_text(encoding="utf-8"))
+    run = TrainingRun.model_validate_json(_run_path(project_root, run_id).read_text(encoding="utf-8"))
+    return _attach_legacy_adapter_identity_in_memory(run)
 
 
 def load_latest_training_run(project_root: Path) -> TrainingRun:
@@ -943,11 +938,26 @@ def list_training_runs(project_root: Path) -> list[TrainingRun]:
             UUID(path.stem)
         except ValueError:
             continue
-        runs.append(TrainingRun.model_validate_json(path.read_text(encoding="utf-8")))
+        runs.append(_attach_legacy_adapter_identity_in_memory(TrainingRun.model_validate_json(path.read_text(encoding="utf-8"))))
     return sorted(runs, key=lambda run: run.created_at)
 
 
-def train_model(project_root: Path, *, model_kind: str, adapter_key: str | None = None, **config) -> TrainingRun:
+def _attach_legacy_adapter_identity_in_memory(run: TrainingRun) -> TrainingRun:
+    """Expose deterministic legacy identity to callers without rewriting files."""
+    if run.schema_version >= 3 or any((run.adapter_key, run.adapter_version, run.adapter_provider, run.adapter_kind)):
+        return run
+    from ruflex.runtime.compatibility import LEGACY_MODEL_KIND_TO_ADAPTER
+
+    mapped = LEGACY_MODEL_KIND_TO_ADAPTER.get(run.model_kind)
+    if mapped is None:
+        return run
+    run.adapter_key, run.adapter_version = mapped
+    run.adapter_provider = "ruflex.builtin"
+    run.adapter_kind = "model_adapter"
+    return run
+
+
+def train_model(project_root: Path, *, model_kind: str, adapter_key: str | None = None, adapter_version: str | None = None, **config) -> TrainingRun:
     """Run one declared catalog adapter and record its wall-clock training time.
 
     The registry resolves a declared adapter before any concrete training code.
@@ -963,11 +973,12 @@ def train_model(project_root: Path, *, model_kind: str, adapter_key: str | None 
 
     try:
         registry = builtin_runtime_registry()
-        adapter = registry.resolve_model_adapter(adapter_key) if adapter_key is not None else registry.resolve_training_model_kind(model_kind)
+        adapter = registry.resolve_model_adapter(adapter_key, version=adapter_version) if adapter_key is not None else registry.resolve_training_model_kind(model_kind)
         if model_kind not in adapter.descriptor.training_model_kinds:
             raise TrainingError(f"Adapter {adapter.descriptor.identity.key!r} cannot train model kind {model_kind!r}.")
         run = train_with_adapter(
             project_root, registry=registry, adapter_key=adapter.descriptor.identity.key,
+            adapter_version=adapter.descriptor.identity.version,
             model_kind=model_kind, seed=config.get("seed"), split_seed=config.get("split_seed"),
             training_seed=config.get("training_seed"), validation_fraction=config.get("validation_fraction", .2),
             test_fraction=config.get("test_fraction", .2), parameters=config,
@@ -978,7 +989,7 @@ def train_model(project_root: Path, *, model_kind: str, adapter_key: str | None 
             raise
         raise TrainingError(f"Unsupported or unavailable model adapter for {model_kind!r}.") from error
     run.runtime_seconds = time.perf_counter() - started
-    persist_training_run(project_root, run)
+    persist_training_run(project_root, run, registry=registry)
     return run
 
 
@@ -1016,12 +1027,19 @@ def _select_study_run(values: list[tuple[TrainingRun, float | None]], selection_
     return selected, value, rule
 
 
-def run_multi_seed_study(project_root: Path, *, name: str, model_kind: str = "flat_neuro_fuzzy", seeds: list[int], selection_metric: str = "f1", randomness_protocol: str = "LEGACY_COMBINED", split_seed: int | None = None, training_seed: int | None = None, **config) -> TrainingStudy:
+def run_multi_seed_study(project_root: Path, *, name: str, model_kind: str = "flat_neuro_fuzzy", seeds: list[int], selection_metric: str = "f1", randomness_protocol: str = "LEGACY_COMBINED", split_seed: int | None = None, training_seed: int | None = None, adapter_key: str | None = None, adapter_version: str | None = None, **config) -> TrainingStudy:
     pairs = _study_seed_pairs(seeds=seeds, randomness_protocol=randomness_protocol, split_seed=split_seed, training_seed=training_seed)
-    runs = [train_model(project_root, model_kind=model_kind, split_seed=current_split, training_seed=current_training, **config) for current_split, current_training in pairs]
+    from ruflex.runtime.registry import builtin_runtime_registry
+
+    registry = builtin_runtime_registry()
+    adapter = registry.resolve_model_adapter(adapter_key, version=adapter_version) if adapter_key is not None else registry.resolve_training_model_kind(model_kind)
+    if model_kind not in adapter.descriptor.training_model_kinds:
+        raise TrainingError(f"Adapter {adapter.descriptor.identity.key!r} cannot train model kind {model_kind!r}.")
+    identity = adapter.descriptor.identity
+    runs = [train_model(project_root, model_kind=model_kind, adapter_key=identity.key, adapter_version=identity.version, split_seed=current_split, training_seed=current_training, **config) for current_split, current_training in pairs]
     for run in runs:
         run.randomness_protocol = randomness_protocol
-        persist_training_run(project_root, run)
+        persist_training_run(project_root, run, registry=registry)
     if selection_metric not in {"accuracy", "precision", "recall", "f1", "mse", "mae", "rmse", "r2"}:
         raise TrainingError(f"Unsupported selection metric {selection_metric!r}.")
     selected, value, rule = _select_study_run([(run, run.validation_metrics.get(selection_metric)) for run in runs], selection_metric)
@@ -1036,15 +1054,27 @@ def _persist_study_job(project_root: Path, job: StudyJob) -> None:
 
 
 def load_study_job(project_root: Path, job_id: UUID) -> StudyJob:
-    return StudyJob.model_validate_json(_study_job_path(project_root, job_id).read_text(encoding="utf-8"))
+    job = StudyJob.model_validate_json(_study_job_path(project_root, job_id).read_text(encoding="utf-8"))
+    if job.schema_version < 5 and not any((job.adapter_key, job.adapter_version, job.adapter_provider)):
+        from ruflex.runtime.compatibility import LEGACY_MODEL_KIND_TO_ADAPTER
+
+        mapped = LEGACY_MODEL_KIND_TO_ADAPTER.get(job.model_kind)
+        if mapped is not None:
+            job.adapter_key, job.adapter_version = mapped
+            job.adapter_provider = "ruflex.builtin"
+    return job
 
 
 def list_study_jobs(project_root: Path) -> list[StudyJob]:
     """Read persisted job state; no thread-local state is treated as canonical."""
-    return sorted(
-        (StudyJob.model_validate_json(path.read_text(encoding="utf-8")) for path in _study_jobs_root(project_root).glob("*.json")),
-        key=lambda job: (job.created_at, str(job.job_id)),
-    )
+    jobs = []
+    for path in _study_jobs_root(project_root).glob("*.json"):
+        try:
+            UUID(path.stem)
+        except ValueError:
+            continue
+        jobs.append(load_study_job(project_root, UUID(path.stem)))
+    return sorted(jobs, key=lambda job: (job.created_at, str(job.job_id)))
 
 
 def cancel_study_job(project_root: Path, job_id: UUID) -> StudyJob:
@@ -1062,6 +1092,28 @@ def cancel_study_job(project_root: Path, job_id: UUID) -> StudyJob:
 def _execute_study_job(project_root: Path, job_id: UUID) -> None:
     cancellation = _study_job_cancellations.setdefault(job_id, Event())
     job = load_study_job(project_root, job_id)
+    try:
+        from ruflex.runtime.registry import builtin_runtime_registry
+
+        registry = builtin_runtime_registry()
+        if job.adapter_key is None and job.adapter_version is None and job.adapter_provider is None:
+            # Read-only migration for jobs created before model-runtime identity
+            # was part of the durable execution contract.
+            adapter = registry.resolve_training_model_kind(job.model_kind)
+        elif not all((job.adapter_key, job.adapter_version, job.adapter_provider)):
+            raise TrainingError("Persisted StudyJob model adapter identity is partial; refusing model_kind fallback.")
+        else:
+            adapter = registry.resolve_model_adapter(job.adapter_key, version=job.adapter_version)
+            if adapter.descriptor.identity.provider != job.adapter_provider:
+                raise TrainingError("Persisted StudyJob model adapter provider does not match the registered runtime.")
+        if job.model_kind not in adapter.descriptor.training_model_kinds:
+            raise TrainingError("Persisted StudyJob adapter does not support its declared model kind.")
+    except Exception as error:
+        job.status = "FAILED"
+        job.error = f"Model runtime recovery failed closed: {error}"
+        job.finished_at = datetime.now(timezone.utc)
+        _persist_study_job(project_root, job)
+        return
     job.status = "RUNNING"
     job.started_at = job.started_at or datetime.now(timezone.utc)
     _persist_study_job(project_root, job)
@@ -1071,8 +1123,15 @@ def _execute_study_job(project_root: Path, job_id: UUID) -> None:
             if state.run_id is None:
                 state.status = "FAILED"; state.error = "Persisted successful seed has no TrainingRun identity."
             else:
-                try: successful_runs.append(load_training_run(project_root, state.run_id))
-                except (FileNotFoundError, ValueError) as error:
+                try:
+                    completed_run = load_training_run(project_root, state.run_id)
+                    from ruflex.runtime.compatibility import resolve_run_adapter
+
+                    completed_adapter = resolve_run_adapter(completed_run, registry=registry)
+                    if completed_adapter.descriptor.identity != adapter.descriptor.identity:
+                        raise TrainingError("Completed seed run uses a different model adapter than its persisted StudyJob.")
+                    successful_runs.append(completed_run)
+                except Exception as error:
                     state.status = "FAILED"; state.error = f"Persisted TrainingRun cannot be reopened: {error}"
             _persist_study_job(project_root, job)
             continue
@@ -1090,9 +1149,9 @@ def _execute_study_job(project_root: Path, job_id: UUID) -> None:
         state.status = "RUNNING"
         _persist_study_job(project_root, job)
         try:
-            run = train_model(project_root, model_kind=job.model_kind, split_seed=state.split_seed, training_seed=state.training_seed, **job.execution_config)
+            run = train_model(project_root, model_kind=job.model_kind, adapter_key=adapter.descriptor.identity.key, adapter_version=adapter.descriptor.identity.version, split_seed=state.split_seed, training_seed=state.training_seed, **job.execution_config)
             run.randomness_protocol = job.randomness_protocol
-            persist_training_run(project_root, run)
+            persist_training_run(project_root, run, registry=registry)
             state.status = "SUCCEEDED"
             state.run_id = run.run_id
             state.runtime_seconds = run.runtime_seconds
@@ -1142,10 +1201,17 @@ def _submit_study_job(project_root: Path, job_id: UUID) -> StudyJob:
     return load_study_job(project_root, job_id)
 
 
-def start_study_job(project_root: Path, *, name: str, model_kind: str, seeds: list[int], selection_metric: str, randomness_protocol: str = "LEGACY_COMBINED", split_seed: int | None = None, training_seed: int | None = None, execution_backend_key: str = "local_executor", **config) -> StudyJob:
+def start_study_job(project_root: Path, *, name: str, model_kind: str, seeds: list[int], selection_metric: str, randomness_protocol: str = "LEGACY_COMBINED", split_seed: int | None = None, training_seed: int | None = None, execution_backend_key: str = "local_executor", adapter_key: str | None = None, adapter_version: str | None = None, **config) -> StudyJob:
     pairs = _study_seed_pairs(seeds=seeds, randomness_protocol=randomness_protocol, split_seed=split_seed, training_seed=training_seed)
     descriptor, _ = resolve_execution_backend(execution_backend_key)
-    job = StudyJob(name=name, model_kind=model_kind, selection_metric=selection_metric, seed_states=[StudySeedState(seed=current_training, split_seed=current_split, training_seed=current_training) for current_split, current_training in pairs], randomness_protocol=randomness_protocol, split_seed=(pairs[0][0] if len({pair[0] for pair in pairs}) == 1 else None), execution_config=config, execution_backend_key=descriptor.identity.key, execution_backend_version=descriptor.identity.version, execution_backend_provider=descriptor.identity.provider)
+    from ruflex.runtime.registry import builtin_runtime_registry
+
+    registry = builtin_runtime_registry()
+    adapter = registry.resolve_model_adapter(adapter_key, version=adapter_version) if adapter_key is not None else registry.resolve_training_model_kind(model_kind)
+    if model_kind not in adapter.descriptor.training_model_kinds:
+        raise TrainingError(f"Adapter {adapter.descriptor.identity.key!r} cannot train model kind {model_kind!r}.")
+    identity = adapter.descriptor.identity
+    job = StudyJob(name=name, model_kind=model_kind, selection_metric=selection_metric, seed_states=[StudySeedState(seed=current_training, split_seed=current_split, training_seed=current_training) for current_split, current_training in pairs], randomness_protocol=randomness_protocol, split_seed=(pairs[0][0] if len({pair[0] for pair in pairs}) == 1 else None), execution_config=config, adapter_key=identity.key, adapter_version=identity.version, adapter_provider=identity.provider, execution_backend_key=descriptor.identity.key, execution_backend_version=descriptor.identity.version, execution_backend_provider=descriptor.identity.provider)
     _persist_study_job(project_root, job)
     return _submit_study_job(project_root, job.job_id)
 
@@ -1173,7 +1239,16 @@ def resume_study_job(project_root: Path, job_id: UUID) -> StudyJob:
 
 
 def load_training_study(project_root: Path, study_id: UUID) -> TrainingStudy:
-    return TrainingStudy.model_validate_json((_studies_root(project_root) / f"{study_id}.json").read_text(encoding="utf-8"))
+    study = TrainingStudy.model_validate_json((_studies_root(project_root) / f"{study_id}.json").read_text(encoding="utf-8"))
+    study.seed_runs = [_attach_legacy_adapter_identity_in_memory(run) for run in study.seed_runs]
+    if study.schema_version < 3 and not any((study.adapter_key, study.adapter_version, study.adapter_provider)):
+        from ruflex.runtime.compatibility import LEGACY_MODEL_KIND_TO_ADAPTER
+
+        mapped = LEGACY_MODEL_KIND_TO_ADAPTER.get(study.model_kind)
+        if mapped is not None:
+            study.adapter_key, study.adapter_version = mapped
+            study.adapter_provider = "ruflex.builtin"
+    return study
 
 
 def load_latest_training_study(project_root: Path) -> TrainingStudy:
@@ -1457,31 +1532,13 @@ def _predict_persisted_run_normalized(
     matrix = np.asarray(normalized_features, dtype=float)
     if matrix.ndim == 1:
         matrix = matrix.reshape(1, -1)
-    if matrix.shape[1] != len(run.feature_columns):
-        raise TrainingError("Final-test features do not match the frozen TrainingRun feature order.")
-
-    if not all((run.adapter_key, run.adapter_version, run.adapter_provider, run.preprocessing_artifact_sha256)):
-        raise TrainingError("Final-test replay requires persisted runtime adapter and preprocessing bindings.")
     try:
-        adapter = builtin_runtime_registry().resolve_model_adapter(run.adapter_key, version=run.adapter_version)
+        from ruflex.application.model_runtime import predict_persisted_run, raw_prediction
+
+        result = predict_persisted_run(project_root, run, matrix, registry=builtin_runtime_registry())
+        return raw_prediction(result, task=run.task)
     except Exception as error:
-        raise TrainingError("The persisted runtime adapter is unavailable for final-test replay.") from error
-    if adapter.descriptor.identity.provider != run.adapter_provider or run.model_kind not in adapter.descriptor.training_model_kinds:
-        raise TrainingError("The persisted runtime adapter identity is incompatible with the frozen TrainingRun.")
-    with ArtifactStore(project_root).open(ArtifactRef(sha256=run.model_artifact_sha256)) as handle:
-        result = adapter.predict(PredictionRequest(
-            task=run.task, feature_names=tuple(run.feature_columns), features=matrix,
-            artifact=handle.read(), model_spec=run.model_spec,
-            preprocessing_identity=run.preprocessing_artifact_sha256,
-        ))
-    if run.task == TaskType.REGRESSION.value:
-        return np.asarray(result.prediction, dtype=float).reshape(-1)
-    if result.raw_score is not None:
-        return np.asarray(result.raw_score, dtype=float).reshape(-1)
-    if result.probability is None:
-        raise TrainingError("Binary runtime adapter replay must return a raw score or probability.")
-    probability = np.clip(np.asarray(result.probability, dtype=float).reshape(-1), 1e-12, 1.0 - 1e-12)
-    return np.log(probability / (1.0 - probability))
+        raise TrainingError(f"The persisted runtime adapter is unavailable for final-test replay: {error}") from error
 
 
 def evaluate_final_test(

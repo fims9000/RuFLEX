@@ -61,7 +61,7 @@ class ProjectIntegrityIssue(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     code: str
-    status: Literal["WARN", "FAIL"]
+    status: Literal["PASS", "WARN", "FAIL"]
     path: str
     detail: str
 

@@ -54,6 +54,22 @@ def test_project_integrity_survives_reopen_and_reports_missing_frozen_model_arti
     assert open_studio_project(root).integrity().status == "FAIL"
 
 
+def test_project_integrity_fails_closed_for_unknown_persisted_model_adapter(tmp_path: Path) -> None:
+    client = TestClient(app); root = tmp_path / "unknown-adapter-integrity"
+    session_id = client.post("/api/projects", json={"path": str(root), "name": "Unknown adapter"}).json()["session_id"]
+    assert client.post("/api/projects/dataset/confirm", json={"session_id": session_id, "csv_text": _frame(), "target": "target", "task": "binary_classification", "id_columns": []}).status_code == 200
+    trained = client.post("/api/projects/training/run", json={"session_id": session_id, "model_kind": "decision_tree", "seed": 42, "max_epochs": 1, "learning_rate": .01, "batch_size": 16, "patience": 1, "validation_fraction": .2, "test_fraction": .2, "max_rules": 3}).json()
+    run_path = root / "runs" / f"{trained['run_id']}.json"
+    payload = json.loads(run_path.read_text(encoding="utf-8"))
+    payload["adapter_key"] = "missing_adapter"
+    run_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    report = client.get(f"/api/projects/{session_id}/integrity").json()
+
+    assert report["status"] == "FAIL"
+    assert any(item["code"] == "ADAPTER_IDENTITY" and item["status"] == "FAIL" for item in report["issues"])
+
+
 def test_project_integrity_rejects_tampered_train_only_preprocessing_artifact(tmp_path: Path) -> None:
     client = TestClient(app); root = tmp_path / "preprocessing-integrity"
     session_id = client.post("/api/projects", json={"path": str(root), "name": "Preprocessing"}).json()["session_id"]

@@ -18,7 +18,7 @@ from ruflex.runtime.contracts import (
     RuntimeIdentity,
     ValidatorDescriptor,
 )
-from ruflex.runtime.errors import RuntimeDependencyMissingError, RuntimeDuplicateError, RuntimeNotFoundError, RuntimeUntrustedError, RuntimeVersionMismatchError
+from ruflex.runtime.errors import RuntimeDependencyMissingError, RuntimeDuplicateError, RuntimeIncompatibleError, RuntimeNotFoundError, RuntimeUntrustedError, RuntimeVersionMismatchError
 
 
 class RuntimeRegistry:
@@ -98,11 +98,31 @@ class RuntimeRegistry:
         return adapter
 
     def resolve_training_model_kind(self, model_kind: str) -> ModelAdapter:
-        """Resolve the declared concrete TrainingRun kind without UI name logic."""
-        for descriptor in self.model_descriptors():
-            if model_kind in descriptor.training_model_kinds:
-                return self.resolve_model_adapter(descriptor.identity.key)
-        raise RuntimeNotFoundError(model_kind)
+        """Resolve the stable default for a semantic model kind.
+
+        A registered native adapter remains the backward-compatible default
+        when an explicitly selectable external adapter also implements that
+        kind. Ambiguous non-native registrations fail closed instead of making
+        plugin sort order part of model selection.
+        """
+        matches = [
+            self._adapters[key]
+            for key in sorted(self._adapters)
+            if model_kind in self._adapters[key].descriptor.training_model_kinds
+        ]
+        if not matches:
+            raise RuntimeNotFoundError(model_kind)
+        native = [item for item in matches if item.descriptor.identity.provider == "ruflex.builtin"]
+        if len(native) == 1:
+            return native[0]
+        if len(native) > 1:
+            raise RuntimeIncompatibleError(f"Multiple native adapters declare model kind {model_kind!r}.")
+        if len(matches) == 1:
+            return matches[0]
+        keys = ", ".join(f"{item.descriptor.identity.key}@{item.descriptor.identity.version}" for item in matches)
+        raise RuntimeIncompatibleError(
+            f"Model kind {model_kind!r} is declared by multiple adapters ({keys}); select an adapter explicitly."
+        )
 
     def model_descriptors(self) -> list[ModelAdapterDescriptor]:
         return [self._adapters[key].descriptor for key in sorted(self._adapters)]

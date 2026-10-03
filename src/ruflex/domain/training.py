@@ -203,7 +203,7 @@ class StudyJob(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: int = 4
+    schema_version: int = 5
     job_id: UUID = Field(default_factory=uuid4)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     started_at: datetime | None = None
@@ -218,6 +218,11 @@ class StudyJob(BaseModel):
     split_seed: int | None = None
     study_id: UUID | None = None
     error: str | None = None
+    # Exact model runtime bound at job creation. Optional only for read-time
+    # compatibility with historical jobs; new jobs always persist both.
+    adapter_key: str | None = None
+    adapter_version: str | None = None
+    adapter_provider: str | None = None
     # LOCAL remains readable from v1.1. New jobs carry the canonical backend
     # identity without requiring a migration rewrite of persisted files.
     execution_backend: Literal["LOCAL"] = "LOCAL"

@@ -6,8 +6,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
-from ruflex.application.model_catalog import list_model_catalog
-from ruflex.runtime.compatibility import resolved_run_identity
+from ruflex.runtime.compatibility import resolve_run_adapter, resolved_run_identity
 from ruflex.runtime.registry import builtin_runtime_registry
 from ruflex.domain.training import TrainingRun
 
@@ -60,12 +59,6 @@ _CAPABILITY_ORDER: tuple[CapabilityKey, ...] = (
 )
 
 
-def _catalog_key(run: TrainingRun) -> str:
-    if run.model_kind in {"logistic_regression", "linear_regression"}:
-        return "linear"
-    return run.model_kind
-
-
 def negotiate_run_capabilities(run: TrainingRun) -> RunCapabilityNegotiation:
     identity = resolved_run_identity(run)
     if identity is None:
@@ -74,19 +67,13 @@ def negotiate_run_capabilities(run: TrainingRun) -> RunCapabilityNegotiation:
             decisions=[CapabilityDecision(capability=capability, status="UNAVAILABLE_RUNTIME", reason_code="CAPABILITY_UNAVAILABLE", detail="The persisted run has no resolvable trusted runtime adapter.") for capability in _CAPABILITY_ORDER],
         )
     try:
-        adapter = builtin_runtime_registry().resolve_model_adapter(identity.key, version=identity.version)
+        adapter = resolve_run_adapter(run, registry=builtin_runtime_registry())
     except Exception:
         return RunCapabilityNegotiation(
             run_id=run.run_id, model_kind=run.model_kind, model_artifact_sha256=run.model_artifact_sha256,
             decisions=[CapabilityDecision(capability=capability, status="UNAVAILABLE_RUNTIME", reason_code="CAPABILITY_UNAVAILABLE", detail="The persisted runtime adapter is unavailable in this installation.") for capability in _CAPABILITY_ORDER],
         )
-    # New evidence is runtime-declared.  The catalog fallback is retained only
-    # for a legacy payload that predates adapter provenance.
     capabilities = dict(adapter.descriptor.capabilities)
-    if run.adapter_key is None:
-        catalog = {entry["key"]: entry for entry in list_model_catalog()}
-        entry = catalog.get(_catalog_key(run))
-        capabilities = {} if entry is None else entry["capabilities"]
     label = run.model_kind.replace("_", " ")
     decisions: list[CapabilityDecision] = []
     for capability in _CAPABILITY_ORDER:

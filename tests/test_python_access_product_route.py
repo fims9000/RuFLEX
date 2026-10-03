@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import pandas as pd
@@ -25,6 +26,31 @@ def test_python_escape_hatch_opens_same_canonical_project(tmp_path: Path) -> Non
     assert project.jobs() == []
     assert [plugin.key for plugin in project.explanation_validator_plugins()] == ["native_explanation_validator"]
     assert {item.key for item in project.model_capabilities()} >= {"flat_neuro_fuzzy", "decision_tree", "linear"}
+
+
+def test_read_only_sdk_resolves_legacy_run_identity_without_rewriting_it(tmp_path: Path) -> None:
+    root = tmp_path / "sdk-legacy-runtime"
+    ProjectService().create(root, name="SDK legacy runtime")
+    frame = pd.DataFrame({"x": list(range(36)), "target": [index % 2 for index in range(36)]})
+    ref = persist_dataset_bytes(root, frame.to_csv(index=False).encode(), original_name="legacy.csv")
+    profile = inspect_dataset(frame, source_artifact_sha256=ref.sha256)
+    contract = build_dataset_contract(profile, target="target", task="binary_classification")
+    persist_dataset_contract(root, contract, run_data_audit(contract, frame), profile)
+    run = train_linear_baseline(root, kind="logistic_regression", seed=19)
+
+    run_path = root / "runs" / f"{run.run_id}.json"
+    payload = json.loads(run_path.read_text(encoding="utf-8"))
+    payload["schema_version"] = 2
+    for field in ("adapter_key", "adapter_version", "adapter_provider", "adapter_kind", "runtime_capability_snapshot_hash"):
+        payload.pop(field, None)
+    run_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    original_bytes = run_path.read_bytes()
+
+    reopened = open_studio_project(root)
+    legacy_run = next(item for item in reopened.training_runs() if item.run_id == run.run_id)
+
+    assert (legacy_run.adapter_key, legacy_run.adapter_version) == ("native_linear", "1")
+    assert run_path.read_bytes() == original_bytes
 
 
 def test_python_escape_hatch_reads_persisted_analysis_and_active_generalization(tmp_path: Path) -> None:
@@ -82,6 +108,8 @@ def test_python_escape_hatch_reads_persisted_analysis_and_active_generalization(
 
     project = open_studio_project(root)
     assert project.evaluation(evaluation.evaluation_id).run_id == run.run_id
+    reopened_run = next(item for item in project.training_runs() if item.run_id == run.run_id)
+    assert (reopened_run.adapter_key, reopened_run.adapter_version) == ("native_linear", "1")
     assert project.calibration(calibration.calibration_id).evaluation_id == evaluation.evaluation_id
     assert project.threshold(threshold.threshold_id).calibration_id == calibration.calibration_id
     assert project.final_test(final_test.final_test_id).policy_identity == final_test.policy_identity

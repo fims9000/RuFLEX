@@ -8,9 +8,10 @@ export type ProjectSummary = {
   read_only: boolean;
   modified_at: string;
 };
-export type ModelCatalogEntry = { key: string; label: string; family: string; available: boolean; capabilities: Record<string, boolean>; limitation: string | null };
+export type ModelCatalogEntry = { key: string; label: string; family: string; available: boolean; capabilities: Record<string, boolean>; limitation: string | null; runtime?: { adapter_key: string; adapter_version: string } };
 export type ModelCapabilityContract = {
   key: string; display_name: string; version: string; provider: string; family: string;
+  adapter_key?: string; adapter_version?: string;
   supported_tasks: string[]; training_model_kinds: string[]; input_modalities: string[]; available: boolean;
   unavailability_reason: string | null; capabilities: Record<string, boolean>;
   supported_explainers: string[]; export_formats: string[]; config_schema: Record<string, unknown>;
@@ -681,12 +682,18 @@ export type TrainingStudy = {
   randomness_protocol: "LEGACY_COMBINED" | "TRAINING_VARIABILITY" | "SPLIT_VARIABILITY" | "COMBINED_VARIABILITY";
   split_seed: number | null;
   training_seeds: number[];
+  adapter_key?: string | null;
+  adapter_version?: string | null;
+  adapter_provider?: string | null;
 };
 
 export type StudyJob = {
   job_id: string;
   name: string;
   model_kind: TrainingRun["model_kind"];
+  adapter_key?: string | null;
+  adapter_version?: string | null;
+  adapter_provider?: string | null;
   selection_metric: string;
   status: "QUEUED" | "RUNNING" | "SUCCEEDED" | "FAILED" | "CANCELLED";
   cancel_requested: boolean;
@@ -1123,6 +1130,9 @@ export type TrainingRun = {
   created_at: string;
   status: "succeeded";
   model_kind: string;
+  adapter_key?: string | null;
+  adapter_version?: string | null;
+  adapter_provider?: string | null;
   task: "regression" | "binary_classification";
   target: string;
   dataset_fingerprint: string | null;

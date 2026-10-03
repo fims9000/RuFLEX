@@ -6,7 +6,7 @@ derive from one trusted source.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 import json
 from pathlib import Path
 import tempfile
@@ -22,9 +22,33 @@ from ruflex.models.flat_nf.model import FlatNeuroFuzzyModel
 from ruflex.models.specs import ShallowModelSpec
 from ruflex.training.config import FineTuningOptions, ModelTrainingConfig, RefinementOptions, StagewiseOptions
 
-from ruflex.application.model_catalog import get_model_capability_contract
+from ruflex.application.model_catalog import ModelCapabilities, get_model_capability_contract
 from ruflex.runtime.contracts import FitRequest, FitResult, ModelAdapterDescriptor, PredictionRequest, PredictionResult, RuntimeIdentity
 from ruflex.runtime.errors import RuntimeExecutionError
+
+
+_NATIVE_CAPABILITIES: dict[str, dict[str, bool]] = {
+    "native_flat_neuro_fuzzy": asdict(ModelCapabilities(
+        fit=True, predict=True, predict_proba=True, gradient_access=True, differentiable=True,
+        calibration=True, occlusion=True, shap=True, integrated_gradients=True, gradient_shap=True,
+    )),
+    "native_linear": asdict(ModelCapabilities(
+        fit=True, predict=True, predict_proba=True, export=True, occlusion=True, shap=True,
+    )),
+    "native_decision_tree": asdict(ModelCapabilities(
+        fit=True, predict=True, predict_proba=True, tree_structure=True, structural_trace=True,
+        exact_tree_path=True, exact_enumeration=True, rule_access=True, tree_shap=True,
+        occlusion=True, shap=True,
+    )),
+    "native_random_forest": asdict(ModelCapabilities(
+        fit=True, predict=True, predict_proba=True, tree_structure=True, structural_trace=True,
+        tree_shap=True, occlusion=True, shap=True,
+    )),
+    "native_gradient_boosting": asdict(ModelCapabilities(
+        fit=True, predict=True, predict_proba=True, tree_structure=True, structural_trace=True,
+        tree_shap=True, occlusion=True, shap=True,
+    )),
+}
 
 
 @dataclass(frozen=True)
@@ -40,7 +64,7 @@ class _BuiltinAdapter:
         task = request.task
         parameters = request.validated_parameters
         seed = request.training_seed
-        if key == "ruflex_flat_neuro_fuzzy":
+        if key == "native_flat_neuro_fuzzy":
             from ruflex.application.training import _build_flat_spec, _seed_everything
 
             _seed_everything(seed)
@@ -68,7 +92,7 @@ class _BuiltinAdapter:
                 temporary.unlink(missing_ok=True)
             history = [{"epoch": point.epoch, "train_loss": point.train_loss, "validation_loss": point.validation_loss, "train_metrics": point.train_metrics, "validation_metrics": point.validation_metrics} for point in summary.history]
             return FitResult(model_payload=None, serialized_artifact=artifact_bytes, artifact_media_type="application/x-pytorch-model", model_spec=spec.to_dict(), training_summary=summary.to_dict(), trajectory=history, validation_raw_predictions=raw.tolist(), validation_raw_probabilities=(1 / (1 + np.exp(-np.clip(raw, -60, 60)))).tolist() if request.task == "binary_classification" else None)
-        if key == "sklearn_linear":
+        if key == "native_linear":
             if task == "binary_classification":
                 estimator = LogisticRegression(random_state=seed, max_iter=1000).fit(X_train, y_train.astype(int))
                 raw = np.asarray(estimator.decision_function(X_validation), dtype=float).reshape(-1)
@@ -77,16 +101,16 @@ class _BuiltinAdapter:
                 raw = np.asarray(estimator.predict(X_validation), dtype=float).reshape(-1)
             payload = {"format": "ruflex.declarative-linear-baseline/v1", "model_kind": "logistic_regression" if task == "binary_classification" else "linear_regression", "task": task, "feature_columns": list(request.feature_names), "coefficients": np.asarray(estimator.coef_).reshape(-1).astype(float).tolist(), "intercept": float(np.asarray(estimator.intercept_).reshape(-1)[0]), "split_seed": request.split_seed, "training_seed": seed}
             return FitResult(serialized_artifact=json.dumps(payload, sort_keys=True, separators=(",", ":")).encode(), artifact_media_type="application/vnd.ruflex.declarative-linear-model+json", model_spec={"coefficients": payload["coefficients"], "intercept": payload["intercept"]}, training_summary={"source": "linear", "epochs_ran": 1}, validation_raw_predictions=raw.tolist(), validation_raw_probabilities=(1 / (1 + np.exp(-np.clip(raw, -60, 60)))).tolist() if task == "binary_classification" else None)
-        if key == "sklearn_decision_tree":
+        if key == "native_decision_tree":
             estimator = DecisionTreeClassifier(random_state=seed, max_depth=parameters.get("max_depth")).fit(X_train, y_train.astype(int)) if task == "binary_classification" else DecisionTreeRegressor(random_state=seed, max_depth=parameters.get("max_depth")).fit(X_train, y_train)
             raw = np.log(np.clip(estimator.predict_proba(X_validation)[:, 1], 1e-12, 1 - 1e-12) / np.clip(1 - estimator.predict_proba(X_validation)[:, 1], 1e-12, 1)) if task == "binary_classification" else estimator.predict(X_validation)
             payload = _tree_artifact(estimator, request=request, model_kind="decision_tree")
             tree_spec = payload["tree"]
             return FitResult(serialized_artifact=json.dumps(payload, sort_keys=True, separators=(",", ":")).encode(), artifact_media_type="application/vnd.ruflex.declarative-decision-tree+json", model_spec={"node_count": tree_spec["node_count"], "max_depth": tree_spec["max_depth"], "leaf_count": sum(1 for node in tree_spec["children_left"] if node == -1)}, training_summary={"source": "decision_tree", "epochs_ran": 1}, validation_raw_predictions=np.asarray(raw, dtype=float).reshape(-1).tolist())
-        if key in {"sklearn_random_forest", "sklearn_gradient_boosting"}:
-            count = int(parameters.get("n_estimators") or (25 if key == "sklearn_random_forest" else 50))
+        if key in {"native_random_forest", "native_gradient_boosting"}:
+            count = int(parameters.get("n_estimators") or (25 if key == "native_random_forest" else 50))
             depth = parameters.get("max_depth")
-            if key == "sklearn_random_forest":
+            if key == "native_random_forest":
                 estimator = RandomForestClassifier(n_estimators=count, random_state=seed, max_depth=depth).fit(X_train, y_train.astype(int)) if task == "binary_classification" else RandomForestRegressor(n_estimators=count, random_state=seed, max_depth=depth).fit(X_train, y_train)
                 probabilities = estimator.predict_proba(X_validation)[:, 1] if task == "binary_classification" else None
                 raw = np.log(np.clip(probabilities, 1e-12, 1 - 1e-12) / np.clip(1 - probabilities, 1e-12, 1)) if probabilities is not None else estimator.predict(X_validation)
@@ -107,7 +131,7 @@ class _BuiltinAdapter:
         raise RuntimeExecutionError(key)
 
     def predict(self, request: PredictionRequest) -> PredictionResult:
-        if self.descriptor.identity.key == "ruflex_flat_neuro_fuzzy":
+        if self.descriptor.identity.key == "native_flat_neuro_fuzzy":
             spec = ShallowModelSpec.from_dict(request.model_spec)
             model = FlatNeuroFuzzyModel(spec)
             with tempfile.NamedTemporaryFile(prefix="ruflex-runtime-load-", suffix=".pt", delete=False) as handle:
@@ -127,18 +151,22 @@ class _BuiltinAdapter:
         if values.ndim == 1:
             values = values.reshape(1, -1)
         kind = self.descriptor.identity.key
-        if kind == "sklearn_linear":
+        if kind == "native_linear":
             raw = values @ np.asarray(payload["coefficients"], dtype=float) + float(payload["intercept"])
-        elif kind == "sklearn_decision_tree":
+        elif kind == "native_decision_tree":
             raw = np.asarray([_tree_prediction(payload["tree"], row, task=request.task) for row in values])
             if request.task == "binary_classification":
                 probability = raw
-                return PredictionResult(prediction=(probability >= .5).astype(float).tolist(), probability=probability.tolist(), score=probability.tolist())
-        elif kind == "sklearn_random_forest":
+                clipped = np.clip(probability, 1e-12, 1.0 - 1e-12)
+                raw_score = np.log(clipped / (1.0 - clipped))
+                return PredictionResult(prediction=(probability >= .5).astype(float).tolist(), probability=probability.tolist(), score=probability.tolist(), raw_score=raw_score.tolist())
+        elif kind == "native_random_forest":
             raw = np.asarray([np.mean([_tree_prediction(tree, row, task=request.task) for tree in payload["trees"]]) for row in values])
             if request.task == "binary_classification":
-                return PredictionResult(prediction=(raw >= .5).astype(float).tolist(), probability=raw.tolist(), score=raw.tolist())
-        elif kind == "sklearn_gradient_boosting":
+                clipped = np.clip(raw, 1e-12, 1.0 - 1e-12)
+                raw_score = np.log(clipped / (1.0 - clipped))
+                return PredictionResult(prediction=(raw >= .5).astype(float).tolist(), probability=raw.tolist(), score=raw.tolist(), raw_score=raw_score.tolist())
+        elif kind == "native_gradient_boosting":
             raw = np.asarray([float(payload["initial_raw_prediction"]) + float(payload["parameters"]["learning_rate"]) * sum(_tree_prediction(tree, row, task="regression") for tree in payload["trees"]) for row in values])
         else:
             raise RuntimeExecutionError(kind)
@@ -178,16 +206,26 @@ def _tree_prediction(tree: dict[str, Any], row: np.ndarray, *, task: str) -> flo
 
 
 def _descriptor(key: str, *, kinds: tuple[str, ...]) -> ModelAdapterDescriptor:
-    catalog_key = "linear" if key == "linear" else key
+    catalog_key = "linear" if key == "native_linear" else key.removeprefix("native_")
+    if catalog_key == "flat_neuro_fuzzy":
+        catalog_key = "flat_neuro_fuzzy"
     contract = get_model_capability_contract(catalog_key)
     assert contract is not None
+    capabilities = _NATIVE_CAPABILITIES[key]
+    supported_explainers = tuple(name for name, enabled in (
+        ("occlusion", capabilities["occlusion"]),
+        ("shap", capabilities["shap"]),
+        ("tree_shap", capabilities["tree_shap"]),
+        ("integrated_gradients", capabilities["integrated_gradients"]),
+        ("gradient_shap", capabilities["gradient_shap"]),
+    ) if enabled)
     return ModelAdapterDescriptor(
-        identity=RuntimeIdentity(key=f"sklearn_{key}" if key != "flat_neuro_fuzzy" else "ruflex_flat_neuro_fuzzy", version="1", provider="ruflex.builtin", kind="model_adapter"),
+        identity=RuntimeIdentity(key=key, version="1", provider="ruflex.builtin", kind="model_adapter"),
         family=contract.family,
         training_model_kinds=kinds,
         supported_tasks=contract.supported_tasks,
-        capabilities=contract.capabilities.__dict__,
-        supported_explainers=contract.supported_explainers,
+        capabilities=capabilities,
+        supported_explainers=supported_explainers,
         config_schema=contract.config_schema,
         defaults=contract.defaults,
         parameter_constraints=contract.parameter_constraints,
@@ -201,9 +239,9 @@ def _descriptor(key: str, *, kinds: tuple[str, ...]) -> ModelAdapterDescriptor:
 
 def builtin_model_adapters() -> tuple[_BuiltinAdapter, ...]:
     return (
-        _BuiltinAdapter(_descriptor("flat_neuro_fuzzy", kinds=("flat_neuro_fuzzy",))),
-        _BuiltinAdapter(_descriptor("linear", kinds=("logistic_regression", "linear_regression"))),
-        _BuiltinAdapter(_descriptor("decision_tree", kinds=("decision_tree",))),
-        _BuiltinAdapter(_descriptor("random_forest", kinds=("random_forest",))),
-        _BuiltinAdapter(_descriptor("gradient_boosting", kinds=("gradient_boosting",))),
+        _BuiltinAdapter(_descriptor("native_flat_neuro_fuzzy", kinds=("flat_neuro_fuzzy",))),
+        _BuiltinAdapter(_descriptor("native_linear", kinds=("logistic_regression", "linear_regression"))),
+        _BuiltinAdapter(_descriptor("native_decision_tree", kinds=("decision_tree",))),
+        _BuiltinAdapter(_descriptor("native_random_forest", kinds=("random_forest",))),
+        _BuiltinAdapter(_descriptor("native_gradient_boosting", kinds=("gradient_boosting",))),
     )

@@ -16,7 +16,10 @@ from ruflex.application.behavior import _requirement_identity
 from ruflex.domain.behavior import BehaviorRevisionComparison, BehaviorSpec, BehaviorSpecResult
 from ruflex.domain.evidence import ExplanationCheck, ExplanationContract
 from ruflex.domain.project import ProjectIntegrityIssue, ProjectIntegrityReport
+from ruflex.domain.training import StudyJob, TrainingStudy
 from ruflex.runtime.registry import builtin_runtime_registry
+from ruflex.runtime.compatibility import resolve_run_adapter
+from ruflex.runtime.compatibility import LEGACY_MODEL_KIND_TO_ADAPTER
 
 
 def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
@@ -141,14 +144,18 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                 issues.append(ProjectIntegrityIssue(code="IMPORTED_FIS_PROVENANCE_MALFORMED", status="FAIL", path=relative_path, detail=str(error)))
     runs_by_id = {run.run_id: run for run in runs}
     for run in runs:
-        if run.schema_version >= 3:
-            if not all((run.adapter_key, run.adapter_version, run.adapter_provider, run.adapter_kind, run.runtime_capability_snapshot_hash)):
-                issues.append(ProjectIntegrityIssue(code="RUNTIME_BINDING_MISSING", status="FAIL", path=f"runs/{run.run_id}.json", detail="A schema-v3 TrainingRun is missing its required runtime adapter binding."))
+        run_path = f"runs/{run.run_id}.json"
+        try:
+            adapter = resolve_run_adapter(run, registry=builtin_runtime_registry())
+            if run.schema_version >= 3 and not run.runtime_capability_snapshot_hash:
+                raise ValueError("A schema-v3 TrainingRun is missing its runtime capability snapshot hash.")
+            if run.schema_version < 3:
+                issues.append(ProjectIntegrityIssue(code="ADAPTER_IDENTITY", status="PASS", path=run_path, detail=f"Resolved legacy {run.model_kind} through deterministic read-only mapping to {adapter.descriptor.identity.key}@{adapter.descriptor.identity.version}; persisted file was not rewritten."))
             else:
-                try:
-                    builtin_runtime_registry().resolve_model_adapter(run.adapter_key, version=run.adapter_version)
-                except Exception:
-                    issues.append(ProjectIntegrityIssue(code="RUNTIME_UNAVAILABLE", status="WARN", path=f"runs/{run.run_id}.json", detail="The persisted adapter is unavailable locally; the run remains inspectable but replay is unavailable."))
+                issues.append(ProjectIntegrityIssue(code="ADAPTER_IDENTITY", status="PASS", path=run_path, detail=f"Exact adapter {adapter.descriptor.identity.key}@{adapter.descriptor.identity.version} is registered and supports {run.model_kind}."))
+        except Exception as error:
+            legacy_unbound = run.schema_version < 3 and not any((run.adapter_key, run.adapter_version, run.adapter_provider, run.adapter_kind))
+            issues.append(ProjectIntegrityIssue(code="ADAPTER_IDENTITY", status="WARN" if legacy_unbound else "FAIL", path=run_path, detail=f"Legacy run remains inspectable but has no available adapter mapping: {error}" if legacy_unbound else f"Persisted adapter identity is invalid or unavailable: {error}"))
         verification = store.verify(ArtifactRef(sha256=run.model_artifact_sha256)); checked += 1
         if not verification.valid:
             issues.append(ProjectIntegrityIssue(code="MODEL_ARTIFACT_INVALID", status="FAIL", path=f"runs/{run.run_id}.json", detail=verification.message))
@@ -206,6 +213,73 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                         issues.append(ProjectIntegrityIssue(code="PREPROCESSING_PROVENANCE_MISMATCH", status="FAIL", path=f"runs/{run.run_id}.json", detail="Persisted preprocessing artifact does not match the TrainingRun's train-only normalization and feature schema."))
                 except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError) as error:
                     issues.append(ProjectIntegrityIssue(code="PREPROCESSING_ARTIFACT_MALFORMED", status="FAIL", path=f"runs/{run.run_id}.json", detail=str(error)))
+    study_root = base / "studies"
+    if study_root.exists() and not study_root.is_dir():
+        issues.append(ProjectIntegrityIssue(code="STUDY_EVIDENCE_MALFORMED", status="FAIL", path="studies", detail="Persisted study path is not a directory."))
+    elif study_root.is_dir():
+        registry = builtin_runtime_registry()
+        for study_path in sorted(study_root.glob("*.json")):
+            if study_path.name == "active-study.json":
+                continue
+            checked += 1
+            relative_path = str(study_path.relative_to(base))
+            try:
+                study = TrainingStudy.model_validate_json(study_path.read_text(encoding="utf-8"))
+                if study_path.stem != str(study.study_id):
+                    raise ValueError("TrainingStudy filename does not match its persisted identity.")
+                if not any((study.adapter_key, study.adapter_version, study.adapter_provider)) and study.schema_version < 3:
+                    legacy = LEGACY_MODEL_KIND_TO_ADAPTER.get(study.model_kind)
+                    if legacy is None:
+                        raise ValueError(f"Legacy study model kind {study.model_kind!r} has no adapter mapping.")
+                    adapter = registry.resolve_model_adapter(legacy[0], version=legacy[1])
+                    identity_note = "Resolved by deterministic read-only legacy mapping"
+                elif not all((study.adapter_key, study.adapter_version, study.adapter_provider)):
+                    raise ValueError("TrainingStudy runtime adapter identity is partial or missing.")
+                else:
+                    adapter = registry.resolve_model_adapter(study.adapter_key, version=study.adapter_version)
+                    if adapter.descriptor.identity.provider != study.adapter_provider:
+                        raise ValueError("TrainingStudy adapter provider does not match the registered runtime.")
+                    identity_note = "Exact persisted adapter identity verified"
+                if study.model_kind not in adapter.descriptor.training_model_kinds:
+                    raise ValueError("TrainingStudy adapter does not support its declared model kind.")
+                if study.selected_run_id not in {item.run_id for item in study.seed_runs}:
+                    raise ValueError("TrainingStudy selected run is absent from its declared seed runs.")
+                for embedded in study.seed_runs:
+                    embedded_adapter = resolve_run_adapter(embedded, registry=registry)
+                    if embedded_adapter.descriptor.identity != adapter.descriptor.identity:
+                        raise ValueError("TrainingStudy seed run adapter differs from the frozen study adapter.")
+                issues.append(ProjectIntegrityIssue(code="ADAPTER_IDENTITY", status="PASS", path=relative_path, detail=f"{identity_note}: {adapter.descriptor.identity.key}@{adapter.descriptor.identity.version}; selected run and seed-run bindings agree."))
+            except Exception as error:
+                issues.append(ProjectIntegrityIssue(code="ADAPTER_IDENTITY", status="FAIL", path=relative_path, detail=f"TrainingStudy adapter provenance is invalid: {error}"))
+        study_jobs_root = study_root / "jobs"
+        if study_jobs_root.exists() and not study_jobs_root.is_dir():
+            issues.append(ProjectIntegrityIssue(code="STUDY_JOB_EVIDENCE_MALFORMED", status="FAIL", path="studies/jobs", detail="Persisted StudyJob path is not a directory."))
+        elif study_jobs_root.is_dir():
+            for job_path in sorted(study_jobs_root.glob("*.json")):
+                checked += 1
+                relative_path = str(job_path.relative_to(base))
+                try:
+                    job = StudyJob.model_validate_json(job_path.read_text(encoding="utf-8"))
+                    if job_path.stem != str(job.job_id):
+                        raise ValueError("StudyJob filename does not match its persisted identity.")
+                    if not any((job.adapter_key, job.adapter_version, job.adapter_provider)) and job.schema_version < 5:
+                        legacy = LEGACY_MODEL_KIND_TO_ADAPTER.get(job.model_kind)
+                        if legacy is None:
+                            raise ValueError(f"Legacy StudyJob model kind {job.model_kind!r} has no adapter mapping.")
+                        adapter = registry.resolve_model_adapter(legacy[0], version=legacy[1])
+                        identity_note = "Resolved by deterministic read-only legacy mapping"
+                    elif not all((job.adapter_key, job.adapter_version, job.adapter_provider)):
+                        raise ValueError("StudyJob runtime adapter identity is partial or missing.")
+                    else:
+                        adapter = registry.resolve_model_adapter(job.adapter_key, version=job.adapter_version)
+                        if adapter.descriptor.identity.provider != job.adapter_provider:
+                            raise ValueError("StudyJob adapter provider does not match the registered runtime.")
+                        identity_note = "Exact persisted adapter identity verified"
+                    if job.model_kind not in adapter.descriptor.training_model_kinds:
+                        raise ValueError("StudyJob adapter does not support its declared model kind.")
+                    issues.append(ProjectIntegrityIssue(code="ADAPTER_IDENTITY", status="PASS", path=relative_path, detail=f"{identity_note}: {adapter.descriptor.identity.key}@{adapter.descriptor.identity.version}."))
+                except Exception as error:
+                    issues.append(ProjectIntegrityIssue(code="ADAPTER_IDENTITY", status="FAIL", path=relative_path, detail=f"StudyJob adapter provenance is invalid: {error}"))
     behavior_root = base / "evidence" / "behavior-specs"
     behavior_specs: dict[object, BehaviorSpec] = {}
     behavior_results: dict[object, BehaviorSpecResult] = {}
@@ -369,5 +443,5 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                 issues.append(ProjectIntegrityIssue(code="JOB_BACKEND_RUNTIME_UNAVAILABLE", status="WARN", path=relative_path, detail="Persisted execution backend is unavailable locally; job remains inspectable."))
     except (ValidationError, ValueError, FileNotFoundError) as error:
         issues.append(ProjectIntegrityIssue(code="JOB_EVIDENCE_MALFORMED", status="FAIL", path="jobs", detail=str(error)))
-    status = "FAIL" if any(issue.status == "FAIL" for issue in issues) else "WARN" if issues else "PASS"
+    status = "FAIL" if any(issue.status == "FAIL" for issue in issues) else "WARN" if any(issue.status == "WARN" for issue in issues) else "PASS"
     return ProjectIntegrityReport(project_id=project.id, status=status, checked_objects=checked, issues=issues)

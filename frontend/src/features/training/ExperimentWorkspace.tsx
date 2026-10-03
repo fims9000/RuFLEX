@@ -333,6 +333,7 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
           <div className="run-provenance">
             <StatusBadge tone="success">model artifact persisted</StatusBadge>
             <code>{run.model_artifact_sha256.slice(0, 24)}…</code>
+            {run.adapter_key && run.adapter_version && <><StatusBadge tone="info">runtime adapter</StatusBadge><code data-testid="run-adapter-identity">{run.adapter_key}@{run.adapter_version}</code></>}
             {run.preprocessing_artifact_sha256 && <><StatusBadge tone="success">train-only preprocessing persisted</StatusBadge><code>{run.preprocessing_artifact_sha256.slice(0, 24)}…</code></>}
             {run.transform_pipeline_id && <><StatusBadge tone="success">transform pipeline frozen</StatusBadge><code>{run.transform_pipeline_id.slice(0, 12)}…</code></>}
             {run.leakage_audit_id && <><StatusBadge tone="success">leakage audit persisted</StatusBadge><code>{run.leakage_audit_id.slice(0, 12)}…</code></>}

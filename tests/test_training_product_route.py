@@ -171,9 +171,15 @@ def test_study_job_returns_immediately_and_persists_seed_lifecycle(tmp_path: Pat
     assert job["status"] == "SUCCEEDED"
     assert {state["status"] for state in job["seed_states"]} == {"SUCCEEDED"}
     assert job["study_id"] is not None
+    study = client.get(f"/api/projects/{session_id}/training/studies/{job['study_id']}")
+    assert study.status_code == 200
+    assert (study.json()["adapter_key"], study.json()["adapter_version"]) == ("native_random_forest", "1")
     listed = client.get(f"/api/projects/{session_id}/training/study-jobs")
     assert listed.status_code == 200 and [item["job_id"] for item in listed.json()] == [job["job_id"]]
     assert job["execution_backend"] == "LOCAL"
+    assert (job["adapter_key"], job["adapter_version"], job["adapter_provider"]) == (
+        "native_random_forest", "1", "ruflex.builtin",
+    )
     assert (job["execution_backend_key"], job["execution_backend_version"], job["execution_backend_provider"]) == (
         "local_executor", "1", "ruflex.builtin",
     )
@@ -190,6 +196,32 @@ def test_study_job_rejects_an_unregistered_execution_backend_with_typed_error(tm
     assert response.json()["detail"]["code"] == "RUNTIME_NOT_FOUND"
 
 
+def test_study_job_list_exposes_legacy_model_runtime_identity_without_rewrite(tmp_path: Path) -> None:
+    from ruflex.domain.training import StudyJob, StudySeedState
+
+    client = TestClient(app)
+    root = tmp_path / "legacy-study-job-list"
+    session_id = client.post("/api/projects", json={"path": str(root), "name": "Legacy job list"}).json()["session_id"]
+    legacy = StudyJob(
+        schema_version=4,
+        name="legacy random forest",
+        model_kind="random_forest",
+        selection_metric="f1",
+        seed_states=[StudySeedState(seed=7, split_seed=42, training_seed=7)],
+    )
+    job_path = root / "studies" / "jobs" / f"{legacy.job_id}.json"
+    job_path.parent.mkdir(parents=True, exist_ok=True)
+    job_path.write_text(legacy.model_dump_json(indent=2), encoding="utf-8")
+    original_bytes = job_path.read_bytes()
+
+    response = client.get(f"/api/projects/{session_id}/training/study-jobs")
+
+    assert response.status_code == 200, response.text
+    listed = next(item for item in response.json() if item["job_id"] == str(legacy.job_id))
+    assert (listed["adapter_key"], listed["adapter_version"]) == ("native_random_forest", "1")
+    assert job_path.read_bytes() == original_bytes
+
+
 def test_persisted_study_job_resumes_without_replacing_declared_seeds(tmp_path: Path) -> None:
     from ruflex.domain.training import StudyJob, StudySeedState
 
@@ -197,7 +229,7 @@ def test_persisted_study_job_resumes_without_replacing_declared_seeds(tmp_path: 
     session_id = client.post("/api/projects", json={"path": str(root), "name": "Resumable study"}).json()["session_id"]
     assert client.post("/api/projects/dataset/confirm", json={"session_id": session_id, "csv_text": _binary_frame().to_csv(index=False), "target": "target", "task": "binary_classification", "id_columns": []}).status_code == 200
     interrupted = StudyJob(
-        name="interrupted forest", model_kind="random_forest", selection_metric="f1", randomness_protocol="TRAINING_VARIABILITY", split_seed=42,
+        schema_version=4, name="interrupted forest", model_kind="random_forest", selection_metric="f1", randomness_protocol="TRAINING_VARIABILITY", split_seed=42,
         seed_states=[StudySeedState(seed=seed, split_seed=42, training_seed=seed, status="RUNNING" if seed == 71 else "QUEUED") for seed in [71, 73, 79]],
         execution_config={"max_epochs": 1, "learning_rate": .01, "batch_size": 16, "patience": 1, "validation_fraction": .2, "test_fraction": .2, "max_rules": 3},
     )
@@ -210,6 +242,8 @@ def test_persisted_study_job_resumes_without_replacing_declared_seeds(tmp_path: 
         if job["status"] not in {"QUEUED", "RUNNING"}: break
         time.sleep(.05)
     assert job["status"] == "SUCCEEDED"
+    assert (job["adapter_key"], job["adapter_version"]) == ("native_random_forest", "1")
+    assert job["adapter_provider"] == "ruflex.builtin"
     assert [state["seed"] for state in job["seed_states"]] == [71, 73, 79]
     assert {state["status"] for state in job["seed_states"]} == {"SUCCEEDED"}
 

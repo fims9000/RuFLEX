@@ -248,7 +248,10 @@ class TabularDataset:
                 categories = sorted(train_frame[column].astype(str).unique().tolist())
                 categorical_encoders[column] = {category: float(index) for index, category in enumerate(categories)}
                 for partition in (train_frame, validation_frame, test_frame):
-                    partition.loc[:, column] = partition[column].map(categorical_encoders[column]).fillna(-1.0)
+                    # Replace the typed string column with a numeric Series.
+                    # pandas StringDtype rejects in-place .loc assignment of
+                    # encoded floats (notably on newer pandas releases).
+                    partition[column] = partition[column].map(categorical_encoders[column]).fillna(-1.0).astype(float)
                 imputation_values[column] = mode
 
         train_features = train_frame.to_numpy(dtype=float)

@@ -31,6 +31,8 @@ from ruflex.domain.exhaustive import ExhaustiveLabResult
 from ruflex.domain.selective import SelectivePredictionPolicy
 from ruflex.domain.stability import StabilityGatePolicy, StudyStabilityAnalysis
 from ruflex.domain.verification import VerificationBundle
+from ruflex.runtime.compatibility import resolved_run_identity
+import ruflex.runtime as runtime
 
 
 def _json_models(root: Path, model: type[BaseModel], *, exclude: Iterable[str] = ()) -> list[BaseModel]:
@@ -171,11 +173,14 @@ def build_project_lineage(project_root: Path) -> LineageGraph:
     preprocessing_nodes: dict[str, str] = {}
     transform_pipeline_nodes: dict[str, str] = {}
     for run in runs:
+        runtime_identity = resolved_run_identity(run, registry=runtime.builtin_runtime_registry())
+        runtime_label = f"{runtime_identity.key}@{runtime_identity.version}" if runtime_identity is not None else "unresolved"
+        preprocessing_label = run.preprocessing_artifact_sha256[:12] if run.preprocessing_artifact_sha256 else "unavailable"
         node = add_node(LineageNode(
             id=_node_id("run", run.run_id),
             kind="training_run",
             label=f"{run.model_kind} · seed {run.seed}",
-            detail=f"validation · {run.run_id.hex[:8]}",
+            detail=f"validation · runtime {runtime_label} · model {run.model_artifact_sha256[:12]} · preprocessing {preprocessing_label}",
             target="STUDIES",
             object_id=str(run.run_id),
             status=run.status,

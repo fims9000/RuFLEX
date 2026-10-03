@@ -200,6 +200,7 @@ def test_external_runtime_governed_golden_route_reopens_and_exports_portable_evi
         split_seed=13, training_seed=31, split_contract_id=str(split.split_id),
     )
     monkeypatch.setattr("ruflex.application.training.builtin_runtime_registry", lambda: registry)
+    monkeypatch.setattr("ruflex.application.evidence.builtin_runtime_registry", lambda: registry)
     monkeypatch.setattr("ruflex.runtime.builtin_runtime_registry", lambda: registry)
     monkeypatch.setattr("ruflex.application.capabilities.builtin_runtime_registry", lambda: registry)
     from ruflex.application.evidence import create_runtime_explanation, load_explanation
@@ -219,11 +220,84 @@ def test_external_runtime_governed_golden_route_reopens_and_exports_portable_evi
     assert load_explanation(root, explanation.explanation_id).explainer_key == "fixture_explainer"
     lineage = build_project_lineage(root)
     assert {"dataset", "training_run", "evaluation", "decision_threshold", "selective_policy", "explanation", "final_test_evaluation"} <= {node.kind for node in lineage.nodes}
+    run_node = next(node for node in lineage.nodes if node.kind == "training_run" and node.object_id == str(run.run_id))
+    assert "fixture_adapter@1" in run_node.detail
+    assert run.model_artifact_sha256[:12] in run_node.detail
+    assert run.preprocessing_artifact_sha256[:12] in run_node.detail
     assurance = create_assurance_case(root)
     exported = export_verification_bundle(root)
     assert final.run_id == run.run_id
     assert assurance.assurance_id
     assert validate_verification_bundle(Path(exported["path"])).status == "PASS"
+    # Final-test and Evidence must share the same adapter-backed probability
+    # semantics for an identical raw case, not merely return plausible values.
+    from ruflex.application.datasets import load_dataset_frame
+    from ruflex.application.evidence import predict_run_sample
+
+    first_test = final.prediction_rows[0]
+    raw_case = load_dataset_frame(root).iloc[int(first_test.source_row)]
+    sample = {feature: float(raw_case[feature]) for feature in run.feature_columns}
+    evidence_probability = predict_run_sample(root, run.run_id, sample)
+    assert evidence_probability == pytest.approx(first_test.probability, abs=1e-12)
+
+
+def test_study_job_resume_keeps_exact_external_model_adapter(tmp_path: Path, monkeypatch) -> None:
+    _project(tmp_path)
+    registry = RuntimeRegistry()
+    registry.register_model_adapter(FixtureAdapter())
+    registry.freeze()
+    monkeypatch.setattr("ruflex.application.training.builtin_runtime_registry", lambda: registry)
+    monkeypatch.setattr("ruflex.runtime.registry.builtin_runtime_registry", lambda: registry)
+
+    backend_descriptor = ExecutionBackendDescriptor(
+        identity=RuntimeIdentity(key="fixture_sync_backend", version="1", provider="ruflex.tests", kind="execution_backend"),
+        supports_cancel=True,
+        supports_resume=True,
+    )
+
+    class SynchronousBackend:
+        def submit(self, *, project_root: Path, job_id: UUID, operation: Callable[[], None]) -> bool:
+            operation()
+            return True
+
+        def resume(self, *, project_root: Path, job_id: UUID, operation: Callable[[], None]) -> bool:
+            operation()
+            return True
+
+        def is_active(self, *, project_root: Path, job_id: UUID) -> bool:
+            return False
+
+        def cancel(self, *, project_root: Path, job_id: UUID) -> bool:
+            return True
+
+    backend = SynchronousBackend()
+    monkeypatch.setattr(
+        "ruflex.application.training.resolve_execution_backend",
+        lambda key: (backend_descriptor, backend),
+    )
+
+    from ruflex.application.training import load_training_study, start_study_job
+
+    job = start_study_job(
+        tmp_path,
+        name="External adapter recovery",
+        model_kind="fixture_model",
+        adapter_key="fixture_adapter",
+        adapter_version="1",
+        execution_backend_key="fixture_sync_backend",
+        seeds=[1, 2, 3],
+        selection_metric="f1",
+    )
+
+    assert job.status == "SUCCEEDED"
+    assert (job.adapter_key, job.adapter_version, job.adapter_provider) == (
+        "fixture_adapter", "1", "ruflex.tests"
+    )
+    study = load_training_study(tmp_path, job.study_id)
+    assert (study.adapter_key, study.adapter_version, study.adapter_provider) == (
+        "fixture_adapter", "1", "ruflex.tests"
+    )
+    assert {(run.adapter_key, run.adapter_version) for run in study.seed_runs} == {("fixture_adapter", "1")}
 
 
 def test_study_job_persists_and_uses_the_selected_external_execution_backend(tmp_path: Path, monkeypatch) -> None:
@@ -275,13 +349,13 @@ def test_study_job_persists_and_uses_the_selected_external_execution_backend(tmp
 
 
 @pytest.mark.parametrize("adapter_key,model_kind,parameters", [
-    ("ruflex_flat_neuro_fuzzy", "flat_neuro_fuzzy", {"max_epochs": 2, "batch_size": 16, "patience": 2, "max_rules": 3, "learning_rate": .01}),
-    ("sklearn_linear", "logistic_regression", {}),
-    ("sklearn_decision_tree", "decision_tree", {"max_depth": 2}),
-    ("sklearn_random_forest", "random_forest", {"n_estimators": 3}),
-    ("sklearn_gradient_boosting", "gradient_boosting", {"n_estimators": 3, "learning_rate": .1, "max_depth": 2}),
+    ("native_flat_neuro_fuzzy", "flat_neuro_fuzzy", {"max_epochs": 2, "batch_size": 16, "patience": 2, "max_rules": 3, "learning_rate": .01}),
+    ("native_linear", "logistic_regression", {}),
+    ("native_decision_tree", "decision_tree", {"max_depth": 2}),
+    ("native_random_forest", "random_forest", {"n_estimators": 3}),
+    ("native_gradient_boosting", "gradient_boosting", {"n_estimators": 3, "learning_rate": .1, "max_depth": 2}),
 ])
-def test_generic_core_service_executes_builtin_sklearn_adapters(tmp_path: Path, adapter_key: str, model_kind: str, parameters: dict) -> None:
+def test_generic_core_service_executes_builtin_native_adapters(tmp_path: Path, adapter_key: str, model_kind: str, parameters: dict) -> None:
     _project(tmp_path)
     run = train_with_adapter(tmp_path, registry=builtin_runtime_registry(), adapter_key=adapter_key, model_kind=model_kind, seed=8, parameters=parameters)
     assert run.adapter_key == adapter_key
@@ -291,3 +365,5 @@ def test_generic_core_service_executes_builtin_sklearn_adapters(tmp_path: Path, 
         result = builtin_runtime_registry().resolve_model_adapter(adapter_key).predict(PredictionRequest(task="binary_classification", feature_names=("x",), features=np.asarray([[.2], [.8]]), artifact=handle.read(), model_spec=run.model_spec, preprocessing_identity=run.preprocessing_artifact_sha256 or ""))
     assert len(result.prediction) == 2
     assert result.probability is not None
+    assert result.raw_score is not None
+    assert np.allclose(result.probability, 1.0 / (1.0 + np.exp(-np.asarray(result.raw_score))), rtol=1e-10, atol=1e-12)

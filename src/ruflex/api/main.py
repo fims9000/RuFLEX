@@ -24,11 +24,11 @@ from ruflex.application.datasets import DataAuditReport, DatasetContract, Datase
 from ruflex.application.generalization import ContractFreezeError, ContractLintReport, GeneralizationContract, GeneralizationContractError, NoveltyAxis, ScopeClassification, ScopeRule, SliceAnalysis, SliceDefinition, classify_scope, create_generalization_contract, create_slice_analysis, freeze_generalization_contract, lint_generalization_contract, load_generalization_contract, load_latest_slice_analysis, persist_generalization_contract, recommend_split_families
 from ruflex.application.fis import FISError, create_default_fis, diagnose_fis, evaluate_fis, evaluate_response_surface, list_fis_revisions, load_fis, load_latest_trace, persist_fis, save_trace_artifact
 from ruflex.application.fis_interop import export_matlab_fis, persist_imported_matlab_fis
-from ruflex.application.model_catalog import get_model_capability_contract, list_model_catalog, model_capability_contracts
+from ruflex.application.model_catalog import list_model_catalog, model_capability_contracts
 from ruflex.application.capabilities import RunCapabilityNegotiation, negotiate_run_capabilities
 from ruflex.plugins import PluginDescriptor
 from ruflex.runtime import builtin_runtime_registry
-from ruflex.runtime.errors import RuntimeErrorBase
+from ruflex.runtime.errors import RuntimeErrorBase, RuntimeNotFoundError
 from ruflex.domain.training import AnalysisComparison, AnalysisEvaluation, FinalTestEvaluation, CalibrationTransform, DecisionThresholdPolicy, StudyJob, TrainingRun, TrainingStudy, TreePathEvidence
 from ruflex.application.jobs import Job
 from ruflex.domain.evidence import ExplanationCheck, ExplanationContract
@@ -467,24 +467,20 @@ def _session_summary(session: WorkspaceSession) -> ProjectSessionSummary:
 
 
 def _require_trainable_model(model_kind: str, adapter_key: str | None = None) -> None:
-    contract = get_model_capability_contract(model_kind)
-    if contract is None and adapter_key is not None:
-        try:
-            adapter = builtin_runtime_registry().resolve_model_adapter(adapter_key)
-        except RuntimeErrorBase as error:
-            raise _runtime_error(error) from error
-        if not adapter.descriptor.available or not adapter.descriptor.capabilities.get("fit", False) or model_kind not in adapter.descriptor.training_model_kinds:
-            raise HTTPException(status_code=422, detail={"code": "RUNTIME_INCOMPATIBLE", "message": f"Adapter {adapter_key!r} is incompatible with model kind {model_kind!r}."})
-        return
-    if contract is None or not contract.available or not contract.capabilities.fit:
-        raise HTTPException(status_code=422, detail=f"Model capability is unavailable for training: {model_kind!r}.")
-    if adapter_key is not None:
-        try:
-            adapter = builtin_runtime_registry().resolve_model_adapter(adapter_key)
-        except RuntimeErrorBase as error:
-            raise _runtime_error(error) from error
-        if model_kind not in adapter.descriptor.training_model_kinds:
-            raise HTTPException(status_code=422, detail={"code": "RUNTIME_INCOMPATIBLE", "message": f"Adapter {adapter_key!r} is incompatible with model kind {model_kind!r}."})
+    registry = builtin_runtime_registry()
+    try:
+        adapter = registry.resolve_model_adapter(adapter_key) if adapter_key is not None else registry.resolve_training_model_kind(model_kind)
+    except RuntimeNotFoundError as error:
+        if adapter_key is None:
+            raise HTTPException(status_code=422, detail={"code": "CAPABILITY_UNAVAILABLE", "message": f"No registered model adapter supports {model_kind!r}."}) from error
+        raise _runtime_error(error) from error
+    except RuntimeErrorBase as error:
+        raise _runtime_error(error) from error
+    if model_kind not in adapter.descriptor.training_model_kinds:
+        raise HTTPException(status_code=422, detail={"code": "RUNTIME_INCOMPATIBLE", "message": f"Adapter {adapter.descriptor.identity.key!r} is incompatible with model kind {model_kind!r}."})
+    if not adapter.descriptor.available or not adapter.descriptor.capabilities.get("fit", False):
+        reason = adapter.descriptor.unavailability_reason or "The registered adapter does not declare fit capability."
+        raise HTTPException(status_code=422, detail={"code": "CAPABILITY_UNAVAILABLE", "message": reason})
 
 
 @app.get("/api/health")
@@ -501,16 +497,26 @@ def get_model_catalog() -> list[dict]:
 def get_models() -> list[dict]:
     """Trusted runtime contracts for dynamic model selection clients."""
     contracts = [contract.to_dict() for contract in model_capability_contracts()]
-    known = {item["key"] for item in contracts}
     for descriptor in builtin_runtime_registry().model_descriptors():
-        if descriptor.identity.provider == "ruflex.builtin" or descriptor.identity.key in known:
+        matching = None
+        if descriptor.identity.provider == "ruflex.builtin":
+            matching = next((item for item in contracts if set(item.get("training_model_kinds", [])) & set(descriptor.training_model_kinds)), None)
+        runtime_fields = {
+            "capabilities": descriptor.capabilities,
+            "supported_explainers": list(descriptor.supported_explainers),
+            "available": descriptor.available,
+            "unavailability_reason": descriptor.unavailability_reason,
+            "adapter_key": descriptor.identity.key,
+            "adapter_version": descriptor.identity.version,
+        }
+        if matching is not None:
+            matching.update(runtime_fields)
             continue
         contracts.append({
             "key": descriptor.identity.key, "display_name": descriptor.identity.key.replace("_", " ").title(), "version": descriptor.identity.version,
             "provider": descriptor.identity.provider, "family": descriptor.family, "supported_tasks": list(descriptor.supported_tasks),
             "training_model_kinds": list(descriptor.training_model_kinds), "input_modalities": list(descriptor.input_modalities),
-            "available": descriptor.available, "unavailability_reason": descriptor.unavailability_reason,
-            "capabilities": descriptor.capabilities, "supported_explainers": list(descriptor.supported_explainers), "export_formats": [],
+            **runtime_fields, "export_formats": [],
             "config_schema": descriptor.config_schema, "defaults": descriptor.defaults, "parameter_constraints": descriptor.parameter_constraints,
             "optional_dependencies": list(descriptor.optional_dependencies), "evidence_objects_produced": list(descriptor.evidence_objects_produced), "limitations": list(descriptor.limitations),
         })
@@ -520,12 +526,9 @@ def get_models() -> list[dict]:
 @app.get("/api/models/{model_kind}")
 def get_model(model_kind: str) -> dict:
     """Resolve a concrete training key through the runtime capability source."""
-    contract = get_model_capability_contract(model_kind)
-    if contract is not None:
-        return contract.to_dict()
-    for descriptor in builtin_runtime_registry().model_descriptors():
-        if model_kind in descriptor.training_model_kinds or model_kind == descriptor.identity.key:
-            return next(item for item in get_models() if item["key"] == descriptor.identity.key)
+    for item in get_models():
+        if model_kind in item.get("training_model_kinds", []) or model_kind in {item.get("key"), item.get("adapter_key")}:
+            return item
     raise HTTPException(status_code=404, detail=f"Model capability is unavailable: {model_kind!r} is not registered.")
 
 

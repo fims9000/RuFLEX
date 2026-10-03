@@ -20,7 +20,6 @@ from ruflex.domain.evidence import ExplanationCheck, ExplanationCheckItem, Expla
 from ruflex.models.flat_nf.model import FlatNeuroFuzzyModel
 from ruflex.models.specs import ShallowModelSpec
 from ruflex.plugins import PluginDescriptor, PluginRegistry
-from ruflex.runtime.contracts import PredictionRequest
 from ruflex.runtime.registry import builtin_runtime_registry
 
 
@@ -86,11 +85,6 @@ def _normalized_vector(run, sample: dict[str, float]) -> np.ndarray:
     return _normalization(run).transform_array(raw)
 
 
-def _sigmoid(value: float) -> float:
-    value = float(np.clip(value, -60.0, 60.0))
-    return float(1.0 / (1.0 + math.exp(-value)))
-
-
 def _tree_leaf(tree: dict, vector: np.ndarray) -> int:
     node = 0
     while int(tree["children_left"][node]) != -1:
@@ -118,18 +112,12 @@ def _artifact_payload(project_root: Path, sha256: str) -> dict:
 
 def _adapter_predict_normalized(project_root: Path, run, values: np.ndarray):
     """Replay any persisted runtime adapter; evidence code owns no model-kind map."""
-    if not all((run.adapter_key, run.adapter_version, run.adapter_provider, run.preprocessing_artifact_sha256)):
-        raise EvidenceError("Explanation replay requires a persisted adapter and preprocessing identity.")
+    from ruflex.application.model_runtime import predict_persisted_run
+
     try:
-        adapter = builtin_runtime_registry().resolve_model_adapter(run.adapter_key, version=run.adapter_version)
+        return predict_persisted_run(project_root, run, values, registry=builtin_runtime_registry())
     except Exception as error:
-        raise EvidenceError("The persisted model adapter is unavailable for explanation replay.") from error
-    if adapter.descriptor.identity.provider != run.adapter_provider or run.model_kind not in adapter.descriptor.training_model_kinds:
-        raise EvidenceError("The persisted model adapter does not match the requested ExplanationContract.")
-    matrix = np.asarray(values, dtype=float)
-    if matrix.ndim == 1: matrix = matrix.reshape(1, -1)
-    with ArtifactStore(project_root).open(ArtifactRef(sha256=run.model_artifact_sha256)) as handle:
-        return adapter.predict(PredictionRequest(task=run.task, feature_names=tuple(run.feature_columns), features=matrix, artifact=handle.read(), model_spec=run.model_spec, preprocessing_identity=run.preprocessing_artifact_sha256))
+        raise EvidenceError(f"The persisted model adapter is unavailable for explanation replay: {error}") from error
 
 
 def _load_anfis_model(project_root: Path, run) -> FlatNeuroFuzzyModel:
@@ -145,13 +133,6 @@ def _load_anfis_model(project_root: Path, run) -> FlatNeuroFuzzyModel:
     finally:
         path.unlink(missing_ok=True)
     return model
-
-
-def _predict_anfis(project_root: Path, run, sample: dict[str, float]) -> float:
-    vector = _normalized_vector(run, sample)
-    model = _load_anfis_model(project_root, run)
-    prediction = float(np.asarray(model.predict(vector), dtype=float).reshape(-1)[0])
-    return _sigmoid(prediction) if run.task == "binary_classification" else prediction
 
 
 def _differentiable_output(model: FlatNeuroFuzzyModel, run, inputs: torch.Tensor) -> torch.Tensor:
@@ -183,8 +164,9 @@ def predict_run_sample(project_root: Path, run_id: UUID, sample: dict[str, float
     run = load_training_run(project_root, run_id)
     result = _adapter_predict_normalized(project_root, run, _normalized_vector(run, sample))
     if run.task == "binary_classification":
-        if result.probability is not None: return float(result.probability[0])
-        if result.raw_score is not None: return _sigmoid(float(result.raw_score[0]))
+        from ruflex.application.model_runtime import probability_prediction
+
+        return float(probability_prediction(result, task=run.task)[0])
     return float(result.prediction[0])
 
 
@@ -196,8 +178,9 @@ def _predict_normalized_batch(project_root: Path, run, values: np.ndarray) -> np
         raise EvidenceError("Explanation predictor received an incompatible feature matrix.")
     result = _adapter_predict_normalized(project_root, run, matrix)
     if run.task == "binary_classification":
-        if result.probability is not None: return np.asarray(result.probability, dtype=float).reshape(-1)
-        if result.raw_score is not None: return 1.0 / (1.0 + np.exp(-np.clip(np.asarray(result.raw_score, dtype=float), -60.0, 60.0)))
+        from ruflex.application.model_runtime import probability_prediction
+
+        return probability_prediction(result, task=run.task)
     return np.asarray(result.prediction, dtype=float).reshape(-1)
 
 

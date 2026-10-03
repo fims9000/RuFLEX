@@ -18,6 +18,10 @@ from ruflex.runtime.contracts import (
     ExplainerResult,
     RuntimeIdentity,
     ModelAdapterDescriptor,
+    FitRequest,
+    FitResult,
+    PredictionRequest,
+    PredictionResult,
 )
 from dataclasses import dataclass
 
@@ -27,11 +31,11 @@ def test_builtin_runtime_snapshot_is_frozen_and_deterministic() -> None:
     first = registry.snapshot()
     assert first["frozen"] is True
     assert [entry["identity"]["key"] for entry in first["models"]] == [
-        "ruflex_flat_neuro_fuzzy",
-        "sklearn_decision_tree",
-        "sklearn_gradient_boosting",
-        "sklearn_linear",
-        "sklearn_random_forest",
+        "native_decision_tree",
+        "native_flat_neuro_fuzzy",
+        "native_gradient_boosting",
+        "native_linear",
+        "native_random_forest",
     ]
     assert first == registry.snapshot()
     assert [item["identity"]["key"] for item in first["explainers"]] == [
@@ -47,10 +51,77 @@ def test_runtime_resolution_fails_closed() -> None:
         registry.resolve_model_adapter("missing")
     assert missing.value.code == "RUNTIME_NOT_FOUND"
     with pytest.raises(RuntimeVersionMismatchError) as mismatch:
-        registry.resolve_model_adapter("sklearn_decision_tree", version="99")
+        registry.resolve_model_adapter("native_decision_tree", version="99")
     assert mismatch.value.code == "RUNTIME_VERSION_MISMATCH"
     with pytest.raises(RuntimeNotFoundError):
         registry.resolve_component("explainer", "missing")
+
+
+def test_native_training_model_kind_mapping_is_exact_and_versioned() -> None:
+    registry = builtin_runtime_registry()
+    expected = {
+        "flat_neuro_fuzzy": "native_flat_neuro_fuzzy",
+        "logistic_regression": "native_linear",
+        "linear_regression": "native_linear",
+        "decision_tree": "native_decision_tree",
+        "random_forest": "native_random_forest",
+        "gradient_boosting": "native_gradient_boosting",
+    }
+    for model_kind, key in expected.items():
+        adapter = registry.resolve_training_model_kind(model_kind)
+        assert adapter.descriptor.identity.key == key
+        assert registry.resolve_model_adapter(key, version="1") is adapter
+
+
+def test_model_kind_default_remains_native_when_external_adapter_is_selectable() -> None:
+    from ruflex.runtime.builtins import builtin_model_adapters
+    from ruflex.runtime.registry import RuntimeRegistry
+
+    @dataclass(frozen=True)
+    class ExternalForestAdapter:
+        descriptor = ModelAdapterDescriptor(
+            identity=RuntimeIdentity(key="aaa_external_forest", version="1", provider="example.plugin", kind="model_adapter"),
+            family="External", training_model_kinds=("random_forest",), supported_tasks=("binary_classification",),
+            capabilities={"fit": True, "predict": True},
+        )
+
+        def fit(self, request: FitRequest) -> FitResult:
+            raise AssertionError("selection test does not fit")
+
+        def predict(self, request: PredictionRequest) -> PredictionResult:
+            raise AssertionError("selection test does not predict")
+
+    registry = RuntimeRegistry()
+    for adapter in builtin_model_adapters():
+        registry.register_model_adapter(adapter)
+    external = ExternalForestAdapter()
+    registry.register_model_adapter(external)
+    registry.freeze()
+
+    assert registry.resolve_training_model_kind("random_forest").descriptor.identity.key == "native_random_forest"
+    assert registry.resolve_model_adapter("aaa_external_forest", version="1") is external
+
+
+def test_model_catalog_executable_capabilities_come_from_the_registered_adapter() -> None:
+    client = TestClient(app)
+    descriptor = builtin_runtime_registry().resolve_training_model_kind("random_forest").descriptor
+    catalog_row = next(item for item in client.get("/api/model-catalog").json() if item["key"] == "random_forest")
+    model_contract = client.get("/api/models/random_forest").json()
+    assert catalog_row["capabilities"] == descriptor.capabilities
+    assert catalog_row["runtime"] == {"adapter_key": "native_random_forest", "adapter_version": "1"}
+    assert model_contract["capabilities"] == descriptor.capabilities
+    assert (model_contract["adapter_key"], model_contract["adapter_version"]) == ("native_random_forest", "1")
+
+
+def test_read_only_model_contracts_project_adapter_capabilities_and_identity() -> None:
+    from dataclasses import asdict
+    from ruflex.application.model_catalog import model_capability_contracts
+
+    adapter = builtin_runtime_registry().resolve_training_model_kind("random_forest")
+    contract = next(item for item in model_capability_contracts() if "random_forest" in item.training_model_kinds)
+
+    assert (contract.adapter_key, contract.adapter_version) == ("native_random_forest", "1")
+    assert asdict(contract.capabilities) == adapter.descriptor.capabilities
 
 
 def test_runtime_identity_is_immutable() -> None:
@@ -86,8 +157,8 @@ def test_runtime_api_exposes_frozen_snapshot_and_typed_lookup() -> None:
     assert snapshot.json()["frozen"] is True
     models = client.get("/api/runtime/models")
     assert models.status_code == 200
-    assert {item["identity"]["key"] for item in models.json()} >= {"sklearn_decision_tree", "sklearn_linear"}
-    assert client.get("/api/runtime/models/sklearn_decision_tree").status_code == 200
+    assert {item["identity"]["key"] for item in models.json()} >= {"native_decision_tree", "native_linear"}
+    assert client.get("/api/runtime/models/native_decision_tree").status_code == 200
     assert client.get("/api/runtime/explainers/occlusion").status_code == 200
     assert client.get("/api/runtime/validators/native_explanation_validator").status_code == 200
     missing = client.get("/api/runtime/models/missing")

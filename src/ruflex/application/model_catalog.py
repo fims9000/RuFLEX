@@ -1,7 +1,7 @@
 """Capability-declared model catalog used by the object-centric Studio."""
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 
 
 @dataclass(frozen=True)
@@ -63,6 +63,8 @@ class ModelCapabilityContract:
     optional_dependencies: tuple[str, ...]
     evidence_objects_produced: tuple[str, ...]
     limitations: tuple[str, ...]
+    adapter_key: str | None = None
+    adapter_version: str | None = None
 
     def to_dict(self) -> dict:
         payload = asdict(self)
@@ -128,11 +130,35 @@ _SPLIT_CONSTRAINTS = {
 
 
 def list_model_catalog() -> list[dict]:
-    return [asdict(entry) for entry in _ENTRIES]
+    """Return stable descriptive catalog rows with runtime-owned capabilities."""
+    rows = [asdict(entry) for entry in _ENTRIES]
+    # FIS descriptions remain catalog-owned. Executable TrainingRun model
+    # capabilities are resolved from the exact registered adapter descriptor.
+    from ruflex.runtime.registry import builtin_runtime_registry
+
+    registry = builtin_runtime_registry()
+    for row in rows:
+        if not row["capabilities"].get("fit", False):
+            continue
+        model_kind = "logistic_regression" if row["key"] == "linear" else row["key"]
+        try:
+            adapter = registry.resolve_training_model_kind(model_kind)
+        except Exception:
+            row["available"] = False
+            row["capabilities"] = {key: False for key in row["capabilities"]}
+            row["limitation"] = "No registered runtime adapter declares this TrainingRun model kind."
+            continue
+        row["capabilities"] = {key: bool(value) for key, value in adapter.descriptor.capabilities.items()}
+        row["available"] = bool(adapter.descriptor.available)
+        row["runtime"] = {
+            "adapter_key": adapter.descriptor.identity.key,
+            "adapter_version": adapter.descriptor.identity.version,
+        }
+    return rows
 
 
-def model_capability_contracts() -> list[ModelCapabilityContract]:
-    """Return deterministic built-in runtime declarations without name guessing."""
+def _declared_model_capability_contracts() -> list[ModelCapabilityContract]:
+    """Return descriptive defaults used while native adapter descriptors build."""
     contracts: list[ModelCapabilityContract] = []
     for entry in _ENTRIES:
         explainers = tuple(name for name, enabled in (
@@ -162,6 +188,68 @@ def model_capability_contracts() -> list[ModelCapabilityContract]:
     return contracts
 
 
+def model_capability_contracts() -> list[ModelCapabilityContract]:
+    """Project executable capabilities from adapters into stable catalog rows."""
+    contracts = _declared_model_capability_contracts()
+    from ruflex.runtime.registry import builtin_runtime_registry
+
+    registry = builtin_runtime_registry()
+    descriptors = registry.model_descriptors()
+    for descriptor in descriptors:
+        matching = None
+        if descriptor.identity.provider == "ruflex.builtin":
+            matching = next(
+                (item for item in contracts if set(item.training_model_kinds) & set(descriptor.training_model_kinds)),
+                None,
+            )
+        if matching is None:
+            contracts.append(ModelCapabilityContract(
+                key=descriptor.identity.key,
+                display_name=descriptor.identity.key.replace("_", " ").title(),
+                version=descriptor.identity.version,
+                provider=descriptor.identity.provider,
+                family=descriptor.family,
+                adapter_key=descriptor.identity.key,
+                adapter_version=descriptor.identity.version,
+                supported_tasks=descriptor.supported_tasks,
+                training_model_kinds=descriptor.training_model_kinds,
+                input_modalities=descriptor.input_modalities,
+                available=descriptor.available,
+                unavailability_reason=descriptor.unavailability_reason,
+                capabilities=ModelCapabilities(**descriptor.capabilities),
+                supported_explainers=descriptor.supported_explainers,
+                export_formats=(),
+                config_schema=descriptor.config_schema,
+                defaults=descriptor.defaults,
+                parameter_constraints=descriptor.parameter_constraints,
+                optional_dependencies=descriptor.optional_dependencies,
+                evidence_objects_produced=descriptor.evidence_objects_produced,
+                limitations=descriptor.limitations,
+            ))
+            continue
+        index = contracts.index(matching)
+        contracts[index] = replace(
+            matching,
+            version=descriptor.identity.version,
+            provider=descriptor.identity.provider,
+            adapter_key=descriptor.identity.key,
+            adapter_version=descriptor.identity.version,
+            supported_tasks=descriptor.supported_tasks,
+            training_model_kinds=descriptor.training_model_kinds,
+            available=descriptor.available,
+            unavailability_reason=descriptor.unavailability_reason,
+            capabilities=ModelCapabilities(**descriptor.capabilities),
+            supported_explainers=descriptor.supported_explainers,
+            config_schema=descriptor.config_schema,
+            defaults=descriptor.defaults,
+            parameter_constraints=descriptor.parameter_constraints,
+            optional_dependencies=descriptor.optional_dependencies,
+            evidence_objects_produced=descriptor.evidence_objects_produced,
+            limitations=descriptor.limitations,
+        )
+    return contracts
+
+
 def get_model_capability_contract(model_kind: str) -> ModelCapabilityContract | None:
     key = "linear" if model_kind in {"logistic_regression", "linear_regression"} else model_kind
-    return next((item for item in model_capability_contracts() if item.key == key), None)
+    return next((item for item in _declared_model_capability_contracts() if item.key == key), None)
