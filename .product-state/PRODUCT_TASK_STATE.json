@@ -44,6 +44,7 @@
     "runtime_component_implementation_contract_enforcement",
     "selectable_persisted_execution_backend_for_study_jobs",
     "explicit_external_model_adapter_api_and_studio_binding",
+    "adapter_driven_training_run_runtime_m1",
     "runtime_explainer_studio_and_api_selection",
     "runtime_validator_studio_and_api_selection",
     "execution_backend_provenance_all_evidence_jobs",
@@ -55,7 +56,7 @@
     "Keep unrelated article and interrupted S03 work out of the committed product baseline."
   ],
   "blockers": [],
-  "next_executable_work": "Rebuild an exact tracked-source archive at the current V1.3 HEAD and repeat the fresh archive frontend/browser smoke after the persisted-evidence backend typing correction.",
+  "next_executable_work": "Continue the remaining V1.3 data-governance acceptance (SplitContract, train-only TransformPipelineContract and leakage-audit persistence) as a separately scoped slice; Adapter-Driven Model Runtime M1 is complete at b72ad56416e39121f648558c85d13d06d739e2fc.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -86,6 +87,7 @@
     "runtime_component_contract_enforcement": "PASS: direct runtime component registration rejects incomplete implementations rather than relying only on entry-point discovery; focused runtime/product route tests passed.",
     "selectable_execution_backend": "PASS: StudyJob accepts and persists an explicitly selected registered backend identity through API/Studio configuration; an external synchronous backend executes a real multi-seed job without local-executor substitution.",
     "explicit_external_model_adapter": "PASS: API and Studio pass a selected external adapter identity into generic training and StudyJob execution config; train_model resolves that exact adapter and persists its runtime provenance.",
-    "runtime_explainer_selection": "PASS: Studio exposes applicable external runtime explainers without treating them as built-in capabilities, and the post-hoc API accepts a runtime explainer key before the frozen registry performs compatibility resolution."
+    "runtime_explainer_selection": "PASS: Studio exposes applicable external runtime explainers without treating them as built-in capabilities, and the post-hoc API accepts a runtime explainer key before the frozen registry performs compatibility resolution.",
+    "adapter_driven_model_runtime_m1": "PASS: exact-version adapter identity is persisted and used for training, StudyJob resume, capability negotiation, final-test/Evidence replay and project integrity; legacy mapping is read-only and fail-closed for partial/unknown identities. Full Python suite, compileall, frontend unit/Vite/Storybook, full 28-test Playwright matrix, and fresh exact-HEAD archive install/focused backend/frontend/browser smoke passed. Local commit b72ad56416e39121f648558c85d13d06d739e2fc; no research files changed."
   }
 }
