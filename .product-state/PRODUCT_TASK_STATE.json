@@ -53,17 +53,18 @@
     "lineage_open_behavior_spec_and_result",
     "lineage_open_exact_stability_assurance_bundle_and_exhaustive_evidence",
     "lineage_open_fis_revision",
-    "data_governance_and_runtime_lifecycle"
+    "data_governance_and_runtime_lifecycle",
+    "alpha_local_studio_bootstrap"
   ],
-  "active_capability": "alpha_local_studio_bootstrap",
+  "active_capability": "alpha_first_project_workflow",
   "active_acceptance": [
-    "Provide one documented local command that starts the API and React Studio together, checks Python/Node/dependency prerequisites, and never installs dependencies implicitly.",
-    "Handle startup failure and Ctrl-C/termination by cleaning up only child processes started by the launcher; do not kill unrelated listeners.",
-    "Validate the launcher with a lightweight health/UI smoke check and keep resource usage bounded.",
+    "Verify the first-project path in the React Studio from project creation and dataset inspection through training and validation evidence, with saved objects inspectable after reopen.",
+    "Show actionable empty, validation and failure states for this path; do not leave the user with a silent no-op.",
+    "Keep final-test data closed unless a user explicitly chooses the frozen final-test action after validation; the first-project onboarding route must not open it automatically.",
     "Keep unrelated article and interrupted S03 work out of the committed product baseline."
   ],
   "blockers": [],
-  "next_executable_work": "Implement and verify alpha_local_studio_bootstrap: a safe one-command launcher for API + Studio with prerequisite checks, no implicit installs, bounded local binding, and cleanup limited to child processes started by the launcher. Preserve unrelated article and interrupted S03 changes.",
+  "next_executable_work": "Map the lightweight first-project browser route in Studio; verify project creation, CSV inspection, one bounded model fit, validation evidence, close/reopen and that no FinalTestEvaluation is created. Fix only observed UX defects. Preserve unrelated article and interrupted S03 changes.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -105,6 +106,7 @@
     "verification_bundle_data_governance_relationships": "PASS: bundle validator now resolves DatasetContract, SplitContract, TransformPipelineContract and LeakageAuditReport identities and rejects broken cross-links or cross-dataset/split mismatches. Rechecksummed negative tests cover dangling audit split and transform references; focused evidence-route corruption tests and all split-contract tests passed, with compileall and diff check green.",
     "assurance_data_governance_provenance": "PASS: transform/leakage Assurance gates verify run-to-transform and audit-to-split/transform bindings; malformed or dangling referenced evidence maps to FAIL rather than an unhandled API error. Parameterized API regression tests cover missing split and transform references, and an additional test proves an existing-but-mismatched audit pair fails Assurance and portable bundle validation. The focused 16-test selection plus mismatch test passed; compileall and diff check passed.",
     "alpha_version_surfaces": "PASS: README/status/Changelog identify V1.3 Alpha; Python package metadata is 1.3.0a0; Studio/npm and package lock are 1.3.0-alpha.0; visible Studio badge no longer says V1.2 RC1. Python packaging metadata verified, frontend unit tests (8) and Vite production build passed.",
-    "data_governance_and_runtime_lifecycle": "VERIFIED: persisted split/transform/leakage links were validated through Studio, reopen, Lineage, Assurance and portable bundle; adapter generic Evidence/final-test replay is covered by dedicated tests. PRODUCT-06/08 and exact BehaviorRevisionComparison Lineage reopen pass in Playwright; focused lineage/reproducibility backend selection: 6 passed; adapter replay: 2 passed; project-integrity selection: 2 passed. Unrelated article files remain outside commits."
+    "data_governance_and_runtime_lifecycle": "VERIFIED: persisted split/transform/leakage links were validated through Studio, reopen, Lineage, Assurance and portable bundle; adapter generic Evidence/final-test replay is covered by dedicated tests. PRODUCT-06/08 and exact BehaviorRevisionComparison Lineage reopen pass in Playwright; focused lineage/reproducibility backend selection: 6 passed; adapter replay: 2 passed; project-integrity selection: 2 passed. Unrelated article files remain outside commits.",
+    "alpha_local_studio_bootstrap": "PASS: scripts/run_studio.sh checks Python 3.11+, required RuFLEX/uvicorn imports, supported Node.js, frontend dependencies and free ports; it binds to localhost, does not install dependencies, starts API and Vite, passed live API/UI HTTP smoke, and Ctrl-C stopped both launcher-owned services. Missing Python prerequisite fails before startup. bash -n and git diff --check passed."
   }
 }

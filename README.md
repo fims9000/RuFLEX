@@ -160,7 +160,21 @@ python -m venv .venv
 .venv/bin/python -m pip install -e '.[dev,studio]'
 ```
 
-Start the API from the repository root:
+After installing the Python and frontend dependencies, the simplest local
+start is one command from the repository root:
+
+```bash
+./scripts/run_studio.sh
+```
+
+The launcher binds both services to `127.0.0.1`, checks that their ports are
+free, prints actionable errors when prerequisites are missing, and stops only
+the child processes it started when you press Ctrl-C. It never installs
+packages implicitly. Defaults are API port `8010` and Studio port `5173`; set
+`RUFLEX_PYTHON`, `RUFLEX_API_PORT` or `RUFLEX_STUDIO_PORT` to override them.
+
+You can also run the two services in separate terminals. Start the API from
+the repository root:
 
 ```bash
 PYTHONPATH=src .venv/bin/python -m uvicorn ruflex.api.main:app --host 127.0.0.1 --port 8010
