@@ -58,16 +58,17 @@
     "alpha_first_project_workflow",
     "alpha_xlsx_upload_ui",
     "alpha_golden_route_acceptance_audit",
-    "alpha_product_evidence_handoff"
+    "alpha_product_evidence_handoff",
+    "alpha_source_archive_smoke"
   ],
-  "active_capability": "alpha_source_archive_smoke",
+  "active_capability": "alpha_accessibility_baseline",
   "active_acceptance": [
-    "Create a fresh source archive from the committed Alpha HEAD and verify it is independently installable/importable without relying on ignored project artifacts.",
-    "Run only resource-aware focused backend and frontend smoke checks from a fresh extraction; keep the ZIP ignored unless release packaging explicitly requires otherwise.",
+    "Run the real Studio accessibility baseline as a single browser worker and identify the highest-impact user-facing failure rather than weakening the verifier.",
+    "Fix the concrete accessibility issue in the active UI slice and rerun only the affected route/check.",
     "Keep unrelated article and interrupted S03 work out of the committed product baseline."
   ],
   "blockers": [],
-  "next_executable_work": "After committing the current visual-evidence update, use git archive at exact HEAD into a new temporary extraction. Run a focused dataset import/backend smoke and a minimal frontend npm ci/Vite smoke only if resource headroom permits; do not include article or interrupted S03 working-tree changes in the source archive.",
+  "next_executable_work": "Commit the current clean-source archive QA checkpoint, then run npm run test:e2e -- --workers=1 e2e/accessibility-baseline.spec.ts; inspect the actual failing controls and labels before making a scoped UX fix.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -114,6 +115,7 @@
     "alpha_first_project_workflow": "PASS: PRODUCT-02 completes project creation, CSV inspection/confirmation, one bounded FlatNeuroFuzzy fit, persisted train-only preprocessing, validation evaluation, close/reopen and exact lineage inspection; an explicit GET after reopen confirms final-test evaluation is absent (404). Focused Playwright route passed.",
     "alpha_xlsx_upload_ui": "PASS: Studio stages CSV/XLSX candidates before persistence; user sees and separately confirms the target. Focused browser route imports a tiny XLSX, verifies source format/SHA in Studio and reopened DatasetState, then submits extension/content-mismatched XLSX and verifies visible error plus unchanged frozen contract. Playwright 1/1, dataset backend tests 9 passed, frontend unit 8 passed, Vite/TypeScript build and git diff --check passed.",
     "alpha_golden_route_acceptance_audit": "PASS: existing real Product V1 evidence route covers the declared golden-route chain; isolated review found that Stability Lab was implemented and E2E-tested but absent from the visual evidence manifest. Added a controlled Stability Lab screenshot capture and manifest/README mapping. Dedicated Stability E2E passed with actual 3-seed project and policy reopen; screenshot visually inspected.",
-    "alpha_product_evidence_handoff": "PASS: 20/20 PNG screenshots exist, are non-empty, resolve one-to-one from the evidence manifest, and the new 1440x900 Stability Lab image is viewable. Evidence E2E passes with explicit update mode; a second ordinary E2E pass leaves the tracked screenshot SHA unchanged. README and manifest describe both real capture routes."
+    "alpha_product_evidence_handoff": "PASS: 20/20 PNG screenshots exist, are non-empty, resolve one-to-one from the evidence manifest, and the new 1440x900 Stability Lab image is viewable. Evidence E2E passes with explicit update mode; a second ordinary E2E pass leaves the tracked screenshot SHA unchanged. README and manifest describe both real capture routes.",
+    "alpha_source_archive_smoke": "PASS: exact committed HEAD extracted with git archive into a fresh temporary tree (no .git or node_modules at extraction); focused dataset backend suite 9 passed; clean npm ci installed 318 packages; frontend unit 8 passed; Vite/TypeScript build passed; XLSX Studio E2E 1 passed from archive using only declared external interpreter/browser runtimes. Archived article readiness SHA matched HEAD so uncommitted article edits were excluded; S03-R8 raw result path absent. npm reported one high advisory and Vite the existing >500kB chunk warning; neither was auto-mutated."
   }
 }
