@@ -70,16 +70,17 @@
     "alpha_final_test_policy_boundary_feedback",
     "alpha_dataset_reopen_boundary_evidence",
     "alpha_alpha_workflow_integration_smoke",
-    "alpha_readonly_project_guidance_audit"
+    "alpha_readonly_project_guidance_audit",
+    "alpha_import_busy_state_feedback"
   ],
-  "active_capability": "alpha_import_busy_state_feedback",
+  "active_capability": "alpha_post_import_next_step_guidance",
   "active_acceptance": [
-    "Review asynchronous file inspection/import feedback so Studio clearly distinguishes inspecting, ready-to-confirm, importing, and failure states.",
-    "Prevent duplicate user submissions while a request is in flight without adding product dependencies or changing persistence semantics.",
+    "After a project gains a confirmed DatasetContract but has no model run, make the optional next route to Training discoverable from Project Overview.",
+    "Keep navigation user-confirmed; never train automatically or imply that validation/test access occurs.",
     "Keep unrelated article and interrupted S03 work out of the committed product baseline."
   ],
   "blockers": [],
-  "next_executable_work": "Inspect DATA workspace import request state; add narrowly scoped disabled/loading labels for duplicate inspect/import requests and a focused browser regression.",
+  "next_executable_work": "Add an optional Project Overview handoff from confirmed dataset to Training when there is no fitted run; verify close/reopen and no automatic training.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -139,6 +140,7 @@
     "alpha_final_test_policy_boundary_feedback": "PASS: EvaluationWorkspace now distinguishes no test access, current-run FinalTestEvaluation, and an already-opened dataset boundary from another run. It displays the boundary timestamp and blocks creation of new calibration/threshold/selective policies for that dataset without changing eligibility or evaluation semantics. Component unit tests 9 passed, TypeScript/Vite build passed, and git diff --check passed.",
     "alpha_dataset_reopen_boundary_evidence": "PASS: Component regressions prove an already-opened boundary from another run is shown for the same DatasetContract fingerprint, while a historical final-test record from a different dataset revision does not lock current policies. Frontend unit suite 10 passed.",
     "alpha_alpha_workflow_integration_smoke": "PASS: Sequential Studio browser smoke across XLSX import/contract reopen, stale CSV inspection rejection, and three-seed Study close/reopen passed 3/3. Focused dataset API suite passed 12/12; diff check and task-state JSON validation passed.",
-    "alpha_readonly_project_guidance_audit": "PASS: Read-only Data now states which dataset mutations are disabled and how to reopen writable; Evaluation explains saved evidence remains viewable while new evidence/policies/final-test access cannot be saved. Existing enforcement unchanged. Read-only project lifecycle E2E 1/1, frontend component unit 10/10 and Vite/TypeScript build passed."
+    "alpha_readonly_project_guidance_audit": "PASS: Read-only Data now states which dataset mutations are disabled and how to reopen writable; Evaluation explains saved evidence remains viewable while new evidence/policies/final-test access cannot be saved. Existing enforcement unchanged. Read-only project lifecycle E2E 1/1, frontend component unit 10/10 and Vite/TypeScript build passed.",
+    "alpha_import_busy_state_feedback": "PASS: File inspection/import and CSV confirmation now expose progress labels, disable duplicate submissions, and lock contract fields during persistence; failed inspection/import remains retryable. One-worker E2E delayed inspection/import HTTP routes to verify loading/disabled states and persisted reopen (2/2), frontend unit 10/10 and Vite/TypeScript build passed."
   }
 }

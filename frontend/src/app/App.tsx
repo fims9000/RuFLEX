@@ -91,6 +91,9 @@ export function App() {
   const [overviewContextReady, setOverviewContextReady] = useState(false);
   const [pendingDatasetFile, setPendingDatasetFile] = useState<File | null>(null);
   const [pendingDatasetProfile, setPendingDatasetProfile] = useState<DatasetProfile | null>(null);
+  const [inspectingDatasetFile, setInspectingDatasetFile] = useState(false);
+  const [importingDatasetFile, setImportingDatasetFile] = useState(false);
+  const [confirmingCsvDataset, setConfirmingCsvDataset] = useState(false);
   const [target, setTarget] = useState("target");
   const [task, setTask] = useState("binary_classification");
   const [idColumns, setIdColumns] = useState("");
@@ -449,6 +452,9 @@ export function App() {
     setDatasetState(null);
     setPendingDatasetFile(null);
     setPendingDatasetProfile(null);
+    setInspectingDatasetFile(false);
+    setImportingDatasetFile(false);
+    setConfirmingCsvDataset(false);
     setFis(null);
     setFisEvaluation(null);
     setPreviousFisEvaluation(null);
@@ -484,7 +490,10 @@ export function App() {
     }
   }
   async function confirmCsv() {
-    if (!project) return;
+    if (!project || confirmingCsvDataset || importingDatasetFile) return;
+    setConfirmingCsvDataset(true);
+    setError(null);
+    setStatus("Saving dataset contract");
     try {
       const confirmed = await studioApi.confirmCsv(
         project.session_id,
@@ -504,6 +513,8 @@ export function App() {
           ? reason.message
           : "Dataset confirmation failed",
       );
+    } finally {
+      setConfirmingCsvDataset(false);
     }
   }
   async function selectDatasetFile(event: ChangeEvent<HTMLInputElement>) {
@@ -519,9 +530,11 @@ export function App() {
     }
     setPendingDatasetFile(file ?? null);
     setPendingDatasetProfile(null);
+    setInspectingDatasetFile(false);
     setError(null);
     if (!project || !file) return;
     setTarget("");
+    setInspectingDatasetFile(true);
     setStatus(`Inspecting ${file.name} without saving it`);
     try {
       const bytes = new Uint8Array(await file.arrayBuffer());
@@ -535,10 +548,15 @@ export function App() {
       if (selectionId !== datasetFileSelectionId.current) return;
       setError(reason instanceof Error ? reason.message : "Dataset file inspection failed");
       setStatus(`${file.name} could not be inspected`);
+    } finally {
+      if (selectionId === datasetFileSelectionId.current) setInspectingDatasetFile(false);
     }
   }
   async function importDatasetFile() {
-    if (!project || !pendingDatasetFile || !pendingDatasetProfile || !target.trim()) return;
+    if (importingDatasetFile || confirmingCsvDataset || inspectingDatasetFile || !project || !pendingDatasetFile || !pendingDatasetProfile || !target.trim()) return;
+    setImportingDatasetFile(true);
+    setError(null);
+    setStatus(`Importing ${pendingDatasetFile.name}`);
     try {
       const bytes = new Uint8Array(await pendingDatasetFile.arrayBuffer());
       let binary = "";
@@ -562,6 +580,8 @@ export function App() {
       setError(null);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Dataset file import failed");
+    } finally {
+      setImportingDatasetFile(false);
     }
   }
   async function createGeneralization() {
@@ -840,6 +860,7 @@ export function App() {
                 <textarea
                   aria-label="CSV data"
                   value={csvText}
+                  disabled={importingDatasetFile || confirmingCsvDataset}
                   onChange={(event) => updateCsvText(event.target.value)}
                   rows={8}
                 />
@@ -848,18 +869,19 @@ export function App() {
                 <label className="field-label">
                   Target
                   {pendingDatasetProfile ? (
-                    <select aria-label="Target" value={target} onChange={(event) => setTarget(event.target.value)}>
+                    <select aria-label="Target" disabled={importingDatasetFile || confirmingCsvDataset} value={target} onChange={(event) => setTarget(event.target.value)}>
                       <option value="">Select target column</option>
                       {pendingDatasetProfile.columns.map((column) => <option key={column.name} value={column.name}>{column.name}</option>)}
                     </select>
                   ) : (
-                    <TextInput aria-label="Target" value={target} onUpdate={setTarget} />
+                    <TextInput aria-label="Target" value={target} onUpdate={setTarget} disabled={importingDatasetFile || confirmingCsvDataset} />
                   )}
                 </label>
                 <label className="field-label">
                   Task
                   <select
                     aria-label="Task"
+                    disabled={importingDatasetFile || confirmingCsvDataset}
                     value={task}
                     onChange={(event) => setTask(event.target.value)}
                   >
@@ -871,20 +893,20 @@ export function App() {
                 </label>
                 <label className="field-label">
                   ID columns
-                  <TextInput aria-label="ID columns" value={idColumns} onUpdate={setIdColumns} placeholder={profile?.id_candidates.join(", ") || "comma-separated, optional"} />
+                  <TextInput aria-label="ID columns" value={idColumns} onUpdate={setIdColumns} placeholder={profile?.id_candidates.join(", ") || "comma-separated, optional"} disabled={importingDatasetFile || confirmingCsvDataset} />
                 </label>
               </div>
               <div className="form-actions">
-                <Button view="outlined" onClick={inspectCsv} data-ruflex-action="dataset.inspect">
+                <Button view="outlined" disabled={importingDatasetFile || confirmingCsvDataset} onClick={inspectCsv} data-ruflex-action="dataset.inspect">
                   Inspect dataset
                 </Button>
                 <Button
                   view="action"
-                  disabled={!profile || project.read_only}
+                  disabled={!profile || project.read_only || confirmingCsvDataset || importingDatasetFile}
                   onClick={confirmCsv}
                   data-ruflex-action="dataset.confirm"
                 >
-                  Confirm dataset contract
+                  {confirmingCsvDataset ? "Saving dataset…" : "Confirm dataset contract"}
                 </Button>
                 <input
                   ref={datasetFileInputRef}
@@ -896,17 +918,17 @@ export function App() {
                 />
                 <Button
                   view="outlined"
-                  disabled={project.read_only}
+                  disabled={project.read_only || inspectingDatasetFile || importingDatasetFile || confirmingCsvDataset}
                   onClick={() => datasetFileInputRef.current?.click()}
                   data-ruflex-action="dataset.import"
                 >
-                  Import CSV / XLSX
+                  {inspectingDatasetFile ? "Inspecting file…" : importingDatasetFile ? "Importing…" : "Import CSV / XLSX"}
                 </Button>
                 {pendingDatasetFile && (
                   <>
-                    <span className="property-description">Selected: {pendingDatasetFile.name} · target: {target || "select from inspected columns"}</span>
-                    <Button view="action" disabled={!pendingDatasetProfile || !target.trim() || project.read_only} onClick={importDatasetFile} data-ruflex-action="dataset.import.confirm">
-                      Confirm target and import file
+                    <span className="property-description" aria-live="polite">{inspectingDatasetFile ? `Inspecting ${pendingDatasetFile.name}…` : importingDatasetFile ? `Importing ${pendingDatasetFile.name}…` : `Selected: ${pendingDatasetFile.name} · target: ${target || "select from inspected columns"}`}</span>
+                    <Button view="action" disabled={!pendingDatasetProfile || !target.trim() || project.read_only || inspectingDatasetFile || importingDatasetFile || confirmingCsvDataset} onClick={importDatasetFile} data-ruflex-action="dataset.import.confirm">
+                      {importingDatasetFile ? "Saving file…" : "Confirm target and import file"}
                     </Button>
                   </>
                 )}

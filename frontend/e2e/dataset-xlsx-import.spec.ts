@@ -45,8 +45,14 @@ test("Studio imports XLSX with an explicit target and preserves it after rejecti
     mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     buffer: tinyWorkbook(),
   };
+  let releaseInspection: () => void = () => {};
+  const inspectionGate = new Promise<void>((resolve) => { releaseInspection = resolve; });
+  await page.route("**/api/projects/dataset/import/inspect", async (route) => { await inspectionGate; await route.continue(); });
   await page.getByLabel("Dataset CSV or XLSX file").setInputFiles(validUpload);
+  await expect(page.getByRole("button", { name: "Inspecting file…", exact: true })).toBeDisabled();
+  releaseInspection();
   const inspectionResponse = await validInspection;
+  await page.unroute("**/api/projects/dataset/import/inspect");
   expect(inspectionResponse.status()).toBe(200);
   await expect(page.getByLabel("Selected file schema preview")).toContainText("3 rows");
   await expect(page.getByLabel("Selected file schema preview")).toContainText("temperature");
@@ -56,9 +62,17 @@ test("Studio imports XLSX with an explicit target and preserves it after rejecti
   await expect(page.getByRole("button", { name: "Confirm target and import file", exact: true })).toBeEnabled();
   expect(inspectRequests).toBe(1);
   expect(importRequests).toBe(0);
+  let releaseImport: () => void = () => {};
+  const importGate = new Promise<void>((resolve) => { releaseImport = resolve; });
+  await page.route("**/api/projects/dataset/import", async (route) => { await importGate; await route.continue(); });
   const validImport = page.waitForResponse((response) => response.url().endsWith("/api/projects/dataset/import") && response.request().method() === "POST");
   await page.getByRole("button", { name: "Confirm target and import file", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Saving file…", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Importing…", exact: true })).toBeDisabled();
+  await expect(page.getByLabel("Task")).toBeDisabled();
+  releaseImport();
   const validResponse = await validImport;
+  await page.unroute("**/api/projects/dataset/import");
   expect(validResponse.status()).toBe(200);
   const imported = await validResponse.json();
   expect(imported.contract.target).toBe("target");
