@@ -58,6 +58,7 @@ import { EvaluationWorkspace } from "../features/training/EvaluationWorkspace";
 import { ProjectExplorer } from "../explorer/ProjectExplorer";
 
 type Panels = "explorer" | "inspector" | "bottom";
+const MAX_DATASET_UPLOAD_BYTES = 5_000_000;
 type DataGovernanceObject =
   | { kind: "split_contract"; value: SplitContract }
   | { kind: "transform_pipeline"; value: TransformPipelineContract }
@@ -509,6 +510,13 @@ export function App() {
     const file = event.target.files?.[0];
     event.target.value = "";
     const selectionId = ++datasetFileSelectionId.current;
+    if (file && file.size > MAX_DATASET_UPLOAD_BYTES) {
+      setPendingDatasetFile(null);
+      setPendingDatasetProfile(null);
+      setError("Dataset file exceeds the 5 MB import limit. Choose a smaller CSV or XLSX file.");
+      setStatus("Oversized file was not read or uploaded");
+      return;
+    }
     setPendingDatasetFile(file ?? null);
     setPendingDatasetProfile(null);
     setError(null);

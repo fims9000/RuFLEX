@@ -67,6 +67,16 @@ test("Studio imports XLSX with an explicit target and preserves it after rejecti
   const frozenContract = imported.contract;
   await expect(page.getByText(new RegExp(`Source: XLSX · SHA-256: ${frozenContract.source_artifact_sha256}`))).toBeVisible();
 
+  await page.getByLabel("Dataset CSV or XLSX file").setInputFiles({
+    name: "oversized.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.alloc(5_000_001, 65),
+  });
+  await expect(page.getByRole("alert")).toContainText("exceeds the 5 MB import limit");
+  await expect(page.getByText(new RegExp(`Source: XLSX · SHA-256: ${frozenContract.source_artifact_sha256}`))).toBeVisible();
+  expect(inspectRequests).toBe(1);
+  expect(importRequests).toBe(1);
+
   const rejectedInspection = page.waitForResponse((response) => response.url().endsWith("/api/projects/dataset/import/inspect") && response.request().method() === "POST");
   await page.getByLabel("Dataset CSV or XLSX file").setInputFiles({
     name: "broken.xlsx",
