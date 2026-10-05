@@ -65,16 +65,18 @@
     "alpha_dataset_import_validation_recovery",
     "alpha_data_workspace_empty_and_error_states",
     "alpha_dataset_upload_size_guard",
-    "alpha_training_run_feedback"
+    "alpha_training_run_feedback",
+    "alpha_project_first_training_result_discovery",
+    "alpha_final_test_policy_boundary_feedback"
   ],
-  "active_capability": "alpha_project_first_training_result_discovery",
+  "active_capability": "alpha_dataset_reopen_boundary_evidence",
   "active_acceptance": [
-    "After a persisted multi-seed job completes, make its terminal state discoverable after project close/reopen and bind it to the restored TrainingStudy where possible.",
-    "Preserve resume/cancel behavior for active jobs and do not alter training or study execution semantics.",
+    "Verify that project reopen selects a final-test record from the active DatasetContract revision before showing an opened/closed boundary.",
+    "Keep historical final-test records from older dataset revisions from falsely blocking the active dataset in Studio.",
     "Keep unrelated article and interrupted S03 work out of the committed product baseline."
   ],
   "blockers": [],
-  "next_executable_work": "Ensure a persisted completed StudyJob is shown after reopen, preferring the job whose study_id matches restored TrainingStudy; keep active jobs resumable and test the real route.",
+  "next_executable_work": "Audit App's reopen/latest-final-test loading against DatasetContract fingerprint; add a focused regression if stale final-test state can leak across dataset revisions.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -129,6 +131,8 @@
     "alpha_dataset_import_validation_recovery": "PASS: CSV/XLSX confirmation now validates target, builds the contract and runs its audit before persisting source bytes. A rejected replacement leaves the previous DatasetContract and artifact set unchanged. Focused dataset API suite 12 passed; Studio XLSX validation/reopen E2E 1/1 passed; git diff --check passed.",
     "alpha_data_workspace_empty_and_error_states": "PASS: empty-project CSV example is explicitly labeled an unsaved editable draft; changing text after inspection invalidates the stale profile and disables contract confirmation until re-inspection. Focused Studio dataset E2E 2/2, frontend unit 8/8 and TypeScript/Vite production build passed.",
     "alpha_dataset_upload_size_guard": "PASS: Studio rejects files above the existing 5 MB limit using File.size before reading the body or calling the inspection/import APIs. Browser E2E uploads a 5,000,001-byte fixture and verifies error feedback, no extra request, and unchanged confirmed XLSX contract; focused dataset E2E 2/2, frontend unit 8/8 and TypeScript/Vite build passed.",
-    "alpha_training_run_feedback": "PASS: Studio now restores the latest active StudyJob for resume, or the job linked by study_id to the restored TrainingStudy, so terminal completion and per-seed states remain visible after reopen. Real PRODUCT-03 multi-seed create/close/reopen E2E passed 1/1; frontend unit 8/8, TypeScript/Vite production build and diff check passed."
+    "alpha_training_run_feedback": "PASS: Studio now restores the latest active StudyJob for resume, or the job linked by study_id to the restored TrainingStudy, so terminal completion and per-seed states remain visible after reopen. Real PRODUCT-03 multi-seed create/close/reopen E2E passed 1/1; frontend unit 8/8, TypeScript/Vite production build and diff check passed.",
+    "alpha_project_first_training_result_discovery": "PASS: After multi-seed completion, Studio restores the StudyJob linked to the reopened TrainingStudy and exposes its terminal status and per-seed states; active jobs remain resumable. Real PRODUCT-03 create/close/reopen E2E passed 1/1.",
+    "alpha_final_test_policy_boundary_feedback": "PASS: EvaluationWorkspace now distinguishes no test access, current-run FinalTestEvaluation, and an already-opened dataset boundary from another run. It displays the boundary timestamp and blocks creation of new calibration/threshold/selective policies for that dataset without changing eligibility or evaluation semantics. Component unit tests 9 passed, TypeScript/Vite build passed, and git diff --check passed."
   }
 }

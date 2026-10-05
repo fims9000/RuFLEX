@@ -174,6 +174,10 @@ export function EvaluationWorkspace({
   const activeFinalTest = finalTestEvaluation && finalTestEvaluation.run_id === runId
     ? finalTestEvaluation
     : null;
+  const datasetTestBoundaryAt = dataset && finalTestEvaluation?.dataset_fingerprint === dataset.contract.dataset_fingerprint
+    ? finalTestEvaluation.dataset_test_unlock_at
+    : null;
+  const datasetTestBoundaryOpened = Boolean(datasetTestBoundaryAt);
 
   const option = useMemo(() => {
     if (!run) return null;
@@ -367,11 +371,11 @@ export function EvaluationWorkspace({
         <p>{activeEvaluation?.scientific_note ?? run.scientific_note}</p>
       </div>
       <div className="toolbar-actions">
-        <StatusBadge tone={activeFinalTest ? "danger" : "warning"}>{activeFinalTest ? "final test evaluated" : "final test locked"}</StatusBadge>
+        <StatusBadge tone={activeFinalTest || datasetTestBoundaryOpened ? "danger" : "warning"}>{activeFinalTest ? "final test evaluated" : datasetTestBoundaryOpened ? "dataset final-test boundary opened" : "final test locked"}</StatusBadge>
         {study && <Button view="outlined" disabled={comparing || project.read_only} onClick={saveStudyComparison} data-ruflex-action="comparison.study.create">{comparing ? "Comparing…" : "Compare study seeds"}</Button>}
         <Button view="outlined" disabled={saving || project.read_only} onClick={saveEvaluation} data-ruflex-action="evaluation.save">{saving ? "Saving…" : activeEvaluation ? "Save evaluation revision" : "Save validation evidence"}</Button>
-        {run.task === "binary_classification" && <Button view="outlined" disabled={calibrating || project.read_only || Boolean(finalTestEvaluation)} onClick={fitCalibration} data-ruflex-action="calibration.fit">{calibrating ? "Fitting…" : activeCalibration ? "Refit calibration" : "Fit validation calibration"}</Button>}
-        {run.task === "binary_classification" && <Button view="action" disabled={thresholding || project.read_only || Boolean(finalTestEvaluation)} onClick={selectThreshold} data-ruflex-action="threshold.select">{thresholding ? "Selecting…" : activeThreshold ? "Reselect threshold" : `Select F1 threshold (${activeCalibration ? "calibrated" : "raw"})`}</Button>}
+        {run.task === "binary_classification" && <Button view="outlined" disabled={calibrating || project.read_only || datasetTestBoundaryOpened} onClick={fitCalibration} data-ruflex-action="calibration.fit">{calibrating ? "Fitting…" : activeCalibration ? "Refit calibration" : "Fit validation calibration"}</Button>}
+        {run.task === "binary_classification" && <Button view="action" disabled={thresholding || project.read_only || datasetTestBoundaryOpened} onClick={selectThreshold} data-ruflex-action="threshold.select">{thresholding ? "Selecting…" : activeThreshold ? "Reselect threshold" : `Select F1 threshold (${activeCalibration ? "calibrated" : "raw"})`}</Button>}
       </div>
     </div>
 
@@ -418,7 +422,7 @@ export function EvaluationWorkspace({
       <span className="eyebrow">SELECTIVE PREDICTION · VALIDATION ONLY</span><h3>Accept confident cases; route the rest to review</h3>
       <p>This confidence cutoff is independent of the class threshold. It tunes ACCEPT / REVIEW coverage on validation evidence and never opens the final test.</p>
       <label className="field-label">Confidence cutoff<input aria-label="Selective confidence cutoff" type="number" min="0.5" max="1" step="0.05" value={selectiveCutoff} onChange={(event) => setSelectiveCutoff(event.target.value)} /></label>
-      <Button view="action" disabled={selectingReview || project.read_only || Boolean(finalTestEvaluation) || !activeThreshold} onClick={selectReviewPolicy} data-ruflex-action="selective_policy.create">{selectingReview ? "Selecting…" : "Save ACCEPT / REVIEW policy"}</Button>
+      <Button view="action" disabled={selectingReview || project.read_only || datasetTestBoundaryOpened || !activeThreshold} onClick={selectReviewPolicy} data-ruflex-action="selective_policy.create">{selectingReview ? "Selecting…" : "Save ACCEPT / REVIEW policy"}</Button>
       {!activeThreshold && <small>Select the validation class threshold first; accepted risk uses that exact threshold, never an implicit 0.50.</small>}
       {selectivePolicy && <><p><StatusBadge tone="warning">REVIEW BELOW {selectivePolicy.confidence_cutoff.toFixed(2)}</StatusBadge> ACCEPT at or above cutoff · class threshold {selectivePolicy.class_threshold.toFixed(2)} · {selectivePolicy.probability_source} probability.</p><small className="mono">threshold {selectivePolicy.class_threshold_id.slice(0, 12)} · validation cases {selectivePolicy.fit_sample_identity.slice(0, 24)}…</small><div className="data-table-wrap"><table className="data-table"><thead><tr><th>confidence</th><th>coverage</th><th>accepted risk</th><th>accepted</th></tr></thead><tbody>{selectivePolicy.risk_coverage.map((point) => <tr key={point.confidence_cutoff}><td>{point.confidence_cutoff.toFixed(2)}</td><td>{(point.coverage * 100).toFixed(1)}%</td><td>{point.accepted_risk === null ? "—" : `${(point.accepted_risk * 100).toFixed(1)}%`}</td><td>{point.accepted_count}</td></tr>)}</tbody></table></div><small>{selectivePolicy.scientific_note}</small></>}
     </section>}
@@ -431,11 +435,11 @@ export function EvaluationWorkspace({
       <small>{activeEvaluation ? `${activeEvaluation.validation_row_count} validation rows persisted; first ${Math.min(20, displayRows.length)} displayed.` : "Save validation evidence to persist the complete evaluation object."}</small>
     </section>
 
-    <div className="evaluation-footer"><StatusBadge tone="success">validation evaluated</StatusBadge><span>{activeEvaluation ? `Evaluation ${activeEvaluation.evaluation_id.slice(0, 12)} · ` : "Unsaved analysis · "}Run {run.run_id.slice(0, 12)} · model {run.model_artifact_sha256.slice(0, 12)} · {activeFinalTest ? `${activeFinalTest.test_row_count} final-test rows evaluated with frozen policy` : `${run.split.test_count} final-test rows remain locked`}</span></div>
+    <div className="evaluation-footer"><StatusBadge tone="success">validation evaluated</StatusBadge><span>{activeEvaluation ? `Evaluation ${activeEvaluation.evaluation_id.slice(0, 12)} · ` : "Unsaved analysis · "}Run {run.run_id.slice(0, 12)} · model {run.model_artifact_sha256.slice(0, 12)} · {activeFinalTest ? `${activeFinalTest.test_row_count} final-test rows evaluated with frozen policy` : datasetTestBoundaryOpened ? "this run has no final-test result; dataset test access already opened" : `${run.split.test_count} final-test rows remain locked`}</span></div>
 
     <section className="comparison-card final-test-gate">
       <span className="eyebrow">FINAL TEST · EXPLICIT FROZEN-POLICY EVALUATION</span>
-      <h3>{activeFinalTest ? "Final-test evidence persisted separately" : "Final test remains closed"}</h3>
+      <h3>{activeFinalTest ? "Final-test evidence persisted separately" : datasetTestBoundaryOpened ? "Dataset final-test boundary already opened" : "Final test remains closed"}</h3>
       {activeFinalTest ? <>
         <div className="comparison-protocol-line"><StatusBadge tone="danger">FINAL TEST EVALUATED</StatusBadge><span className="mono">{activeFinalTest.final_test_id.slice(0, 12)} · n={activeFinalTest.test_row_count}</span></div>
         <div className="metric-grid">{Object.entries(activeFinalTest.metrics).map(([name, value]) => <div className="metric-card" key={`final-${name}`}><span>{name}</span><strong>{Number(value).toFixed(4)}</strong><small>FINAL TEST · frozen policy</small></div>)}</div>
@@ -443,8 +447,8 @@ export function EvaluationWorkspace({
         <small className="mono">policy {activeFinalTest.policy_identity.slice(0, 36)}… · cases {(activeFinalTest.test_case_identity ?? activeFinalTest.test_sample_identity).slice(0, 36)}…</small>
         {activeFinalTest.dataset_test_unlock_at && <small className="mono">dataset test gate opened {new Date(activeFinalTest.dataset_test_unlock_at).toLocaleString()} · only policies frozen before this boundary and using the same holdout cases remain eligible</small>}
       </> : <>
-        <p>Validation remains the only evidence used for model selection, probability calibration and threshold selection. The first final-test access freezes the dataset-level eligibility boundary. Additional pre-specified policies may be evaluated only if they were already frozen and reconstruct the same holdout rows.</p>{stabilityGatePolicy && <small>Stability Gate {stabilityGatePolicy.policy_id.slice(0, 12)} is validation-derived and will be bound to this final-test evidence; it is not fitted on final-test data.</small>}
-        <label className="final-test-confirm"><input type="checkbox" checked={finalTestConfirmed} onChange={(event) => setFinalTestConfirmed(event.target.checked)} />I confirm this policy was frozen before final-test access; final-test results will not be used to retune or create another eligible policy.</label>
+        {datasetTestBoundaryOpened ? <><p>The first test access for this dataset has already occurred. This run has no persisted FinalTestEvaluation. Only policies frozen before the recorded boundary and reconstructing the same holdout rows remain eligible.</p><small className="mono">Dataset test gate opened {new Date(datasetTestBoundaryAt!).toLocaleString()}</small></> : <p>Validation remains the only evidence used for model selection, probability calibration and threshold selection. The first final-test access freezes the dataset-level eligibility boundary. Additional pre-specified policies may be evaluated only if they were already frozen and reconstruct the same holdout rows.</p>}{stabilityGatePolicy && <small>Stability Gate {stabilityGatePolicy.policy_id.slice(0, 12)} is validation-derived and will be bound to this final-test evidence; it is not fitted on final-test data.</small>}
+        <label className="final-test-confirm"><input type="checkbox" checked={finalTestConfirmed} onChange={(event) => setFinalTestConfirmed(event.target.checked)} />{datasetTestBoundaryOpened ? "I confirm this policy was frozen before the recorded dataset-level test boundary; final-test results will not be used for retuning." : "I confirm this policy was frozen before final-test access; final-test results will not be used to retune or create another eligible policy."}</label>
         <Button view="action" disabled={project.read_only || finalTesting || !activeEvaluation || !finalTestConfirmed || (run.task === "binary_classification" && !activeThreshold)} onClick={evaluateFinalTest} data-ruflex-action="final_test.execute">{finalTesting ? "Evaluating final test…" : "Evaluate frozen final test"}</Button>
         {run.task === "binary_classification" && !activeThreshold && <small>Select a validation-derived decision threshold first. Calibration is optional; a calibrated threshold automatically requires its persisted calibration transform.</small>}
       </>}

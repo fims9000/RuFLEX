@@ -39,10 +39,10 @@ const threshold = {
   probability_source: "raw", source_split: "validation", objective: "f1", decisions: [], confusion_matrix: run.confusion_matrix,
 };
 
-function renderWorkspace(readOnly = false) {
+function renderWorkspace(readOnly = false, overrides: { dataset?: unknown; finalTestEvaluation?: unknown } = {}) {
   return render(<EvaluationWorkspace
-    project={{ ...project, read_only: readOnly } as never} dataset={null} fis={null} run={run as never} runs={[run] as never} study={null}
-    evaluation={evaluation as never} calibrationTransform={null} decisionThreshold={threshold as never} finalTestEvaluation={null}
+    project={{ ...project, read_only: readOnly } as never} dataset={(overrides.dataset ?? null) as never} fis={null} run={run as never} runs={[run] as never} study={null}
+    evaluation={evaluation as never} calibrationTransform={null} decisionThreshold={threshold as never} finalTestEvaluation={(overrides.finalTestEvaluation ?? null) as never}
     comparison={null} sliceAnalysis={null} selectivePolicy={null} stabilityGatePolicy={null} theme={"light" as never}
     onEvaluation={vi.fn()} onCalibration={vi.fn()} onThreshold={vi.fn()} onFinalTest={vi.fn()} onComparison={vi.fn()} onSliceAnalysis={vi.fn()} onSelectivePolicy={vi.fn()}
   />);
@@ -66,6 +66,26 @@ describe("EvaluationWorkspace final-test boundary", () => {
     expect(screen.getByRole("button", { name: "Evaluate frozen final test" })).toBeDisabled();
     expect(screen.getByRole("button", { name: /Save evaluation revision/ })).toBeDisabled();
     expect(screen.getByRole("button", { name: /Reselect threshold/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save ACCEPT / REVIEW policy" })).toBeDisabled();
+  });
+
+  it("shows an already-opened dataset boundary when the current run has no final-test result", () => {
+    renderWorkspace(false, {
+      dataset: {
+        contract: { dataset_fingerprint: "dataset-fingerprint", feature_columns: ["feature"] },
+        profile: { columns: [{ name: "feature" }] },
+      },
+      finalTestEvaluation: {
+        run_id: "another-run",
+        dataset_fingerprint: "dataset-fingerprint",
+        dataset_test_unlock_at: "2026-10-06T10:00:00Z",
+      },
+    });
+
+    expect(screen.getByRole("heading", { name: "Dataset final-test boundary already opened" })).toBeInTheDocument();
+    expect(screen.getByText(/This run has no persisted FinalTestEvaluation/)).toBeInTheDocument();
+    expect(screen.getByText(/Dataset test gate opened/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Reselect threshold" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Save ACCEPT / REVIEW policy" })).toBeDisabled();
   });
 });
