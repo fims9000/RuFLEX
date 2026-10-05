@@ -412,6 +412,8 @@ def test_cross_run_explanation_reproducibility_persists_and_rejects_incompatible
     reopened = client.post("/api/projects/open", json={"path": str(root), "read_only": False}).json()["session_id"]
     latest = client.get(f"/api/projects/{reopened}/evidence/explanation-reproducibility/latest")
     assert latest.status_code == 200 and latest.json()["analysis_id"] == analysis["analysis_id"]
+    exact = client.get(f"/api/projects/{reopened}/evidence/explanation-reproducibility/{analysis['analysis_id']}")
+    assert exact.status_code == 200 and exact.json() == analysis
     assert client.post("/api/projects/evidence/explanation-reproducibility", json={"session_id": reopened, "explanation_ids": ids[:3]}).status_code == 422
     incompatible = client.post("/api/projects/evidence/explanations", json={"session_id": reopened, "run_id": left["run_id"], "sample": {"temperature": 22.0, "torque": 46.0, "vibration": 0.55}, "method": "shap"})
     assert incompatible.status_code == 201, incompatible.text
