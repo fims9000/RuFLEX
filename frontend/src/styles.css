@@ -277,6 +277,25 @@ input:focus-visible,
   gap: 18px;
   padding-top: 18px;
 }
+.quick-start-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  padding: 16px;
+  border: 1px solid var(--rf-border);
+  border-left: 3px solid var(--rf-accent);
+  border-radius: 6px;
+  background: var(--rf-bg-surface);
+}
+.quick-start-card h2 {
+  margin: 4px 0;
+}
+.quick-start-card p {
+  max-width: 760px;
+  margin: 0;
+  color: var(--rf-text-secondary);
+}
 .fixture-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(260px, 1fr));
@@ -1226,6 +1245,10 @@ input:focus-visible,
 }
 
 @media (max-width: 900px) {
+  .quick-start-card {
+    grid-template-columns: 1fr;
+    justify-items: start;
+  }
   .generalization-scope-grid {
     grid-template-columns: 1fr;
   }

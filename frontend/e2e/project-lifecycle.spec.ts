@@ -20,6 +20,10 @@ test("E2E-01 creates a project and exposes it in Explorer and Properties", async
   await expect(page.locator(".project-identity")).toContainText("Pump-01");
   await expect(page.locator(".project-object-tree")).toContainText("Pump-01");
   await expect(page.getByText(/^ID: [0-9a-f-]{36}$/)).toBeVisible();
+  await expect(page.getByRole("region", { name: "Optional quick start" })).toContainText("does not start training or access the locked test split");
+  await page.getByRole("button", { name: "Review or import data", exact: true }).click();
+  await expect(page.locator(".data-workspace")).toBeVisible();
+  await expect(page.getByLabel("Target")).toHaveValue("target");
 });
 
 test("E2E-02 saves metadata, closes, and reopens it", async ({ page }) => {
@@ -33,6 +37,7 @@ test("E2E-02 saves metadata, closes, and reopens it", async ({ page }) => {
   await page.getByLabel("Project path").fill(path);
   await page.getByRole("button", { name: "Open project", exact: true }).click();
   await expect(page.getByText("Description: Preserved description", { exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Optional quick start" })).toContainText("Start with your data");
   await expect(page.getByTestId("project-integrity")).toContainText("PASS");
 });
 
@@ -95,6 +100,15 @@ test("E2E-08 confirms a dataset contract in Data workspace and preserves it acro
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
   await expect(page.getByText(/Contract: target/)).toBeVisible();
   await expect(page.getByText(/Row identity: dataset-fingerprint\/source-row\/v1/)).toBeVisible();
+  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await page.getByLabel("Project path").fill(path);
+  await page.getByRole("button", { name: "Open project", exact: true }).click();
+  await page.getByRole("button", { name: "P", exact: true }).click();
+  const persistedDatasetTile = page.locator(".project-overview-grid button").filter({ hasText: "3 rows" });
+  await expect(persistedDatasetTile).toContainText("Data");
+  await expect(page.getByRole("region", { name: "Optional quick start" })).toHaveCount(0);
+  await page.locator(".project-object-tree .object-tree-item").filter({ hasText: "target" }).first().click();
+  await expect(page.locator(".data-workspace")).toBeVisible();
   await page.getByRole("button", { name: "Close", exact: true }).click();
   const reopened = await page.request.post("http://127.0.0.1:8010/api/projects/open", { data: { path } });
   expect(reopened.status()).toBe(200);

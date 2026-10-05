@@ -87,6 +87,7 @@ export function App() {
   const [profile, setProfile] = useState<DatasetProfile | null>(null);
   const [dataset, setDataset] = useState<DatasetConfirmation | null>(null);
   const [datasetState, setDatasetState] = useState<DatasetState | null>(null);
+  const [overviewContextReady, setOverviewContextReady] = useState(false);
   const [pendingDatasetFile, setPendingDatasetFile] = useState<File | null>(null);
   const [target, setTarget] = useState("target");
   const [task, setTask] = useState("binary_classification");
@@ -153,8 +154,10 @@ export function App() {
     else setArtifacts([]);
   }, [project?.session_id]);
   useEffect(() => {
+    let active = true;
     if (!project) {
       setDatasetState(null);
+      setOverviewContextReady(false);
       setFis(null);
       setFisEvaluation(null);
       setPreviousFisEvaluation(null);
@@ -188,31 +191,29 @@ export function App() {
       setSelectedExpertCorrectionId(null);
       return;
     }
-    studioApi
-      .getDatasetState(project.session_id)
-      .then((state) => {
-        setDatasetState(state);
-        setProfile(state.profile);
-        setDataset({ contract: state.contract, audit: state.audit });
+    setOverviewContextReady(false);
+    Promise.all([
+      studioApi.getDatasetState(project.session_id).catch(() => null),
+      studioApi.getActiveFis(project.session_id).catch(() => null),
+      studioApi.getLatestTraining(project.session_id).catch(() => null),
+    ]).then(([state, activeFis, latestTraining]) => {
+      if (!active) return;
+      setDatasetState(state);
+      setProfile(state?.profile ?? null);
+      setDataset(state ? { contract: state.contract, audit: state.audit } : null);
+      if (state) {
         setTarget(state.contract.target);
         setTask(state.contract.task);
         setIdColumns(state.contract.id_columns.join(", "));
-      })
-      .catch(() => {
-        setDatasetState(null);
-      });
-    studioApi
-      .getActiveFis(project.session_id)
-      .then(setFis)
-      .catch(() => setFis(null));
+      }
+      setFis(activeFis);
+      setTrainingRun(latestTraining);
+      setOverviewContextReady(true);
+    });
     studioApi
       .getLatestFisTrace(project.session_id)
       .then(setFisEvaluation)
       .catch(() => setFisEvaluation(null));
-    studioApi
-      .getLatestTraining(project.session_id)
-      .then(setTrainingRun)
-      .catch(() => setTrainingRun(null));
     studioApi.getTrainingRuns(project.session_id).then(setTrainingRuns).catch(() => setTrainingRuns([]));
     studioApi.getLatestBehaviorSpecResult(project.session_id).then(async (result) => {
       setBehaviorResult(result);
@@ -258,6 +259,7 @@ export function App() {
     studioApi.getActiveGeneralization(project.session_id).then(setGeneralization).catch(() => setGeneralization(null));
     studioApi.getProjectLineage(project.session_id).then(setLineage).catch(() => setLineage(null));
     studioApi.getProjectIntegrity(project.session_id).then(setIntegrity).catch(() => setIntegrity(null));
+    return () => { active = false; };
   }, [project?.session_id]);
   useEffect(() => {
     if (!project) return;
@@ -1161,6 +1163,16 @@ export function App() {
             </div>
             </div>
           {integrity && <div className="trace-card" data-testid="project-integrity"><div className="evidence-check-header"><strong>Reopen integrity</strong><StatusBadge tone={integrity.status === "PASS" ? "success" : integrity.status === "FAIL" ? "danger" : "warning"}>{integrity.status}</StatusBadge></div><p>{integrity.checked_objects} persisted objects checked. {integrity.scientific_note}</p>{integrity.issues.map((issue) => <p className="property-description" key={`${issue.code}-${issue.path}`}>{issue.code} · {issue.path} · {issue.detail}</p>)}</div>}
+          {overviewContextReady && !datasetState && !fis && !trainingRun && (
+            <section className="quick-start-card" aria-label="Optional quick start">
+              <div>
+                <span className="eyebrow">OPTIONAL QUICK START</span>
+                <h2>Start with your data</h2>
+                <p>Inspect a CSV or Excel file, choose its target and task, then confirm a DatasetContract. This shortcut only opens the Data workspace; it does not start training or access the locked test split.</p>
+              </div>
+              <Button view="action" onClick={() => setActive("DATA")} data-ruflex-action="project.quickstart.data">Review or import data</Button>
+            </section>
+          )}
           <div className="project-overview-grid">
             <button onClick={() => setActive("DATA")}>
               Data

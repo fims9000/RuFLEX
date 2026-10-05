@@ -59,16 +59,18 @@
     "alpha_xlsx_upload_ui",
     "alpha_golden_route_acceptance_audit",
     "alpha_product_evidence_handoff",
-    "alpha_source_archive_smoke"
+    "alpha_source_archive_smoke",
+    "alpha_accessibility_baseline",
+    "alpha_empty_project_guidance"
   ],
-  "active_capability": "alpha_accessibility_baseline",
+  "active_capability": "alpha_xlsx_preimport_schema_preview",
   "active_acceptance": [
-    "Run the real Studio accessibility baseline as a single browser worker and identify the highest-impact user-facing failure rather than weakening the verifier.",
-    "Fix the concrete accessibility issue in the active UI slice and rerun only the affected route/check.",
+    "When a CSV/XLSX file is selected, inspect the candidate without persistence and show its columns/row count so users can choose the correct target before import.",
+    "Keep the previous confirmed DatasetContract and source artifact unchanged until a separate explicit confirmation succeeds.",
     "Keep unrelated article and interrupted S03 work out of the committed product baseline."
   ],
   "blockers": [],
-  "next_executable_work": "Commit the current clean-source archive QA checkpoint, then run npm run test:e2e -- --workers=1 e2e/accessibility-baseline.spec.ts; inspect the actual failing controls and labels before making a scoped UX fix.",
+  "next_executable_work": "Add a non-persisting CSV/XLSX file inspection request using the existing DatasetProfile schema, connect file selection to it, show the candidate columns and explicit target/task controls, then confirm separately; cover prior-contract preservation and reopen with one-worker E2E.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -116,6 +118,8 @@
     "alpha_xlsx_upload_ui": "PASS: Studio stages CSV/XLSX candidates before persistence; user sees and separately confirms the target. Focused browser route imports a tiny XLSX, verifies source format/SHA in Studio and reopened DatasetState, then submits extension/content-mismatched XLSX and verifies visible error plus unchanged frozen contract. Playwright 1/1, dataset backend tests 9 passed, frontend unit 8 passed, Vite/TypeScript build and git diff --check passed.",
     "alpha_golden_route_acceptance_audit": "PASS: existing real Product V1 evidence route covers the declared golden-route chain; isolated review found that Stability Lab was implemented and E2E-tested but absent from the visual evidence manifest. Added a controlled Stability Lab screenshot capture and manifest/README mapping. Dedicated Stability E2E passed with actual 3-seed project and policy reopen; screenshot visually inspected.",
     "alpha_product_evidence_handoff": "PASS: 20/20 PNG screenshots exist, are non-empty, resolve one-to-one from the evidence manifest, and the new 1440x900 Stability Lab image is viewable. Evidence E2E passes with explicit update mode; a second ordinary E2E pass leaves the tracked screenshot SHA unchanged. README and manifest describe both real capture routes.",
-    "alpha_source_archive_smoke": "PASS: exact committed HEAD extracted with git archive into a fresh temporary tree (no .git or node_modules at extraction); focused dataset backend suite 9 passed; clean npm ci installed 318 packages; frontend unit 8 passed; Vite/TypeScript build passed; XLSX Studio E2E 1 passed from archive using only declared external interpreter/browser runtimes. Archived article readiness SHA matched HEAD so uncommitted article edits were excluded; S03-R8 raw result path absent. npm reported one high advisory and Vite the existing >500kB chunk warning; neither was auto-mutated."
+    "alpha_source_archive_smoke": "PASS: exact committed HEAD extracted with git archive into a fresh temporary tree (no .git or node_modules at extraction); focused dataset backend suite 9 passed; clean npm ci installed 318 packages; frontend unit 8 passed; Vite/TypeScript build passed; XLSX Studio E2E 1 passed from archive using only declared external interpreter/browser runtimes. Archived article readiness SHA matched HEAD so uncommitted article edits were excluded; S03-R8 raw result path absent. npm reported one high advisory and Vite the existing >500kB chunk warning; neither was auto-mutated.",
+    "alpha_accessibility_baseline": "PASS: axe baseline reports no critical/serious violations across Project, Data, Training/Stability, Evaluation, Evidence and Assurance/Bundle states. Re-ran after quick-start changes as part of a 5-test one-worker browser selection.",
+    "alpha_empty_project_guidance": "PASS: a semantically optional first-run card guides an empty project to Data without launching computation or opening TEST; action is included in the UI inventory. Persisted overview context is awaited before showing the empty-project prompt, so reopening an existing DatasetContract does not mislabel it empty. One-worker action inventory + project lifecycle selected routes 4/4; frontend unit 8 passed; TypeScript/Vite build passed."
   }
 }
