@@ -111,11 +111,46 @@ def create_assurance_case(root: Path) -> AssuranceCase:
     status, risk = _evidence_status(present=bool(runs), valid=bool(runs), malformed=_has_malformed_object(runs_root, TrainingRun), unavailable="No valid TrainingRun provenance exists.", invalid="Training provenance is invalid.")
     gates.append(_gate("training_provenance", status, [f"run:{x.run_id}" for x in runs], risk))
     transforms_root = base / "data" / "transforms"; transforms = _objects(transforms_root, TransformPipelineContract)
-    transform_ok = all(load_transform_pipeline_contract(base, item.pipeline_id).pipeline_identity == item.pipeline_identity for item in transforms)
+    try:
+        transforms_by_id = {str(item.pipeline_id): load_transform_pipeline_contract(base, item.pipeline_id) for item in transforms}
+        transform_ok = bool(transforms) and all(
+            loaded.pipeline_identity == item.pipeline_identity
+            and all(
+                run.dataset_fingerprint == loaded.dataset_fingerprint
+                and run.split.split_contract_id == loaded.split_contract_id
+                and run.feature_columns == loaded.feature_order
+                for run in runs if run.transform_pipeline_id == str(item.pipeline_id)
+            )
+            for item in transforms
+            for loaded in [transforms_by_id[str(item.pipeline_id)]]
+        )
+    except (OSError, ValueError, ValidationError):
+        transforms_by_id = {}
+        transform_ok = False
     status, risk = _evidence_status(present=bool(transforms), valid=bool(transform_ok), malformed=_has_malformed_object(transforms_root, TransformPipelineContract), unavailable="No persisted train-only transform pipeline exists.", invalid="Transform pipeline provenance is invalid.")
     gates.append(_gate("transform_pipeline", status, [f"transform-pipeline:{x.pipeline_id}" for x in transforms], risk))
     leakage_root = base / "data" / "leakage-audits"; leakage_audits = _objects(leakage_root, LeakageAuditReport)
-    leakage_ok = leakage_audits and all(load_leakage_audit(base, item.audit_id).status != "FAIL" for item in leakage_audits)
+    try:
+        loaded_audits = [load_leakage_audit(base, item.audit_id) for item in leakage_audits]
+        leakage_ok = bool(loaded_audits) and all(
+            audit.status != "FAIL"
+            and (
+                audit.transform_pipeline_id is None
+                or audit.transform_pipeline_id in transforms_by_id
+                and transforms_by_id[audit.transform_pipeline_id].dataset_fingerprint == audit.dataset_fingerprint
+                and transforms_by_id[audit.transform_pipeline_id].split_contract_id == audit.split_contract_id
+            )
+            and all(
+                run.leakage_audit_id != str(audit.audit_id)
+                or run.dataset_fingerprint == audit.dataset_fingerprint
+                and run.transform_pipeline_id == audit.transform_pipeline_id
+                and run.split.split_contract_id == audit.split_contract_id
+                for run in runs
+            )
+            for audit in loaded_audits
+        )
+    except (OSError, ValueError, ValidationError):
+        leakage_ok = False
     status, risk = _evidence_status(present=bool(leakage_audits), valid=bool(leakage_ok), malformed=_has_malformed_object(leakage_root, LeakageAuditReport), unavailable="No persisted data-leakage audit exists.", invalid="A persisted data-leakage audit failed or is invalid.")
     gates.append(_gate("data_leakage_audit", status, [f"leakage-audit:{x.audit_id}" for x in leakage_audits], risk))
     studies_root = base / "studies"; studies = _objects(studies_root, TrainingStudy)

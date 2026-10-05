@@ -186,6 +186,33 @@ def test_split_contract_api_survives_close_reopen_and_training_uses_it(tmp_path)
     assert validate_verification_bundle(bundle.json()["path"]).status == "PASS"
 
 
+@pytest.mark.parametrize("field", ["split_contract_id", "transform_pipeline_id"])
+def test_assurance_fails_closed_for_dangling_leakage_audit_links(tmp_path, field: str) -> None:
+    import json
+
+    client = TestClient(app)
+    root = tmp_path / f"assurance-broken-audit-{field}"
+    created = client.post("/api/projects", json={"path": str(root), "name": "audit links"}).json()
+    session_id = created["session_id"]
+    rows = ["patient_id,x,target"] + [f"p{group},{group * 3 + repeat},{group % 2}" for group in range(12) for repeat in range(3)]
+    confirmed = client.post("/api/projects/dataset/confirm", json={"session_id": session_id, "csv_text": "\n".join(rows), "target": "target", "task": "binary_classification", "id_columns": ["patient_id"]})
+    assert confirmed.status_code == 200, confirmed.text
+    split = client.post("/api/projects/dataset/splits", json={"session_id": session_id, "family": "GROUP", "group_column": "patient_id", "split_seed": 7, "validation_fraction": .2, "test_fraction": .2})
+    assert split.status_code == 201, split.text
+    trained = client.post("/api/projects/training/run", json={"session_id": session_id, "model_kind": "logistic_regression", "seed": 7, "split_contract_id": split.json()["split_id"], "max_epochs": 1, "learning_rate": .01, "batch_size": 8, "patience": 1, "validation_fraction": .2, "test_fraction": .2, "max_rules": 3})
+    assert trained.status_code == 201, trained.text
+
+    audit_path = root / "data" / "leakage-audits" / f"{trained.json()['leakage_audit_id']}.json"
+    audit = json.loads(audit_path.read_text(encoding="utf-8"))
+    audit[field] = "00000000-0000-0000-0000-000000000001"
+    audit_path.write_text(json.dumps(audit), encoding="utf-8")
+
+    assurance = client.post("/api/projects/evidence/assurance-cases", json={"session_id": session_id})
+    assert assurance.status_code == 201, assurance.text
+    gates = {gate["key"]: gate["status"] for gate in assurance.json()["gates"]}
+    assert gates["data_leakage_audit"] == "FAIL"
+
+
 @pytest.mark.parametrize(("relative_path", "list_function"), [
     ("data/splits/broken.json", list_split_contracts),
     ("data/transforms/broken.json", list_transform_pipeline_contracts),
