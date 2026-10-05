@@ -94,4 +94,10 @@ test("PRODUCT-02 performs real neuro-fuzzy training, validation evaluation and r
   await page.getByRole("button", { name: "A", exact: true }).click();
   await expect(page.getByText("VALIDATION EVIDENCE", { exact: true })).toBeVisible();
   await expect(page.getByText("Validation ROC curve · raw model", { exact: true })).toBeVisible();
+
+  const reopened = await page.request.post("http://127.0.0.1:8010/api/projects/open", { data: { path } });
+  expect(reopened.status()).toBe(200);
+  const { session_id: reopenedSessionId } = await reopened.json();
+  const unopenedFinalTest = await page.request.get(`http://127.0.0.1:8010/api/projects/${reopenedSessionId}/analyses/final-test/latest`);
+  expect(unopenedFinalTest.status()).toBe(404);
 });

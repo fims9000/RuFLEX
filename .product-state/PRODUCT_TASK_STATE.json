@@ -54,17 +54,17 @@
     "lineage_open_exact_stability_assurance_bundle_and_exhaustive_evidence",
     "lineage_open_fis_revision",
     "data_governance_and_runtime_lifecycle",
-    "alpha_local_studio_bootstrap"
+    "alpha_local_studio_bootstrap",
+    "alpha_first_project_workflow"
   ],
-  "active_capability": "alpha_first_project_workflow",
+  "active_capability": "alpha_xlsx_upload_ui",
   "active_acceptance": [
-    "Verify the first-project path in the React Studio from project creation and dataset inspection through training and validation evidence, with saved objects inspectable after reopen.",
-    "Show actionable empty, validation and failure states for this path; do not leave the user with a silent no-op.",
-    "Keep final-test data closed unless a user explicitly chooses the frozen final-test action after validation; the first-project onboarding route must not open it automatically.",
+    "Verify Excel workbook import through the visible Studio file picker, explicit target confirmation and saved source-format/hash metadata across reopen.",
+    "Verify malformed or extension/content-mismatched workbook input produces a visible actionable error and does not replace an existing confirmed DatasetContract.",
     "Keep unrelated article and interrupted S03 work out of the committed product baseline."
   ],
   "blockers": [],
-  "next_executable_work": "Map the lightweight first-project browser route in Studio; verify project creation, CSV inspection, one bounded model fit, validation evidence, close/reopen and that no FinalTestEvaluation is created. Fix only observed UX defects. Preserve unrelated article and interrupted S03 changes.",
+  "next_executable_work": "Add focused Studio E2E for valid XLSX import plus close/reopen and malformed workbook rejection without replacing existing dataset evidence. Use a tiny fixture and one browser worker. Preserve unrelated article and interrupted S03 changes.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -107,6 +107,7 @@
     "assurance_data_governance_provenance": "PASS: transform/leakage Assurance gates verify run-to-transform and audit-to-split/transform bindings; malformed or dangling referenced evidence maps to FAIL rather than an unhandled API error. Parameterized API regression tests cover missing split and transform references, and an additional test proves an existing-but-mismatched audit pair fails Assurance and portable bundle validation. The focused 16-test selection plus mismatch test passed; compileall and diff check passed.",
     "alpha_version_surfaces": "PASS: README/status/Changelog identify V1.3 Alpha; Python package metadata is 1.3.0a0; Studio/npm and package lock are 1.3.0-alpha.0; visible Studio badge no longer says V1.2 RC1. Python packaging metadata verified, frontend unit tests (8) and Vite production build passed.",
     "data_governance_and_runtime_lifecycle": "VERIFIED: persisted split/transform/leakage links were validated through Studio, reopen, Lineage, Assurance and portable bundle; adapter generic Evidence/final-test replay is covered by dedicated tests. PRODUCT-06/08 and exact BehaviorRevisionComparison Lineage reopen pass in Playwright; focused lineage/reproducibility backend selection: 6 passed; adapter replay: 2 passed; project-integrity selection: 2 passed. Unrelated article files remain outside commits.",
-    "alpha_local_studio_bootstrap": "PASS: scripts/run_studio.sh checks Python 3.11+, required RuFLEX/uvicorn imports, supported Node.js, frontend dependencies and free ports; it binds to localhost, does not install dependencies, starts API and Vite, passed live API/UI HTTP smoke, and Ctrl-C stopped both launcher-owned services. Missing Python prerequisite fails before startup. bash -n and git diff --check passed."
+    "alpha_local_studio_bootstrap": "PASS: scripts/run_studio.sh checks Python 3.11+, required RuFLEX/uvicorn imports, supported Node.js, frontend dependencies and free ports; it binds to localhost, does not install dependencies, starts API and Vite, passed live API/UI HTTP smoke, and Ctrl-C stopped both launcher-owned services. Missing Python prerequisite fails before startup. bash -n and git diff --check passed.",
+    "alpha_first_project_workflow": "PASS: PRODUCT-02 completes project creation, CSV inspection/confirmation, one bounded FlatNeuroFuzzy fit, persisted train-only preprocessing, validation evaluation, close/reopen and exact lineage inspection; an explicit GET after reopen confirms final-test evaluation is absent (404). Focused Playwright route passed."
   }
 }
