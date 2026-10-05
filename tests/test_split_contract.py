@@ -213,6 +213,42 @@ def test_assurance_fails_closed_for_dangling_leakage_audit_links(tmp_path, field
     assert gates["data_leakage_audit"] == "FAIL"
 
 
+def test_assurance_and_bundle_reject_existing_but_mismatched_audit_split_transform_pair(tmp_path) -> None:
+    import json
+    from ruflex.application.verification_bundle import validate_verification_bundle
+
+    client = TestClient(app)
+    root = tmp_path / "assurance-mismatched-audit"
+    session_id = client.post("/api/projects", json={"path": str(root), "name": "mismatched audit"}).json()["session_id"]
+    rows = ["patient_id,x,target"] + [f"p{group},{group * 3 + repeat},{group % 2}" for group in range(12) for repeat in range(3)]
+    confirmed = client.post("/api/projects/dataset/confirm", json={"session_id": session_id, "csv_text": "\n".join(rows), "target": "target", "task": "binary_classification", "id_columns": ["patient_id"]})
+    assert confirmed.status_code == 200, confirmed.text
+    split_ids = []
+    run_ids = []
+    for seed in (7, 19):
+        split = client.post("/api/projects/dataset/splits", json={"session_id": session_id, "family": "GROUP", "group_column": "patient_id", "split_seed": seed, "validation_fraction": .2, "test_fraction": .2})
+        assert split.status_code == 201, split.text
+        split_ids.append(split.json()["split_id"])
+        trained = client.post("/api/projects/training/run", json={"session_id": session_id, "model_kind": "logistic_regression", "seed": seed, "split_contract_id": split_ids[-1], "max_epochs": 1, "learning_rate": .01, "batch_size": 8, "patience": 1, "validation_fraction": .2, "test_fraction": .2, "max_rules": 3})
+        assert trained.status_code == 201, trained.text
+        run_ids.append(trained.json())
+
+    audit_path = root / "data" / "leakage-audits" / f"{run_ids[0]['leakage_audit_id']}.json"
+    audit = json.loads(audit_path.read_text(encoding="utf-8"))
+    audit["split_contract_id"] = split_ids[1]
+    audit_path.write_text(json.dumps(audit), encoding="utf-8")
+
+    assurance = client.post("/api/projects/evidence/assurance-cases", json={"session_id": session_id})
+    assert assurance.status_code == 201, assurance.text
+    gates = {gate["key"]: gate["status"] for gate in assurance.json()["gates"]}
+    assert gates["data_leakage_audit"] == "FAIL"
+    bundle = client.post("/api/projects/evidence/verification-bundles", json={"session_id": session_id})
+    assert bundle.status_code == 201, bundle.text
+    validation = validate_verification_bundle(bundle.json()["path"])
+    assert validation.status == "FAIL"
+    assert any("mismatched split/transform provenance" in error for error in validation.errors)
+
+
 @pytest.mark.parametrize(("relative_path", "list_function"), [
     ("data/splits/broken.json", list_split_contracts),
     ("data/transforms/broken.json", list_transform_pipeline_contracts),
