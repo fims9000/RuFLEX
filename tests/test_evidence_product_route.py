@@ -585,6 +585,42 @@ def test_verification_bundle_rejects_rechecksummed_transform_pipeline_tampering(
     assert any("TransformPipelineContract" in error for error in invalid.errors)
 
 
+@pytest.mark.parametrize(
+    ("field", "expected_reason"),
+    [("split_contract_id", "references missing SplitContract"), ("transform_pipeline_id", "references missing TransformPipelineContract")],
+)
+def test_verification_bundle_rejects_rechecksummed_dangling_leakage_audit_links(tmp_path: Path, field: str, expected_reason: str) -> None:
+    from ruflex.application.verification_bundle import validate_verification_bundle
+    import hashlib
+    import shutil
+
+    client = TestClient(app)
+    root = tmp_path / f"broken-audit-{field}"
+    session_id = _project_with_data(client, root)
+    _train(client, session_id, "logistic_regression")
+    assert client.post("/api/projects/evidence/assurance-cases", json={"session_id": session_id}).status_code == 201
+    bundle = client.post("/api/projects/evidence/verification-bundles", json={"session_id": session_id}).json()
+    extracted = tmp_path / f"extracted-{field}"
+    shutil.unpack_archive(bundle["path"], extracted, "zip")
+    audit_path = next((extracted / "data" / "leakage-audits").glob("*.json"))
+    audit = json.loads(audit_path.read_text(encoding="utf-8"))
+    audit[field] = "00000000-0000-0000-0000-000000000001"
+    audit_path.write_text(json.dumps(audit), encoding="utf-8")
+    manifest_path = extracted / "verification-manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    relative = audit_path.relative_to(extracted).as_posix()
+    manifest["checksums"][relative] = hashlib.sha256(audit_path.read_bytes()).hexdigest()
+    manifest_bytes = json.dumps(manifest, indent=2, sort_keys=True).encode()
+    manifest_path.write_bytes(manifest_bytes)
+    (extracted / "verification-manifest.sha256").write_text(
+        f"{hashlib.sha256(manifest_bytes).hexdigest()}  verification-manifest.json\n", encoding="utf-8"
+    )
+
+    invalid = validate_verification_bundle(extracted)
+    assert invalid.status == "FAIL"
+    assert any("LeakageAuditReport" in error and expected_reason in error for error in invalid.errors)
+
+
 def test_assurance_never_passes_malformed_or_failed_behavior_evidence(tmp_path: Path) -> None:
     client = TestClient(app); root = tmp_path / "assurance-negative"; session_id = _project_with_data(client, root)
     malformed = root / "evidence" / "behavior-specs" / "00000000-0000-0000-0000-000000000001.json"

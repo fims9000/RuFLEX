@@ -99,7 +99,7 @@ def _validate_relationships(objects: list[BaseModel]) -> list[str]:
     objects_by_type: dict[type[BaseModel], dict[str, BaseModel]] = {}
     for object_ in objects:
         identifier_field = {
-            SplitContract: "split_id", TransformPipelineContract: "pipeline_id", LeakageAuditReport: "audit_id", TrainingRun: "run_id", TrainingStudy: "study_id", AnalysisEvaluation: "evaluation_id", CalibrationTransform: "calibration_id", DecisionThresholdPolicy: "threshold_id", SelectivePredictionPolicy: "policy_id", StudyStabilityAnalysis: "analysis_id", StabilityGatePolicy: "policy_id", FinalTestEvaluation: "final_test_id", ExplanationContract: "explanation_id", ExplanationCheck: "check_id", ExplanationReproducibilityAnalysis: "analysis_id", BehaviorSpec: "spec_id", BehaviorSpecResult: "result_id", BehaviorRevisionComparison: "comparison_id", AssuranceCase: "assurance_id",
+            DatasetContract: "dataset_fingerprint", SplitContract: "split_id", TransformPipelineContract: "pipeline_id", LeakageAuditReport: "audit_id", TrainingRun: "run_id", TrainingStudy: "study_id", AnalysisEvaluation: "evaluation_id", CalibrationTransform: "calibration_id", DecisionThresholdPolicy: "threshold_id", SelectivePredictionPolicy: "policy_id", StudyStabilityAnalysis: "analysis_id", StabilityGatePolicy: "policy_id", FinalTestEvaluation: "final_test_id", ExplanationContract: "explanation_id", ExplanationCheck: "check_id", ExplanationReproducibilityAnalysis: "analysis_id", BehaviorSpec: "spec_id", BehaviorSpecResult: "result_id", BehaviorRevisionComparison: "comparison_id", AssuranceCase: "assurance_id",
         }.get(type(object_))
         identifier = getattr(object_, identifier_field) if identifier_field else None
         if identifier is not None:
@@ -107,11 +107,68 @@ def _validate_relationships(objects: list[BaseModel]) -> list[str]:
             objects_by_type.setdefault(type(object_), {})[str(identifier)] = object_
     def exists(model: type[BaseModel], value: Any) -> bool: return value is None or str(value) in by_type.get(model, set())
     errors: list[str] = []
+    contracts = objects_by_type.get(DatasetContract, {})
+    splits = objects_by_type.get(SplitContract, {})
+    transforms = objects_by_type.get(TransformPipelineContract, {})
+    audits = objects_by_type.get(LeakageAuditReport, {})
     for object_ in objects:
-        if isinstance(object_, TrainingRun) and object_.split.split_contract_id is not None and not exists(SplitContract, object_.split.split_contract_id): errors.append(f"TrainingRun {object_.run_id} references missing SplitContract {object_.split.split_contract_id}.")
-        if isinstance(object_, TrainingRun) and object_.transform_pipeline_id is not None and not exists(TransformPipelineContract, object_.transform_pipeline_id): errors.append(f"TrainingRun {object_.run_id} references missing TransformPipelineContract {object_.transform_pipeline_id}.")
-        if isinstance(object_, TrainingRun) and object_.leakage_audit_id is not None and not exists(LeakageAuditReport, object_.leakage_audit_id): errors.append(f"TrainingRun {object_.run_id} references missing LeakageAuditReport {object_.leakage_audit_id}.")
-        if isinstance(object_, TransformPipelineContract) and object_.pipeline_identity != _transform_pipeline_identity(object_): errors.append(f"TransformPipelineContract {object_.pipeline_id} has an invalid immutable pipeline identity.")
+        if isinstance(object_, SplitContract):
+            contract = contracts.get(object_.dataset_fingerprint)
+            if not isinstance(contract, DatasetContract) or object_.dataset_artifact_sha256 != contract.source_artifact_sha256:
+                errors.append(f"SplitContract {object_.split_id} has broken DatasetContract provenance.")
+        if isinstance(object_, TransformPipelineContract):
+            contract = contracts.get(object_.dataset_fingerprint)
+            split = splits.get(str(object_.split_contract_id)) if object_.split_contract_id is not None else None
+            if object_.pipeline_identity != _transform_pipeline_identity(object_):
+                errors.append(f"TransformPipelineContract {object_.pipeline_id} has an invalid immutable pipeline identity.")
+            if not isinstance(contract, DatasetContract) or (object_.split_contract_id is not None and not isinstance(split, SplitContract)):
+                errors.append(f"TransformPipelineContract {object_.pipeline_id} has broken dataset or split provenance.")
+            elif isinstance(split, SplitContract) and split.dataset_fingerprint != object_.dataset_fingerprint:
+                errors.append(f"TransformPipelineContract {object_.pipeline_id} references a SplitContract for a different dataset.")
+        if isinstance(object_, LeakageAuditReport):
+            contract = contracts.get(object_.dataset_fingerprint)
+            split = splits.get(str(object_.split_contract_id)) if object_.split_contract_id is not None else None
+            transform = transforms.get(str(object_.transform_pipeline_id)) if object_.transform_pipeline_id is not None else None
+            if not isinstance(contract, DatasetContract):
+                errors.append(f"LeakageAuditReport {object_.audit_id} references a missing DatasetContract.")
+            if object_.split_contract_id is not None and not isinstance(split, SplitContract):
+                errors.append(f"LeakageAuditReport {object_.audit_id} references missing SplitContract {object_.split_contract_id}.")
+            if object_.transform_pipeline_id is not None and not isinstance(transform, TransformPipelineContract):
+                errors.append(f"LeakageAuditReport {object_.audit_id} references missing TransformPipelineContract {object_.transform_pipeline_id}.")
+            if isinstance(split, SplitContract) and split.dataset_fingerprint != object_.dataset_fingerprint:
+                errors.append(f"LeakageAuditReport {object_.audit_id} references a SplitContract for a different dataset.")
+            if isinstance(transform, TransformPipelineContract) and (
+                transform.dataset_fingerprint != object_.dataset_fingerprint
+                or transform.split_contract_id != object_.split_contract_id
+            ):
+                errors.append(f"LeakageAuditReport {object_.audit_id} has mismatched split/transform provenance.")
+        if isinstance(object_, TrainingRun):
+            split = splits.get(str(object_.split.split_contract_id)) if object_.split.split_contract_id is not None else None
+            transform = transforms.get(str(object_.transform_pipeline_id)) if object_.transform_pipeline_id is not None else None
+            audit = audits.get(str(object_.leakage_audit_id)) if object_.leakage_audit_id is not None else None
+            if object_.split.split_contract_id is not None and not isinstance(split, SplitContract):
+                errors.append(f"TrainingRun {object_.run_id} references missing SplitContract {object_.split.split_contract_id}.")
+            elif isinstance(split, SplitContract) and (
+                split.dataset_fingerprint != object_.dataset_fingerprint
+                or split.split_identity != object_.split.split_identity
+            ):
+                errors.append(f"TrainingRun {object_.run_id} has mismatched SplitContract provenance.")
+            if object_.transform_pipeline_id is not None and not isinstance(transform, TransformPipelineContract):
+                errors.append(f"TrainingRun {object_.run_id} references missing TransformPipelineContract {object_.transform_pipeline_id}.")
+            elif isinstance(transform, TransformPipelineContract) and (
+                transform.dataset_fingerprint != object_.dataset_fingerprint
+                or transform.split_contract_id != object_.split.split_contract_id
+                or transform.feature_order != object_.feature_columns
+            ):
+                errors.append(f"TrainingRun {object_.run_id} has mismatched TransformPipelineContract provenance.")
+            if object_.leakage_audit_id is not None and not isinstance(audit, LeakageAuditReport):
+                errors.append(f"TrainingRun {object_.run_id} references missing LeakageAuditReport {object_.leakage_audit_id}.")
+            elif isinstance(audit, LeakageAuditReport) and (
+                audit.dataset_fingerprint != object_.dataset_fingerprint
+                or audit.split_contract_id != object_.split.split_contract_id
+                or audit.transform_pipeline_id != object_.transform_pipeline_id
+            ):
+                errors.append(f"TrainingRun {object_.run_id} has mismatched LeakageAuditReport provenance.")
         if isinstance(object_, AnalysisEvaluation) and not exists(TrainingRun, object_.run_id): errors.append(f"Evaluation {object_.evaluation_id} references missing TrainingRun {object_.run_id}.")
         elif isinstance(object_, CalibrationTransform) and (not exists(AnalysisEvaluation, object_.evaluation_id) or not exists(TrainingRun, object_.run_id)): errors.append(f"Calibration {object_.calibration_id} has a broken evaluation/run reference.")
         elif isinstance(object_, DecisionThresholdPolicy) and (not exists(AnalysisEvaluation, object_.evaluation_id) or not exists(TrainingRun, object_.run_id)): errors.append(f"Threshold {object_.threshold_id} has a broken evaluation/run reference.")
