@@ -1,7 +1,6 @@
 {
   "schema_version": 1,
   "product_version": "1.3.0-alpha.0",
-  "active_capability": "data_governance_and_runtime_lifecycle",
   "completed_capabilities": [
     "dataset_contracts",
     "training_and_validation_evidence",
@@ -61,16 +60,17 @@
     "alpha_product_evidence_handoff",
     "alpha_source_archive_smoke",
     "alpha_accessibility_baseline",
-    "alpha_empty_project_guidance"
+    "alpha_empty_project_guidance",
+    "alpha_dataset_import_schema_preview"
   ],
-  "active_capability": "alpha_xlsx_preimport_schema_preview",
+  "active_capability": "alpha_dataset_import_recovery_and_validation",
   "active_acceptance": [
-    "When a CSV/XLSX file is selected, inspect the candidate without persistence and show its columns/row count so users can choose the correct target before import.",
-    "Keep the previous confirmed DatasetContract and source artifact unchanged until a separate explicit confirmation succeeds.",
+    "Inspect import failure and retry states for CSV/XLSX and ensure an invalid candidate never replaces the persisted DatasetContract.",
+    "Keep the next slice bounded to import validation/recovery UX and its focused regression coverage.",
     "Keep unrelated article and interrupted S03 work out of the committed product baseline."
   ],
   "blockers": [],
-  "next_executable_work": "Add a non-persisting CSV/XLSX file inspection request using the existing DatasetProfile schema, connect file selection to it, show the candidate columns and explicit target/task controls, then confirm separately; cover prior-contract preservation and reopen with one-worker E2E.",
+  "next_executable_work": "Inspect import validation/recovery states around the Data workspace, then implement one small user-facing improvement with prior-contract preservation and focused tests.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -120,6 +120,7 @@
     "alpha_product_evidence_handoff": "PASS: 20/20 PNG screenshots exist, are non-empty, resolve one-to-one from the evidence manifest, and the new 1440x900 Stability Lab image is viewable. Evidence E2E passes with explicit update mode; a second ordinary E2E pass leaves the tracked screenshot SHA unchanged. README and manifest describe both real capture routes.",
     "alpha_source_archive_smoke": "PASS: exact committed HEAD extracted with git archive into a fresh temporary tree (no .git or node_modules at extraction); focused dataset backend suite 9 passed; clean npm ci installed 318 packages; frontend unit 8 passed; Vite/TypeScript build passed; XLSX Studio E2E 1 passed from archive using only declared external interpreter/browser runtimes. Archived article readiness SHA matched HEAD so uncommitted article edits were excluded; S03-R8 raw result path absent. npm reported one high advisory and Vite the existing >500kB chunk warning; neither was auto-mutated.",
     "alpha_accessibility_baseline": "PASS: axe baseline reports no critical/serious violations across Project, Data, Training/Stability, Evaluation, Evidence and Assurance/Bundle states. Re-ran after quick-start changes as part of a 5-test one-worker browser selection.",
-    "alpha_empty_project_guidance": "PASS: a semantically optional first-run card guides an empty project to Data without launching computation or opening TEST; action is included in the UI inventory. Persisted overview context is awaited before showing the empty-project prompt, so reopening an existing DatasetContract does not mislabel it empty. One-worker action inventory + project lifecycle selected routes 4/4; frontend unit 8 passed; TypeScript/Vite build passed."
+    "alpha_empty_project_guidance": "PASS: a semantically optional first-run card guides an empty project to Data without launching computation or opening TEST; action is included in the UI inventory. Persisted overview context is awaited before showing the empty-project prompt, so reopening an existing DatasetContract does not mislabel it empty. One-worker action inventory + project lifecycle selected routes 4/4; frontend unit 8 passed; TypeScript/Vite build passed.",
+    "alpha_dataset_import_schema_preview": "PASS: CSV/XLSX file selection now calls a non-persisting inspection endpoint and displays row count, columns, proposed roles and types before target selection. Invalid candidates cannot be confirmed or replace an existing contract. Focused API suite 10 passed, action inventory + XLSX Studio route 2/2, frontend unit 8 passed, TypeScript/Vite production build passed, and git diff --check passed."
   }
 }

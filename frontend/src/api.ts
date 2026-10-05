@@ -276,6 +276,12 @@ export const studioApi = {
       session_id: sessionId,
       csv_text: csvText,
     }),
+  inspectDatasetFile: (sessionId: string, filename: string, contentBase64: string) =>
+    request<{ profile: DatasetProfile }>("/api/projects/dataset/import/inspect", {
+      session_id: sessionId,
+      filename,
+      content_base64: contentBase64,
+    }),
   confirmCsv: (
     sessionId: string,
     csvText: string,

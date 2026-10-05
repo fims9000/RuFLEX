@@ -104,6 +104,11 @@ class ImportDatasetRequest(SessionRequest):
     id_columns: list[str] = Field(default_factory=list)
 
 
+class InspectDatasetFileRequest(SessionRequest):
+    filename: str = Field(min_length=1, max_length=255)
+    content_base64: str = Field(min_length=1, max_length=8_000_000)
+
+
 class DatasetInspection(BaseModel):
     profile: DatasetProfile
 
@@ -167,6 +172,30 @@ def _inspect_zip_workbook(raw: bytes) -> None:
                     raise ValueError("XLSX contains a suspicious compression ratio.")
     except zipfile.BadZipFile as error:
         raise ValueError("XLSX is not a valid ZIP workbook.") from error
+
+
+def _read_dataset_upload(filename: str, content_base64: str) -> tuple[bytes, pd.DataFrame, str, str]:
+    try:
+        raw = base64.b64decode(content_base64, validate=True)
+    except ValueError as error:
+        raise ValueError("Dataset upload is not valid base64.") from error
+    if len(raw) > 5_000_000:
+        raise ValueError("Dataset upload exceeds the 5 MB Product V1 import limit.")
+    suffix = Path(filename).suffix.lower()
+    if suffix == ".csv":
+        if raw.startswith(b"PK\x03\x04"):
+            raise ValueError("Dataset extension/content mismatch: CSV upload is a ZIP-based file.")
+        frame = pd.read_csv(BytesIO(raw))
+        source_format, media_type = "csv", "text/csv"
+    elif suffix == ".xlsx":
+        if not raw.startswith(b"PK\x03\x04"):
+            raise ValueError("Dataset extension/content mismatch: XLSX must be a ZIP-based workbook.")
+        _inspect_zip_workbook(raw)
+        frame = pd.read_excel(BytesIO(raw))
+        source_format, media_type = "xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    else:
+        raise ValueError("Product V1 dataset import accepts only .csv and .xlsx files.")
+    return raw, frame, source_format, media_type
 
 
 class CreateFISRequest(SessionRequest):
@@ -684,6 +713,17 @@ def inspect_csv_dataset(request: InspectCsvRequest) -> DatasetInspection:
         raise _project_error(error) if isinstance(error, ProjectError) else HTTPException(status_code=422, detail=f"CSV inspection failed: {error}")
 
 
+@app.post("/api/projects/dataset/import/inspect", response_model=DatasetInspection)
+def inspect_dataset_file(request: InspectDatasetFileRequest) -> DatasetInspection:
+    try:
+        service.get(request.session_id)
+        raw, frame, _, _ = _read_dataset_upload(request.filename, request.content_base64)
+        digest = hashlib.sha256(raw).hexdigest()
+        return DatasetInspection(profile=inspect_dataset(frame, source_artifact_sha256=digest))
+    except (ProjectError, ValueError, pd.errors.ParserError) as error:
+        raise _project_error(error) if isinstance(error, ProjectError) else HTTPException(status_code=422, detail=f"Dataset import inspection failed: {error}")
+
+
 @app.post("/api/projects/dataset/confirm", response_model=DatasetConfirmation)
 def confirm_csv_dataset(request: ConfirmDatasetRequest) -> DatasetConfirmation:
     try:
@@ -708,26 +748,7 @@ def import_dataset(request: ImportDatasetRequest) -> DatasetConfirmation:
         session = service.get(request.session_id)
         if session.project.read_only:
             raise ProjectReadOnlyError("Project was opened read-only and cannot receive a dataset contract.")
-        try:
-            raw = base64.b64decode(request.content_base64, validate=True)
-        except ValueError as error:
-            raise ValueError("Dataset upload is not valid base64.") from error
-        if len(raw) > 5_000_000:
-            raise ValueError("Dataset upload exceeds the 5 MB Product V1 import limit.")
-        suffix = Path(request.filename).suffix.lower()
-        if suffix == ".csv":
-            if raw.startswith(b"PK\x03\x04"):
-                raise ValueError("Dataset extension/content mismatch: CSV upload is a ZIP-based file.")
-            frame = pd.read_csv(BytesIO(raw))
-            source_format, media_type = "csv", "text/csv"
-        elif suffix == ".xlsx":
-            if not raw.startswith(b"PK\x03\x04"):
-                raise ValueError("Dataset extension/content mismatch: XLSX must be a ZIP-based workbook.")
-            _inspect_zip_workbook(raw)
-            frame = pd.read_excel(BytesIO(raw))
-            source_format, media_type = "xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        else:
-            raise ValueError("Product V1 dataset import accepts only .csv and .xlsx files.")
+        raw, frame, source_format, media_type = _read_dataset_upload(request.filename, request.content_base64)
         reference = persist_dataset_bytes(session.project.root, raw, original_name=Path(request.filename).name, media_type=media_type)
         profile = inspect_dataset(frame, source_artifact_sha256=reference.sha256)
         contract = build_dataset_contract(profile, target=request.target, task=request.task, id_columns=request.id_columns, source_format=source_format)

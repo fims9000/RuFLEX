@@ -33,20 +33,30 @@ test("Studio imports XLSX with an explicit target and preserves it after rejecti
   await page.getByRole("button", { name: /Data.*No dataset/ }).click();
 
   let importRequests = 0;
+  let inspectRequests = 0;
   page.on("request", (request) => {
     if (request.url().endsWith("/api/projects/dataset/import")) importRequests += 1;
+    if (request.url().endsWith("/api/projects/dataset/import/inspect")) inspectRequests += 1;
   });
   await page.getByLabel("Target").fill("target");
-  const validImport = page.waitForResponse((response) => response.url().endsWith("/api/projects/dataset/import") && response.request().method() === "POST");
+  const validInspection = page.waitForResponse((response) => response.url().endsWith("/api/projects/dataset/import/inspect") && response.request().method() === "POST");
   const validUpload = {
     name: "measurements.xlsx",
     mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     buffer: tinyWorkbook(),
   };
   await page.getByLabel("Dataset CSV or XLSX file").setInputFiles(validUpload);
-  await expect(page.getByText("Selected: measurements.xlsx · target: target", { exact: true })).toBeVisible();
+  const inspectionResponse = await validInspection;
+  expect(inspectionResponse.status()).toBe(200);
+  await expect(page.getByLabel("Selected file schema preview")).toContainText("3 rows");
+  await expect(page.getByLabel("Selected file schema preview")).toContainText("temperature");
+  await expect(page.getByLabel("Selected file schema preview")).toContainText("target");
+  await expect(page.getByText("Selected: measurements.xlsx · target: select from inspected columns", { exact: true })).toBeVisible();
+  await page.getByLabel("Target").selectOption("target");
   await expect(page.getByRole("button", { name: "Confirm target and import file", exact: true })).toBeEnabled();
+  expect(inspectRequests).toBe(1);
   expect(importRequests).toBe(0);
+  const validImport = page.waitForResponse((response) => response.url().endsWith("/api/projects/dataset/import") && response.request().method() === "POST");
   await page.getByRole("button", { name: "Confirm target and import file", exact: true }).click();
   const validResponse = await validImport;
   expect(validResponse.status()).toBe(200);
@@ -57,16 +67,17 @@ test("Studio imports XLSX with an explicit target and preserves it after rejecti
   const frozenContract = imported.contract;
   await expect(page.getByText(new RegExp(`Source: XLSX · SHA-256: ${frozenContract.source_artifact_sha256}`))).toBeVisible();
 
+  const rejectedInspection = page.waitForResponse((response) => response.url().endsWith("/api/projects/dataset/import/inspect") && response.request().method() === "POST");
   await page.getByLabel("Dataset CSV or XLSX file").setInputFiles({
     name: "broken.xlsx",
     mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     buffer: Buffer.from("temperature,target\n99,0\n"),
   });
-  const rejectedImport = page.waitForResponse((response) => response.url().endsWith("/api/projects/dataset/import") && response.request().method() === "POST");
-  await page.getByRole("button", { name: "Confirm target and import file", exact: true }).click();
-  const invalidResponse = await rejectedImport;
+  const invalidResponse = await rejectedInspection;
   expect(invalidResponse.status()).toBe(422);
   await expect(page.getByRole("alert")).toContainText("extension/content mismatch");
+  await expect(page.getByRole("button", { name: "Confirm target and import file", exact: true })).toBeDisabled();
+  expect(importRequests).toBe(1);
 
   await page.getByRole("button", { name: "Close", exact: true }).click();
   await page.getByLabel("Project path").fill(path);

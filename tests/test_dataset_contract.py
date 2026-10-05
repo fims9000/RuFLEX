@@ -1,4 +1,5 @@
 import base64
+import hashlib
 import json
 from io import BytesIO
 from pathlib import Path
@@ -108,6 +109,57 @@ def test_xlsx_import_is_persisted_as_an_artifact_and_reopens(tmp_path) -> None:
     state = client.get(f"/api/projects/{session_id}/dataset")
     assert state.status_code == 200, state.text
     assert state.json()["contract"]["source_format"] == "xlsx"
+
+
+def test_xlsx_file_inspection_is_read_only_until_explicit_import(tmp_path) -> None:
+    workbook = BytesIO()
+    pd.DataFrame({"temperature": [10, 20], "target": [0, 1]}).to_excel(workbook, index=False)
+    raw = workbook.getvalue()
+    root = tmp_path / "inspect-only-project"
+    client = TestClient(app)
+    created = client.post("/api/projects", json={"path": str(root), "name": "inspect-only"})
+    session_id = created.json()["session_id"]
+
+    inspected = client.post(
+        "/api/projects/dataset/import/inspect",
+        json={"session_id": session_id, "filename": "measurements.xlsx", "content_base64": base64.b64encode(raw).decode()},
+    )
+
+    assert inspected.status_code == 200, inspected.text
+    profile = inspected.json()["profile"]
+    assert profile["row_count"] == 2
+    assert [column["name"] for column in profile["columns"]] == ["temperature", "target"]
+    assert profile["source_artifact_sha256"] == hashlib.sha256(raw).hexdigest()
+    assert not (root / "data" / "dataset-contract.json").exists()
+    assert client.get(f"/api/projects/{session_id}/artifacts").json() == []
+    assert client.get(f"/api/projects/{session_id}/dataset").status_code == 404
+
+    malformed = client.post(
+        "/api/projects/dataset/import/inspect",
+        json={"session_id": session_id, "filename": "broken.xlsx", "content_base64": base64.b64encode(b"not a workbook").decode()},
+    )
+    assert malformed.status_code == 422
+    assert "mismatch" in malformed.json()["detail"]
+    assert not (root / "data" / "dataset-contract.json").exists()
+
+
+def test_csv_file_inspection_is_read_only(tmp_path) -> None:
+    raw = b"temperature,target\n10,0\n20,1\n"
+    root = tmp_path / "csv-inspection-project"
+    client = TestClient(app)
+    created = client.post("/api/projects", json={"path": str(root), "name": "csv-inspection"})
+    session_id = created.json()["session_id"]
+
+    inspected = client.post(
+        "/api/projects/dataset/import/inspect",
+        json={"session_id": session_id, "filename": "measurements.csv", "content_base64": base64.b64encode(raw).decode()},
+    )
+
+    assert inspected.status_code == 200, inspected.text
+    assert inspected.json()["profile"]["row_count"] == 2
+    assert [column["name"] for column in inspected.json()["profile"]["columns"]] == ["temperature", "target"]
+    assert client.get(f"/api/projects/{session_id}/artifacts").json() == []
+    assert client.get(f"/api/projects/{session_id}/dataset").status_code == 404
 
 
 def test_dataset_upload_rejects_extension_content_mismatch_before_persistence(tmp_path) -> None:

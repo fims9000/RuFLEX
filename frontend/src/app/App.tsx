@@ -89,6 +89,7 @@ export function App() {
   const [datasetState, setDatasetState] = useState<DatasetState | null>(null);
   const [overviewContextReady, setOverviewContextReady] = useState(false);
   const [pendingDatasetFile, setPendingDatasetFile] = useState<File | null>(null);
+  const [pendingDatasetProfile, setPendingDatasetProfile] = useState<DatasetProfile | null>(null);
   const [target, setTarget] = useState("target");
   const [task, setTask] = useState("binary_classification");
   const [idColumns, setIdColumns] = useState("");
@@ -136,6 +137,7 @@ export function App() {
   const [integrity, setIntegrity] = useState<ProjectIntegrityReport | null>(null);
   const [selectedExpertCorrectionId, setSelectedExpertCorrectionId] = useState<string | null>(null);
   const datasetFileInputRef = useRef<HTMLInputElement>(null);
+  const datasetFileSelectionId = useRef(0);
   useEffect(() => {
     studioApi
       .health()
@@ -434,6 +436,7 @@ export function App() {
     }
   }
   async function close() {
+    datasetFileSelectionId.current += 1;
     if (project) {
       try {
         await studioApi.closeProject(project.session_id);
@@ -444,6 +447,7 @@ export function App() {
     setProject(null);
     setDatasetState(null);
     setPendingDatasetFile(null);
+    setPendingDatasetProfile(null);
     setFis(null);
     setFisEvaluation(null);
     setPreviousFisEvaluation(null);
@@ -493,15 +497,32 @@ export function App() {
       );
     }
   }
-  function selectDatasetFile(event: ChangeEvent<HTMLInputElement>) {
+  async function selectDatasetFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = "";
+    const selectionId = ++datasetFileSelectionId.current;
     setPendingDatasetFile(file ?? null);
+    setPendingDatasetProfile(null);
     setError(null);
-    if (file) setStatus(`${file.name} selected — confirm the target before import`);
+    if (!project || !file) return;
+    setTarget("");
+    setStatus(`Inspecting ${file.name} without saving it`);
+    try {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      let binary = "";
+      for (const byte of bytes) binary += String.fromCharCode(byte);
+      const inspected = await studioApi.inspectDatasetFile(project.session_id, file.name, btoa(binary));
+      if (selectionId !== datasetFileSelectionId.current) return;
+      setPendingDatasetProfile(inspected.profile);
+      setStatus(`${file.name} inspected; choose a target and confirm to save`);
+    } catch (reason) {
+      if (selectionId !== datasetFileSelectionId.current) return;
+      setError(reason instanceof Error ? reason.message : "Dataset file inspection failed");
+      setStatus(`${file.name} could not be inspected`);
+    }
   }
   async function importDatasetFile() {
-    if (!project || !pendingDatasetFile) return;
+    if (!project || !pendingDatasetFile || !pendingDatasetProfile || !target.trim()) return;
     try {
       const bytes = new Uint8Array(await pendingDatasetFile.arrayBuffer());
       let binary = "";
@@ -521,6 +542,7 @@ export function App() {
       setArtifacts(await studioApi.listArtifacts(project.session_id));
       setStatus(`${pendingDatasetFile.name} saved as a verified dataset artifact`);
       setPendingDatasetFile(null);
+      setPendingDatasetProfile(null);
       setError(null);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Dataset file import failed");
@@ -807,11 +829,14 @@ export function App() {
               <div className="contract-grid">
                 <label className="field-label">
                   Target
-                  <TextInput
-                    aria-label="Target"
-                    value={target}
-                    onUpdate={setTarget}
-                  />
+                  {pendingDatasetProfile ? (
+                    <select aria-label="Target" value={target} onChange={(event) => setTarget(event.target.value)}>
+                      <option value="">Select target column</option>
+                      {pendingDatasetProfile.columns.map((column) => <option key={column.name} value={column.name}>{column.name}</option>)}
+                    </select>
+                  ) : (
+                    <TextInput aria-label="Target" value={target} onUpdate={setTarget} />
+                  )}
                 </label>
                 <label className="field-label">
                   Task
@@ -861,14 +886,20 @@ export function App() {
                 </Button>
                 {pendingDatasetFile && (
                   <>
-                    <span className="property-description">Selected: {pendingDatasetFile.name} · target: {target || "not set"}</span>
-                    <Button view="action" disabled={!target.trim() || project.read_only} onClick={importDatasetFile} data-ruflex-action="dataset.import.confirm">
+                    <span className="property-description">Selected: {pendingDatasetFile.name} · target: {target || "select from inspected columns"}</span>
+                    <Button view="action" disabled={!pendingDatasetProfile || !target.trim() || project.read_only} onClick={importDatasetFile} data-ruflex-action="dataset.import.confirm">
                       Confirm target and import file
                     </Button>
                   </>
                 )}
               </div>
-              {profile && (
+              {pendingDatasetProfile && (
+                <div className="data-summary" aria-label="Selected file schema preview">
+                  Candidate preview · {pendingDatasetFile?.name} · {pendingDatasetProfile.row_count} rows · {pendingDatasetProfile.columns.length} columns · not saved
+                  <div className="data-table-wrap"><table className="data-table"><thead><tr><th>column</th><th>proposed role</th><th>type</th></tr></thead><tbody>{pendingDatasetProfile.columns.map((column) => <tr key={column.name}><td>{column.name}</td><td>{column.proposed_role}</td><td>{column.semantic_type} · {column.dtype}</td></tr>)}</tbody></table></div>
+                </div>
+              )}
+              {profile && !pendingDatasetFile && (
                 <div className="data-summary">
                   Rows: {profile.row_count} · columns: {profile.columns.length}{" "}
                   · ID candidates: {profile.id_candidates.join(", ") || "none"}
