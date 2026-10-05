@@ -215,11 +215,18 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
   }, [compatibleModels, modelKind]);
   const trainingModelKind = modelKind;
   useEffect(() => {
+    let active = true;
     studioApi.listStudyJobs(project.session_id).then((jobs) => {
-      const resumable = jobs.filter((job) => ["QUEUED", "RUNNING"].includes(job.status)).at(-1);
-      setStudyJob(resumable ?? null);
-    }).catch(() => setStudyJob(null));
-  }, [project.session_id]);
+      if (!active) return;
+      const latest = [...jobs].reverse();
+      const resumable = latest.find((job) => ["QUEUED", "RUNNING"].includes(job.status));
+      const restoredStudyJob = restoredStudy
+        ? latest.find((job) => job.study_id === restoredStudy.study_id)
+        : undefined;
+      setStudyJob(resumable ?? restoredStudyJob ?? latest[0] ?? null);
+    }).catch(() => { if (active) setStudyJob(null); });
+    return () => { active = false; };
+  }, [project.session_id, restoredStudy?.study_id]);
 
   async function observeStudy(initial: StudyJob) {
     let job = initial;

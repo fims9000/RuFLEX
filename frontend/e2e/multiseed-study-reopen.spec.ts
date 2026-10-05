@@ -45,6 +45,7 @@ test("PRODUCT-03 persists a multi-seed Study and restores it through the project
   const restoredStudy = page.getByRole("button", { name: /Study .*3 seed runs/ });
   await expect(restoredStudy).toBeVisible();
   await restoredStudy.click();
+  await expect(page.getByText("Study job SUCCEEDED", { exact: false })).toBeVisible();
   await expect(page.getByText("Validation f1 across seeds", { exact: true })).toBeVisible();
   await expect(page.getByText(/locked test was not used/)).toBeVisible();
   await expect(page.getByRole("button", { name: /SeedRun 9/ })).toBeVisible();
