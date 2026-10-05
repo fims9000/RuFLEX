@@ -1,13 +1,18 @@
 import { expect, test } from "@playwright/test";
+import { mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
+
+const evidenceScreenshot = resolve(import.meta.dirname, "../../docs/product/screenshots/20_stability_lab.png");
+const updateProductEvidence = process.env.RUFLEX_UPDATE_STABILITY_EVIDENCE === "1";
 
 function path(): string { return join(tmpdir(), `ruflex-stability-${Date.now()}-${Math.random().toString(16).slice(2)}`); }
 function csv(): string { const rows = ["temperature,torque,target"]; for (let i = 0; i < 72; i += 1) { const temperature = 20 + i * .8; const torque = 10 + (i * 7) % 50; rows.push(`${temperature},${torque},${temperature + torque > 58 ? 1 : 0}`); } return `${rows.join("\n")}\n`; }
 
-test("Stability Lab persists fixed-split multi-run evidence and its validation-only gate", async ({ page }) => {
+test("Stability Lab persists fixed-split multi-run evidence and its validation-only gate", async ({ page }, testInfo) => {
   test.setTimeout(90_000);
   const root = path();
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
   await page.getByLabel("Project path").fill(root); await page.getByLabel("Project name").fill("Stability Lab"); await page.getByRole("button", { name: "Create project", exact: true }).click();
   await page.getByRole("button", { name: /Data.*No dataset/ }).click(); await page.getByLabel("CSV data").fill(csv()); await page.getByRole("button", { name: "Inspect dataset", exact: true }).click(); await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
@@ -20,6 +25,14 @@ test("Stability Lab persists fixed-split multi-run evidence and its validation-o
   await expect(page.getByText("Case Stability Map · selected-run agreement; red = high-confidence unstable", { exact: true })).toBeVisible({ timeout: 30_000 });
   await page.getByRole("button", { name: "Freeze Stability Gate", exact: true }).click();
   await expect(page.getByText("Risk–coverage comparison (same coverage)", { exact: true })).toBeVisible({ timeout: 30_000 });
+  await page.getByLabel("Collapse explorer").click();
+  await page.getByLabel("Collapse properties").click();
+  await page.getByLabel("Collapse jobs panel").click();
+  await page.getByText("Case Stability Map · selected-run agreement; red = high-confidence unstable", { exact: true }).scrollIntoViewIfNeeded();
+  await page.locator(".workspace").evaluate((workspace) => { workspace.scrollLeft = 0; });
+  const screenshotPath = updateProductEvidence ? evidenceScreenshot : testInfo.outputPath("20_stability_lab.png");
+  await mkdir(resolve(screenshotPath, ".."), { recursive: true });
+  await page.screenshot({ path: screenshotPath });
   await page.getByRole("button", { name: "Close", exact: true }).click(); await page.getByLabel("Project path").fill(root); await page.getByRole("button", { name: "Open project", exact: true }).click(); await page.getByRole("button", { name: "S", exact: true }).click();
   await expect(page.getByText("Case Stability Map · selected-run agreement; red = high-confidence unstable", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "P", exact: true }).click();

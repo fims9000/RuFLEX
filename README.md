@@ -126,17 +126,19 @@ Key safeguards are concrete rather than rhetorical:
 
 ## Product evidence, not a slide deck
 
-The repository contains 19 tracked screenshots generated from one real,
-persisted React Studio route. The capture creates the project, trains models,
-saves policies and evidence, closes/reopens it, then writes the screenshots.
-It fails if a required route cannot be exercised.
+The repository contains 20 tracked screenshots generated from real, persisted
+React Studio routes. Screenshots 01–19 are captured by the main product route;
+the Stability Lab view is captured by its dedicated multi-run route. Both create
+and inspect actual project evidence, and fail if their required route cannot be
+exercised.
 
 - [Evidence manifest](docs/product/PRODUCT_V1_EVIDENCE_MANIFEST.md) maps every
   screenshot to its persisted objects, claim boundary and E2E coverage.
 - [Product demonstration](docs/product/PRODUCT_V1_DEMONSTRATION.md) narrates
   the captured path without promoting it to a benchmark result.
-- `frontend/e2e/product-evidence-capture.spec.ts` is the executable capture
-  route; `docs/product/screenshots/` contains all 19 generated images.
+- `frontend/e2e/product-evidence-capture.spec.ts` and
+  `frontend/e2e/stability-lab.spec.ts` are the executable capture routes;
+  `docs/product/screenshots/` contains all 20 generated images.
 
 Representative views:
 
@@ -145,6 +147,8 @@ Representative views:
 ![Training and Study evidence](docs/product/screenshots/05_training_and_study.png)
 
 ![Lineage after reopen](docs/product/screenshots/15_lineage.png)
+
+![Stability Lab](docs/product/screenshots/20_stability_lab.png)
 
 These images prove the captured product route and its persisted objects. They
 do not prove field accuracy, universal stability, causal validity or safe

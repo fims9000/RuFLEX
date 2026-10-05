@@ -1,10 +1,13 @@
 # RuFLEX Product V1 evidence manifest
 
-This is **product implementation evidence**, captured from the V1.2 RC1 React
-Studio by `frontend/e2e/product-evidence-capture.spec.ts`. It is not a research
-benchmark package; `docs/article/` remains separate research material. Runtime
-UUIDs for the capture project are recorded in
-`PRODUCT_V1_EVIDENCE_RUNTIME.json`.
+This is **product implementation evidence**, captured from the React Studio by
+versioned browser routes. Screenshots 01–19 are produced by
+`frontend/e2e/product-evidence-capture.spec.ts`; screenshot 20 is produced by
+`frontend/e2e/stability-lab.spec.ts` in explicit evidence-update mode. It is not
+a research benchmark package; `docs/article/` remains separate research
+material. Runtime UUIDs for screenshots 01–19 are recorded in
+`PRODUCT_V1_EVIDENCE_RUNTIME.json`; screenshot 20 records its persisted object
+chain in the Stability Lab project created by its E2E route.
 
 | Screenshot | Capability / persisted objects | Evidence class | Proves | Does not prove | Route and coverage |
 |---|---|---|---|---|---|
@@ -27,5 +30,9 @@ UUIDs for the capture project are recorded in
 | 17_verification_bundle.png | VerificationBundle, VerificationBundleValidation | operational | Inspection-first declarative export is validated from its persisted ZIP by checksums, typed evidence and direct provenance references | Export contains executable models or sensitive raw data; validation establishes model quality | capture; assurance E2E |
 | 18_condition_monitoring_demo.png | DemoDecision with linked evidence | operational | Safe telemetry decision support yields ACCEPT/REVIEW/OUT_OF_SCOPE and names evidence links | Targeting, actuator control, or autonomous command | capture; demo E2E |
 | 19_close_reopen_restored.png | Reopened project evidence | operational | Assurance and central persisted state survive close/reopen | Every possible external deployment restart condition | capture; lifecycle and route E2E |
+| 20_stability_lab.png | TrainingStudy, StudyStabilityAnalysis, StabilityGatePolicy | statistical/behavioral | The Studio displays fixed-split cross-run agreement, risk/coverage and a validation-derived frozen gate | Stability guarantees, final-test superiority or evidence beyond the demonstrated study | stability-lab evidence capture; Stability Lab E2E |
 
-All screenshots use a 1440×900 light Studio viewport. The capture test fails instead of silently omitting a required route.
+All screenshots use a 1440×900 light Studio viewport. Capture tests fail instead
+of silently omitting their required route. Screenshot 20 is refreshed explicitly
+with `RUFLEX_UPDATE_STABILITY_EVIDENCE=1`; ordinary E2E runs write only to test
+output.
