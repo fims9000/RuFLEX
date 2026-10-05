@@ -55,16 +55,17 @@
     "lineage_open_fis_revision",
     "data_governance_and_runtime_lifecycle",
     "alpha_local_studio_bootstrap",
-    "alpha_first_project_workflow"
+    "alpha_first_project_workflow",
+    "alpha_xlsx_upload_ui"
   ],
-  "active_capability": "alpha_xlsx_upload_ui",
+  "active_capability": "alpha_golden_route_acceptance_audit",
   "active_acceptance": [
-    "Verify Excel workbook import through the visible Studio file picker, explicit target confirmation and saved source-format/hash metadata across reopen.",
-    "Verify malformed or extension/content-mismatched workbook input produces a visible actionable error and does not replace an existing confirmed DatasetContract.",
+    "Audit the remaining P1 Studio Golden Route against the product evidence manifest and current route tests; select the next concrete user-facing gap based on missing evidence.",
+    "Continue with one dependency-ready, bounded product slice and focused one-worker verification.",
     "Keep unrelated article and interrupted S03 work out of the committed product baseline."
   ],
   "blockers": [],
-  "next_executable_work": "Add focused Studio E2E for valid XLSX import plus close/reopen and malformed workbook rejection without replacing existing dataset evidence. Use a tiny fixture and one browser worker. Preserve unrelated article and interrupted S03 changes.",
+  "next_executable_work": "Inspect docs/product/PRODUCT_V1_EVIDENCE_MANIFEST.md and the real product route E2E for any remaining P1 Golden Route actions without persisted/reopen evidence; choose the first concrete gap and implement it as a focused capability. Do not run the full Playwright matrix unless the bounded change requires it.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -108,6 +109,7 @@
     "alpha_version_surfaces": "PASS: README/status/Changelog identify V1.3 Alpha; Python package metadata is 1.3.0a0; Studio/npm and package lock are 1.3.0-alpha.0; visible Studio badge no longer says V1.2 RC1. Python packaging metadata verified, frontend unit tests (8) and Vite production build passed.",
     "data_governance_and_runtime_lifecycle": "VERIFIED: persisted split/transform/leakage links were validated through Studio, reopen, Lineage, Assurance and portable bundle; adapter generic Evidence/final-test replay is covered by dedicated tests. PRODUCT-06/08 and exact BehaviorRevisionComparison Lineage reopen pass in Playwright; focused lineage/reproducibility backend selection: 6 passed; adapter replay: 2 passed; project-integrity selection: 2 passed. Unrelated article files remain outside commits.",
     "alpha_local_studio_bootstrap": "PASS: scripts/run_studio.sh checks Python 3.11+, required RuFLEX/uvicorn imports, supported Node.js, frontend dependencies and free ports; it binds to localhost, does not install dependencies, starts API and Vite, passed live API/UI HTTP smoke, and Ctrl-C stopped both launcher-owned services. Missing Python prerequisite fails before startup. bash -n and git diff --check passed.",
-    "alpha_first_project_workflow": "PASS: PRODUCT-02 completes project creation, CSV inspection/confirmation, one bounded FlatNeuroFuzzy fit, persisted train-only preprocessing, validation evaluation, close/reopen and exact lineage inspection; an explicit GET after reopen confirms final-test evaluation is absent (404). Focused Playwright route passed."
+    "alpha_first_project_workflow": "PASS: PRODUCT-02 completes project creation, CSV inspection/confirmation, one bounded FlatNeuroFuzzy fit, persisted train-only preprocessing, validation evaluation, close/reopen and exact lineage inspection; an explicit GET after reopen confirms final-test evaluation is absent (404). Focused Playwright route passed.",
+    "alpha_xlsx_upload_ui": "PASS: Studio stages CSV/XLSX candidates before persistence; user sees and separately confirms the target. Focused browser route imports a tiny XLSX, verifies source format/SHA in Studio and reopened DatasetState, then submits extension/content-mismatched XLSX and verifies visible error plus unchanged frozen contract. Playwright 1/1, dataset backend tests 9 passed, frontend unit 8 passed, Vite/TypeScript build and git diff --check passed."
   }
 }

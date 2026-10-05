@@ -87,6 +87,7 @@ export function App() {
   const [profile, setProfile] = useState<DatasetProfile | null>(null);
   const [dataset, setDataset] = useState<DatasetConfirmation | null>(null);
   const [datasetState, setDatasetState] = useState<DatasetState | null>(null);
+  const [pendingDatasetFile, setPendingDatasetFile] = useState<File | null>(null);
   const [target, setTarget] = useState("target");
   const [task, setTask] = useState("binary_classification");
   const [idColumns, setIdColumns] = useState("");
@@ -440,6 +441,7 @@ export function App() {
     }
     setProject(null);
     setDatasetState(null);
+    setPendingDatasetFile(null);
     setFis(null);
     setFisEvaluation(null);
     setPreviousFisEvaluation(null);
@@ -489,17 +491,22 @@ export function App() {
       );
     }
   }
-  async function importDatasetFile(event: ChangeEvent<HTMLInputElement>) {
+  function selectDatasetFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = "";
-    if (!project || !file) return;
+    setPendingDatasetFile(file ?? null);
+    setError(null);
+    if (file) setStatus(`${file.name} selected — confirm the target before import`);
+  }
+  async function importDatasetFile() {
+    if (!project || !pendingDatasetFile) return;
     try {
-      const bytes = new Uint8Array(await file.arrayBuffer());
+      const bytes = new Uint8Array(await pendingDatasetFile.arrayBuffer());
       let binary = "";
       for (const byte of bytes) binary += String.fromCharCode(byte);
       const confirmed = await studioApi.importDataset(
         project.session_id,
-        file.name,
+        pendingDatasetFile.name,
         btoa(binary),
         target,
         task,
@@ -510,7 +517,9 @@ export function App() {
       setDatasetState(persisted);
       setProfile(persisted.profile);
       setArtifacts(await studioApi.listArtifacts(project.session_id));
-      setStatus(`${file.name} saved as a verified dataset artifact`);
+      setStatus(`${pendingDatasetFile.name} saved as a verified dataset artifact`);
+      setPendingDatasetFile(null);
+      setError(null);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Dataset file import failed");
     }
@@ -838,7 +847,7 @@ export function App() {
                   type="file"
                   accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                   hidden
-                  onChange={importDatasetFile}
+                  onChange={selectDatasetFile}
                 />
                 <Button
                   view="outlined"
@@ -848,6 +857,14 @@ export function App() {
                 >
                   Import CSV / XLSX
                 </Button>
+                {pendingDatasetFile && (
+                  <>
+                    <span className="property-description">Selected: {pendingDatasetFile.name} · target: {target || "not set"}</span>
+                    <Button view="action" disabled={!target.trim() || project.read_only} onClick={importDatasetFile} data-ruflex-action="dataset.import.confirm">
+                      Confirm target and import file
+                    </Button>
+                  </>
+                )}
               </div>
               {profile && (
                 <div className="data-summary">
@@ -886,6 +903,7 @@ export function App() {
             <div className="data-summary">
               Contract: {dataset.contract.target} · {dataset.contract.task}
               <small> · Row identity: {dataset.contract.row_identity_scheme}</small>
+              <small> · Source: {dataset.contract.source_format.toUpperCase()} · SHA-256: <code>{dataset.contract.source_artifact_sha256}</code></small>
             </div>
           )}
           {datasetState && (
