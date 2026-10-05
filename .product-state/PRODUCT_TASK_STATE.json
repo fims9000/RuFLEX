@@ -61,16 +61,17 @@
     "alpha_source_archive_smoke",
     "alpha_accessibility_baseline",
     "alpha_empty_project_guidance",
-    "alpha_dataset_import_schema_preview"
+    "alpha_dataset_import_schema_preview",
+    "alpha_dataset_import_validation_recovery"
   ],
-  "active_capability": "alpha_dataset_import_recovery_and_validation",
+  "active_capability": "alpha_data_workspace_empty_and_error_states",
   "active_acceptance": [
-    "Inspect import failure and retry states for CSV/XLSX and ensure an invalid candidate never replaces the persisted DatasetContract.",
-    "Keep the next slice bounded to import validation/recovery UX and its focused regression coverage.",
+    "Review empty, parsing, inspection-error, confirmed-dataset and read-only states in the Data workspace for clear user guidance.",
+    "Implement only a focused state/feedback improvement; do not broaden into new data capabilities.",
     "Keep unrelated article and interrupted S03 work out of the committed product baseline."
   ],
   "blockers": [],
-  "next_executable_work": "Inspect import validation/recovery states around the Data workspace, then implement one small user-facing improvement with prior-contract preservation and focused tests.",
+  "next_executable_work": "Inspect Data workspace state handling for clear recovery from file-inspection and contract-validation errors; make one small UI improvement with focused browser coverage.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -121,6 +122,7 @@
     "alpha_source_archive_smoke": "PASS: exact committed HEAD extracted with git archive into a fresh temporary tree (no .git or node_modules at extraction); focused dataset backend suite 9 passed; clean npm ci installed 318 packages; frontend unit 8 passed; Vite/TypeScript build passed; XLSX Studio E2E 1 passed from archive using only declared external interpreter/browser runtimes. Archived article readiness SHA matched HEAD so uncommitted article edits were excluded; S03-R8 raw result path absent. npm reported one high advisory and Vite the existing >500kB chunk warning; neither was auto-mutated.",
     "alpha_accessibility_baseline": "PASS: axe baseline reports no critical/serious violations across Project, Data, Training/Stability, Evaluation, Evidence and Assurance/Bundle states. Re-ran after quick-start changes as part of a 5-test one-worker browser selection.",
     "alpha_empty_project_guidance": "PASS: a semantically optional first-run card guides an empty project to Data without launching computation or opening TEST; action is included in the UI inventory. Persisted overview context is awaited before showing the empty-project prompt, so reopening an existing DatasetContract does not mislabel it empty. One-worker action inventory + project lifecycle selected routes 4/4; frontend unit 8 passed; TypeScript/Vite build passed.",
-    "alpha_dataset_import_schema_preview": "PASS: CSV/XLSX file selection now calls a non-persisting inspection endpoint and displays row count, columns, proposed roles and types before target selection. Invalid candidates cannot be confirmed or replace an existing contract. Focused API suite 10 passed, action inventory + XLSX Studio route 2/2, frontend unit 8 passed, TypeScript/Vite production build passed, and git diff --check passed."
+    "alpha_dataset_import_schema_preview": "PASS: CSV/XLSX file selection now calls a non-persisting inspection endpoint and displays row count, columns, proposed roles and types before target selection. Invalid candidates cannot be confirmed or replace an existing contract. Focused API suite 11 passed, action inventory + XLSX Studio route 2/2, frontend unit 8 passed, TypeScript/Vite production build passed, and git diff --check passed.",
+    "alpha_dataset_import_validation_recovery": "PASS: CSV/XLSX confirmation now validates target, builds the contract and runs its audit before persisting source bytes. A rejected replacement leaves the previous DatasetContract and artifact set unchanged. Focused dataset API suite 12 passed; Studio XLSX validation/reopen E2E 1/1 passed; git diff --check passed."
   }
 }

@@ -178,3 +178,36 @@ def test_dataset_upload_rejects_extension_content_mismatch_before_persistence(tm
     )
     assert response.status_code == 422
     assert "mismatch" in response.json()["detail"]
+
+
+def test_invalid_replacement_target_preserves_confirmed_dataset_and_artifact_set(tmp_path) -> None:
+    client = TestClient(app)
+    root = tmp_path / "replacement-project"
+    created = client.post("/api/projects", json={"path": str(root), "name": "replacement"})
+    session_id = created.json()["session_id"]
+    initial = client.post(
+        "/api/projects/dataset/confirm",
+        json={"session_id": session_id, "csv_text": "temperature,target\n10,0\n20,1\n", "target": "target", "task": "binary_classification", "id_columns": []},
+    )
+    assert initial.status_code == 200, initial.text
+    before_contract = initial.json()["contract"]
+    before_artifacts = client.get(f"/api/projects/{session_id}/artifacts").json()
+
+    replacement = BytesIO()
+    pd.DataFrame({"temperature": [99, 100], "other_target": [0, 1]}).to_excel(replacement, index=False)
+    rejected = client.post(
+        "/api/projects/dataset/import",
+        json={
+            "session_id": session_id,
+            "filename": "replacement.xlsx",
+            "content_base64": base64.b64encode(replacement.getvalue()).decode(),
+            "target": "missing_target",
+            "task": "binary_classification",
+            "id_columns": [],
+        },
+    )
+
+    assert rejected.status_code == 422
+    assert "Target column is absent" in rejected.json()["detail"]
+    assert client.get(f"/api/projects/{session_id}/artifacts").json() == before_artifacts
+    assert client.get(f"/api/projects/{session_id}/dataset").json()["contract"] == before_contract

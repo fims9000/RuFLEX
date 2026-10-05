@@ -732,10 +732,13 @@ def confirm_csv_dataset(request: ConfirmDatasetRequest) -> DatasetConfirmation:
             raise ProjectReadOnlyError("Project was opened read-only and cannot receive a dataset contract.")
         raw = request.csv_text.encode("utf-8")
         frame = pd.read_csv(StringIO(request.csv_text))
-        reference = persist_dataset_bytes(session.project.root, raw, original_name="studio-dataset.csv")
-        profile = inspect_dataset(frame, source_artifact_sha256=reference.sha256)
+        digest = hashlib.sha256(raw).hexdigest()
+        profile = inspect_dataset(frame, source_artifact_sha256=digest)
         contract = build_dataset_contract(profile, target=request.target, task=request.task, id_columns=request.id_columns)
         audit = run_data_audit(contract, frame)
+        reference = persist_dataset_bytes(session.project.root, raw, original_name="studio-dataset.csv")
+        if reference.sha256 != digest:
+            raise ValueError("Stored dataset artifact identity differs from the inspected upload.")
         persist_dataset_contract(session.project.root, contract, audit, profile)
         return DatasetConfirmation(contract=contract, audit=audit)
     except (ProjectError, ValueError, pd.errors.ParserError) as error:
@@ -749,10 +752,13 @@ def import_dataset(request: ImportDatasetRequest) -> DatasetConfirmation:
         if session.project.read_only:
             raise ProjectReadOnlyError("Project was opened read-only and cannot receive a dataset contract.")
         raw, frame, source_format, media_type = _read_dataset_upload(request.filename, request.content_base64)
-        reference = persist_dataset_bytes(session.project.root, raw, original_name=Path(request.filename).name, media_type=media_type)
-        profile = inspect_dataset(frame, source_artifact_sha256=reference.sha256)
+        digest = hashlib.sha256(raw).hexdigest()
+        profile = inspect_dataset(frame, source_artifact_sha256=digest)
         contract = build_dataset_contract(profile, target=request.target, task=request.task, id_columns=request.id_columns, source_format=source_format)
         audit = run_data_audit(contract, frame)
+        reference = persist_dataset_bytes(session.project.root, raw, original_name=Path(request.filename).name, media_type=media_type)
+        if reference.sha256 != digest:
+            raise ValueError("Stored dataset artifact identity differs from the inspected upload.")
         persist_dataset_contract(session.project.root, contract, audit, profile)
         return DatasetConfirmation(contract=contract, audit=audit)
     except (ProjectError, ValueError, pd.errors.ParserError) as error:
