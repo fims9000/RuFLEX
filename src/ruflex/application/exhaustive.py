@@ -45,3 +45,6 @@ def run_fis_grid_exhaustive(root:Path, points:int=3, max_states:int=10000)->Exha
     _atomic_write_text(_root(root)/f"{result.result_id}.json",result.model_dump_json(indent=2)); _atomic_write_text(_root(root)/"active-result.json",json.dumps({"result_id":str(result.result_id)})); return result
 def load_latest_exhaustive(root:Path)->ExhaustiveLabResult:
     pointer=json.loads((_root(root)/"active-result.json").read_text()); return ExhaustiveLabResult.model_validate_json((_root(root)/f"{pointer['result_id']}.json").read_text())
+
+def load_exhaustive_result(root:Path, result_id:UUID)->ExhaustiveLabResult:
+    return ExhaustiveLabResult.model_validate_json((_root(root)/f"{result_id}.json").read_text())

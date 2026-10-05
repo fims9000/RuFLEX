@@ -1,10 +1,13 @@
 import "@testing-library/jest-dom/vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ButtonHTMLAttributes } from "react";
 
 const { studioApi } = vi.hoisted(() => ({ studioApi: {
   listSplitContracts: vi.fn().mockResolvedValue([]),
+  getSplitContract: vi.fn(),
+  getTransformPipeline: vi.fn(),
+  getLeakageAudit: vi.fn(),
   getModels: vi.fn().mockResolvedValue([
     {
       key: "flat_neuro_fuzzy", display_name: "Flat Neuro-Fuzzy", version: "1", provider: "builtin", family: "neuro_fuzzy",
@@ -22,6 +25,7 @@ const { studioApi } = vi.hoisted(() => ({ studioApi: {
   ]),
   getRuntimeBackends: vi.fn().mockResolvedValue([{ identity: { key: "local_executor", version: "1", provider: "ruflex.builtin", kind: "execution_backend" }, supports_cancel: true, supports_resume: true }]),
   listStudyJobs: vi.fn().mockResolvedValue([]),
+  getTrainingRunCapabilities: vi.fn().mockResolvedValue({ decisions: [] }),
   getLatestTreePath: vi.fn(),
 } }));
 
@@ -43,6 +47,14 @@ const dataset = {
   preview: [], audit: { findings: [] },
 };
 
+beforeEach(() => {
+  studioApi.listSplitContracts.mockResolvedValue([]);
+  studioApi.getSplitContract.mockReset();
+  studioApi.getTransformPipeline.mockReset();
+  studioApi.getLeakageAudit.mockReset();
+  studioApi.getTrainingRunCapabilities.mockResolvedValue({ decisions: [] });
+});
+
 describe("ExperimentWorkspace dynamic model controls", () => {
   it("shows only the selected adapter's declared parameters", async () => {
     render(<ExperimentWorkspace project={project} dataset={dataset as never} run={null} study={null} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);
@@ -59,6 +71,45 @@ describe("ExperimentWorkspace dynamic model controls", () => {
     expect(screen.queryByLabelText("Max rules / layer")).not.toBeInTheDocument();
   });
 
+  it("reopens and presents persisted split, train-only transform and leakage-audit evidence", async () => {
+    const split = {
+      split_id: "split-12345678", family: "GROUP", split_seed: 7, group_column: "patient_id", time_column: null,
+      site_column: null, device_column: null, spatial_column: null, regime_column: null,
+      role_source_rows: { train: [0, 1, 2, 3], validation: [4, 5], test: [6, 7] },
+      split_identity: "split-identity-sha", dataset_fingerprint: "fingerprint", dataset_artifact_sha256: "a".repeat(64),
+      validation_fraction: 0.25, test_fraction: 0.25, role_identity_hashes: { train: "t", validation: "v", test: "x" }, scientific_note: "membership only",
+    };
+    studioApi.listSplitContracts.mockResolvedValue([split]);
+    studioApi.getTransformPipeline.mockResolvedValue({
+      pipeline_id: "pipeline-1", dataset_fingerprint: "fingerprint", split_contract_id: split.split_id,
+      feature_order: ["x"], fit_role: "TRAIN", preprocessing_artifact_sha256: "b".repeat(64), pipeline_identity: "identity",
+      steps: [{ step_type: "MedianImputer", fit_role: "TRAIN", input_columns: ["x"], output_columns: ["x"], parameters: {}, artifact_identity: "b".repeat(64), version: "1" }],
+      schema_version: 1, scientific_note: "TRAIN only",
+    });
+    studioApi.getSplitContract.mockResolvedValue(split);
+    studioApi.getLeakageAudit.mockResolvedValue({
+      audit_id: "audit-1", dataset_fingerprint: "fingerprint", split_contract_id: split.split_id,
+      transform_pipeline_id: "pipeline-1", status: "WARN", rigor_profile: "CONFIRMATORY",
+      findings: [{ code: "TARGET_DERIVED_FEATURE", severity: "warning", scope: "feature", evidence: { feature: "x" }, remediation: "Review this feature.", check_version: "1" }],
+      schema_version: 1, scientific_note: "Declared checks only.",
+    });
+    const run = {
+      run_id: "run-1", model_kind: "logistic_regression", trajectory: [], training_summary: { best_epoch: 1, epochs_ran: 1, monitor_name: "loss", best_monitor_value: 0.1 },
+      model_artifact_sha256: "c".repeat(64), preprocessing_artifact_sha256: "b".repeat(64), transform_pipeline_id: "pipeline-1", leakage_audit_id: "audit-1",
+      feature_columns: ["x"], split: { split_contract_id: split.split_id, train_count: 4, validation_count: 2, test_count: 2 }, seed: 7, model_spec: {},
+    };
+    render(<ExperimentWorkspace project={project} dataset={dataset as never} run={run as never} study={null} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);
+
+    fireEvent.click(screen.getByText("Data governance evidence"));
+    expect(await screen.findByText("GROUP · seed 7")).toBeVisible();
+    expect(screen.getByText("Train 4 · validation 2 · locked test 2")).toBeVisible();
+    expect(screen.getByText("TRAIN only · 1 persisted step(s)")).toBeVisible();
+    expect(screen.getByText("WARNING · TARGET_DERIVED_FEATURE")).toBeVisible();
+    expect(studioApi.getTransformPipeline).toHaveBeenCalledWith("session", "pipeline-1");
+    expect(studioApi.getLeakageAudit).toHaveBeenCalledWith("session", "audit-1");
+    expect(studioApi.getSplitContract).toHaveBeenCalledWith("session", split.split_id);
+  });
+
   it("keeps runtime selection visible but blocks mutating training actions in read-only mode", async () => {
     render(<ExperimentWorkspace project={{ ...project, read_only: true }} dataset={dataset as never} run={null} study={null} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);
 
@@ -67,5 +118,14 @@ describe("ExperimentWorkspace dynamic model controls", () => {
     expect(screen.getByRole("button", { name: "Run real training" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Run multi-seed study" })).toBeDisabled();
     expect(screen.getByRole("button", { name: /Freeze RANDOM SplitContract/ })).toBeDisabled();
+  });
+
+  it("blocks new fitting when saved split provenance cannot be verified", async () => {
+    studioApi.listSplitContracts.mockRejectedValue(new Error("Persisted SplitContract is malformed"));
+    render(<ExperimentWorkspace project={project} dataset={dataset as never} run={null} study={null} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Training is blocked rather than falling back to an unverified split");
+    expect(screen.getByRole("button", { name: "Run real training" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Run multi-seed study" })).toBeDisabled();
   });
 });

@@ -35,6 +35,7 @@ test("PRODUCT-02 performs real neuro-fuzzy training, validation evaluation and r
 
   await page.getByRole("button", { name: "S", exact: true }).click();
   await expect(page.getByText("REAL TRAINING ENGINE", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Freeze RANDOM SplitContract", exact: true }).click();
   await expect(page.getByLabel("Training model").locator("option")).toHaveCount(5);
   await page.getByLabel("Training model").selectOption("decision_tree");
   await expect(page.getByLabel("Maximum depth")).toBeVisible();
@@ -51,6 +52,11 @@ test("PRODUCT-02 performs real neuro-fuzzy training, validation evaluation and r
   await expect(runEvidence).toBeVisible({ timeout: 30_000 });
   await expect(runEvidence).toContainText("model artifact persisted");
   await expect(runEvidence).toContainText("train-only preprocessing persisted");
+  await page.getByText("Data governance evidence", { exact: true }).click();
+  await expect(page.getByText(/RANDOM · seed 42/)).toBeVisible();
+  await expect(page.getByText(/Train \d+ · validation \d+ · locked test \d+/)).toBeVisible();
+  await expect(page.getByText("TRAIN only · 2 persisted step(s)")).toBeVisible();
+  await expect(page.getByText("No structural leakage findings were recorded by this audit.", { exact: true })).toBeVisible();
   await expect(page.locator(".run-summary-strip")).toBeVisible();
   await expect(page.getByText("Training trajectory · epoch 0 included", { exact: true })).toBeVisible();
 
@@ -67,10 +73,24 @@ test("PRODUCT-02 performs real neuro-fuzzy training, validation evaluation and r
   await page.getByRole("button", { name: "Close", exact: true }).click();
   await page.getByLabel("Project path").fill(path);
   await page.getByRole("button", { name: "Open project", exact: true }).click();
+  await page.getByRole("button", { name: "P", exact: true }).click();
+  const auditNode = page.locator(".lineage-node.lineage-leakage_audit").filter({ hasText: "Data leakage audit" }).first();
+  await expect(auditNode).toBeVisible();
+  await auditNode.click();
+  await expect(page.getByRole("region", { name: "Selected data provenance object" })).toContainText("CONFIRMATORY");
+  await expect(page.getByText("No structural findings were recorded.", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "P", exact: true }).click();
+  const splitNode = page.locator(".lineage-node.lineage-split_contract").first();
+  await expect(splitNode).toBeVisible();
+  await splitNode.click();
+  await expect(page.getByRole("region", { name: "Selected data provenance object" })).toContainText("Locked test");
   await page.getByRole("button", { name: /Training run/ }).click();
   await expect(page.locator(".run-provenance")).toBeVisible();
   await expect(page.locator(".run-provenance")).toContainText("model artifact persisted");
   await expect(page.locator(".run-provenance")).toContainText("train-only preprocessing persisted");
+  await page.getByText("Data governance evidence", { exact: true }).click();
+  await expect(page.getByText(/RANDOM · seed 42/)).toBeVisible();
+  await expect(page.getByText("TRAIN only · 2 persisted step(s)")).toBeVisible();
   await page.getByRole("button", { name: "A", exact: true }).click();
   await expect(page.getByText("VALIDATION EVIDENCE", { exact: true })).toBeVisible();
   await expect(page.getByText("Validation ROC curve · raw model", { exact: true })).toBeVisible();

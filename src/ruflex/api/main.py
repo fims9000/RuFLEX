@@ -39,7 +39,7 @@ from ruflex.domain.stability import StabilityGateApplication, StabilityGatePolic
 from ruflex.domain.demo import ConditionMonitoringDemo
 from ruflex.domain.exhaustive import ExhaustiveLabResult
 from ruflex.domain.assurance import AssuranceCase
-from ruflex.domain.verification import VerificationBundleValidation
+from ruflex.domain.verification import VerificationBundle, VerificationBundleValidation
 from ruflex.domain.expert_correction import ExpertCorrectionResult, ExpertCorrectionRevision
 from ruflex.domain.fis import FISEvaluation, FISSpec, ResponseSurface
 from ruflex.application.workspace_sessions import WorkspaceSession, WorkspaceSessionError, WorkspaceSessionService
@@ -782,6 +782,8 @@ def list_project_split_contracts(session_id: UUID) -> list[SplitContract]:
         return list_split_contracts(service.get(session_id).project.root)
     except ProjectError as error:
         raise _project_error(error) from error
+    except (ValueError, OSError) as error:
+        raise HTTPException(status_code=422, detail=f"Persisted split provenance is invalid: {error}") from error
 
 
 @app.get("/api/projects/{session_id}/dataset/splits/{split_id}", response_model=SplitContract)
@@ -800,6 +802,8 @@ def list_project_transform_pipelines(session_id: UUID) -> list[TransformPipeline
         return list_transform_pipeline_contracts(service.get(session_id).project.root)
     except ProjectError as error:
         raise _project_error(error) from error
+    except (ValueError, OSError) as error:
+        raise HTTPException(status_code=422, detail=f"Persisted transform provenance is invalid: {error}") from error
 
 
 @app.get("/api/projects/{session_id}/dataset/transforms/{pipeline_id}", response_model=TransformPipelineContract)
@@ -818,6 +822,8 @@ def list_project_leakage_audits(session_id: UUID) -> list[LeakageAuditReport]:
         return list_leakage_audits(service.get(session_id).project.root)
     except ProjectError as error:
         raise _project_error(error) from error
+    except (ValueError, OSError) as error:
+        raise HTTPException(status_code=422, detail=f"Persisted leakage-audit provenance is invalid: {error}") from error
 
 
 @app.get("/api/projects/{session_id}/dataset/leakage-audits/{audit_id}", response_model=LeakageAuditReport)
@@ -1382,6 +1388,14 @@ def get_latest_explanation_reproducibility(session_id: UUID) -> ExplanationRepro
     except FileNotFoundError as error:
         raise HTTPException(status_code=404, detail="No persisted explanation reproducibility analysis exists in this project.") from error
 
+
+@app.get("/api/projects/{session_id}/evidence/explanation-reproducibility/{analysis_id}", response_model=ExplanationReproducibilityAnalysis)
+def get_explanation_reproducibility_route(session_id: UUID, analysis_id: UUID) -> ExplanationReproducibilityAnalysis:
+    from ruflex.application.reproducibility import load_explanation_reproducibility
+    try: return load_explanation_reproducibility(service.get(session_id).project.root, analysis_id)
+    except ProjectError as error: raise _project_error(error) from error
+    except FileNotFoundError as error: raise HTTPException(status_code=404, detail=f"Explanation reproducibility analysis not found: {analysis_id}") from error
+
 @app.post("/api/projects/evidence/exhaustive-lab", response_model=ExhaustiveLabResult, status_code=201)
 def run_exhaustive_lab_route(request: RunExhaustiveLabRequest) -> ExhaustiveLabResult:
     from ruflex.application.exhaustive import ExhaustiveLabError, run_fis_grid_exhaustive, run_tree_exhaustive
@@ -1411,6 +1425,14 @@ def get_latest_exhaustive_lab(session_id: UUID) -> ExhaustiveLabResult:
     except ProjectError as error: raise _project_error(error) from error
     except FileNotFoundError as error: raise HTTPException(status_code=404, detail="No persisted Exhaustive Lab result exists in this project.") from error
 
+
+@app.get("/api/projects/{session_id}/evidence/exhaustive-lab/{result_id}", response_model=ExhaustiveLabResult)
+def get_exhaustive_lab_result_route(session_id: UUID, result_id: UUID) -> ExhaustiveLabResult:
+    from ruflex.application.exhaustive import load_exhaustive_result
+    try: return load_exhaustive_result(service.get(session_id).project.root, result_id)
+    except ProjectError as error: raise _project_error(error) from error
+    except FileNotFoundError as error: raise HTTPException(status_code=404, detail=f"Exhaustive Lab result not found: {result_id}") from error
+
 @app.post("/api/projects/evidence/assurance-cases", response_model=AssuranceCase, status_code=201)
 def create_assurance_case_route(request: SessionRequest) -> AssuranceCase:
     from ruflex.application.assurance import create_assurance_case
@@ -1438,6 +1460,14 @@ def get_latest_assurance_case(session_id: UUID) -> AssuranceCase:
     except ProjectError as error: raise _project_error(error) from error
     except FileNotFoundError as error: raise HTTPException(status_code=404, detail="No persisted AssuranceCase exists in this project.") from error
 
+
+@app.get("/api/projects/{session_id}/evidence/assurance-cases/{assurance_id}", response_model=AssuranceCase)
+def get_assurance_case_route(session_id: UUID, assurance_id: UUID) -> AssuranceCase:
+    from ruflex.application.assurance import load_assurance_case
+    try: return load_assurance_case(service.get(session_id).project.root, assurance_id)
+    except ProjectError as error: raise _project_error(error) from error
+    except FileNotFoundError as error: raise HTTPException(status_code=404, detail=f"AssuranceCase not found: {assurance_id}") from error
+
 @app.post("/api/projects/evidence/verification-bundles", response_model=dict, status_code=201)
 def export_verification_bundle_route(request: SessionRequest) -> dict:
     from ruflex.application.verification_bundle import export_verification_bundle
@@ -1447,6 +1477,14 @@ def export_verification_bundle_route(request: SessionRequest) -> dict:
         return export_verification_bundle(session.project.root)
     except ProjectError as error: raise _project_error(error) from error
     except FileNotFoundError as error: raise HTTPException(status_code=422, detail="Build an AssuranceCase before exporting a VerificationBundle.") from error
+
+
+@app.get("/api/projects/{session_id}/evidence/verification-bundles/{bundle_id}", response_model=VerificationBundle)
+def get_verification_bundle_route(session_id: UUID, bundle_id: UUID) -> VerificationBundle:
+    from ruflex.application.verification_bundle import load_verification_bundle_record
+    try: return load_verification_bundle_record(service.get(session_id).project.root, str(bundle_id))
+    except ProjectError as error: raise _project_error(error) from error
+    except FileNotFoundError as error: raise HTTPException(status_code=404, detail=f"VerificationBundle not found: {bundle_id}") from error
 
 
 @app.post("/api/projects/evidence/verification-bundle-jobs", response_model=Job, status_code=202)
@@ -1717,6 +1755,17 @@ def list_stability_gate_policies_route(session_id: UUID) -> list[StabilityGatePo
         raise _project_error(error) from error
 
 
+@app.get("/api/projects/{session_id}/analyses/stability-policies/{policy_id}", response_model=StabilityGatePolicy)
+def get_stability_gate_policy_route(session_id: UUID, policy_id: UUID) -> StabilityGatePolicy:
+    from ruflex.application.stability import load_stability_gate_policy
+    try:
+        return load_stability_gate_policy(service.get(session_id).project.root, policy_id)
+    except ProjectError as error:
+        raise _project_error(error) from error
+    except FileNotFoundError as error:
+        raise HTTPException(status_code=404, detail=f"Stability Gate policy not found: {policy_id}") from error
+
+
 @app.post("/api/projects/analyses/stability-policies/apply", response_model=StabilityGateApplication)
 def apply_stability_gate_policy_route(request: ApplyStabilityGatePolicyRequest) -> StabilityGateApplication:
     from ruflex.application.stability import apply_stability_gate_policy
@@ -1872,6 +1921,17 @@ def get_latest_selective_policy(session_id: UUID) -> SelectivePredictionPolicy:
         raise _project_error(error) from error
     except FileNotFoundError as error:
         raise HTTPException(status_code=404, detail="No persisted selective-review policy exists in this project.") from error
+
+
+@app.get("/api/projects/{session_id}/analyses/selective-policies/{policy_id}", response_model=SelectivePredictionPolicy)
+def get_selective_policy_route(session_id: UUID, policy_id: UUID) -> SelectivePredictionPolicy:
+    from ruflex.application.selective import load_selective_policy
+    try:
+        return load_selective_policy(service.get(session_id).project.root, policy_id)
+    except ProjectError as error:
+        raise _project_error(error) from error
+    except FileNotFoundError as error:
+        raise HTTPException(status_code=404, detail=f"Selective-review policy not found: {policy_id}") from error
 
 
 @app.post("/api/projects/analyses/selective-policies/apply", response_model=SelectiveDecision)

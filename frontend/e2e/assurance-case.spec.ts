@@ -7,4 +7,11 @@ test("PRODUCT-10 persists AssuranceCase independent gates without a trust score"
   await page.getByRole("button",{name:"E",exact:true}).click(); await page.getByRole("button",{name:"Build AssuranceCase",exact:true}).click(); await expect(page.getByTestId("assurance-case")).toContainText("dataset contract"); await expect(page.getByTestId("assurance-case")).toContainText("NOT_AVAILABLE"); await expect(page.getByText("No universal trust score is produced.", {exact:true})).toBeVisible();
   await page.getByRole("button",{name:"Export and validate bundle",exact:true}).click(); await expect(page.getByTestId("verification-bundle")).toContainText("SHA-256"); await expect(page.getByTestId("verification-bundle")).toContainText("Portable validation"); await expect(page.getByTestId("verification-bundle")).toContainText("PASS");
   await page.getByRole("button",{name:"Close",exact:true}).click(); await page.getByLabel("Project path").fill(path); await page.getByRole("button",{name:"Open project",exact:true}).click(); await page.getByRole("button",{name:"E",exact:true}).click(); await expect(page.getByTestId("assurance-case")).toContainText("dataset contract");
+  await page.getByRole("button",{name:"P",exact:true}).click();
+  const assuranceNode = page.locator(".lineage-assurance_case").first(); await expect(assuranceNode).toBeVisible(); await assuranceNode.click({force:true});
+  await expect(page.getByText("Opened lineage object: AssuranceCase", {exact:true})).toBeVisible();
+  await expect(page.getByTestId("assurance-case")).toContainText("dataset contract");
+  await page.getByRole("button",{name:"P",exact:true}).click();
+  const bundleNode = page.locator(".lineage-verification_bundle").first(); await expect(bundleNode).toBeVisible(); await bundleNode.click({force:true});
+  await expect(page.getByTestId("verification-bundle-record")).toContainText("Persisted VerificationBundle");
 });

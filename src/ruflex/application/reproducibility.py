@@ -141,3 +141,7 @@ def create_explanation_reproducibility(project_root: Path, explanation_ids: list
 def load_latest_explanation_reproducibility(project_root: Path) -> ExplanationReproducibilityAnalysis:
     pointer=json.loads((_root(project_root) / "active-analysis.json").read_text())
     return ExplanationReproducibilityAnalysis.model_validate_json((_root(project_root) / f"{pointer['analysis_id']}.json").read_text())
+
+
+def load_explanation_reproducibility(project_root: Path, analysis_id: UUID) -> ExplanationReproducibilityAnalysis:
+    return ExplanationReproducibilityAnalysis.model_validate_json((_root(project_root) / f"{analysis_id}.json").read_text())

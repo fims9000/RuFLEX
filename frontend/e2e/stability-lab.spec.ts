@@ -22,4 +22,10 @@ test("Stability Lab persists fixed-split multi-run evidence and its validation-o
   await expect(page.getByText("Risk–coverage comparison (same coverage)", { exact: true })).toBeVisible({ timeout: 30_000 });
   await page.getByRole("button", { name: "Close", exact: true }).click(); await page.getByLabel("Project path").fill(root); await page.getByRole("button", { name: "Open project", exact: true }).click(); await page.getByRole("button", { name: "S", exact: true }).click();
   await expect(page.getByText("Case Stability Map · selected-run agreement; red = high-confidence unstable", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "P", exact: true }).click();
+  const frozenPolicyNode = page.locator(".lineage-stability_gate_policy").first();
+  await expect(frozenPolicyNode).toBeVisible();
+  await frozenPolicyNode.click({ force: true });
+  await expect(page.getByText("Opened lineage object: Stability-aware review", { exact: true })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText(/Stability Gate .* is validation-derived and will be bound/)).toBeVisible();
 });

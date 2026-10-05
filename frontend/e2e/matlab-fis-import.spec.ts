@@ -35,4 +35,10 @@ test("PRODUCT-12 preserves imported MATLAB FIS source provenance", async ({ page
   await page.getByLabel("MATLAB FIS file").setInputFiles({ name: "tipper.fis", mimeType: "text/plain", buffer: Buffer.from(matlabFis) });
   await expect(page.getByText(/MATLAB FIS imported as a canonical executable model.*source artifact/)).toBeVisible();
   await expect(page.getByRole("heading", { name: "tipper", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "P", exact: true }).click();
+  const fisNode = page.locator(".lineage-fis_revision").first();
+  await expect(fisNode).toBeVisible();
+  await fisNode.click({ force: true });
+  await expect(page.getByText(/Opened lineage object: tipper · revision/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "tipper", exact: true })).toBeVisible();
 });

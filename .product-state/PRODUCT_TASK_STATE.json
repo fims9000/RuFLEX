@@ -48,7 +48,11 @@
     "runtime_explainer_studio_and_api_selection",
     "runtime_validator_studio_and_api_selection",
     "execution_backend_provenance_all_evidence_jobs",
-    "final_test_studio_component_boundary"
+    "final_test_studio_component_boundary",
+    "training_data_governance_evidence_inspection",
+    "lineage_open_behavior_spec_and_result",
+    "lineage_open_exact_stability_assurance_bundle_and_exhaustive_evidence",
+    "lineage_open_fis_revision"
   ],
   "active_acceptance": [
     "V1.3 persists SplitContract, train-only TransformPipelineContract and leakage-audit evidence through Studio/API, reopen, Lineage, Assurance and VerificationBundle.",
@@ -56,7 +60,7 @@
     "Keep unrelated article and interrupted S03 work out of the committed product baseline."
   ],
   "blockers": [],
-  "next_executable_work": "Continue the remaining V1.3 data-governance acceptance (SplitContract, train-only TransformPipelineContract and leakage-audit persistence) as a separately scoped slice; Adapter-Driven Model Runtime M1 is complete at b72ad56416e39121f648558c85d13d06d739e2fc.",
+  "next_executable_work": "Resume active Studio slice: run the updated PRODUCT-06 Playwright test to verify distinct baseline/candidate defaults and exact BehaviorRevisionComparison Lineage reopen once host memory/swap pressure recovers; latest safe checks are frontend unit tests (8), TypeScript build check, and git diff --check PASS. Browser E2E intentionally deferred because available memory fell to about 1.1 GiB with swap exhausted and orphaned/headless Chromium processes visible. Then add focused reopen verification for ExplanationReproducibilityAnalysis and continue remaining evidence/model lifecycle gaps. Preserve unrelated article and interrupted S03 changes.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -88,6 +92,11 @@
     "selectable_execution_backend": "PASS: StudyJob accepts and persists an explicitly selected registered backend identity through API/Studio configuration; an external synchronous backend executes a real multi-seed job without local-executor substitution.",
     "explicit_external_model_adapter": "PASS: API and Studio pass a selected external adapter identity into generic training and StudyJob execution config; train_model resolves that exact adapter and persists its runtime provenance.",
     "runtime_explainer_selection": "PASS: Studio exposes applicable external runtime explainers without treating them as built-in capabilities, and the post-hoc API accepts a runtime explainer key before the frozen registry performs compatibility resolution.",
-    "adapter_driven_model_runtime_m1": "PASS: exact-version adapter identity is persisted and used for training, StudyJob resume, capability negotiation, final-test/Evidence replay and project integrity; legacy mapping is read-only and fail-closed for partial/unknown identities. Full Python suite, compileall, frontend unit/Vite/Storybook, full 28-test Playwright matrix, and fresh exact-HEAD archive install/focused backend/frontend/browser smoke passed. Local commit b72ad56416e39121f648558c85d13d06d739e2fc; no research files changed."
+    "adapter_driven_model_runtime_m1": "PASS: exact-version adapter identity is persisted and used for training, StudyJob resume, capability negotiation, final-test/Evidence replay and project integrity; legacy mapping is read-only and fail-closed for partial/unknown identities. Full Python suite, compileall, frontend unit/Vite/Storybook, full 28-test Playwright matrix, and fresh exact-HEAD archive install/focused backend/frontend/browser smoke passed. Local commit b72ad56416e39121f648558c85d13d06d739e2fc; no research files changed.",
+    "training_data_governance_evidence_inspection": "PASS: Working-tree verification: Training Studio resolves exact persisted SplitContract, TransformPipelineContract and LeakageAuditReport IDs, displays memberships/train-only steps/audit findings after reopen, and fails closed when persisted split evidence is malformed. Focused backend tests (18 total across split-contract and project-integrity suites), frontend unit tests (4), Vite build and real PRODUCT-02 close/reopen Playwright route passed.",
+    "lineage_open_behavior_spec_and_result": "PASS: Provenance Explorer resolves exact persisted BehaviorSpec and BehaviorSpecResult IDs from Lineage, including the parent requirement for a result, and presents the selected object in Evidence after reopen. Focused PRODUCT-06 browser route, backend lineage/data-governance tests, frontend unit tests (8), and Vite build passed."
+    ,"lineage_open_exact_stability_assurance_bundle_and_exhaustive_evidence": "PASS: Exact-ID Lineage navigation now reopens StudyStabilityAnalysis, StabilityGatePolicy, SelectivePredictionPolicy, AssuranceCase, VerificationBundle, and ExhaustiveLabResult; Evidence surfaces the persisted object details. Focused backend tests: 21 passed; frontend unit: 8 passed; Vite build passed; real Studio E2E routes: PRODUCT-06, PRODUCT-09, PRODUCT-10, and Stability Lab passed (4/4).",
+    "lineage_open_fis_revision": "PASS: A persisted imported FIS revision can be opened from its exact Lineage node into the Model workspace; PRODUCT-12 browser route passed against a real imported MATLAB FIS.",
+    "lineage_behavior_revision_comparison_opening": "IMPLEMENTED, NOT YET BROWSER-VERIFIED: exact comparison selection/rendering added, and selectors default to distinct latest persisted results. PRODUCT-06 now asserts distinct IDs and exact IDs after reopening the lineage comparison. Frontend unit tests (8), TypeScript build check, and git diff --check passed. Focused Playwright attempt exposed and fixed the old duplicate-selection bug; rerun was deferred because host memory fell to about 1.1 GiB available with swap exhausted and headless Chromium processes present. Resume browser verification after resources recover; do not mark this slice complete yet."
   }
 }

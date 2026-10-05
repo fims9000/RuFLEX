@@ -7,7 +7,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ValidationError
 
-from ruflex.application.datasets import DatasetContract, SplitContract, list_split_contracts, load_dataset_contract, load_dataset_profile, load_transform_pipeline_contract
+from ruflex.application.datasets import DatasetContract, SplitContract, list_leakage_audits, list_split_contracts, load_dataset_contract, load_dataset_profile, load_transform_pipeline_contract
 from ruflex.application.jobs import Job
 from ruflex.domain.evidence import ExplanationCheck, ExplanationContract
 from ruflex.domain.fis import FISSpec
@@ -221,6 +221,30 @@ def build_project_lineage(project_root: Path) -> LineageGraph:
                 add_edge(pipeline_node, node, "prepared_for")
             except (OSError, ValueError, ValidationError):
                 pass
+
+    try:
+        for audit in list_leakage_audits(root):
+            audit_node = add_node(LineageNode(
+                id=_node_id("leakage-audit", audit.audit_id),
+                kind="leakage_audit",
+                label=f"Data leakage audit · {audit.status}",
+                detail=f"{audit.rigor_profile} · {len(audit.findings)} finding(s)",
+                target="DATA",
+                object_id=str(audit.audit_id),
+                status=audit.status,
+            ))
+            add_edge(dataset_node, audit_node, "audited")
+            if audit.split_contract_id:
+                add_edge(split_nodes.get(audit.split_contract_id), audit_node, "audited_with_split")
+            if audit.transform_pipeline_id:
+                add_edge(transform_pipeline_nodes.get(audit.transform_pipeline_id), audit_node, "audited_with_transform")
+            for run in runs:
+                if run.leakage_audit_id == str(audit.audit_id):
+                    add_edge(audit_node, run_nodes.get(run.run_id), "cleared_for_training")
+    except (OSError, ValueError, ValidationError):
+        # A malformed audit is reported by project integrity/Assurance. Do not
+        # invent a healthy lineage node for evidence that failed to reopen.
+        pass
 
     studies = [item for item in _json_models(root / "studies", TrainingStudy, exclude=("active-study.json",)) if isinstance(item, TrainingStudy)]
     study_nodes: dict[UUID, str] = {}

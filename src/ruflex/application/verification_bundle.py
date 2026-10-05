@@ -208,6 +208,11 @@ def _declarative_paths(base: Path) -> list[Path]:
     return result
 
 
+def load_verification_bundle_record(root: Path, bundle_id: str) -> VerificationBundle:
+    path = Path(root).resolve() / "evidence" / "verification-bundles" / f"{bundle_id}.json"
+    return VerificationBundle.model_validate_json(path.read_text(encoding="utf-8"))
+
+
 def export_verification_bundle(root: Path) -> dict:
     base = Path(root).resolve(); assurance = load_latest_assurance_case(base)
     contents: dict[str, bytes] = {}

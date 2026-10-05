@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 import pytest
+import zipfile
 from fastapi.testclient import TestClient
 
 from ruflex.api.main import app
@@ -12,6 +13,9 @@ from ruflex.application.datasets import (
     create_split_contract,
     inspect_dataset,
     load_split_contract,
+    list_split_contracts,
+    list_transform_pipeline_contracts,
+    list_leakage_audits,
     persist_dataset_bytes,
     persist_dataset_contract,
     run_leakage_audit,
@@ -161,4 +165,36 @@ def test_split_contract_api_survives_close_reopen_and_training_uses_it(tmp_path)
     assert leakage_audit.json()["rigor_profile"] == "CONFIRMATORY"
     lineage = build_project_lineage(root)
     assert any(node.kind == "split_contract" for node in lineage.nodes)
+    audit_node = next(node for node in lineage.nodes if node.kind == "leakage_audit" and node.object_id == leakage_audit_id)
+    assert any(edge.target == audit_node.id and edge.relation == "audited" for edge in lineage.edges)
+    assert any(node.kind == "transform_pipeline" and node.object_id == pipeline_id for node in lineage.nodes)
     assert inspect_project_integrity(root).status == "PASS"
+    assurance = client.post("/api/projects/evidence/assurance-cases", json={"session_id": reopened["session_id"]})
+    assert assurance.status_code == 201, assurance.text
+    gates = {gate["key"]: gate["status"] for gate in assurance.json()["gates"]}
+    assert gates["transform_pipeline"] == "PASS"
+    assert gates["data_leakage_audit"] == "PASS"
+    bundle = client.post("/api/projects/evidence/verification-bundles", json={"session_id": reopened["session_id"]})
+    assert bundle.status_code == 201, bundle.text
+    with zipfile.ZipFile(bundle.json()["path"]) as archive:
+        names = set(archive.namelist())
+        assert f"data/splits/{split_id}.json" in names
+        assert f"data/transforms/{pipeline_id}.json" in names
+        assert f"data/leakage-audits/{leakage_audit_id}.json" in names
+
+    from ruflex.application.verification_bundle import validate_verification_bundle
+    assert validate_verification_bundle(bundle.json()["path"]).status == "PASS"
+
+
+@pytest.mark.parametrize(("relative_path", "list_function"), [
+    ("data/splits/broken.json", list_split_contracts),
+    ("data/transforms/broken.json", list_transform_pipeline_contracts),
+    ("data/leakage-audits/broken.json", list_leakage_audits),
+])
+def test_malformed_persisted_data_governance_evidence_is_not_silently_omitted(tmp_path, relative_path, list_function) -> None:
+    path = tmp_path / relative_path
+    path.parent.mkdir(parents=True)
+    path.write_text("{ not valid JSON", encoding="utf-8")
+
+    with pytest.raises(DatasetConfirmationError, match="malformed or incompatible"):
+        list_function(tmp_path)

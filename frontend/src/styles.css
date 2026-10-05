@@ -866,6 +866,31 @@ input:focus-visible,
 .run-provenance code {
   font: 11px var(--rf-font-mono);
 }
+.data-governance-evidence {
+  margin-top: 14px;
+  border: 1px solid var(--rf-border);
+  border-radius: 6px;
+  padding: 12px 14px;
+  background: var(--rf-bg-surface);
+}
+.data-governance-evidence summary { cursor: pointer; color: var(--rf-text); font-weight: 650; }
+.data-governance-evidence[open] summary { margin-bottom: 12px; }
+.data-governance-evidence code { overflow-wrap: anywhere; }
+.data-governance-steps, .data-governance-findings { display: grid; gap: 8px; padding-left: 22px; }
+.data-governance-findings li { display: grid; gap: 3px; }
+.data-governance-evidence .scientific-note { color: var(--rf-text-muted); font-size: 12px; }
+.data-governance-inspector {
+  margin-bottom: 16px;
+  padding: 16px;
+  border: 1px solid var(--rf-border);
+  border-radius: 8px;
+  background: var(--rf-bg-surface);
+}
+.data-governance-inspector h3 { margin: 4px 0 0; }
+.data-role-counts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.data-role-counts > div { display: grid; gap: 4px; padding: 10px; border: 1px solid var(--rf-border); border-radius: 6px; }
+.data-role-counts span { color: var(--rf-text-secondary); text-transform: capitalize; }
+.data-role-counts code, .data-governance-inspector code { overflow-wrap: anywhere; }
 .metric-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));

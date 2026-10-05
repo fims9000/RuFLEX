@@ -283,3 +283,7 @@ def create_assurance_case(root: Path) -> AssuranceCase:
 def load_latest_assurance_case(root: Path) -> AssuranceCase:
     pointer = json.loads((_root(root) / "active-case.json").read_text())
     return AssuranceCase.model_validate_json((_root(root) / f"{pointer['assurance_id']}.json").read_text())
+
+
+def load_assurance_case(root: Path, assurance_id: UUID) -> AssuranceCase:
+    return AssuranceCase.model_validate_json((_root(root) / f"{assurance_id}.json").read_text())

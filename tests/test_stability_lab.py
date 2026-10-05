@@ -42,6 +42,8 @@ def test_training_variability_keeps_split_identity_and_persists_stability_gate(t
     assert evaluation_response.status_code == 201, evaluation_response.text
     threshold = client.post("/api/projects/analyses/thresholds", json={"session_id": session_id, "evaluation_id": evaluation_response.json()["evaluation_id"]})
     assert threshold.status_code == 201, threshold.text
+    selective = client.post("/api/projects/analyses/selective-policies", json={"session_id": session_id, "evaluation_id": evaluation_response.json()["evaluation_id"], "confidence_cutoff": .8, "calibration_id": None, "threshold_id": threshold.json()["threshold_id"]})
+    assert selective.status_code == 201, selective.text
     analysis_response = client.post("/api/projects/analyses/stability", json={"session_id": session_id, "study_id": study["study_id"], "evaluation_id": evaluation_response.json()["evaluation_id"], "threshold_id": threshold.json()["threshold_id"], "high_confidence_threshold": .9, "unstable_agreement_threshold": .8})
     assert analysis_response.status_code == 201, analysis_response.text
     analysis = analysis_response.json()
@@ -90,6 +92,12 @@ def test_training_variability_keeps_split_identity_and_persists_stability_gate(t
     assert listed.status_code == 200 and listed.json()[0]["analysis_id"] == analysis["analysis_id"]
     assert listed.json()[0]["class_threshold_id"] == threshold.json()["threshold_id"]
     assert listed.json()[0]["decision_threshold"] == policy["decision_threshold"]
+    reopened_analysis = client.get(f"/api/projects/{reopened.json()['session_id']}/analyses/stability/{analysis['analysis_id']}")
+    assert reopened_analysis.status_code == 200 and reopened_analysis.json()["analysis_id"] == analysis["analysis_id"]
+    reopened_gate = client.get(f"/api/projects/{reopened.json()['session_id']}/analyses/stability-policies/{policy['policy_id']}")
+    assert reopened_gate.status_code == 200 and reopened_gate.json()["policy_id"] == policy["policy_id"]
+    reopened_selective = client.get(f"/api/projects/{reopened.json()['session_id']}/analyses/selective-policies/{selective.json()['policy_id']}")
+    assert reopened_selective.status_code == 200 and reopened_selective.json()["policy_id"] == selective.json()["policy_id"]
     reopened_policies = client.get(f"/api/projects/{reopened.json()['session_id']}/analyses/stability-policies")
     assert reopened_policies.status_code == 200
     assert reopened_policies.json()[0]["class_threshold_id"] == threshold.json()["threshold_id"]

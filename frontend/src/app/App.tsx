@@ -18,11 +18,14 @@ import {
   DecisionThresholdPolicy,
   FinalTestEvaluation,
   ExplanationCheck,
+  BehaviorSpec,
   BehaviorSpecResult,
+  BehaviorRevisionComparison,
   SelectivePredictionPolicy,
   ExplanationReproducibilityAnalysis,
   ExhaustiveLabResult,
   AssuranceCase,
+  VerificationBundle,
   ExplanationContract,
   ExpertCorrectionRevision,
   TreePathEvidence,
@@ -34,6 +37,9 @@ import {
   GeneralizationResponse,
   LineageGraph,
   LineageNode,
+  LeakageAuditReport,
+  SplitContract,
+  TransformPipelineContract,
   ProjectSummary,
   ProjectIntegrityReport,
   ScopeClassification,
@@ -52,6 +58,10 @@ import { EvaluationWorkspace } from "../features/training/EvaluationWorkspace";
 import { ProjectExplorer } from "../explorer/ProjectExplorer";
 
 type Panels = "explorer" | "inspector" | "bottom";
+type DataGovernanceObject =
+  | { kind: "split_contract"; value: SplitContract }
+  | { kind: "transform_pipeline"; value: TransformPipelineContract }
+  | { kind: "leakage_audit"; value: LeakageAuditReport };
 const initialTheme =
   (localStorage.getItem("ruflex.theme") as StudioTheme | null) ?? "light";
 
@@ -111,12 +121,16 @@ export function App() {
   const [explanation, setExplanation] = useState<ExplanationContract | null>(null);
   const [explanationCheck, setExplanationCheck] = useState<ExplanationCheck | null>(null);
   const [behaviorResult, setBehaviorResult] = useState<BehaviorSpecResult | null>(null);
+  const [behaviorSpec, setBehaviorSpec] = useState<BehaviorSpec | null>(null);
+  const [lineageBehaviorComparison, setLineageBehaviorComparison] = useState<BehaviorRevisionComparison | null>(null);
   const [selectivePolicy, setSelectivePolicy] = useState<SelectivePredictionPolicy | null>(null);
   const [reproducibility, setReproducibility] = useState<ExplanationReproducibilityAnalysis | null>(null);
   const [exhaustive, setExhaustive] = useState<ExhaustiveLabResult | null>(null);
   const [assurance, setAssurance] = useState<AssuranceCase | null>(null);
+  const [verificationBundleRecord, setVerificationBundleRecord] = useState<VerificationBundle | null>(null);
   const [expertCorrection, setExpertCorrection] = useState<ExpertCorrectionRevision | null>(null);
   const [lineage, setLineage] = useState<LineageGraph | null>(null);
+  const [dataGovernanceObject, setDataGovernanceObject] = useState<DataGovernanceObject | null>(null);
   const [integrity, setIntegrity] = useState<ProjectIntegrityReport | null>(null);
   const [selectedExpertCorrectionId, setSelectedExpertCorrectionId] = useState<string | null>(null);
   const datasetFileInputRef = useRef<HTMLInputElement>(null);
@@ -155,15 +169,20 @@ export function App() {
       setTreeEvidence(null);
       setExplanation(null);
       setExplanationCheck(null);
+      setBehaviorSpec(null);
+      setBehaviorResult(null);
+      setLineageBehaviorComparison(null);
       setSelectivePolicy(null);
       setReproducibility(null);
       setExhaustive(null);
       setAssurance(null);
+      setVerificationBundleRecord(null);
       setExpertCorrection(null);
       setGeneralization(null);
       setScopeCandidateValue("");
       setScopeClassification(null);
       setLineage(null);
+      setDataGovernanceObject(null);
       setIntegrity(null);
       setSelectedExpertCorrectionId(null);
       return;
@@ -194,6 +213,11 @@ export function App() {
       .then(setTrainingRun)
       .catch(() => setTrainingRun(null));
     studioApi.getTrainingRuns(project.session_id).then(setTrainingRuns).catch(() => setTrainingRuns([]));
+    studioApi.getLatestBehaviorSpecResult(project.session_id).then(async (result) => {
+      setBehaviorResult(result);
+      const specs = await studioApi.listBehaviorSpecs(project.session_id);
+      setBehaviorSpec(specs.find((candidate) => candidate.spec_id === result.spec_id) ?? null);
+    }).catch(() => { setBehaviorResult(null); setBehaviorSpec(null); });
     studioApi.listStudyStabilityAnalyses(project.session_id).then((items) => setStabilityAnalysis(items.at(-1) ?? null)).catch(() => setStabilityAnalysis(null));
     studioApi.listStabilityGatePolicies(project.session_id).then((items) => setStabilityGatePolicy(items.at(-1) ?? null)).catch(() => setStabilityGatePolicy(null));
     studioApi
@@ -267,6 +291,11 @@ export function App() {
     try {
       if (node.kind === "training_run" && objectId) {
         setTrainingRun(await studioApi.getTrainingRun(project.session_id, objectId));
+      } else if (node.kind === "fis" && objectId) {
+        const revisions = await studioApi.getFisRevisions(project.session_id);
+        const spec = revisions.find((candidate) => candidate.fis_id === objectId);
+        if (!spec) throw new Error(`FIS is no longer available: ${objectId}`);
+        setFis(spec);
       } else if (node.kind === "fis_revision") {
         const semanticHash = node.id.split(":").at(-1);
         const revisions = await studioApi.getFisRevisions(project.session_id);
@@ -275,12 +304,18 @@ export function App() {
         setFis(revision);
       } else if (node.kind === "study" && objectId) {
         setTrainingStudy(await studioApi.getTrainingStudy(project.session_id, objectId));
+      } else if (node.kind === "study_stability" && objectId) {
+        setStabilityAnalysis(await studioApi.getStudyStabilityAnalysis(project.session_id, objectId));
       } else if (node.kind === "evaluation" && objectId) {
         setAnalysisEvaluation(await studioApi.getAnalysisEvaluation(project.session_id, objectId));
       } else if (node.kind === "calibration" && objectId) {
         setCalibrationTransform(await studioApi.getAnalysisCalibration(project.session_id, objectId));
       } else if (node.kind === "decision_threshold" && objectId) {
         setDecisionThreshold(await studioApi.getAnalysisThreshold(project.session_id, objectId));
+      } else if (node.kind === "stability_gate_policy" && objectId) {
+        setStabilityGatePolicy(await studioApi.getStabilityGatePolicy(project.session_id, objectId));
+      } else if (node.kind === "selective_policy" && objectId) {
+        setSelectivePolicy(await studioApi.getSelectivePolicy(project.session_id, objectId));
       } else if (node.kind === "final_test_evaluation" && objectId) {
         setFinalTestEvaluation(await studioApi.getFinalTestEvaluation(project.session_id, objectId));
       } else if (node.kind === "comparison" && objectId) {
@@ -303,6 +338,42 @@ export function App() {
         if (resultRevision) setFis(resultRevision);
         setExpertCorrection(correction);
         setSelectedExpertCorrectionId(objectId);
+      } else if (node.kind === "split_contract" && objectId) {
+        setDataGovernanceObject({ kind: "split_contract", value: await studioApi.getSplitContract(project.session_id, objectId) });
+      } else if (node.kind === "transform_pipeline" && objectId) {
+        setDataGovernanceObject({ kind: "transform_pipeline", value: await studioApi.getTransformPipeline(project.session_id, objectId) });
+      } else if (node.kind === "leakage_audit" && objectId) {
+        setDataGovernanceObject({ kind: "leakage_audit", value: await studioApi.getLeakageAudit(project.session_id, objectId) });
+      } else if (node.kind === "behavior_spec" && objectId) {
+        const specs = await studioApi.listBehaviorSpecs(project.session_id);
+        const spec = specs.find((candidate) => candidate.spec_id === objectId);
+        if (!spec) throw new Error(`BehaviorSpec is no longer available: ${objectId}`);
+        setBehaviorSpec(spec);
+        setBehaviorResult(null);
+      } else if (node.kind === "behavior_spec_result" && objectId) {
+        const results = await studioApi.listBehaviorResults(project.session_id);
+        const result = results.find((candidate) => candidate.result_id === objectId);
+        if (!result) throw new Error(`BehaviorSpecResult is no longer available: ${objectId}`);
+        const specs = await studioApi.listBehaviorSpecs(project.session_id);
+        const spec = specs.find((candidate) => candidate.spec_id === result.spec_id);
+        if (!spec) throw new Error(`BehaviorSpec ${result.spec_id} for this result is no longer available`);
+        setBehaviorSpec(spec);
+        setBehaviorResult(result);
+      } else if (node.kind === "behavior_revision_comparison" && objectId) {
+        const comparisons = await studioApi.listBehaviorRevisionComparisons(project.session_id);
+        const comparison = comparisons.find((candidate) => candidate.comparison_id === objectId);
+        if (!comparison) throw new Error(`Behavior revision comparison is no longer available: ${objectId}`);
+        setLineageBehaviorComparison(comparison);
+      } else if (node.kind === "assurance_case" && objectId) {
+        setAssurance(await studioApi.getAssuranceCase(project.session_id, objectId));
+      } else if (node.kind === "verification_bundle" && objectId) {
+        setVerificationBundleRecord(await studioApi.getVerificationBundle(project.session_id, objectId));
+      } else if (node.kind === "explanation_reproducibility" && objectId) {
+        setReproducibility(await studioApi.getExplanationReproducibility(project.session_id, objectId));
+      } else if (node.kind === "exhaustive_lab" && objectId) {
+        setExhaustive(await studioApi.getExhaustiveLabResult(project.session_id, objectId));
+      } else if (node.kind === "dataset") {
+        setDataGovernanceObject(null);
       }
       setActive(node.target);
       setStatus(`Opened lineage object: ${node.label}`);
@@ -689,6 +760,28 @@ export function App() {
         </section>
       ) : active === "DATA" ? (
         <section className="feature-workspace data-workspace">
+          {dataGovernanceObject && <section className="data-governance-inspector" aria-label="Selected data provenance object">
+            <div className="evidence-check-header"><div><span className="eyebrow">OPENED FROM PROJECT LINEAGE</span><h3>{dataGovernanceObject.kind === "split_contract" ? "Frozen split membership" : dataGovernanceObject.kind === "transform_pipeline" ? "Train-only transform pipeline" : "Data leakage audit"}</h3></div>
+              {dataGovernanceObject.kind === "leakage_audit" && <StatusBadge tone={dataGovernanceObject.value.status === "FAIL" ? "danger" : dataGovernanceObject.value.status === "WARN" ? "warning" : "success"}>{dataGovernanceObject.value.status}</StatusBadge>}
+              {dataGovernanceObject.kind !== "leakage_audit" && <StatusBadge tone="success">FROZEN</StatusBadge>}
+            </div>
+            {dataGovernanceObject.kind === "split_contract" && <>
+              <p>{dataGovernanceObject.value.family} split · seed {dataGovernanceObject.value.split_seed} · validation {Math.round(dataGovernanceObject.value.validation_fraction * 100)}% · test {Math.round(dataGovernanceObject.value.test_fraction * 100)}%</p>
+              <div className="data-role-counts">{(["train", "validation", "test"] as const).map((role) => <div key={role}><span>{role === "test" ? "Locked test" : role}</span><strong>{dataGovernanceObject.value.role_source_rows[role].length} rows</strong><code>{dataGovernanceObject.value.role_identity_hashes[role].slice(0, 16)}…</code></div>)}</div>
+              <p className="scientific-note">{dataGovernanceObject.value.scientific_note}</p>
+            </>}
+            {dataGovernanceObject.kind === "transform_pipeline" && <>
+              <p>Fit role: <strong>{dataGovernanceObject.value.fit_role}</strong> · {dataGovernanceObject.value.feature_order.length} ordered features</p>
+              <ol className="data-governance-steps">{dataGovernanceObject.value.steps.map((step, index) => <li key={`${step.step_type}-${index}`}><strong>{step.step_type}</strong> · fit on {step.fit_role} · {step.input_columns.join(", ")} → {step.output_columns.join(", ")}</li>)}</ol>
+              <p>Preprocessing artifact SHA-256: <code>{dataGovernanceObject.value.preprocessing_artifact_sha256}</code></p>
+              <p className="scientific-note">{dataGovernanceObject.value.scientific_note}</p>
+            </>}
+            {dataGovernanceObject.kind === "leakage_audit" && <>
+              <p>{dataGovernanceObject.value.rigor_profile} · {dataGovernanceObject.value.findings.length} finding(s)</p>
+              {dataGovernanceObject.value.findings.length ? <ul className="data-governance-findings">{dataGovernanceObject.value.findings.map((finding, index) => <li key={`${finding.code}-${index}`}><strong>{finding.severity.toUpperCase()} · {finding.code}</strong><span>{finding.remediation}</span></li>)}</ul> : <p>No structural findings were recorded.</p>}
+              <p className="scientific-note">{dataGovernanceObject.value.scientific_note}</p>
+            </>}
+          </section>}
           <div className="data-layout">
             <div>
               <label className="field-label">
@@ -1021,9 +1114,12 @@ export function App() {
           explanation={explanation}
           explanationCheck={explanationCheck}
           behaviorResult={behaviorResult}
+          behaviorSpec={behaviorSpec}
+          lineageBehaviorComparison={lineageBehaviorComparison}
           reproducibility={reproducibility}
           exhaustive={exhaustive}
           assurance={assurance}
+          verificationBundleRecord={verificationBundleRecord}
           selectivePolicy={selectivePolicy}
           generalization={generalization}
           theme={theme}

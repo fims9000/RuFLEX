@@ -1,6 +1,6 @@
 import { EChartsOption } from "echarts";
 import { useEffect, useMemo, useState } from "react";
-import { DatasetState, ExecutionBackendDescriptor, ModelCapabilityContract, ProjectSummary, RunCapabilityNegotiation, SplitContract, StudyJob, TrainingRun, TrainingStudy, TreePathEvidence, studioApi } from "../../api";
+import { DatasetState, ExecutionBackendDescriptor, LeakageAuditReport, ModelCapabilityContract, ProjectSummary, RunCapabilityNegotiation, SplitContract, StudyJob, TrainingRun, TrainingStudy, TransformPipelineContract, TreePathEvidence, studioApi } from "../../api";
 import { ChartSurface } from "../../charts/ChartSurface";
 import { Button, EmptyState, StatusBadge } from "../../components/StudioPrimitives";
 import { StudioTheme } from "../../design/tokens";
@@ -117,12 +117,17 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
   const [groupColumn, setGroupColumn] = useState("");
   const [rigorProfile, setRigorProfile] = useState<"EXPLORATORY" | "CONFIRMATORY" | "HIGH_ASSURANCE_LIKE">("CONFIRMATORY");
   const [splitContract, setSplitContract] = useState<SplitContract | null>(null);
+  const [splitEvidenceError, setSplitEvidenceError] = useState<string | null>(null);
   const [study, setStudy] = useState<TrainingStudy | null>(restoredStudy);
   const [studyJob, setStudyJob] = useState<StudyJob | null>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [treeSample, setTreeSample] = useState<Record<string, string>>({});
   const [treeEvidence, setTreeEvidence] = useState<TreePathEvidence | null>(null);
+  const [transformPipeline, setTransformPipeline] = useState<TransformPipelineContract | null>(null);
+  const [leakageAudit, setLeakageAudit] = useState<LeakageAuditReport | null>(null);
+  const [runSplitContract, setRunSplitContract] = useState<SplitContract | null>(null);
+  const [dataEvidenceState, setDataEvidenceState] = useState<"idle" | "loading" | "loaded" | "error">("idle");
   const [catalog, setCatalog] = useState<ModelCapabilityContract[]>([]);
   const [executionBackends, setExecutionBackends] = useState<ExecutionBackendDescriptor[]>([]);
   const [executionBackendKey, setExecutionBackendKey] = useState("local_executor");
@@ -139,11 +144,45 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
     }).catch(() => setTreeEvidence(null));
   }, [project.session_id, run?.run_id, run?.model_kind]);
   useEffect(() => {
+    let active = true;
+    setTransformPipeline(null);
+    setLeakageAudit(null);
+    setRunSplitContract(null);
+    if (!run?.transform_pipeline_id || !run.leakage_audit_id) {
+      setDataEvidenceState("idle");
+      return () => { active = false; };
+    }
+    setDataEvidenceState("loading");
+    Promise.all([
+      studioApi.getTransformPipeline(project.session_id, run.transform_pipeline_id),
+      studioApi.getLeakageAudit(project.session_id, run.leakage_audit_id),
+      run.split.split_contract_id ? studioApi.getSplitContract(project.session_id, run.split.split_contract_id) : Promise.resolve(null),
+    ]).then(([pipeline, audit, frozenSplit]) => {
+      if (!active) return;
+      if (pipeline.pipeline_id !== run.transform_pipeline_id || audit.audit_id !== run.leakage_audit_id || pipeline.dataset_fingerprint !== dataset?.contract.dataset_fingerprint || audit.dataset_fingerprint !== pipeline.dataset_fingerprint || pipeline.split_contract_id !== (frozenSplit?.split_id ?? null) || audit.split_contract_id !== (frozenSplit?.split_id ?? null) || audit.transform_pipeline_id !== pipeline.pipeline_id) throw new Error("Persisted data evidence identity does not match the selected run.");
+      setTransformPipeline(pipeline);
+      setLeakageAudit(audit);
+      setRunSplitContract(frozenSplit);
+      setDataEvidenceState("loaded");
+    }).catch(() => {
+      if (active) setDataEvidenceState("error");
+    });
+    return () => { active = false; };
+  }, [project.session_id, dataset?.contract.dataset_fingerprint, run?.run_id, run?.transform_pipeline_id, run?.leakage_audit_id, run?.split.split_contract_id]);
+  useEffect(() => {
+    let active = true;
+    setSplitEvidenceError(null);
     studioApi.listSplitContracts(project.session_id).then((contracts) => {
+      if (!active) return;
       const current = contracts.at(-1) ?? null;
       setSplitContract(current);
       if (current) { setSplitFamily(current.family); setGroupColumn(current.group_column ?? current.time_column ?? current.site_column ?? current.device_column ?? current.spatial_column ?? current.regime_column ?? ""); setSplitSeed(current.split_seed); }
-    }).catch(() => setSplitContract(null));
+    }).catch((reason) => {
+      if (!active) return;
+      setSplitContract(null);
+      setSplitEvidenceError(reason instanceof Error ? reason.message : "Saved split provenance could not be verified.");
+    });
+    return () => { active = false; };
   }, [project.session_id]);
   useEffect(() => {
     if (!run) { setRunCapabilities(null); return; }
@@ -313,11 +352,12 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
           <label className="field-label">Study randomness protocol<select aria-label="Study randomness protocol" value={studyMode} disabled={running || project.read_only} onChange={(event) => setStudyMode(event.target.value as typeof studyMode)}><option value="TRAINING_VARIABILITY">Training variability (fixed split)</option><option value="SPLIT_VARIABILITY">Split variability (fixed training seed)</option><option value="COMBINED_VARIABILITY">Combined variability</option></select></label>
           <label className="field-label">Study execution backend<select aria-label="Study execution backend" value={executionBackendKey} disabled={running || project.read_only || !executionBackends.length} onChange={(event) => setExecutionBackendKey(event.target.value)}>{executionBackends.map((backend) => <option key={backend.identity.key} value={backend.identity.key}>{backend.identity.key} · {backend.identity.provider}</option>)}</select></label>
         </div>
-        <Button view="outlined" disabled={running || project.read_only} onClick={freezeSplitContract} data-ruflex-action="split.freeze">Freeze {splitFamily} SplitContract</Button>
-        <Button view="action" disabled={running || project.read_only} onClick={train} data-ruflex-action="training.run">{running ? "Training…" : "Run real training"}</Button>
-        <Button view="outlined" disabled={running || project.read_only} onClick={trainStudy} data-ruflex-action="study.start">{running ? "Training…" : "Run multi-seed study"}</Button>
+        <Button view="outlined" disabled={running || project.read_only || Boolean(splitEvidenceError)} onClick={freezeSplitContract} data-ruflex-action="split.freeze">Freeze {splitFamily} SplitContract</Button>
+        <Button view="action" disabled={running || project.read_only || Boolean(splitEvidenceError)} onClick={train} data-ruflex-action="training.run">{running ? "Training…" : "Run real training"}</Button>
+        <Button view="outlined" disabled={running || project.read_only || Boolean(splitEvidenceError)} onClick={trainStudy} data-ruflex-action="study.start">{running ? "Training…" : "Run multi-seed study"}</Button>
         {studyJob && <div className="info-message"><strong>Study job {studyJob.status}</strong> · {studyJob.execution_backend_key ?? studyJob.execution_backend} · {studyJob.seed_states.map((state) => `seed ${state.seed}: ${state.status}`).join(" · ")} {(["QUEUED", "RUNNING"].includes(studyJob.status)) && <><Button view="flat" size="s" onClick={resumeStudy} data-ruflex-action="study.resume">Resume persisted study</Button><Button view="flat" size="s" onClick={cancelStudy} data-ruflex-action="study.cancel">Cancel study</Button></>} {studyJob.recovery_note && <small>{studyJob.recovery_note}</small>}</div>}
         <div className="info-message">A frozen SplitContract assigns exact source rows before fitting. GROUP keeps each declared identity in one role. It makes split membership auditable; it does not by itself establish generalization validity.</div>
+        {splitEvidenceError && <div className="error" role="alert">Saved split provenance is invalid or unavailable. Training is blocked rather than falling back to an unverified split. {splitEvidenceError}</div>}
         {project.read_only && <div className="info-message">Read-only projects cannot start training runs.</div>}
       </section>
 
@@ -340,6 +380,28 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
             <span>seed {run.seed}</span>
             <span>{run.split.train_count}/{run.split.validation_count}/{run.split.test_count} rows</span>
           </div>
+          <details className="data-governance-evidence" data-testid="data-governance-evidence">
+            <summary>Data governance evidence</summary>
+            {dataEvidenceState === "loading" && <p role="status">Loading persisted split, preprocessing and leakage-audit evidence…</p>}
+            {dataEvidenceState === "error" && <p className="error" role="alert">Could not reopen this run’s data-governance evidence. The saved run references are not being treated as verified.</p>}
+            {dataEvidenceState === "idle" && <p>No persisted transform or leakage-audit evidence is linked to this run.</p>}
+            {dataEvidenceState === "loaded" && transformPipeline && leakageAudit && <>
+              <dl className="compact-definition">
+                <dt>Split contract</dt><dd>{runSplitContract ? `${runSplitContract.family} · seed ${runSplitContract.split_seed}` : "Legacy / not linked to explicit contract"}</dd>
+                {runSplitContract && <>
+                  <dt>Exact source rows</dt><dd>Train {runSplitContract.role_source_rows.train.length} · validation {runSplitContract.role_source_rows.validation.length} · locked test {runSplitContract.role_source_rows.test.length}</dd>
+                  <dt>Split identity</dt><dd><code>{runSplitContract.split_identity}</code></dd>
+                </>}
+                <dt>Transform fit scope</dt><dd>{transformPipeline.fit_role} only · {transformPipeline.steps.length} persisted step(s)</dd>
+                <dt>Feature order</dt><dd>{transformPipeline.feature_order.join(", ") || "No features"}</dd>
+                <dt>Preprocessing artifact</dt><dd><code>{transformPipeline.preprocessing_artifact_sha256}</code></dd>
+                <dt>Leakage audit</dt><dd><StatusBadge tone={leakageAudit.status === "FAIL" ? "danger" : leakageAudit.status === "WARN" ? "warning" : "success"}>{leakageAudit.status}</StatusBadge> · {leakageAudit.rigor_profile} · {leakageAudit.findings.length} finding(s)</dd>
+              </dl>
+              <ol className="data-governance-steps">{transformPipeline.steps.map((step, index) => <li key={`${step.step_type}-${index}`}><strong>{step.step_type}</strong> · fit on {step.fit_role} · {step.input_columns.join(", ")} → {step.output_columns.join(", ")}</li>)}</ol>
+              {leakageAudit.findings.length > 0 ? <ul className="data-governance-findings">{leakageAudit.findings.map((finding, index) => <li key={`${finding.code}-${index}`}><strong>{finding.severity.toUpperCase()} · {finding.code}</strong><span>{finding.remediation}</span></li>)}</ul> : <p>No structural leakage findings were recorded by this audit.</p>}
+              <p className="scientific-note">{leakageAudit.scientific_note}</p>
+            </>}
+          </details>
           {study && <>
             <ChartSurface title={`Validation ${study.selection_metric} across seeds`} option={studyDistributionOption(study)} theme={theme} />
             <ChartSurface title="Validation-loss trajectories · epoch 0 included" option={studyTrajectoryOption(study)} theme={theme} />

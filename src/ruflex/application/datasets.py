@@ -222,7 +222,7 @@ def list_split_contracts(project_root:Path)->list[SplitContract]:
  contracts=[]
  for path in _split_root(project_root).glob('*.json'):
   try: contracts.append(load_split_contract(project_root,path.stem))
-  except (OSError,ValueError,DatasetConfirmationError): continue
+  except (OSError,ValueError,DatasetConfirmationError) as error: raise DatasetConfirmationError(f'Persisted SplitContract {path.name} is malformed or incompatible: {error}') from error
  return sorted(contracts,key=lambda item:str(item.split_id))
 
 def _transform_root(project_root:Path)->Path:
@@ -267,7 +267,7 @@ def list_transform_pipeline_contracts(project_root:Path)->list[TransformPipeline
  pipelines=[]
  for path in _transform_root(project_root).glob('*.json'):
   try: pipelines.append(load_transform_pipeline_contract(project_root,path.stem))
-  except (OSError,ValueError,DatasetConfirmationError): continue
+  except (OSError,ValueError,DatasetConfirmationError) as error: raise DatasetConfirmationError(f'Persisted TransformPipelineContract {path.name} is malformed or incompatible: {error}') from error
  return sorted(pipelines,key=lambda item:str(item.pipeline_id))
 
 def _leakage_root(project_root:Path)->Path:
@@ -331,7 +331,7 @@ def list_leakage_audits(project_root:Path)->list[LeakageAuditReport]:
  audits=[]
  for path in _leakage_root(project_root).glob('*.json'):
   try: audits.append(load_leakage_audit(project_root,path.stem))
-  except (OSError,ValueError,DatasetConfirmationError): continue
+  except (OSError,ValueError,DatasetConfirmationError) as error: raise DatasetConfirmationError(f'Persisted LeakageAuditReport {path.name} is malformed or incompatible: {error}') from error
  return sorted(audits,key=lambda item:str(item.audit_id))
 
 def persist_dataset_bytes(project_root:Path,data:bytes,*,original_name:str="dataset.csv",media_type:str="text/csv")->ArtifactRef:

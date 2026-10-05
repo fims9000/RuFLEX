@@ -172,6 +172,7 @@ export type StabilityGatePolicy = {
 export type StabilityGateApplication = { policy_id: string; selected_run_id: string; disposition: "ACCEPT" | "REVIEW" | "BLOCK"; reasons: Array<"LOW_CONFIDENCE" | "RUN_DISAGREEMENT" | "HIGH_DISPERSION" | "OUT_OF_SCOPE" | "INSUFFICIENT_RUN_SUPPORT">; selected_run_probability: number; predicted_label: number; confidence: number; majority_class_agreement: number; selected_run_agreement: number; probability_std: number; run_support_count: number; run_probabilities: Record<string, number> };
 export type ExhaustiveLabResult = { result_id: string; kind: "decision_tree_structure" | "fis_discrete_grid"; exactness_label: "EXACT_FINITE_STRUCTURE" | "EXACT_ON_DECLARED_DISCRETE_GRID"; run_id: string | null; fis_semantic_hash: string | null; declared_grid: Record<string, number[]>; state_count: number; state_estimate: number; max_states: number; paths: Array<Record<string, unknown>>; uncovered_states: Array<Record<string, unknown>>; dead_rules: string[]; conflict_states: Array<Record<string, unknown>>; scientific_note: string };
 export type AssuranceCase = { assurance_id: string; gates: Array<{ key: string; status: "PASS" | "WARN" | "FAIL" | "NOT_AVAILABLE"; evidence: string[]; risk: string | null }>; claims: Array<{ claim_id: string; statement: string; status: "SUPPORTED" | "QUALIFIED" | "UNSUPPORTED"; evidence_ids: string[]; assumptions: string[]; limitations: string[] }>; unresolved_risks: string[]; scientific_note: string };
+export type VerificationBundle = { bundle_id: string; created_at: string; assurance_id: string; sha256: string; entry_count: number; manifest_sha256: string; inspection_first: boolean; excluded: string[] };
 export type VerificationBundleValidation = { bundle_path: string; status: "PASS" | "FAIL"; bundle_sha256: string | null; manifest_sha256: string | null; checked_entries: number; errors: string[]; warnings: string[]; scientific_note: string };
 export type ProjectIntegrityReport = { project_id: string; status: "PASS" | "WARN" | "FAIL"; checked_objects: number; issues: Array<{ code: string; status: "WARN" | "FAIL"; path: string; detail: string }>; scientific_note: string };
 export type ConditionMonitoringDemo = { demo_id: string; policy_id: string; telemetry: Record<string, number>; predicted_class: number; probability: number; confidence: number; decision: "ACCEPT" | "REVIEW" | "OUT_OF_SCOPE"; scope_disposition: string; explanation_id: string | null; explanation_check_id: string | null; assurance_id: string | null; verification_bundle_sha256: string | null; explanation_note: string; safety_note: string };
@@ -459,6 +460,12 @@ export const studioApi = {
   createSplitContract: (sessionId: string, config: { family: "RANDOM" | "GROUP" | "TEMPORAL" | "SITE_HOLDOUT" | "DEVICE_HOLDOUT" | "SPATIAL" | "REGIME"; split_seed: number; validation_fraction: number; test_fraction: number; group_column?: string | null; time_column?: string | null; site_column?: string | null; device_column?: string | null; spatial_column?: string | null; regime_column?: string | null }) =>
     request<SplitContract>("/api/projects/dataset/splits", { session_id: sessionId, ...config }),
   listSplitContracts: (sessionId: string) => request<SplitContract[]>(`/api/projects/${sessionId}/dataset/splits`),
+  getSplitContract: (sessionId: string, splitId: string) =>
+    request<SplitContract>(`/api/projects/${sessionId}/dataset/splits/${splitId}`),
+  getTransformPipeline: (sessionId: string, pipelineId: string) =>
+    request<TransformPipelineContract>(`/api/projects/${sessionId}/dataset/transforms/${pipelineId}`),
+  getLeakageAudit: (sessionId: string, auditId: string) =>
+    request<LeakageAuditReport>(`/api/projects/${sessionId}/dataset/leakage-audits/${auditId}`),
   getLatestTraining: (sessionId: string) =>
     request<TrainingRun>(`/api/projects/${sessionId}/training/latest`),
   getTrainingRuns: (sessionId: string) =>
@@ -505,6 +512,8 @@ export const studioApi = {
     request<BehaviorSpecResult>(`/api/projects/${sessionId}/evidence/behavior-specs/latest`),
   listBehaviorSpecs: (sessionId: string) =>
     request<BehaviorSpec[]>(`/api/projects/${sessionId}/evidence/behavior-specs`),
+  getLatestBehaviorSpecResult: (sessionId: string) =>
+    request<BehaviorSpecResult>(`/api/projects/${sessionId}/evidence/behavior-specs/latest`),
   listBehaviorResults: (sessionId: string) =>
     request<BehaviorSpecResult[]>(`/api/projects/${sessionId}/evidence/behavior-specs/results`),
   compareBehaviorResults: (sessionId: string, baselineResultId: string, candidateResultId: string) =>
@@ -516,12 +525,15 @@ export const studioApi = {
   createStudyStabilityAnalysis: (sessionId: string, studyId: string, evaluationId: string | null, thresholdId: string | null, highConfidenceThreshold = .9, unstableAgreementThreshold = .8) =>
     request<StudyStabilityAnalysis>("/api/projects/analyses/stability", { session_id: sessionId, study_id: studyId, evaluation_id: evaluationId, threshold_id: thresholdId, high_confidence_threshold: highConfidenceThreshold, unstable_agreement_threshold: unstableAgreementThreshold }),
   listStudyStabilityAnalyses: (sessionId: string) => request<StudyStabilityAnalysis[]>(`/api/projects/${sessionId}/analyses/stability`),
+  getStudyStabilityAnalysis: (sessionId: string, analysisId: string) => request<StudyStabilityAnalysis>(`/api/projects/${sessionId}/analyses/stability/${analysisId}`),
   createStabilityGatePolicy: (sessionId: string, analysisId: string, evaluationId: string, minConfidence: number, minAgreement: number, maxProbabilityStd: number, calibrationId: string | null = null) =>
     request<StabilityGatePolicy>("/api/projects/analyses/stability-policies", { session_id: sessionId, analysis_id: analysisId, evaluation_id: evaluationId, min_confidence: minConfidence, min_class_agreement: minAgreement, max_probability_std: maxProbabilityStd, calibration_id: calibrationId }),
   listStabilityGatePolicies: (sessionId: string) => request<StabilityGatePolicy[]>(`/api/projects/${sessionId}/analyses/stability-policies`),
+  getStabilityGatePolicy: (sessionId: string, policyId: string) => request<StabilityGatePolicy>(`/api/projects/${sessionId}/analyses/stability-policies/${policyId}`),
   applyStabilityGatePolicy: (sessionId: string, policyId: string, sample: Record<string, number>, metadata: Record<string, unknown> = {}, generalizationContractId: string | null = null) => request<StabilityGateApplication>("/api/projects/analyses/stability-policies/apply", { session_id: sessionId, policy_id: policyId, sample, metadata, generalization_contract_id: generalizationContractId }),
   getLatestSelectivePolicy: (sessionId: string) =>
     request<SelectivePredictionPolicy>(`/api/projects/${sessionId}/analyses/selective-policies/latest`),
+  getSelectivePolicy: (sessionId: string, policyId: string) => request<SelectivePredictionPolicy>(`/api/projects/${sessionId}/analyses/selective-policies/${policyId}`),
   applySelectivePolicy: (sessionId: string, policyId: string, sample: Record<string, number>, metadata: Record<string, unknown> = {}, generalizationContractId: string | null = null) =>
     request<{ policy_id: string; probability: number; predicted_label: number; confidence: number; disposition: "ACCEPT" | "REVIEW" | "OUT_OF_SCOPE"; scope_disposition: string; reasons: string[] }>("/api/projects/analyses/selective-policies/apply", { session_id: sessionId, policy_id: policyId, sample, metadata, generalization_contract_id: generalizationContractId }),
   runConditionMonitoringDemo: (sessionId: string, telemetry: Record<string, number>, policyId: string | null, generalizationContractId: string | null) => request<ConditionMonitoringDemo>("/api/projects/evidence/condition-monitoring-demo", { session_id: sessionId, telemetry, policy_id: policyId, generalization_contract_id: generalizationContractId }),
@@ -530,12 +542,16 @@ export const studioApi = {
   createExplanationReproducibility: (sessionId: string, explanationIds: string[]) =>
     request<ExplanationReproducibilityAnalysis>("/api/projects/evidence/explanation-reproducibility", { session_id: sessionId, explanation_ids: explanationIds }),
   getLatestExplanationReproducibility: (sessionId: string) => request<ExplanationReproducibilityAnalysis>(`/api/projects/${sessionId}/evidence/explanation-reproducibility/latest`),
+  getExplanationReproducibility: (sessionId: string, analysisId: string) => request<ExplanationReproducibilityAnalysis>(`/api/projects/${sessionId}/evidence/explanation-reproducibility/${analysisId}`),
   runExhaustiveLab: (sessionId: string, kind: ExhaustiveLabResult["kind"], runId: string | null, gridPoints = 3, maxStates = 10000) => request<ExhaustiveLabResult>("/api/projects/evidence/exhaustive-lab", { session_id: sessionId, kind, run_id: runId, grid_points: gridPoints, max_states: maxStates }),
   getLatestExhaustiveLab: (sessionId: string) => request<ExhaustiveLabResult>(`/api/projects/${sessionId}/evidence/exhaustive-lab/latest`),
+  getExhaustiveLabResult: (sessionId: string, resultId: string) => request<ExhaustiveLabResult>(`/api/projects/${sessionId}/evidence/exhaustive-lab/${resultId}`),
   createAssuranceCase: (sessionId: string) => request<AssuranceCase>("/api/projects/evidence/assurance-cases", { session_id: sessionId }),
   startAssuranceCaseJob: (sessionId: string, executionBackendKey = "local_executor") => request<ProductJob>("/api/projects/evidence/assurance-jobs", { session_id: sessionId, execution_backend_key: executionBackendKey }),
   getLatestAssuranceCase: (sessionId: string) => request<AssuranceCase>(`/api/projects/${sessionId}/evidence/assurance-cases/latest`),
+  getAssuranceCase: (sessionId: string, assuranceId: string) => request<AssuranceCase>(`/api/projects/${sessionId}/evidence/assurance-cases/${assuranceId}`),
   exportVerificationBundle: (sessionId: string) => request<{ path: string; sha256: string; entry_count: number }>("/api/projects/evidence/verification-bundles", { session_id: sessionId }),
+  getVerificationBundle: (sessionId: string, bundleId: string) => request<VerificationBundle>(`/api/projects/${sessionId}/evidence/verification-bundles/${bundleId}`),
   startVerificationBundleJob: (sessionId: string, executionBackendKey = "local_executor") => request<ProductJob>("/api/projects/evidence/verification-bundle-jobs", { session_id: sessionId, execution_backend_key: executionBackendKey }),
   validateVerificationBundle: (path: string) => request<VerificationBundleValidation>("/api/verification-bundles/validate", { path }),
   runMultiSeedStudy: (
@@ -665,6 +681,46 @@ export type SplitContract = {
   role_source_rows: Record<"train" | "validation" | "test", number[]>;
   role_identity_hashes: Record<"train" | "validation" | "test", string>;
   split_identity: string;
+  scientific_note: string;
+};
+
+export type TransformPipelineContract = {
+  schema_version: number;
+  pipeline_id: string;
+  dataset_fingerprint: string;
+  split_contract_id: string | null;
+  feature_order: string[];
+  steps: Array<{
+    step_type: string;
+    parameters: Record<string, unknown>;
+    fit_role: "TRAIN";
+    input_columns: string[];
+    output_columns: string[];
+    artifact_identity: string | null;
+    version: string;
+  }>;
+  preprocessing_artifact_sha256: string;
+  fit_role: "TRAIN";
+  pipeline_identity: string;
+  scientific_note: string;
+};
+
+export type LeakageAuditReport = {
+  schema_version: number;
+  audit_id: string;
+  dataset_fingerprint: string;
+  rigor_profile: "EXPLORATORY" | "CONFIRMATORY" | "HIGH_ASSURANCE_LIKE";
+  split_contract_id: string | null;
+  transform_pipeline_id: string | null;
+  status: "PASS" | "WARN" | "FAIL";
+  findings: Array<{
+    code: string;
+    severity: string;
+    scope: string;
+    evidence: Record<string, unknown>;
+    remediation: string;
+    check_version: string;
+  }>;
   scientific_note: string;
 };
 
