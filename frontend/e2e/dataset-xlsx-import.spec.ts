@@ -94,3 +94,23 @@ test("Studio imports XLSX with an explicit target and preserves it after rejecti
   expect(persisted.contract).toEqual(frozenContract);
   expect(persisted.profile.row_count).toBe(3);
 });
+
+test("Studio invalidates a stale CSV inspection when the candidate is edited", async ({ page }) => {
+  const path = projectPath();
+  await page.goto("/");
+  await page.getByLabel("Project path").fill(path);
+  await page.getByLabel("Project name").fill("CSV inspection refresh");
+  await page.getByRole("button", { name: "Create project", exact: true }).click();
+  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await expect(page.getByRole("status")).toContainText("editable draft only");
+  await page.getByLabel("CSV data").fill("temperature,target\n10,0\n20,1\n");
+  await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Confirm dataset contract", exact: true })).toBeEnabled();
+  await expect(page.getByText("Rows: 2 · columns: 2", { exact: false })).toBeVisible();
+
+  await page.getByLabel("CSV data").fill("temperature,other\n30,0\n40,1\n");
+
+  await expect(page.getByRole("button", { name: "Confirm dataset contract", exact: true })).toBeDisabled();
+  await expect(page.getByText("CSV changed; inspect again before confirming", { exact: true })).toBeVisible();
+  await expect(page.getByText("Rows: 2 · columns: 2", { exact: false })).toHaveCount(0);
+});

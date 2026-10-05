@@ -474,6 +474,14 @@ export function App() {
       );
     }
   }
+  function updateCsvText(value: string) {
+    setCsvText(value);
+    if (profile) {
+      setProfile(null);
+      setError(null);
+      setStatus("CSV changed; inspect again before confirming");
+    }
+  }
   async function confirmCsv() {
     if (!project) return;
     try {
@@ -817,12 +825,13 @@ export function App() {
           </section>}
           <div className="data-layout">
             <div>
+              {!dataset && !pendingDatasetFile && <div className="info-message" role="status">This CSV is an editable draft only; inspect it and confirm the dataset contract to save it.</div>}
               <label className="field-label">
                 CSV data
                 <textarea
                   aria-label="CSV data"
                   value={csvText}
-                  onChange={(event) => setCsvText(event.target.value)}
+                  onChange={(event) => updateCsvText(event.target.value)}
                   rows={8}
                 />
               </label>
