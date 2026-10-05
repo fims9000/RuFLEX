@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "product_version": "1.3.0-dev",
+  "product_version": "1.3.0-alpha.0",
   "active_capability": "data_governance_and_runtime_lifecycle",
   "completed_capabilities": [
     "dataset_contracts",
@@ -60,7 +60,7 @@
     "Keep unrelated article and interrupted S03 work out of the committed product baseline."
   ],
   "blockers": [],
-  "next_executable_work": "PRODUCT-06 and PRODUCT-08 browser routes now pass, including close/reopen and exact lineage navigation. A real Lineage loader defect was fixed: comparison-<UUID>.json objects were silently omitted because the generic loader accepted only UUID-only filenames. Continue the active data_governance_and_runtime_lifecycle capability with focused checks of remaining adapter/data/evidence lifecycle acceptance. Preserve unrelated article and interrupted S03 changes.",
+  "next_executable_work": "Close the active data_governance_and_runtime_lifecycle acceptance with a concise state receipt, then begin a bounded Alpha first-run usability slice: assess and implement a safe one-command local Studio launcher that validates prerequisites, does not silently install dependencies, and cleans up its API/Studio child processes. Preserve unrelated article and interrupted S03 changes.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -100,6 +100,7 @@
     "lineage_behavior_revision_comparison_opening": "PASS: PRODUCT-06 creates two distinct frozen BehaviorSpec results, persists their comparison, closes/reopens the project, and opens the exact result/spec/comparison from Lineage. Fixed lineage loading to recognize comparison-<UUID>.json rather than silently dropping it. Focused PRODUCT-06 Playwright route and focused backend lineage regression passed.",
     "lineage_open_exact_explanation_reproducibility": "PASS: API exact-ID load after project close/reopen is covered; PRODUCT-08 Playwright route now also passes the full persisted cross-run prediction/explanation reproducibility flow and Lineage reopen.",
     "verification_bundle_data_governance_relationships": "PASS: bundle validator now resolves DatasetContract, SplitContract, TransformPipelineContract and LeakageAuditReport identities and rejects broken cross-links or cross-dataset/split mismatches. Rechecksummed negative tests cover dangling audit split and transform references; focused evidence-route corruption tests and all split-contract tests passed, with compileall and diff check green.",
-    "assurance_data_governance_provenance": "PASS: transform/leakage Assurance gates verify run-to-transform and audit-to-split/transform bindings; malformed or dangling referenced evidence maps to FAIL rather than an unhandled API error. Parameterized API regression tests cover missing split and transform references, and an additional test proves an existing-but-mismatched audit pair fails Assurance and portable bundle validation. The focused 16-test selection plus mismatch test passed; compileall and diff check passed."
+    "assurance_data_governance_provenance": "PASS: transform/leakage Assurance gates verify run-to-transform and audit-to-split/transform bindings; malformed or dangling referenced evidence maps to FAIL rather than an unhandled API error. Parameterized API regression tests cover missing split and transform references, and an additional test proves an existing-but-mismatched audit pair fails Assurance and portable bundle validation. The focused 16-test selection plus mismatch test passed; compileall and diff check passed.",
+    "alpha_version_surfaces": "PASS: README/status/Changelog identify V1.3 Alpha; Python package metadata is 1.3.0a0; Studio/npm and package lock are 1.3.0-alpha.0; visible Studio badge no longer says V1.2 RC1. Python packaging metadata verified, frontend unit tests (8) and Vite production build passed."
   }
 }

@@ -1,4 +1,4 @@
-# RuFLEX V1.3 development
+# RuFLEX V1.3 Alpha
 
 **RuFLEX is a local-first engineering Studio for building, inspecting and
 auditing fuzzy, neuro-fuzzy and classical ML systems as persistent evidence

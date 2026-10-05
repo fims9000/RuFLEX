@@ -1,4 +1,4 @@
-# Product V1.3 development status
+# RuFLEX Product V1.3 Alpha status
 
 Target branch: `feature/v1.3-data-governance-runtime`.
 
@@ -29,7 +29,8 @@ Target branch: `feature/v1.3-data-governance-runtime`.
 
 ## Boundaries
 
-V1.3 is a product/runtime development baseline, not a new research conclusion.
+V1.3 Alpha is a product/runtime development baseline, not a stable release or
+a new research conclusion.
 The core keeps TEST closed until a pre-existing frozen policy is applied. A
 runtime adapter receives bounded requests; it cannot choose policies, alter
 split roles or own project persistence. The platform makes evidence

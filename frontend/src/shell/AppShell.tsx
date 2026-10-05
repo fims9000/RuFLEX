@@ -57,7 +57,7 @@ export function AppShell({
         <div className="brand">
           <span className="brand-mark">R</span>
           <strong>RuFLEX Studio</strong>
-          <span className="version">V1.2 RC1</span>
+          <span className="version">V1.3 Alpha</span>
         </div>
         <div className="project-identity">
           {projectName ? (

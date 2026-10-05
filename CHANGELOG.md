@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.3.0-alpha.0 — active local development baseline
+
+This is a development checkpoint, not a stable release. It consolidates
+governed dataset/split/preprocessing evidence, adapter-routed runtime replay,
+job lifecycle provenance, and persisted evidence navigation in Studio.
+Validation and known scientific limitations are recorded in
+`docs/PRODUCT_V1_3_STATUS.md`.
+
 ## 1.2.0-rc1 — local runtime release candidate
 
 ### Added
