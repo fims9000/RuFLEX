@@ -62,6 +62,7 @@ describe("EvaluationWorkspace final-test boundary", () => {
 
   it("keeps final-test and validation-mutating controls disabled in a read-only project", () => {
     renderWorkspace(true);
+    expect(screen.getByRole("status")).toHaveTextContent("saved validation evidence is available to inspect");
     fireEvent.click(screen.getByRole("checkbox", { name: /I confirm this policy was frozen/ }));
     expect(screen.getByRole("button", { name: "Evaluate frozen final test" })).toBeDisabled();
     expect(screen.getByRole("button", { name: /Save evaluation revision/ })).toBeDisabled();

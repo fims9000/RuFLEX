@@ -364,6 +364,7 @@ export function EvaluationWorkspace({
   const displayRows = activeEvaluation?.prediction_preview ?? run.prediction_preview;
 
   return <section className="feature-workspace evaluation-workspace">
+    {project.read_only && <div className="info-message" role="status">Read-only project: saved validation evidence is available to inspect, but new evaluations, policies and final-test access cannot be saved from this session.</div>}
     <div className="feature-toolbar">
       <div>
         <span className="eyebrow">VALIDATION EVIDENCE</span>

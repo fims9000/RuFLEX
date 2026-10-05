@@ -69,16 +69,17 @@
     "alpha_project_first_training_result_discovery",
     "alpha_final_test_policy_boundary_feedback",
     "alpha_dataset_reopen_boundary_evidence",
-    "alpha_alpha_workflow_integration_smoke"
+    "alpha_alpha_workflow_integration_smoke",
+    "alpha_readonly_project_guidance_audit"
   ],
-  "active_capability": "alpha_readonly_project_guidance_audit",
+  "active_capability": "alpha_import_busy_state_feedback",
   "active_acceptance": [
-    "Audit how a user discovers why project Data/Training/Evaluation actions are unavailable in read-only sessions.",
-    "Make a small clarity improvement only if disabled states lack an explanation, preserving read-only enforcement.",
+    "Review asynchronous file inspection/import feedback so Studio clearly distinguishes inspecting, ready-to-confirm, importing, and failure states.",
+    "Prevent duplicate user submissions while a request is in flight without adding product dependencies or changing persistence semantics.",
     "Keep unrelated article and interrupted S03 work out of the committed product baseline."
   ],
   "blockers": [],
-  "next_executable_work": "Inspect AppShell/read-only session UI and its E2E coverage; ensure disabled controls explain the access mode rather than appearing broken.",
+  "next_executable_work": "Inspect DATA workspace import request state; add narrowly scoped disabled/loading labels for duplicate inspect/import requests and a focused browser regression.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -137,6 +138,7 @@
     "alpha_project_first_training_result_discovery": "PASS: After multi-seed completion, Studio restores the StudyJob linked to the reopened TrainingStudy and exposes its terminal status and per-seed states; active jobs remain resumable. Real PRODUCT-03 create/close/reopen E2E passed 1/1.",
     "alpha_final_test_policy_boundary_feedback": "PASS: EvaluationWorkspace now distinguishes no test access, current-run FinalTestEvaluation, and an already-opened dataset boundary from another run. It displays the boundary timestamp and blocks creation of new calibration/threshold/selective policies for that dataset without changing eligibility or evaluation semantics. Component unit tests 9 passed, TypeScript/Vite build passed, and git diff --check passed.",
     "alpha_dataset_reopen_boundary_evidence": "PASS: Component regressions prove an already-opened boundary from another run is shown for the same DatasetContract fingerprint, while a historical final-test record from a different dataset revision does not lock current policies. Frontend unit suite 10 passed.",
-    "alpha_alpha_workflow_integration_smoke": "PASS: Sequential Studio browser smoke across XLSX import/contract reopen, stale CSV inspection rejection, and three-seed Study close/reopen passed 3/3. Focused dataset API suite passed 12/12; diff check and task-state JSON validation passed."
+    "alpha_alpha_workflow_integration_smoke": "PASS: Sequential Studio browser smoke across XLSX import/contract reopen, stale CSV inspection rejection, and three-seed Study close/reopen passed 3/3. Focused dataset API suite passed 12/12; diff check and task-state JSON validation passed.",
+    "alpha_readonly_project_guidance_audit": "PASS: Read-only Data now states which dataset mutations are disabled and how to reopen writable; Evaluation explains saved evidence remains viewable while new evidence/policies/final-test access cannot be saved. Existing enforcement unchanged. Read-only project lifecycle E2E 1/1, frontend component unit 10/10 and Vite/TypeScript build passed."
   }
 }

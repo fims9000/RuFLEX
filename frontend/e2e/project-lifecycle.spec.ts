@@ -48,6 +48,8 @@ test("E2E-03 read-only opening disables mutating Studio controls", async ({ page
   await page.getByLabel("Project path").fill(path);
   await page.getByLabel("Read-only").check();
   await page.getByRole("button", { name: "Open project", exact: true }).click();
+  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await expect(page.getByText(/saved data and evidence can be inspected, but dataset imports and contract changes are disabled/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Save", exact: true })).toBeDisabled();
   await expect(page.getByRole("button", { name: "Update description", exact: true })).toBeDisabled();
 });

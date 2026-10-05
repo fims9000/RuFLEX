@@ -809,6 +809,7 @@ export function App() {
         </section>
       ) : active === "DATA" ? (
         <section className="feature-workspace data-workspace">
+          {project.read_only && <div className="info-message" role="status">Read-only project: saved data and evidence can be inspected, but dataset imports and contract changes are disabled. Close and reopen the project writable to make changes.</div>}
           {dataGovernanceObject && <section className="data-governance-inspector" aria-label="Selected data provenance object">
             <div className="evidence-check-header"><div><span className="eyebrow">OPENED FROM PROJECT LINEAGE</span><h3>{dataGovernanceObject.kind === "split_contract" ? "Frozen split membership" : dataGovernanceObject.kind === "transform_pipeline" ? "Train-only transform pipeline" : "Data leakage audit"}</h3></div>
               {dataGovernanceObject.kind === "leakage_audit" && <StatusBadge tone={dataGovernanceObject.value.status === "FAIL" ? "danger" : dataGovernanceObject.value.status === "WARN" ? "warning" : "success"}>{dataGovernanceObject.value.status}</StatusBadge>}
