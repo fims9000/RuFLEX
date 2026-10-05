@@ -88,4 +88,22 @@ describe("EvaluationWorkspace final-test boundary", () => {
     expect(screen.getByRole("button", { name: "Reselect threshold" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Save ACCEPT / REVIEW policy" })).toBeDisabled();
   });
+
+  it("does not apply an older dataset revision's final-test boundary to the active dataset", () => {
+    renderWorkspace(false, {
+      dataset: {
+        contract: { dataset_fingerprint: "new-dataset-revision", feature_columns: ["feature"] },
+        profile: { columns: [{ name: "feature" }] },
+      },
+      finalTestEvaluation: {
+        run_id: "old-run",
+        dataset_fingerprint: "old-dataset-revision",
+        dataset_test_unlock_at: "2026-10-06T10:00:00Z",
+      },
+    });
+
+    expect(screen.getByRole("heading", { name: "Final test remains closed" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Reselect threshold" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Save ACCEPT / REVIEW policy" })).toBeEnabled();
+  });
 });
