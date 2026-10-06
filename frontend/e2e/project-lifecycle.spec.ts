@@ -90,6 +90,30 @@ test("E2E-02c pauses training while saved split provenance is unavailable and re
   expect(splitReads).toBe(2);
 });
 
+test("E2E-02d does not show an empty-project quick start when saved model context is unavailable", async ({ page }) => {
+  let fisReads = 0;
+  let trainingReads = 0;
+  await page.route("**/api/projects/*/fis/active", async (route) => {
+    fisReads += 1;
+    if (fisReads === 1) return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "active FIS lookup unavailable" }) });
+    return route.continue();
+  });
+  await page.route("**/api/projects/*/training/latest", async (route) => {
+    trainingReads += 1;
+    if (trainingReads === 1) return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "latest run lookup unavailable" }) });
+    return route.continue();
+  });
+  await createProject(page, projectPath("overview-context-retry"), "Overview context recovery");
+  const error = page.getByRole("alert");
+  await expect(error).toContainText("Could not verify saved model or training context");
+  await expect(error).toContainText(/active FIS lookup unavailable|latest run lookup unavailable/);
+  await expect(page.getByRole("region", { name: "Optional quick start" })).toHaveCount(0);
+  await error.getByRole("button", { name: "Retry project context check", exact: true }).click();
+  await expect(page.getByRole("region", { name: "Optional quick start" })).toBeVisible();
+  expect(fisReads).toBe(2);
+  expect(trainingReads).toBe(2);
+});
+
 test("E2E-03 read-only opening disables mutating Studio controls", async ({ page }) => {
   const path = projectPath("readonly");
   await createProject(page, path, "Read only");

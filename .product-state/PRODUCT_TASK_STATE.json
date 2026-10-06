@@ -89,15 +89,16 @@
     "alpha_split_provenance_hydration_retry",
     "alpha_run_data_governance_evidence_retry",
     "alpha_run_capability_hydration_truthfulness",
-    "alpha_tree_path_evidence_hydration_retry"
+    "alpha_tree_path_evidence_hydration_retry",
+    "alpha_project_overview_context_truthfulness"
   ],
-  "active_capability": "alpha_project_overview_context_truthfulness",
+  "active_capability": "alpha_optional_persisted_evidence_hydration_audit",
   "active_acceptance": [
-    "Project Overview must not infer that a saved FIS or TrainingRun is absent from a failed context read.",
-    "Expose retry and suppress empty-project/quick-start claims until those persisted identities are resolved."
+    "Audit optional project-level saved evidence reads that currently map failures to null.",
+    "Prioritize evidence whose absence changes what the user believes is persisted; expose retry without weakening integrity validation."
   ],
   "blockers": [],
-  "next_executable_work": "Give the Project Overview FIS/latest-run context bundle explicit loading, loaded and failed/retry states; do not show empty-state guidance until successful resolution. Preserve unrelated article changes; no push authorized.",
+  "next_executable_work": "Audit project-level optional saved evidence hydration for false-empty UI states; implement one bounded retryable evidence slice and test through reopen where practical. Preserve unrelated article changes; no push authorized.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -176,6 +177,7 @@
     "alpha_split_provenance_hydration_retry": "PASS: SplitContract inventory is an explicit loading/loaded/error state; training and new split freezing are paused until the read succeeds. Transient failures show retry, and retry restores controls without starting a fit. Experiment/Evaluation component tests 18 passed, focused Studio 503-to-retry E2E passed, TypeScript/Vite build and git diff --check passed. Commit 60d1d8f.",
     "alpha_run_data_governance_evidence_retry": "PASS: Saved run governance evidence distinguishes legacy absence from partial/malformed references; transient Split/Transform/Leakage reads retain an explicit unverified state and offer retry. Recovery reloads the exact run evidence identities. ExperimentWorkspace unit tests 11 passed, PRODUCT-02 real Studio training route with injected 503/retry passed, Vite/TypeScript build and git diff --check passed. Commit a91fd60.",
     "alpha_run_capability_hydration_truthfulness": "PASS: Exact tree-path capability lookup now distinguishes pending, available and failed states; a temporary read failure no longer silently removes a supported action, and retry rechecks the same run ID. ExperimentWorkspace tests passed (11), focused decision-tree Studio 503-to-retry E2E passed, Vite/TypeScript build and git diff --check passed. Commit dd4249a.",
-    "alpha_tree_path_evidence_hydration_retry": "PASS: Latest tree-path evidence now distinguishes pending, confirmed absence, evidence for another run and transient read failure. Error state provides retry and only exact-run evidence is displayed; a fresh Decision Tree browser route verified capability error/retry and evidence 503/retry/404. ExperimentWorkspace tests 12 passed, Vite/TypeScript build and git diff --check passed."
+    "alpha_tree_path_evidence_hydration_retry": "PASS: Latest tree-path evidence now distinguishes pending, confirmed absence, evidence for another run and transient read failure. Error state provides retry and only exact-run evidence is displayed; a fresh Decision Tree browser route verified capability error/retry and evidence 503/retry/404. ExperimentWorkspace tests 12 passed, Vite/TypeScript build and git diff --check passed. Commit 675ed9f.",
+    "alpha_project_overview_context_truthfulness": "PASS: Project Overview now distinguishes loading, resolved absence/presence and FIS/latest-run read failure. Empty-project and next-step quick-start claims are withheld until both reads resolve; retry rechecks context. Focused E2E verified two 503s then successful recovery to the genuine empty-project prompt; Vite/TypeScript build and git diff --check passed."
   }
 }

@@ -92,7 +92,9 @@ export function App() {
   const [datasetStateStatus, setDatasetStateStatus] = useState<"idle" | "loading" | "none" | "available" | "error">("idle");
   const [datasetStateError, setDatasetStateError] = useState<string | null>(null);
   const [datasetStateReload, setDatasetStateReload] = useState(0);
-  const [overviewContextReady, setOverviewContextReady] = useState(false);
+  const [overviewContextStatus, setOverviewContextStatus] = useState<"idle" | "loading" | "loaded" | "error">("idle");
+  const [overviewContextError, setOverviewContextError] = useState<string | null>(null);
+  const [overviewContextReload, setOverviewContextReload] = useState(0);
   const [pendingDatasetFile, setPendingDatasetFile] = useState<File | null>(null);
   const [pendingDatasetProfile, setPendingDatasetProfile] = useState<DatasetProfile | null>(null);
   const [inspectingDatasetFile, setInspectingDatasetFile] = useState(false);
@@ -189,7 +191,8 @@ export function App() {
       setProfile(null);
       setDatasetStateStatus("idle");
       setDatasetStateError(null);
-      setOverviewContextReady(false);
+      setOverviewContextStatus("idle");
+      setOverviewContextError(null);
       setFis(null);
       setFisEvaluation(null);
       setPreviousFisEvaluation(null);
@@ -237,7 +240,8 @@ export function App() {
       setSelectedExpertCorrectionId(null);
       return;
     }
-    setOverviewContextReady(false);
+    setOverviewContextStatus("loading");
+    setOverviewContextError(null);
     setDatasetState(null);
     setDataset(null);
     setProfile(null);
@@ -260,14 +264,27 @@ export function App() {
     setLineage(null);
     setLineageStatus("loading");
     setLineageError(null);
+    const resolveOptional = <T,>(request: Promise<T>) => request.then(
+      (value) => ({ kind: "value" as const, value }),
+      (reason: unknown) => reason instanceof ProductApiError && reason.status === 404
+        ? ({ kind: "none" as const })
+        : ({ kind: "error" as const, reason }),
+    );
     Promise.all([
-      studioApi.getActiveFis(project.session_id).catch(() => null),
-      studioApi.getLatestTraining(project.session_id).catch(() => null),
-    ]).then(([activeFis, latestTraining]) => {
+      resolveOptional(studioApi.getActiveFis(project.session_id)),
+      resolveOptional(studioApi.getLatestTraining(project.session_id)),
+    ]).then(([fisResult, runResult]) => {
       if (!active) return;
-      setFis(activeFis);
-      setTrainingRun((current) => latestTraining ?? current);
-      setOverviewContextReady(true);
+      setFis(fisResult.kind === "value" ? fisResult.value : null);
+      setTrainingRun(runResult.kind === "value" ? runResult.value : null);
+      const failures = [fisResult, runResult].filter((result) => result.kind === "error");
+      if (failures.length) {
+        const first = failures[0];
+        setOverviewContextStatus("error");
+        setOverviewContextError(first.kind === "error" && first.reason instanceof Error ? first.reason.message : "Saved project model/training context could not be verified.");
+      } else {
+        setOverviewContextStatus("loaded");
+      }
     });
     studioApi
       .getLatestFisTrace(project.session_id)
@@ -295,7 +312,7 @@ export function App() {
     studioApi.getActiveGeneralization(project.session_id).then(setGeneralization).catch(() => setGeneralization(null));
     studioApi.getProjectIntegrity(project.session_id).then(setIntegrity).catch(() => setIntegrity(null));
     return () => { active = false; };
-  }, [project?.session_id]);
+  }, [project?.session_id, overviewContextReload]);
   useEffect(() => {
     let active = true;
     if (!project) return () => { active = false; };
@@ -1435,8 +1452,10 @@ export function App() {
               </p>
             </div>
             </div>
+          {overviewContextStatus === "loading" && <div role="status">Checking saved model and training context before showing project next steps…</div>}
+          {overviewContextStatus === "error" && <div className="error" role="alert"><strong>Could not verify saved model or training context.</strong><p>{overviewContextError ?? "The project is not assumed to be empty after a failed read."}</p><Button view="outlined" onClick={() => setOverviewContextReload((current) => current + 1)}>Retry project context check</Button></div>}
           {integrity && <div className="trace-card" data-testid="project-integrity"><div className="evidence-check-header"><strong>Reopen integrity</strong><StatusBadge tone={integrity.status === "PASS" ? "success" : integrity.status === "FAIL" ? "danger" : "warning"}>{integrity.status}</StatusBadge></div><p>{integrity.checked_objects} persisted objects checked. {integrity.scientific_note}</p>{integrity.issues.map((issue) => <p className="property-description" key={`${issue.code}-${issue.path}`}>{issue.code} · {issue.path} · {issue.detail}</p>)}</div>}
-          {overviewContextReady && datasetStateStatus === "none" && !fis && !trainingRun && (
+          {overviewContextStatus === "loaded" && datasetStateStatus === "none" && !fis && !trainingRun && (
             <section className="quick-start-card" aria-label="Optional quick start">
               <div>
                 <span className="eyebrow">OPTIONAL QUICK START</span>
@@ -1446,7 +1465,7 @@ export function App() {
               <Button view="action" onClick={() => setActive("DATA")} data-ruflex-action="project.quickstart.data">Review or import data</Button>
             </section>
           )}
-          {overviewContextReady && datasetStateStatus === "available" && datasetState && !trainingRun && (
+          {overviewContextStatus === "loaded" && datasetStateStatus === "available" && datasetState && !trainingRun && (
             <section className="quick-start-card" aria-label="Optional next step">
               <div>
                 <span className="eyebrow">OPTIONAL NEXT STEP</span>
