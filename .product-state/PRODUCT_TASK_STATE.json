@@ -128,7 +128,8 @@
     "alpha_tree_path_lost_response_recovery",
     "alpha_fis_inference_lost_response_recovery",
     "alpha_split_contract_lost_response_recovery",
-    "alpha_single_run_training_lost_response_recovery"
+    "alpha_single_run_training_lost_response_recovery",
+    "alpha_fis_import_lost_response_idempotence"
   ],
   "active_capability": "alpha_saved_evidence_hydration_audit",
   "active_acceptance": [
@@ -136,7 +137,7 @@
     "Prioritize identity-linked EvidenceWorkspace reads and guard any action that could duplicate persisted work until its inventory resolves."
   ],
   "blockers": [],
-  "next_executable_work": "Review FIS revision/import write recovery and exact persisted identity after uncertain responses; preserve article changes and keep verification resource-light. Do not push.",
+  "next_executable_work": "Audit remaining high-impact Studio writes for uncertain-response duplication, then tighten FIS save revision recovery if exact identity can be verified without introducing semantic ambiguity. Preserve article changes and keep verification resource-light. Do not push.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -254,6 +255,7 @@
     "alpha_tree_path_lost_response_recovery": "PASS: Exact decision-tree traces retain run ID and full numeric input identity on uncertain POST; latest trace recovery accepts only the exact match, and repeat requires explicit action. PRODUCT-02b simulated a lost response after persistence, recovered the trace and verified one POST; the three-test training/evaluation route and TypeScript/Vite production build passed.",
     "alpha_fis_inference_lost_response_recovery": "PASS: Persisted FIS inference now recovers by exact FIS revision semantic hash and complete input mapping. It blocks duplicate inference until lookup resolves; explicit repetition is permitted only for the same still-active revision. PRODUCT-EVIDENCE simulated response loss after persisted trace creation, recovered the trace, and verified exactly one POST. Frontend unit 23/23, TypeScript/Vite build and focused browser route passed.",
     "alpha_split_contract_lost_response_recovery": "PASS: SplitContract creation retains its exact dataset fingerprint/source SHA and split configuration after an uncertain response. Studio recovers only a matching saved contract and pauses both single-run and Study training until resolved; repetition requires explicit action. PRODUCT-02 simulated response loss after persistence, recovered the contract, and verified one POST. Frontend unit 23/23, TypeScript/Vite build and the focused three-test training/evaluation E2E passed.",
-    "alpha_single_run_training_lost_response_recovery": "PASS: Single-run training snapshots the exact submitted config, pauses all new fits after an uncertain response, and recovers only a unique persisted run matching request time, dataset/source identity, target/features, model/runtime adapter, seeds, split, and persisted model parameters. If no run is found, only an explicit user action may start another fit. PRODUCT-02 E2E simulated a lost response after the backend persisted the run and verified exact recovery with one POST."
+    "alpha_single_run_training_lost_response_recovery": "PASS: Single-run training snapshots the exact submitted config, pauses all new fits after an uncertain response, and recovers only a unique persisted run matching request time, dataset/source identity, target/features, model/runtime adapter, seeds, split, and persisted model parameters. If no run is found, only an explicit user action may start another fit. PRODUCT-02 E2E simulated a lost response after the backend persisted the run and verified exact recovery with one POST.",
+    "alpha_fis_import_lost_response_idempotence": "PASS: Re-importing byte-identical MATLAB .fis source resolves to the existing source SHA/import receipt and exact persisted FIS revision rather than creating a new FIS identity or duplicate revision. Studio retains the exact source after an uncertain response and offers an explicit same-source retry while blocking conflicting model/import actions. Backend API regression verifies stable FIS/revision identity and a single import receipt; PRODUCT-12 browser route simulates response loss after persistence and verifies recovery plus one Lineage revision."
   }
 }

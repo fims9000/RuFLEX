@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import hashlib
 import json
 import re
 from dataclasses import dataclass
@@ -8,7 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from ruflex.application.artifacts import ArtifactMetadata, ArtifactStore
-from ruflex.application.fis import FISError, persist_fis, with_semantic_hash
+from ruflex.application.fis import FISError, load_fis, persist_fis, with_semantic_hash
 from ruflex.domain.fis import (
     AntecedentClause,
     FISSpec,
@@ -215,9 +216,27 @@ def _persist_import_receipt(project_root: Path, *, spec: FISSpec, source_artifac
 
 
 def persist_imported_matlab_fis(project_root, source: str) -> FISImportResult:
+    root = Path(project_root)
+    source_sha256 = hashlib.sha256(source.encode("utf-8")).hexdigest()
+    receipts_root = root / "models" / "fis" / "imports"
+    for receipt_path in sorted(receipts_root.glob("*.json")) if receipts_root.is_dir() else ():
+        try:
+            receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as error:
+            raise FISError("Cannot safely retry MATLAB FIS import while an import receipt is unreadable.") from error
+        if receipt.get("source_artifact_sha256") != source_sha256:
+            continue
+        try:
+            spec = load_fis(root, str(receipt["fis_id"]))
+            if spec.semantic_hash != receipt.get("semantic_hash"):
+                raise FISError("Existing MATLAB FIS import receipt does not match its persisted revision.")
+            issues = [CompatibilityIssue(**item) for item in receipt["issues"]]
+        except (KeyError, TypeError, ValueError, OSError) as error:
+            raise FISError("Existing MATLAB FIS import receipt is malformed; refusing to create a duplicate import.") from error
+        return FISImportResult(spec, issues, source_sha256)
+
     result = import_matlab_fis(source)
     if result.spec is not None:
-        root = Path(project_root)
         source_ref = ArtifactStore(root).ingest_bytes(
             source.encode("utf-8"),
             metadata=ArtifactMetadata(

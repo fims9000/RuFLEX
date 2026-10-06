@@ -97,6 +97,15 @@ def test_api_persists_supported_import_and_returns_explicit_report(tmp_path) -> 
     receipt = json.loads((root / "models" / "fis" / "imports" / f"{imported.json()['spec']['fis_id']}.json").read_text())
     assert receipt["source_artifact_sha256"] == source_sha
     assert receipt["semantic_hash"] == imported.json()["spec"]["semantic_hash"]
+    retried = client.post(
+        "/api/projects/fis/import/matlab",
+        json={"session_id": session_id, "source": MAMDANI},
+    )
+    assert retried.status_code == 200, retried.text
+    assert retried.json()["spec"]["fis_id"] == imported.json()["spec"]["fis_id"]
+    assert retried.json()["spec"]["semantic_hash"] == imported.json()["spec"]["semantic_hash"]
+    assert len(list((root / "models" / "fis" / "imports").glob("*.json"))) == 1
+    assert len(list((root / "models" / "fis" / "revisions" / imported.json()["spec"]["fis_id"]).glob("*.json"))) == 1
     from ruflex.application.lineage import build_project_lineage
     graph = build_project_lineage(root)
     source_node = f"imported-artifact:{source_sha}"

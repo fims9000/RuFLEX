@@ -353,6 +353,8 @@ export function BuildWorkspace({
   const [lastOutput, setLastOutput] = useState<FISEvaluation | null>(evaluation);
   const [fisEvaluationRecovery, setFisEvaluationRecovery] = useState<{ fisId: string; semanticHash: string; inputs: Record<string, number>; error: string; notFound: boolean } | null>(null);
   const [recoveringFisEvaluation, setRecoveringFisEvaluation] = useState(false);
+  const [fisImportRecovery, setFisImportRecovery] = useState<{ source: string; error: string } | null>(null);
+  const [retryingFisImport, setRetryingFisImport] = useState(false);
   const [surface, setSurface] = useState<ResponseSurface | null>(null);
   const [surfaceAxes, setSurfaceAxes] = useState<[string, string] | null>(null);
   const [diagnostics, setDiagnostics] = useState<
@@ -504,6 +506,7 @@ export function BuildWorkspace({
     setWorking(next);
   }
   async function createDefault() {
+    if (fisImportRecovery) return;
     setError(null);
     try {
       const created = await studioApi.createDefaultFis(project.session_id);
@@ -519,26 +522,35 @@ export function BuildWorkspace({
   async function importMatlabFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = "";
-    if (!file) return;
+    if (!file || fisImportRecovery) return;
+    await submitMatlabImport(await file.text());
+  }
+  async function submitMatlabImport(source: string) {
     setError(null);
     try {
-      const result = await studioApi.importMatlabFis(
-        project.session_id,
-        await file.text(),
-      );
+      const result = await studioApi.importMatlabFis(project.session_id, source);
       setCompatibilityIssues(result.issues);
       if (!result.spec) {
         setMessage("Import blocked: inspect the compatibility report.");
+        setFisImportRecovery(null);
         return;
       }
       setWorking(result.spec);
       onFisChange(result.spec);
       setMessage(`MATLAB FIS imported as a canonical executable model${result.source_artifact_sha256 ? ` · source artifact ${result.source_artifact_sha256.slice(0, 12)}` : ""}.`);
+      setFisImportRecovery(null);
     } catch (reason) {
+      setFisImportRecovery({ source, error: reason instanceof Error ? reason.message : "Import response was uncertain." });
       setError(
         reason instanceof Error ? reason.message : "MATLAB FIS import failed",
       );
     }
+  }
+  async function retrySameMatlabImport() {
+    if (!fisImportRecovery) return;
+    setRetryingFisImport(true);
+    try { await submitMatlabImport(fisImportRecovery.source); }
+    finally { setRetryingFisImport(false); }
   }
   async function exportMatlabFile() {
     setError(null);
@@ -1021,7 +1033,7 @@ export function BuildWorkspace({
         <div className="form-actions">
           <Button
             view="action"
-            disabled={project.read_only}
+            disabled={project.read_only || !!fisImportRecovery}
             onClick={createDefault}
             data-ruflex-action="fis.create"
           >
@@ -1037,13 +1049,14 @@ export function BuildWorkspace({
           />
           <Button
             view="outlined"
-            disabled={project.read_only}
+            disabled={project.read_only || !!fisImportRecovery}
             onClick={() => importInputRef.current?.click()}
             data-ruflex-action="fis.import"
           >
             Import MATLAB .fis
           </Button>
         </div>
+        {fisImportRecovery && <div className="error" role="alert" data-testid="fis-import-recovery"><strong>MATLAB FIS import response is uncertain.</strong><p>{fisImportRecovery.error} The exact source is retained; retrying it will not create a duplicate imported revision.</p><Button view="outlined" disabled={retryingFisImport} onClick={retrySameMatlabImport}>Retry exact MATLAB FIS import</Button></div>}
         {compatibilityIssues.length > 0 && (
           <section className="compatibility-report">
             <span className="eyebrow">MATLAB FIS COMPATIBILITY</span>
@@ -1118,7 +1131,7 @@ export function BuildWorkspace({
               <option value="sugeno">Type-1 Sugeno</option>
             </select>
           </label>
-          <Button view="outlined" disabled={project.read_only} onClick={save} data-ruflex-action="fis.save_revision">
+          <Button view="outlined" disabled={project.read_only || !!fisImportRecovery} onClick={save} data-ruflex-action="fis.save_revision">
             Save FIS
           </Button>
           <input
@@ -1131,7 +1144,7 @@ export function BuildWorkspace({
           />
           <Button
             view="outlined"
-            disabled={project.read_only}
+            disabled={project.read_only || !!fisImportRecovery}
             onClick={() => importInputRef.current?.click()}
             data-ruflex-action="fis.import"
           >
@@ -1144,6 +1157,7 @@ export function BuildWorkspace({
             Run exact inference
           </Button>
         </div>
+        {fisImportRecovery && <div className="error" role="alert" data-testid="fis-import-recovery"><strong>MATLAB FIS import response is uncertain.</strong><p>{fisImportRecovery.error} The exact source is retained; retrying it will not create a duplicate imported revision.</p><Button view="outlined" disabled={retryingFisImport} onClick={retrySameMatlabImport}>Retry exact MATLAB FIS import</Button></div>}
       </div>
       <div className="designer-grid">
         <aside className="variable-list">
