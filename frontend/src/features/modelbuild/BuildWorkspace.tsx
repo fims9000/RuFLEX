@@ -367,6 +367,8 @@ export function BuildWorkspace({
   const [retryingFisImport, setRetryingFisImport] = useState(false);
   const [fisSaveRecovery, setFisSaveRecovery] = useState<{ spec: FISSpec; error: string; notFound: boolean } | null>(null);
   const [recoveringFisSave, setRecoveringFisSave] = useState(false);
+  const [expertRefitRecovery, setExpertRefitRecovery] = useState<{ fisId: string; sourceHash: string; lockedRuleIds: string[]; sourceExplanationId: string | null; requestedAt: number; error: string; notFound: boolean } | null>(null);
+  const [recoveringExpertRefit, setRecoveringExpertRefit] = useState(false);
   const [surface, setSurface] = useState<ResponseSurface | null>(null);
   const [surfaceAxes, setSurfaceAxes] = useState<[string, string] | null>(null);
   const [diagnostics, setDiagnostics] = useState<
@@ -946,17 +948,28 @@ export function BuildWorkspace({
     setMessage("Restored the exact FIS snapshot from the uncertain save; verify its persisted identity before retrying.");
   }
   async function refitExpertConsequents() {
-    if (!working || working.system_type !== "sugeno") return;
+    if (!working || working.system_type !== "sugeno" || expertRefitRecovery) return;
     setError(null);
     setMessage(null);
+    const source = cloneFis(working);
+    const lockedRuleIds = [...expertLockedRules].sort();
+    const sourceExplanation = linkSourceExplanation ? sourceExplanationId ?? null : null;
+    let saved: FISSpec;
     try {
       // Persist the user's current expert edits first so the correction is fitted
       // from exactly the visible canonical FIS revision.
-      const saved = await studioApi.saveFis(project.session_id, working);
+      saved = await studioApi.saveFis(project.session_id, source);
+    } catch (reason) {
+      setFisSaveRecovery({ spec: source, error: reason instanceof Error ? reason.message : "Source FIS save response was uncertain.", notFound: false });
+      setError(reason instanceof Error ? reason.message : "Source FIS save failed");
+      return;
+    }
+    const requestedAt = Date.now();
+    try {
       const result = await studioApi.refitSugenoConsequents(
         project.session_id,
-        expertLockedRules,
-        linkSourceExplanation ? sourceExplanationId ?? null : null,
+        lockedRuleIds,
+        sourceExplanation,
       );
       setWorking(result.fis);
       setEditorHistory((history) => [...history.slice(0, historyIndex + 1), cloneFis(result.fis)]);
@@ -967,13 +980,60 @@ export function BuildWorkspace({
       onExpertCorrection?.(result.correction);
       setRevisions(await studioApi.getFisRevisions(project.session_id));
       onFisChange(result.fis);
+      setExpertRefitRecovery(null);
       setMessage(
         `TRAIN-only expert correction fitted ${result.correction.fitted_rule_ids.length} rule consequent(s): RMSE ${result.correction.train_rmse_before.toFixed(4)} → ${result.correction.train_rmse_after.toFixed(4)}. Final test stayed locked.`,
       );
-      void saved;
     } catch (reason) {
+      if (saved.semantic_hash) setExpertRefitRecovery({ fisId: saved.fis_id, sourceHash: saved.semantic_hash, lockedRuleIds, sourceExplanationId: sourceExplanation, requestedAt, error: reason instanceof Error ? reason.message : "Expert correction response was uncertain.", notFound: false });
       setError(reason instanceof Error ? reason.message : "Expert correction failed");
     }
+  }
+  async function recoverExpertRefit() {
+    const pending = expertRefitRecovery;
+    if (!pending) return;
+    setRecoveringExpertRefit(true);
+    try {
+      const [correction, active] = await Promise.all([studioApi.getLatestExpertCorrection(project.session_id), studioApi.getActiveFis(project.session_id)]);
+      const locked = [...correction.locked_rule_ids].sort();
+      const createdAt = Date.parse(correction.created_at);
+      const exact = correction.fis_id === pending.fisId && correction.source_semantic_hash === pending.sourceHash && correction.source_explanation_id === pending.sourceExplanationId && canonicalJson(locked) === canonicalJson(pending.lockedRuleIds) && Number.isFinite(createdAt) && createdAt >= pending.requestedAt - 10_000 && active.fis_id === pending.fisId && active.semantic_hash === correction.result_semantic_hash;
+      if (exact) {
+        setWorking(active); setEditorHistory((history) => [...history.slice(0, historyIndex + 1), cloneFis(active)]); setHistoryIndex((index) => index + 1);
+        setExpertCorrection(correction); setExpertCorrectionLoadStatus("available"); setExpertCorrectionLoadError(null); onExpertCorrection?.(correction);
+        setRevisions(await studioApi.getFisRevisions(project.session_id)); onFisChange(active); setMessage("Recovered the exact TRAIN-only expert correction after the response was lost."); setExpertRefitRecovery(null);
+      } else {
+        const safeToRetry = active.fis_id === pending.fisId && active.semantic_hash === pending.sourceHash;
+        setExpertRefitRecovery({ ...pending, notFound: safeToRetry, error: safeToRetry ? "No matching correction is persisted and the original FIS is still active; an explicit exact retry is safe." : "Persisted FIS state changed, but no matching correction receipt was found. Refusing to fit again." });
+      }
+    } catch (reason) {
+      const noPriorCorrection = reason instanceof ProductApiError && reason.status === 404;
+      try {
+        const active = await studioApi.getActiveFis(project.session_id);
+        const safeToRetry = noPriorCorrection && active.fis_id === pending.fisId && active.semantic_hash === pending.sourceHash;
+        setExpertRefitRecovery({ ...pending, notFound: safeToRetry, error: safeToRetry ? "No correction receipt exists and the original FIS is still active; an explicit exact retry is safe." : reason instanceof Error ? reason.message : "Could not verify the persisted expert correction." });
+      } catch (activeError) {
+        setExpertRefitRecovery({ ...pending, notFound: false, error: activeError instanceof Error ? activeError.message : "Could not verify the active FIS after the uncertain correction." });
+      }
+    } finally { setRecoveringExpertRefit(false); }
+  }
+  async function retryExpertRefit() {
+    const pending = expertRefitRecovery;
+    if (!pending?.notFound || project.read_only) return;
+    setRecoveringExpertRefit(true);
+    try {
+      const active = await studioApi.getActiveFis(project.session_id);
+      if (active.fis_id !== pending.fisId || active.semantic_hash !== pending.sourceHash) {
+        setExpertRefitRecovery({ ...pending, notFound: false, error: "The original source FIS is no longer active; refusing to run the correction against a different revision." });
+        return;
+      }
+      const result = await studioApi.refitSugenoConsequents(project.session_id, pending.lockedRuleIds, pending.sourceExplanationId);
+      setWorking(result.fis); setEditorHistory((history) => [...history.slice(0, historyIndex + 1), cloneFis(result.fis)]); setHistoryIndex((index) => index + 1);
+      setExpertCorrection(result.correction); setExpertCorrectionLoadStatus("available"); setExpertCorrectionLoadError(null); onExpertCorrection?.(result.correction);
+      setRevisions(await studioApi.getFisRevisions(project.session_id)); onFisChange(result.fis); setMessage("The exact TRAIN-only expert correction retry completed."); setExpertRefitRecovery(null);
+    } catch (reason) {
+      setExpertRefitRecovery({ ...pending, notFound: false, error: reason instanceof Error ? reason.message : "The explicit exact correction retry was uncertain." });
+    } finally { setRecoveringExpertRefit(false); }
   }
 
   async function run() {
@@ -2222,7 +2282,7 @@ export function BuildWorkspace({
             </div>
             <Button
               view="action"
-              disabled={project.read_only || expertLockedRules.length >= working.rules.filter((rule) => rule.enabled).length}
+              disabled={project.read_only || !!expertRefitRecovery || expertLockedRules.length >= working.rules.filter((rule) => rule.enabled).length}
               onClick={refitExpertConsequents}
             >
               Refit unlocked consequents on TRAIN
@@ -2230,6 +2290,7 @@ export function BuildWorkspace({
           </div>
           <div className="expert-correction-summary">
             <span>{expertLockedRules.length} consequent(s) preserved by expert lock.</span>
+            {expertRefitRecovery && <div className="error" role="alert" data-testid="expert-refit-recovery"><strong>Expert correction response is uncertain; no second TRAIN fit was started.</strong><p>{expertRefitRecovery.error}</p><Button view="outlined" disabled={recoveringExpertRefit} onClick={recoverExpertRefit}>Retry exact correction lookup</Button>{expertRefitRecovery.notFound && <Button view="outlined" disabled={recoveringExpertRefit || project.read_only} onClick={retryExpertRefit}>Explicitly retry exact correction on unchanged source FIS</Button>}</div>}
             {expertCorrectionLoadStatus === "loading" && <span role="status">Loading saved expert correction…</span>}
             {expertCorrectionLoadStatus === "none" && <span data-testid="expert-correction-empty">No saved expert correction is available for this FIS revision.</span>}
             {expertCorrectionLoadStatus === "error" && <div className="error" role="alert" data-testid="expert-correction-load-error"><strong>Saved expert correction could not be verified.</strong><p>{expertCorrectionLoadError}</p><Button view="outlined" onClick={() => setExpertCorrectionReload((current) => current + 1)}>Retry expert correction</Button></div>}
