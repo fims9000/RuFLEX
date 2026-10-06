@@ -220,6 +220,7 @@ export function App() {
   const projectSessionRef = useRef<string | null>(null);
   const projectLifecycleRequestRef = useRef(0);
   const csvInspectionRequestRef = useRef(0);
+  const datasetMutationRequestRef = useRef(0);
   const artifactInventoryRequestRef = useRef(0);
   projectSessionRef.current = project?.session_id ?? null;
   const refreshArtifactInventory = useCallback(async (sessionId: string) => {
@@ -1107,6 +1108,7 @@ export function App() {
     const requestId = ++projectLifecycleRequestRef.current;
     datasetFileSelectionId.current += 1;
     csvInspectionRequestRef.current += 1;
+    datasetMutationRequestRef.current += 1;
     if (project) {
       try {
         await studioApi.closeProject(project.session_id);
@@ -1164,26 +1166,32 @@ export function App() {
   }
   async function confirmCsv() {
     if (!project || confirmingCsvDataset || importingDatasetFile || (datasetStateStatus !== "none" && datasetStateStatus !== "available")) return;
+    const requestId = ++datasetMutationRequestRef.current;
+    const sessionId = project.session_id;
+    const isCurrent = () => requestId === datasetMutationRequestRef.current && projectSessionRef.current === sessionId;
     setConfirmingCsvDataset(true);
     setDatasetStateStatus("loading");
     setError(null);
     setStatus("Saving dataset contract");
     try {
       const confirmed = await studioApi.confirmCsv(
-        project.session_id,
+        sessionId,
         csvText,
         target,
         task,
         idColumns.split(",").map((column) => column.trim()).filter(Boolean),
       );
+      if (!isCurrent()) return;
       setDataset(confirmed);
-      const persisted = await studioApi.getDatasetState(project.session_id);
+      const persisted = await studioApi.getDatasetState(sessionId);
+      if (!isCurrent()) return;
       setDatasetState(persisted);
       setProfile(persisted.profile);
       setDatasetStateStatus("available");
-      await refreshArtifactInventory(project.session_id);
+      await refreshArtifactInventory(sessionId);
       setStatus("Dataset bytes, profile, contract and audit saved");
     } catch (reason) {
+      if (!isCurrent()) return;
       setDatasetStateStatus("error");
       setDatasetStateError(reason instanceof Error ? reason.message : "Dataset state could not be confirmed.");
       setError(
@@ -1192,7 +1200,7 @@ export function App() {
           : "Dataset confirmation failed",
       );
     } finally {
-      setConfirmingCsvDataset(false);
+      if (isCurrent()) setConfirmingCsvDataset(false);
     }
   }
   async function selectDatasetFile(event: ChangeEvent<HTMLInputElement>) {
@@ -1232,38 +1240,46 @@ export function App() {
   }
   async function importDatasetFile() {
     if (importingDatasetFile || confirmingCsvDataset || inspectingDatasetFile || !project || !pendingDatasetFile || !pendingDatasetProfile || !target.trim() || (datasetStateStatus !== "none" && datasetStateStatus !== "available")) return;
+    const requestId = ++datasetMutationRequestRef.current;
+    const sessionId = project.session_id;
+    const isCurrent = () => requestId === datasetMutationRequestRef.current && projectSessionRef.current === sessionId;
+    const file = pendingDatasetFile;
     setImportingDatasetFile(true);
     setDatasetStateStatus("loading");
     setError(null);
-    setStatus(`Importing ${pendingDatasetFile.name}`);
+    setStatus(`Importing ${file.name}`);
     try {
-      const bytes = new Uint8Array(await pendingDatasetFile.arrayBuffer());
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      if (!isCurrent()) return;
       let binary = "";
       for (const byte of bytes) binary += String.fromCharCode(byte);
       const confirmed = await studioApi.importDataset(
-        project.session_id,
-        pendingDatasetFile.name,
+        sessionId,
+        file.name,
         btoa(binary),
         target,
         task,
         idColumns.split(",").map((column) => column.trim()).filter(Boolean),
       );
+      if (!isCurrent()) return;
       setDataset(confirmed);
-      const persisted = await studioApi.getDatasetState(project.session_id);
+      const persisted = await studioApi.getDatasetState(sessionId);
+      if (!isCurrent()) return;
       setDatasetState(persisted);
       setDatasetStateStatus("available");
       setProfile(persisted.profile);
-      await refreshArtifactInventory(project.session_id);
-      setStatus(`${pendingDatasetFile.name} saved as a verified dataset artifact`);
+      await refreshArtifactInventory(sessionId);
+      setStatus(`${file.name} saved as a verified dataset artifact`);
       setPendingDatasetFile(null);
       setPendingDatasetProfile(null);
       setError(null);
     } catch (reason) {
+      if (!isCurrent()) return;
       setDatasetStateStatus("error");
       setDatasetStateError(reason instanceof Error ? reason.message : "Imported dataset state could not be restored.");
       setError(reason instanceof Error ? reason.message : "Dataset file import failed");
     } finally {
-      setImportingDatasetFile(false);
+      if (isCurrent()) setImportingDatasetFile(false);
     }
   }
   async function createGeneralization() {
