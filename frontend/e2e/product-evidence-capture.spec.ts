@@ -170,7 +170,19 @@ test("PRODUCT-EVIDENCE captures the frozen V1 Studio route from persisted object
   await expect(page.getByText("REVIEW BELOW 0.80", { exact: false })).toBeVisible();
   await capture(page, screenshots, "12_selective_review_policy.png", page.getByText("REVIEW BELOW 0.80", { exact: false }));
   await page.getByText(/I confirm this policy was frozen before final-test access/).click();
+  let finalTestPostCount = 0;
+  await page.route("**/api/projects/analyses/final-test", async (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    finalTestPostCount += 1;
+    await route.fetch();
+    await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "FinalTestEvaluation response lost after access" }) });
+  });
   await page.getByRole("button", { name: "Evaluate frozen final test", exact: true }).click();
+  await expect(page.getByTestId("final-test-recovery")).toContainText("FinalTestEvaluation response lost after access");
+  await expect(page.getByRole("button", { name: "Evaluate frozen final test", exact: true })).toBeDisabled();
+  await page.getByRole("button", { name: "Retry exact FinalTestEvaluation lookup", exact: true }).click();
+  await expect(page.getByTestId("final-test-recovery")).toHaveCount(0);
+  expect(finalTestPostCount).toBe(1);
   await expect(page.getByRole("heading", { name: "Final-test evidence persisted separately", exact: true })).toBeVisible();
   await page.getByLabel("Slice minimum").fill("10");
   await page.getByLabel("Slice maximum").fill("30");
