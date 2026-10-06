@@ -140,7 +140,8 @@
     "alpha_session_bound_workspace_result_callbacks",
     "alpha_recent_project_reopen",
     "alpha_stale_project_session_cleanup",
-    "alpha_recent_project_missing_path_recovery"
+    "alpha_recent_project_missing_path_recovery",
+    "alpha_backend_startup_recovery"
   ],
   "active_capability": "alpha_recent_project_reopen",
   "active_acceptance": [
@@ -148,7 +149,7 @@
     "Recent names/paths are stored only in this browser, bounded to eight entries, and can be cleared individually or all at once."
   ],
   "blockers": [],
-  "next_executable_work": "Audit project create/open form validation and backend-unavailable recovery for clear, actionable first-run guidance; keep changes small and verify with focused browser tests. Do not push.",
+  "next_executable_work": "Audit project create/open validation for actionable field-level errors and duplicate-path recovery; keep changes small and verify with a focused browser test. Do not push.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -292,6 +293,7 @@
     "alpha_session_bound_workspace_result_callbacks": "PASS: Parent callbacks are bound to projectSessionRef in App.tsx; delayed writes from a closed/switched project are discarded, while responses from the active project remain publishable after a workbench unmount. Four real close/open E2Es passed (TrainingRun, Study, validation Evaluation, AssuranceCase); a real TrainingRun race switched to Project Overview and confirmed the run appeared in the active project's Explorer. Frontend unit 23/23, TypeScript/Vite build, diff check and state JSON validation passed.",
     "alpha_recent_project_reopen": "PASS: RuFLEX keeps up to eight recent local project names/paths in browser storage, exposes direct reopen buttons using the current read-only setting, supports forgetting one path or clearing all history, and discloses local storage. Playwright created two projects, reloaded, removed one record, reopened the other and cleared the list (1/1). Frontend unit 23/23, TypeScript/Vite production build and git diff --check passed.",
     "alpha_stale_project_session_cleanup": "PASS: If a slower project-open response loses to a newer lifecycle request, Studio now closes the stale backend session without deleting the project. Focused Playwright race test confirmed the second project stays active and the stale session is closed; git diff --check passed.",
-    "alpha_recent_project_missing_path_recovery": "PASS: Failed recent-project opens now preserve the API reason next to the saved entry and explain that the user can forget a moved/deleted path or choose it again. Focused Playwright seeded a missing path, verified recovery guidance and forgot the entry; existing recent-project reopen E2E also passed."
+    "alpha_recent_project_missing_path_recovery": "PASS: Failed recent-project opens now preserve the API reason next to the saved entry and explain that the user can forget a moved/deleted path or choose it again. Focused Playwright seeded a missing path, verified recovery guidance and forgot the entry; existing recent-project reopen E2E also passed.",
+    "alpha_backend_startup_recovery": "PASS: Studio represents startup backend failure separately from project errors, disables project create/open while unavailable, and exposes a retry action. Focused Playwright forced health to fail then recover and created a project after retry; TypeScript/Vite production build passed."
   }
 }

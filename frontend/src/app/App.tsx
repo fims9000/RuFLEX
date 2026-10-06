@@ -92,6 +92,8 @@ export function App() {
   const [description, setDescription] = useState("");
   const [readOnly, setReadOnly] = useState(false);
   const [status, setStatus] = useState("Connecting to backend…");
+  const [backendStatus, setBackendStatus] = useState<"checking" | "available" | "unavailable">("checking");
+  const [backendHealthError, setBackendHealthError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [theme, setTheme] = useState<StudioTheme>(initialTheme);
   const [active, setActive] = useState("PROJECT");
@@ -237,6 +239,7 @@ export function App() {
   const datasetFileSelectionId = useRef(0);
   const projectSessionRef = useRef<string | null>(null);
   const projectLifecycleRequestRef = useRef(0);
+  const backendHealthRequestRef = useRef(0);
   const csvInspectionRequestRef = useRef(0);
   const datasetMutationRequestRef = useRef(0);
   const generalizationMutationRequestRef = useRef(0);
@@ -265,6 +268,24 @@ export function App() {
   }
   function closeStaleProjectSession(sessionId: string) {
     void studioApi.closeProject(sessionId).catch(() => undefined);
+  }
+  async function checkBackendHealth() {
+    const requestId = ++backendHealthRequestRef.current;
+    setBackendStatus("checking");
+    setBackendHealthError(null);
+    setStatus("Connecting to backend…");
+    try {
+      await studioApi.health();
+      if (requestId !== backendHealthRequestRef.current) return;
+      setBackendStatus("available");
+      setStatus("Backend connected");
+    } catch (reason) {
+      if (requestId !== backendHealthRequestRef.current) return;
+      const message = reason instanceof Error ? reason.message : "Backend health check failed.";
+      setBackendStatus("unavailable");
+      setBackendHealthError(message);
+      setStatus("Backend unavailable");
+    }
   }
   async function openRecentProject(recent: RecentProject) {
     const requestId = ++projectLifecycleRequestRef.current;
@@ -307,13 +328,7 @@ export function App() {
     }
   }, []);
   useEffect(() => {
-    studioApi
-      .health()
-      .then(() => setStatus("Backend connected"))
-      .catch((reason: Error) => {
-        setError(reason.message);
-        setStatus("Backend unavailable");
-      });
+    void checkBackendHealth();
   }, []);
   useEffect(() => {
     let active = true;
@@ -1600,13 +1615,14 @@ export function App() {
               Open read-only
             </label>
             <div className="form-actions">
-              <Button view="action" type="submit" data-ruflex-action="project.create">
+              <Button view="action" type="submit" data-ruflex-action="project.create" disabled={backendStatus === "unavailable"}>
                 Create project
               </Button>
               <Button
                 view="outlined"
                 type="button"
                 data-ruflex-action="project.open"
+                disabled={backendStatus === "unavailable"}
                 onClick={(event) =>
                   submit(event as unknown as FormEvent, "open")
                 }
@@ -1618,7 +1634,7 @@ export function App() {
           {recentProjects.length > 0 && <section className="recent-projects" aria-label="Recent projects">
             <div className="recent-projects-heading"><strong>Recent projects</strong><Button view="outlined" size="s" type="button" onClick={forgetRecentProjects}>Forget history</Button></div>
             <div className="recent-project-list">{recentProjects.map((recent) => <div key={recent.path} className="recent-project-row">
-              <button type="button" className="recent-project-item" onClick={() => void openRecentProject(recent)}>
+              <button type="button" className="recent-project-item" onClick={() => void openRecentProject(recent)} disabled={backendStatus === "unavailable"}>
                 <span>{recent.name}</span><small>{recent.path}</small>
               </button>
               <Button view="outlined" size="s" type="button" aria-label={`Forget ${recent.name}`} onClick={() => forgetRecentProject(recent.path)}>Forget</Button>
@@ -1626,6 +1642,12 @@ export function App() {
             {recentProjectError && <p className="error" role="alert">{recentProjectError}</p>}
             <p className="property-description">Stored only in this browser on this device. Opening uses the current read-only setting.</p>
           </section>}
+          {backendStatus === "unavailable" && <div className="error" role="alert" data-testid="backend-unavailable">
+            <strong>The RuFLEX backend is unavailable.</strong>
+            <p>{backendHealthError ?? "Projects cannot be opened until the backend responds."}</p>
+            <Button view="outlined" type="button" onClick={() => void checkBackendHealth()}>Retry backend connection</Button>
+          </div>}
+          {backendStatus === "checking" && <p role="status">Checking connection to the RuFLEX backend…</p>}
           {error && (
             <div className="error" role="alert">
               {error}
