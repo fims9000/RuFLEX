@@ -35,6 +35,9 @@ export function ProjectExplorer({
   stabilityAnalysis,
   stabilityGatePolicy,
   evaluation,
+  evaluationStatus = "available",
+  evaluationError = null,
+  onRetryEvaluation = () => undefined,
   analysisEvaluation,
   analysisComparison,
   calibrationTransform,
@@ -62,6 +65,9 @@ export function ProjectExplorer({
   stabilityAnalysis: StudyStabilityAnalysis | null;
   stabilityGatePolicy: StabilityGatePolicy | null;
   evaluation: FISEvaluation | null;
+  evaluationStatus?: "idle" | "loading" | "none" | "available" | "error";
+  evaluationError?: string | null;
+  onRetryEvaluation?: () => void;
   analysisEvaluation: AnalysisEvaluation | null;
   analysisComparison: AnalysisComparison | null;
   calibrationTransform: CalibrationTransform | null;
@@ -197,8 +203,12 @@ export function ProjectExplorer({
         <strong>EVIDENCE</strong>
         {evaluation ? (
           item("EVIDENCE", `Exact trace`, evaluation.evaluation.output_name)
+        ) : evaluationStatus === "loading" || evaluationStatus === "idle" ? (
+          <span className="tree-empty">Checking saved exact traces…</span>
+        ) : evaluationStatus === "error" ? (
+          <div className="tree-empty" role="alert"><span>Saved trace lookup unavailable. {evaluationError}</span><button onClick={onRetryEvaluation}>Retry trace check</button></div>
         ) : (
-          <span className="tree-empty">No evidence yet</span>
+          <span className="tree-empty">No exact trace evidence yet</span>
         )}
         {treeEvidence && item("EVIDENCE", "Exact tree path", `leaf ${treeEvidence.leaf_id}`)}
         {explanation && item("EVIDENCE", `Post-hoc ${explanation.family.replaceAll("_", " ")}`, explanation.epistemic_category)}

@@ -117,6 +117,9 @@ export function App() {
   const [fisEvaluation, setFisEvaluation] = useState<FISEvaluation | null>(
     null,
   );
+  const [fisEvaluationStatus, setFisEvaluationStatus] = useState<"idle" | "loading" | "none" | "available" | "error">("idle");
+  const [fisEvaluationError, setFisEvaluationError] = useState<string | null>(null);
+  const [fisEvaluationReload, setFisEvaluationReload] = useState(0);
   const [previousFisEvaluation, setPreviousFisEvaluation] =
     useState<FISEvaluation | null>(null);
   const [trainingRun, setTrainingRun] = useState<TrainingRun | null>(null);
@@ -198,6 +201,8 @@ export function App() {
       setOverviewContextError(null);
       setFis(null);
       setFisEvaluation(null);
+      setFisEvaluationStatus("idle");
+      setFisEvaluationError(null);
       setPreviousFisEvaluation(null);
       setTrainingRun(null);
       setTrainingRuns([]);
@@ -272,6 +277,9 @@ export function App() {
     setIntegrity(null);
     setIntegrityStatus("loading");
     setIntegrityError(null);
+    setFisEvaluation(null);
+    setFisEvaluationStatus("loading");
+    setFisEvaluationError(null);
     const resolveOptional = <T,>(request: Promise<T>) => request.then(
       (value) => ({ kind: "value" as const, value }),
       (reason: unknown) => reason instanceof ProductApiError && reason.status === 404
@@ -294,10 +302,6 @@ export function App() {
         setOverviewContextStatus("loaded");
       }
     });
-    studioApi
-      .getLatestFisTrace(project.session_id)
-      .then(setFisEvaluation)
-      .catch(() => setFisEvaluation(null));
     studioApi.getLatestBehaviorSpecResult(project.session_id).then(async (result) => {
       setBehaviorResult(result);
       const specs = await studioApi.listBehaviorSpecs(project.session_id);
@@ -320,6 +324,28 @@ export function App() {
     studioApi.getActiveGeneralization(project.session_id).then(setGeneralization).catch(() => setGeneralization(null));
     return () => { active = false; };
   }, [project?.session_id, overviewContextReload]);
+  useEffect(() => {
+    let active = true;
+    if (!project) return () => { active = false; };
+    setFisEvaluation(null);
+    setFisEvaluationStatus("loading");
+    setFisEvaluationError(null);
+    studioApi.getLatestFisTrace(project.session_id).then((evaluation) => {
+      if (!active) return;
+      setFisEvaluation(evaluation);
+      setFisEvaluationStatus("available");
+    }).catch((reason: unknown) => {
+      if (!active) return;
+      if (reason instanceof ProductApiError && reason.status === 404) {
+        setFisEvaluation(null);
+        setFisEvaluationStatus("none");
+        return;
+      }
+      setFisEvaluationStatus("error");
+      setFisEvaluationError(reason instanceof Error ? reason.message : "Saved FIS evaluation evidence could not be loaded.");
+    });
+    return () => { active = false; };
+  }, [project?.session_id, fisEvaluationReload]);
   useEffect(() => {
     let active = true;
     if (!project) return () => { active = false; };
@@ -950,6 +976,9 @@ export function App() {
       stabilityAnalysis={stabilityAnalysis}
       stabilityGatePolicy={stabilityGatePolicy}
       evaluation={fisEvaluation}
+      evaluationStatus={fisEvaluationStatus}
+      evaluationError={fisEvaluationError}
+      onRetryEvaluation={() => setFisEvaluationReload((current) => current + 1)}
       analysisEvaluation={analysisEvaluation}
       analysisComparison={analysisComparison}
       calibrationTransform={calibrationTransform}
@@ -1394,6 +1423,10 @@ export function App() {
         <BuildWorkspace
           project={project}
           dataset={datasetState}
+          evaluation={fisEvaluation}
+          evaluationStatus={fisEvaluationStatus}
+          evaluationError={fisEvaluationError}
+          onRetryEvaluation={() => setFisEvaluationReload((current) => current + 1)}
           theme={theme}
           fis={fis}
           sourceExplanationId={explanation?.explanation_id ?? null}
@@ -1403,6 +1436,8 @@ export function App() {
           onEvaluation={(evaluation) => {
             setPreviousFisEvaluation(fisEvaluation);
             setFisEvaluation(evaluation);
+            setFisEvaluationStatus("available");
+            setFisEvaluationError(null);
             studioApi
               .listArtifacts(project.session_id)
               .then(setArtifacts)

@@ -307,6 +307,10 @@ function rescaleTerm(
 export function BuildWorkspace({
   project,
   dataset,
+  evaluation,
+  evaluationStatus = "available",
+  evaluationError = null,
+  onRetryEvaluation = () => undefined,
   theme,
   fis,
   sourceExplanationId,
@@ -318,6 +322,10 @@ export function BuildWorkspace({
 }: {
   project: ProjectSummary;
   dataset: DatasetState | null;
+  evaluation: FISEvaluation | null;
+  evaluationStatus?: "idle" | "loading" | "none" | "available" | "error";
+  evaluationError?: string | null;
+  onRetryEvaluation?: () => void;
   theme: StudioTheme;
   fis: FISSpec | null;
   sourceExplanationId?: string | null;
@@ -335,7 +343,7 @@ export function BuildWorkspace({
   const [revisions, setRevisions] = useState<FISSpec[]>([]);
   const [selected, setSelected] = useState(0);
   const [runInputs, setRunInputs] = useState<Record<string, string>>({});
-  const [lastOutput, setLastOutput] = useState<FISEvaluation | null>(null);
+  const [lastOutput, setLastOutput] = useState<FISEvaluation | null>(evaluation);
   const [surface, setSurface] = useState<ResponseSurface | null>(null);
   const [surfaceAxes, setSurfaceAxes] = useState<[string, string] | null>(null);
   const [diagnostics, setDiagnostics] = useState<
@@ -343,6 +351,7 @@ export function BuildWorkspace({
   >([]);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  useEffect(() => { setLastOutput(evaluation); }, [evaluation]);
   const [textRule, setTextRule] = useState("");
   const [ruleFilter, setRuleFilter] = useState("");
   const [compatibilityIssues, setCompatibilityIssues] = useState<
@@ -1727,6 +1736,9 @@ export function BuildWorkspace({
           <Button view="action" onClick={run}>
             Evaluate
           </Button>
+          {evaluationStatus === "loading" && <p role="status">Checking the saved exact FIS trace…</p>}
+          {evaluationStatus === "none" && !lastOutput && <p>No saved exact FIS trace is available yet.</p>}
+          {evaluationStatus === "error" && <div className="error" role="alert"><strong>Could not load saved FIS evaluation evidence.</strong> {evaluationError} <Button view="outlined" size="s" onClick={onRetryEvaluation}>Retry FIS trace check</Button></div>}
           {lastOutput && (
             <div className="result-card">
               <span className="eyebrow">OUTPUT</span>
