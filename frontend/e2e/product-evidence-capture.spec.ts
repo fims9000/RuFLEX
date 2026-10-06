@@ -100,7 +100,18 @@ test("PRODUCT-EVIDENCE captures the frozen V1 Studio route from persisted object
   await page.getByRole("button", { name: "Run real training", exact: true }).click();
   await expect(page.locator(".run-provenance")).toContainText("model artifact persisted", { timeout: 30_000 });
   await page.getByRole("button", { name: "A", exact: true }).click();
+  let evaluationPostCount = 0;
+  await page.route("**/api/projects/analyses/evaluations", async (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    evaluationPostCount += 1;
+    await route.fetch();
+    await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Validation Evaluation response lost after persistence" }) });
+  });
   await page.getByRole("button", { name: "Save validation evidence", exact: true }).click();
+  await expect(page.getByTestId("evaluation-recovery")).toContainText("Validation Evaluation response lost after persistence");
+  await page.getByRole("button", { name: "Retry saved Evaluation lookup", exact: true }).click();
+  await expect(page.getByTestId("evaluation-recovery")).toHaveCount(0);
+  expect(evaluationPostCount).toBe(1);
   const calibrationButton = page.getByRole("button", { name: "Fit validation calibration", exact: true });
   await calibrationButton.click();
   await expect(page.getByRole("button", { name: "Refit calibration", exact: true })).toBeVisible({ timeout: 30_000 });

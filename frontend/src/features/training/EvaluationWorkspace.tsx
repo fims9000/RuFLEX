@@ -9,6 +9,7 @@ import {
   DatasetState,
   FISSpec,
   ProjectSummary,
+  ProductApiError,
   SliceAnalysis,
   SelectivePredictionPolicy,
   StabilityGatePolicy,
@@ -181,6 +182,9 @@ export function EvaluationWorkspace({
   onSelectivePolicy,
 }: Props) {
   const [saving, setSaving] = useState(false);
+  const [evaluationRecoveryRunId, setEvaluationRecoveryRunId] = useState<string | null>(null);
+  const [evaluationRecoveryError, setEvaluationRecoveryError] = useState<string | null>(null);
+  const [evaluationRecoveryNotFound, setEvaluationRecoveryNotFound] = useState(false);
   const [calibrating, setCalibrating] = useState(false);
   const [thresholding, setThresholding] = useState(false);
   const [selectiveCutoff, setSelectiveCutoff] = useState("0.80");
@@ -242,28 +246,72 @@ export function EvaluationWorkspace({
     </section>;
   }
 
+  async function createEvaluationForRun(targetRunId: string): Promise<AnalysisEvaluation> {
+    try {
+      const created = await studioApi.createAnalysisEvaluation(project.session_id, targetRunId);
+      onEvaluation(created); onCalibration(null); onThreshold(null);
+      setEvaluationRecoveryRunId(null); setEvaluationRecoveryError(null); setEvaluationRecoveryNotFound(false);
+      return created;
+    } catch (reason) {
+      setEvaluationRecoveryRunId(targetRunId);
+      setEvaluationRecoveryError(reason instanceof Error ? reason.message : "The persisted validation evaluation could not be confirmed.");
+      setEvaluationRecoveryNotFound(false);
+      throw reason;
+    }
+  }
+
   async function ensureEvaluation(): Promise<AnalysisEvaluation> {
     if (activeEvaluation) return activeEvaluation;
-    const created = await studioApi.createAnalysisEvaluation(project.session_id, runId!);
-    onEvaluation(created);
-    onCalibration(null);
-    onThreshold(null);
-    return created;
+    return createEvaluationForRun(runId!);
   }
 
   async function saveEvaluation() {
     setSaving(true);
     setError(null);
     try {
-      const created = await studioApi.createAnalysisEvaluation(project.session_id, runId!);
-      onEvaluation(created);
-      onCalibration(null);
-      onThreshold(null);
+      await createEvaluationForRun(runId!);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Could not save validation evaluation");
     } finally {
       setSaving(false);
     }
+  }
+
+  async function recoverEvaluation() {
+    const targetRunId = evaluationRecoveryRunId;
+    if (!targetRunId) return;
+    setSaving(true); setError(null);
+    try {
+      let latest: AnalysisEvaluation;
+      try { latest = await studioApi.getLatestAnalysisEvaluation(project.session_id); }
+      catch (reason) {
+        if (reason instanceof ProductApiError && reason.status === 404) {
+          setEvaluationRecoveryNotFound(true);
+          setEvaluationRecoveryError("No saved Evaluation is visible yet. Retry lookup later, or explicitly create one for this same run if the original request did not finish.");
+          return;
+        }
+        throw reason;
+      }
+      if (latest.run_id !== targetRunId) {
+        setEvaluationRecoveryNotFound(true);
+        setEvaluationRecoveryError("The latest Evaluation belongs to another run; no replacement was created.");
+        return;
+      }
+      onEvaluation(latest); onCalibration(null); onThreshold(null);
+      setEvaluationRecoveryRunId(null); setEvaluationRecoveryError(null); setEvaluationRecoveryNotFound(false);
+    } catch (reason) {
+      setEvaluationRecoveryError(reason instanceof Error ? reason.message : "Could not recover the saved validation Evaluation.");
+      setEvaluationRecoveryNotFound(false);
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally { setSaving(false); }
+  }
+
+  async function explicitlyCreateEvaluation() {
+    if (!evaluationRecoveryRunId || !evaluationRecoveryNotFound) return;
+    setSaving(true); setError(null);
+    try { await createEvaluationForRun(evaluationRecoveryRunId); }
+    catch (reason) { setError(reason instanceof Error ? reason.message : "Could not create the explicitly requested validation Evaluation."); }
+    finally { setSaving(false); }
   }
 
   async function fitCalibration() {
@@ -431,14 +479,15 @@ export function EvaluationWorkspace({
       <div className="toolbar-actions">
         <StatusBadge tone={activeFinalTest || datasetTestBoundaryOpened ? "danger" : "warning"}>{activeFinalTest ? "final test evaluated" : datasetTestBoundaryOpened ? "dataset final-test boundary opened" : finalTestBoundaryKnown ? "final test locked" : "final-test status unverified"}</StatusBadge>
         {study && <Button view="outlined" disabled={comparing || project.read_only || !["none", "available"].includes(comparisonHydrationStatus)} onClick={saveStudyComparison} data-ruflex-action="comparison.study.create">{comparing ? "Comparing…" : "Compare study seeds"}</Button>}
-        <Button view="outlined" disabled={saving || project.read_only || !evaluationStateKnown} onClick={saveEvaluation} data-ruflex-action="evaluation.save">{saving ? "Saving…" : activeEvaluation ? "Save evaluation revision" : "Save validation evidence"}</Button>
-        {run.task === "binary_classification" && <Button view="outlined" disabled={calibrating || project.read_only || datasetTestBoundaryOpened || !datasetIdentityKnown || !finalTestBoundaryKnown || !evaluationStateKnown || !validationPoliciesKnown} onClick={fitCalibration} data-ruflex-action="calibration.fit">{calibrating ? "Fitting…" : activeCalibration ? "Refit calibration" : "Fit validation calibration"}</Button>}
-        {run.task === "binary_classification" && <Button view="action" disabled={thresholding || project.read_only || datasetTestBoundaryOpened || !datasetIdentityKnown || !finalTestBoundaryKnown || !evaluationStateKnown || !validationPoliciesKnown} onClick={selectThreshold} data-ruflex-action="threshold.select">{thresholding ? "Selecting…" : activeThreshold ? "Reselect threshold" : `Select F1 threshold (${activeCalibration ? "calibrated" : "raw"})`}</Button>}
+        <Button view="outlined" disabled={saving || !!evaluationRecoveryRunId || project.read_only || !evaluationStateKnown} onClick={saveEvaluation} data-ruflex-action="evaluation.save">{saving ? "Saving…" : activeEvaluation ? "Save evaluation revision" : "Save validation evidence"}</Button>
+        {run.task === "binary_classification" && <Button view="outlined" disabled={calibrating || !!evaluationRecoveryRunId || project.read_only || datasetTestBoundaryOpened || !datasetIdentityKnown || !finalTestBoundaryKnown || !evaluationStateKnown || !validationPoliciesKnown} onClick={fitCalibration} data-ruflex-action="calibration.fit">{calibrating ? "Fitting…" : activeCalibration ? "Refit calibration" : "Fit validation calibration"}</Button>}
+        {run.task === "binary_classification" && <Button view="action" disabled={thresholding || !!evaluationRecoveryRunId || project.read_only || datasetTestBoundaryOpened || !datasetIdentityKnown || !finalTestBoundaryKnown || !evaluationStateKnown || !validationPoliciesKnown} onClick={selectThreshold} data-ruflex-action="threshold.select">{thresholding ? "Selecting…" : activeThreshold ? "Reselect threshold" : `Select F1 threshold (${activeCalibration ? "calibrated" : "raw"})`}</Button>}
       </div>
     </div>
 
     {evaluationStatus === "loading" && <div role="status">Checking saved validation Evaluation before offering a new save or policy action…</div>}
     {evaluationStatus === "idle" && <div role="status">Saved validation Evaluation status has not been checked; policy actions remain paused.</div>}
+    {evaluationRecoveryRunId && <div className="error" role="alert" data-testid="evaluation-recovery"><strong>Evaluation request outcome is uncertain; resolve the exact run before creating dependent evidence.</strong><p>{evaluationRecoveryError}</p><Button view="outlined" disabled={saving} onClick={recoverEvaluation}>Retry saved Evaluation lookup</Button>{evaluationRecoveryNotFound && <Button view="outlined" disabled={saving} onClick={explicitlyCreateEvaluation}>Create Evaluation for this run explicitly</Button>}</div>}
     {evaluationStatus === "error" && <div className="error" role="alert"><strong>Could not verify saved validation Evaluation</strong><p>{evaluationError ?? "Saved evaluation state is unavailable; no empty state is inferred."}</p><Button view="outlined" onClick={onRetryEvaluation}>Retry validation evidence check</Button></div>}
     {datasetHydrationStatus === "loading" && <div role="status">Verifying the persisted DatasetContract before enabling validation policy changes or final-test access…</div>}
     {datasetHydrationStatus === "idle" && <div role="status">Dataset identity has not been checked; dataset-dependent policy actions remain paused.</div>}
@@ -490,7 +539,7 @@ export function EvaluationWorkspace({
       <span className="eyebrow">SELECTIVE PREDICTION · VALIDATION ONLY</span><h3>Accept confident cases; route the rest to review</h3>
       <p>This confidence cutoff is independent of the class threshold. It tunes ACCEPT / REVIEW coverage on validation evidence and never opens the final test.</p>
       <label className="field-label">Confidence cutoff<input aria-label="Selective confidence cutoff" type="number" min="0.5" max="1" step="0.05" value={selectiveCutoff} onChange={(event) => setSelectiveCutoff(event.target.value)} /></label>
-      <Button view="action" disabled={selectingReview || project.read_only || datasetTestBoundaryOpened || !datasetIdentityKnown || !finalTestBoundaryKnown || !evaluationStateKnown || !validationPoliciesKnown || !activeThreshold} onClick={selectReviewPolicy} data-ruflex-action="selective_policy.create">{selectingReview ? "Selecting…" : "Save ACCEPT / REVIEW policy"}</Button>
+      <Button view="action" disabled={selectingReview || !!evaluationRecoveryRunId || project.read_only || datasetTestBoundaryOpened || !datasetIdentityKnown || !finalTestBoundaryKnown || !evaluationStateKnown || !validationPoliciesKnown || !activeThreshold} onClick={selectReviewPolicy} data-ruflex-action="selective_policy.create">{selectingReview ? "Selecting…" : "Save ACCEPT / REVIEW policy"}</Button>
       {!activeThreshold && <small>Select the validation class threshold first; accepted risk uses that exact threshold, never an implicit 0.50.</small>}
       {selectivePolicy && <><p><StatusBadge tone="warning">REVIEW BELOW {selectivePolicy.confidence_cutoff.toFixed(2)}</StatusBadge> ACCEPT at or above cutoff · class threshold {selectivePolicy.class_threshold.toFixed(2)} · {selectivePolicy.probability_source} probability.</p><small className="mono">threshold {selectivePolicy.class_threshold_id.slice(0, 12)} · validation cases {selectivePolicy.fit_sample_identity.slice(0, 24)}…</small><div className="data-table-wrap"><table className="data-table"><thead><tr><th>confidence</th><th>coverage</th><th>accepted risk</th><th>accepted</th></tr></thead><tbody>{selectivePolicy.risk_coverage.map((point) => <tr key={point.confidence_cutoff}><td>{point.confidence_cutoff.toFixed(2)}</td><td>{(point.coverage * 100).toFixed(1)}%</td><td>{point.accepted_risk === null ? "—" : `${(point.accepted_risk * 100).toFixed(1)}%`}</td><td>{point.accepted_count}</td></tr>)}</tbody></table></div><small>{selectivePolicy.scientific_note}</small></>}
     </section>}
@@ -520,7 +569,7 @@ export function EvaluationWorkspace({
       </> : <>
         {datasetTestBoundaryOpened ? <><p>The first test access for this dataset has already occurred. This run has no persisted FinalTestEvaluation. Only policies frozen before the recorded boundary and reconstructing the same holdout rows remain eligible.</p><small className="mono">Dataset test gate opened {new Date(datasetTestBoundaryAt!).toLocaleString()}</small></> : <p>Validation remains the only evidence used for model selection, probability calibration and threshold selection. The first final-test access freezes the dataset-level eligibility boundary. Additional pre-specified policies may be evaluated only if they were already frozen and reconstruct the same holdout rows.</p>}{stabilityGatePolicy && <small>Stability Gate {stabilityGatePolicy.policy_id.slice(0, 12)} is validation-derived and will be bound to this final-test evidence; it is not fitted on final-test data.</small>}
         <label className="final-test-confirm"><input type="checkbox" checked={finalTestConfirmed} onChange={(event) => setFinalTestConfirmed(event.target.checked)} />{datasetTestBoundaryOpened ? "I confirm this policy was frozen before the recorded dataset-level test boundary; final-test results will not be used for retuning." : "I confirm this policy was frozen before final-test access; final-test results will not be used to retune or create another eligible policy."}</label>
-        <Button view="action" disabled={project.read_only || finalTesting || !datasetIdentityKnown || !finalTestBoundaryKnown || !activeEvaluation || !finalTestConfirmed || !validationPoliciesKnown || (run.task === "binary_classification" && !activeThreshold)} onClick={evaluateFinalTest} data-ruflex-action="final_test.execute">{finalTesting ? "Evaluating final test…" : "Evaluate frozen final test"}</Button>
+        <Button view="action" disabled={project.read_only || finalTesting || !!evaluationRecoveryRunId || !datasetIdentityKnown || !finalTestBoundaryKnown || !activeEvaluation || !finalTestConfirmed || !validationPoliciesKnown || (run.task === "binary_classification" && !activeThreshold)} onClick={evaluateFinalTest} data-ruflex-action="final_test.execute">{finalTesting ? "Evaluating final test…" : "Evaluate frozen final test"}</Button>
         {run.task === "binary_classification" && !activeThreshold && <small>Select a validation-derived decision threshold first. Calibration is optional; a calibrated threshold automatically requires its persisted calibration transform.</small>}
       </>}
     </section>
@@ -548,7 +597,7 @@ export function EvaluationWorkspace({
       {sliceAnalysisHydrationStatus === "loading" && <p role="status" data-testid="slice-hydration-loading">Loading saved slice evidence…</p>}
       {sliceAnalysisHydrationStatus === "none" && <p className="property-description" data-testid="slice-hydration-empty">No saved SliceAnalysis is available for this project.</p>}
       {sliceAnalysisHydrationStatus === "error" && <div className="error" role="alert" data-testid="slice-hydration-error"><strong>Saved SliceAnalysis could not be verified.</strong><p>{sliceAnalysisHydrationError}</p>{onRetrySliceAnalysis && <Button view="outlined" onClick={onRetrySliceAnalysis}>Retry slice evidence</Button>}</div>}
-      <Button view="outlined" disabled={sliceRunning || project.read_only || !dataset || !evaluationStateKnown || !["none", "available"].includes(sliceAnalysisHydrationStatus)} onClick={runSliceAnalysis} data-ruflex-action="slice.create">{sliceRunning ? "Calculating…" : "Run and persist slice"}</Button>
+      <Button view="outlined" disabled={sliceRunning || !!evaluationRecoveryRunId || project.read_only || !dataset || !evaluationStateKnown || !["none", "available"].includes(sliceAnalysisHydrationStatus)} onClick={runSliceAnalysis} data-ruflex-action="slice.create">{sliceRunning ? "Calculating…" : "Run and persist slice"}</Button>
       {sliceAnalysis && <div className="data-table-wrap"><table className="data-table"><thead><tr><th>slice</th><th>kind</th><th>N</th><th>metric</th><th>value</th><th>overall</th><th>delta</th><th>metric status</th><th>declared scope</th></tr></thead><tbody>{sliceAnalysis.results.map((result) => <tr key={`${sliceAnalysis.analysis_id}-${result.name}`}><td>{result.name}</td><td>{result.kind}</td><td>{result.n}</td><td>{result.metric}</td><td>{result.value === null ? "—" : result.value.toFixed(4)}</td><td>{result.overall_value.toFixed(4)}</td><td>{result.delta_vs_overall === null ? "—" : result.delta_vs_overall.toFixed(4)}</td><td>{result.status}{result.warning ? ` · ${result.warning}` : ""}</td><td><StatusBadge tone={result.scope_disposition === "ALLOW" ? "success" : result.scope_disposition === "BLOCK" ? "danger" : "warning"}>{result.scope_disposition}</StatusBadge>{result.scope_reasons.length > 0 && <small className="slice-scope-reason">{result.scope_reasons.join(" ")}</small>}</td></tr>)}</tbody></table><p>{sliceAnalysis.generalization_contract_id ? `Scope classifications use GeneralizationContract ${sliceAnalysis.generalization_contract_id.slice(0, 12)}. ` : "No GeneralizationContract was linked; scope remains undeclared. "}{sliceAnalysis.scientific_note}</p></div>}
     </section>
     {error && <div className="error" role="alert">{error}</div>}
