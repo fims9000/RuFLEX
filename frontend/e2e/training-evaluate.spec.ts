@@ -101,3 +101,38 @@ test("PRODUCT-02 performs real neuro-fuzzy training, validation evaluation and r
   const unopenedFinalTest = await page.request.get(`http://127.0.0.1:8010/api/projects/${reopenedSessionId}/analyses/final-test/latest`);
   expect(unopenedFinalTest.status()).toBe(404);
 });
+
+test("PRODUCT-02 blocks validation policy changes when final-test access status is unavailable", async ({ page }) => {
+  test.setTimeout(45_000);
+  let boundaryRequests = 0;
+  await page.route("**/api/projects/*/analyses/final-test/latest", async (route) => {
+    boundaryRequests += 1;
+    if (boundaryRequests === 1) {
+      return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "final-test boundary store unavailable" }) });
+    }
+    return route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ detail: "No final-test evaluation exists in this project." }) });
+  });
+  const path = projectPath();
+  await page.goto("/");
+  await page.getByLabel("Project path").fill(path);
+  await page.getByLabel("Project name").fill("Final-test boundary recovery");
+  await page.getByRole("button", { name: "Create project", exact: true }).click();
+  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByLabel("CSV data").fill(trainingCsv());
+  await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
+  await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
+  await page.getByRole("button", { name: "S", exact: true }).click();
+  await page.getByRole("button", { name: "Freeze RANDOM SplitContract", exact: true }).click();
+  await page.getByLabel("Training model").selectOption("decision_tree");
+  await page.getByRole("button", { name: "Run real training", exact: true }).click();
+  await expect(page.locator(".run-provenance")).toBeVisible({ timeout: 30_000 });
+  await page.getByRole("button", { name: "A", exact: true }).click();
+
+  await expect(page.getByRole("heading", { name: "Final-test state unavailable" })).toBeVisible();
+  await expect(page.getByRole("alert")).toContainText("final-test boundary store unavailable");
+  await expect(page.getByRole("button", { name: "Select F1 threshold (raw)" })).toBeDisabled();
+  await page.getByRole("button", { name: "Retry final-test status check" }).click();
+  await expect(page.getByRole("heading", { name: "Final test remains closed" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Select F1 threshold (raw)" })).toBeEnabled();
+  expect(boundaryRequests).toBe(2);
+});

@@ -12,6 +12,7 @@ import { FlowGrammar } from "../flow/FlowGrammar";
 import { ProjectLineage } from "../flow/ProjectLineage";
 import {
   ArtifactRecord,
+  ProductApiError,
   AnalysisEvaluation,
   AnalysisComparison,
   CalibrationTransform,
@@ -126,6 +127,9 @@ export function App() {
   const [calibrationTransform, setCalibrationTransform] = useState<CalibrationTransform | null>(null);
   const [decisionThreshold, setDecisionThreshold] = useState<DecisionThresholdPolicy | null>(null);
   const [finalTestEvaluation, setFinalTestEvaluation] = useState<FinalTestEvaluation | null>(null);
+  const [finalTestEvidenceStatus, setFinalTestEvidenceStatus] = useState<"idle" | "loading" | "none" | "available" | "error">("idle");
+  const [finalTestEvidenceError, setFinalTestEvidenceError] = useState<string | null>(null);
+  const [finalTestEvidenceReload, setFinalTestEvidenceReload] = useState(0);
   const [sliceAnalysis, setSliceAnalysis] = useState<SliceAnalysis | null>(null);
   const [treeEvidence, setTreeEvidence] = useState<TreePathEvidence | null>(null);
   const [explanation, setExplanation] = useState<ExplanationContract | null>(null);
@@ -180,6 +184,8 @@ export function App() {
       setCalibrationTransform(null);
       setDecisionThreshold(null);
       setFinalTestEvaluation(null);
+      setFinalTestEvidenceStatus("idle");
+      setFinalTestEvidenceError(null);
       setSliceAnalysis(null);
       setTreeEvidence(null);
       setExplanation(null);
@@ -256,10 +262,6 @@ export function App() {
       .getLatestAnalysisThreshold(project.session_id)
       .then(setDecisionThreshold)
       .catch(() => setDecisionThreshold(null));
-    studioApi
-      .getLatestFinalTestEvaluation(project.session_id)
-      .then(setFinalTestEvaluation)
-      .catch(() => setFinalTestEvaluation(null));
     studioApi.getLatestSliceAnalysis(project.session_id).then(setSliceAnalysis).catch(() => setSliceAnalysis(null));
     studioApi.getLatestTreePath(project.session_id).then(setTreeEvidence).catch(() => setTreeEvidence(null));
     studioApi.getLatestExplanation(project.session_id).then(setExplanation).catch(() => setExplanation(null));
@@ -275,6 +277,27 @@ export function App() {
     studioApi.getProjectIntegrity(project.session_id).then(setIntegrity).catch(() => setIntegrity(null));
     return () => { active = false; };
   }, [project?.session_id]);
+  useEffect(() => {
+    let active = true;
+    if (!project) return () => { active = false; };
+    setFinalTestEvidenceStatus("loading");
+    setFinalTestEvidenceError(null);
+    studioApi.getLatestFinalTestEvaluation(project.session_id).then((evaluation) => {
+      if (!active) return;
+      setFinalTestEvaluation(evaluation);
+      setFinalTestEvidenceStatus("available");
+    }).catch((reason: unknown) => {
+      if (!active) return;
+      if (reason instanceof ProductApiError && reason.status === 404) {
+        setFinalTestEvaluation(null);
+        setFinalTestEvidenceStatus("none");
+        return;
+      }
+      setFinalTestEvidenceStatus("error");
+      setFinalTestEvidenceError(reason instanceof Error ? reason.message : "Could not verify persisted final-test access.");
+    });
+    return () => { active = false; };
+  }, [project?.session_id, finalTestEvidenceReload]);
   useEffect(() => {
     let active = true;
     if (!project) return () => { active = false; };
@@ -353,6 +376,7 @@ export function App() {
         setSelectivePolicy(await studioApi.getSelectivePolicy(project.session_id, objectId));
       } else if (node.kind === "final_test_evaluation" && objectId) {
         setFinalTestEvaluation(await studioApi.getFinalTestEvaluation(project.session_id, objectId));
+        setFinalTestEvidenceStatus("available");
       } else if (node.kind === "comparison" && objectId) {
         setAnalysisComparison(await studioApi.getAnalysisComparison(project.session_id, objectId));
       } else if (node.kind === "slice_analysis" && objectId) {
@@ -1219,7 +1243,7 @@ export function App() {
           onStudy={setTrainingStudy}
         />
       ) : active === "ANALYSES" ? (
-        <EvaluationWorkspace project={project} dataset={datasetState} fis={fis} run={trainingRun} runs={trainingRuns} runListStatus={trainingRunsStatus} runListError={trainingRunsError} onRetryRunList={() => setTrainingRunsReload((current) => current + 1)} study={trainingStudy} evaluation={analysisEvaluation} calibrationTransform={calibrationTransform} decisionThreshold={decisionThreshold} finalTestEvaluation={finalTestEvaluation} comparison={analysisComparison} sliceAnalysis={sliceAnalysis} selectivePolicy={selectivePolicy} stabilityGatePolicy={stabilityGatePolicy} theme={theme} onEvaluation={setAnalysisEvaluation} onCalibration={setCalibrationTransform} onThreshold={setDecisionThreshold} onSelectivePolicy={setSelectivePolicy} onFinalTest={setFinalTestEvaluation} onComparison={setAnalysisComparison} onSliceAnalysis={setSliceAnalysis} />
+        <EvaluationWorkspace project={project} dataset={datasetState} fis={fis} run={trainingRun} runs={trainingRuns} runListStatus={trainingRunsStatus} runListError={trainingRunsError} onRetryRunList={() => setTrainingRunsReload((current) => current + 1)} study={trainingStudy} evaluation={analysisEvaluation} calibrationTransform={calibrationTransform} decisionThreshold={decisionThreshold} finalTestEvaluation={finalTestEvaluation} finalTestEvidenceStatus={finalTestEvidenceStatus} finalTestEvidenceError={finalTestEvidenceError} onRetryFinalTestEvidence={() => setFinalTestEvidenceReload((current) => current + 1)} comparison={analysisComparison} sliceAnalysis={sliceAnalysis} selectivePolicy={selectivePolicy} stabilityGatePolicy={stabilityGatePolicy} theme={theme} onEvaluation={setAnalysisEvaluation} onCalibration={setCalibrationTransform} onThreshold={setDecisionThreshold} onSelectivePolicy={setSelectivePolicy} onFinalTest={(evaluation) => { setFinalTestEvaluation(evaluation); if (evaluation) setFinalTestEvidenceStatus("available"); }} onComparison={setAnalysisComparison} onSliceAnalysis={setSliceAnalysis} />
       ) : active === "EVIDENCE" ? (
         <EvidenceWorkspace
           project={project}

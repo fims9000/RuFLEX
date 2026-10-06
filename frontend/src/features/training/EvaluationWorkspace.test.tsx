@@ -47,16 +47,33 @@ function renderWorkspace(readOnly = false, overrides: {
   runListStatus?: "idle" | "loading" | "loaded" | "error";
   runListError?: string | null;
   onRetryRunList?: () => void;
+  finalTestEvidenceStatus?: "idle" | "loading" | "none" | "available" | "error";
+  finalTestEvidenceError?: string | null;
+  onRetryFinalTestEvidence?: () => void;
 } = {}) {
   return render(<EvaluationWorkspace
     project={{ ...project, read_only: readOnly } as never} dataset={(overrides.dataset ?? null) as never} fis={null} run={(overrides.run === undefined ? run : overrides.run) as never} runs={(overrides.runs ?? [run]) as never} runListStatus={overrides.runListStatus ?? "loaded"} runListError={overrides.runListError ?? null} onRetryRunList={overrides.onRetryRunList ?? vi.fn()} study={null}
     evaluation={evaluation as never} calibrationTransform={null} decisionThreshold={threshold as never} finalTestEvaluation={(overrides.finalTestEvaluation ?? null) as never}
+    finalTestEvidenceStatus={overrides.finalTestEvidenceStatus ?? "none"} finalTestEvidenceError={overrides.finalTestEvidenceError ?? null} onRetryFinalTestEvidence={overrides.onRetryFinalTestEvidence ?? vi.fn()}
     comparison={null} sliceAnalysis={null} selectivePolicy={null} stabilityGatePolicy={null} theme={"light" as never}
     onEvaluation={vi.fn()} onCalibration={vi.fn()} onThreshold={vi.fn()} onFinalTest={vi.fn()} onComparison={vi.fn()} onSliceAnalysis={vi.fn()} onSelectivePolicy={vi.fn()}
   />);
 }
 
 describe("EvaluationWorkspace final-test boundary", () => {
+  it("fails closed when persisted final-test access status cannot be verified", () => {
+    const retry = vi.fn();
+    renderWorkspace(false, { finalTestEvidenceStatus: "error", finalTestEvidenceError: "API unavailable", onRetryFinalTestEvidence: retry });
+    expect(screen.getByRole("heading", { name: "Final-test state unavailable" })).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("Could not verify whether final-test access already occurred");
+    expect(screen.getByRole("button", { name: "Reselect threshold" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Fit validation calibration" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("checkbox", { name: /I confirm this policy was frozen/ }));
+    expect(screen.getByRole("button", { name: "Evaluate frozen final test" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Retry final-test status check" }));
+    expect(retry).toHaveBeenCalledOnce();
+  });
+
   it("does not misreport a run-list request failure as an empty project", () => {
     const retry = vi.fn();
     renderWorkspace(false, { run: null, runs: [], runListStatus: "error", runListError: "API unavailable", onRetryRunList: retry });
