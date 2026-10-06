@@ -208,6 +208,7 @@ export function App() {
   const [lineageObjectError, setLineageObjectError] = useState<string | null>(null);
   const [lineageRetryNode, setLineageRetryNode] = useState<LineageNode | null>(null);
   const [lineageReload, setLineageReload] = useState(0);
+  const lineageOpenRequestRef = useRef(0);
   const [dataGovernanceObject, setDataGovernanceObject] = useState<DataGovernanceObject | null>(null);
   const [integrity, setIntegrity] = useState<ProjectIntegrityReport | null>(null);
   const [integrityStatus, setIntegrityStatus] = useState<"idle" | "loading" | "available" | "error">("idle");
@@ -899,105 +900,144 @@ export function App() {
   ]);
   async function openLineageNode(node: LineageNode) {
     if (!project) return;
+    const requestId = ++lineageOpenRequestRef.current;
+    const sessionId = project.session_id;
+    const isCurrent = () => requestId === lineageOpenRequestRef.current && projectSessionRef.current === sessionId;
+    const commit = <T,>(setter: (value: T) => void, value: T) => {
+      if (!isCurrent()) return false;
+      setter(value);
+      return true;
+    };
     const objectId = node.object_id;
     setError(null);
     setLineageObjectError(null);
     setLineageRetryNode(null);
     try {
       if (node.kind === "training_run" && objectId) {
-        setTrainingRun(await studioApi.getTrainingRun(project.session_id, objectId));
+        const value = await studioApi.getTrainingRun(sessionId, objectId);
+        if (!commit(setTrainingRun, value)) return;
       } else if (node.kind === "fis" && objectId) {
-        const revisions = await studioApi.getFisRevisions(project.session_id);
+        const revisions = await studioApi.getFisRevisions(sessionId);
+        if (!isCurrent()) return;
         const spec = revisions.find((candidate) => candidate.fis_id === objectId);
         if (!spec) throw new Error(`FIS is no longer available: ${objectId}`);
-        setFis(spec);
+        if (!commit(setFis, spec)) return;
       } else if (node.kind === "fis_revision") {
         const semanticHash = node.id.split(":").at(-1);
-        const revisions = await studioApi.getFisRevisions(project.session_id);
+        const revisions = await studioApi.getFisRevisions(sessionId);
+        if (!isCurrent()) return;
         const revision = revisions.find((candidate) => candidate.semantic_hash === semanticHash);
         if (!revision) throw new Error(`FIS revision is no longer available: ${semanticHash ?? node.id}`);
-        setFis(revision);
+        if (!commit(setFis, revision)) return;
       } else if (node.kind === "study" && objectId) {
-        setTrainingStudy(await studioApi.getTrainingStudy(project.session_id, objectId));
+        const value = await studioApi.getTrainingStudy(sessionId, objectId);
+        if (!commit(setTrainingStudy, value)) return;
         setTrainingStudyStatus("available");
       } else if (node.kind === "study_stability" && objectId) {
-        setStabilityAnalysis(await studioApi.getStudyStabilityAnalysis(project.session_id, objectId));
+        const value = await studioApi.getStudyStabilityAnalysis(sessionId, objectId);
+        if (!commit(setStabilityAnalysis, value)) return;
       } else if (node.kind === "evaluation" && objectId) {
-        setAnalysisEvaluation(await studioApi.getAnalysisEvaluation(project.session_id, objectId));
+        const value = await studioApi.getAnalysisEvaluation(sessionId, objectId);
+        if (!commit(setAnalysisEvaluation, value)) return;
         setAnalysisEvaluationStatus("available");
       } else if (node.kind === "calibration" && objectId) {
-        setCalibrationTransform(await studioApi.getAnalysisCalibration(project.session_id, objectId));
+        const value = await studioApi.getAnalysisCalibration(sessionId, objectId);
+        if (!commit(setCalibrationTransform, value)) return;
       } else if (node.kind === "decision_threshold" && objectId) {
-        setDecisionThreshold(await studioApi.getAnalysisThreshold(project.session_id, objectId));
+        const value = await studioApi.getAnalysisThreshold(sessionId, objectId);
+        if (!commit(setDecisionThreshold, value)) return;
       } else if (node.kind === "stability_gate_policy" && objectId) {
-        setStabilityGatePolicy(await studioApi.getStabilityGatePolicy(project.session_id, objectId));
+        const value = await studioApi.getStabilityGatePolicy(sessionId, objectId);
+        if (!commit(setStabilityGatePolicy, value)) return;
       } else if (node.kind === "selective_policy" && objectId) {
-        setSelectivePolicy(await studioApi.getSelectivePolicy(project.session_id, objectId));
+        const value = await studioApi.getSelectivePolicy(sessionId, objectId);
+        if (!commit(setSelectivePolicy, value)) return;
       } else if (node.kind === "final_test_evaluation" && objectId) {
-        setFinalTestEvaluation(await studioApi.getFinalTestEvaluation(project.session_id, objectId));
+        const value = await studioApi.getFinalTestEvaluation(sessionId, objectId);
+        if (!commit(setFinalTestEvaluation, value)) return;
         setFinalTestEvidenceStatus("available");
       } else if (node.kind === "comparison" && objectId) {
-        setAnalysisComparison(await studioApi.getAnalysisComparison(project.session_id, objectId));
+        const value = await studioApi.getAnalysisComparison(sessionId, objectId);
+        if (!commit(setAnalysisComparison, value)) return;
       } else if (node.kind === "slice_analysis" && objectId) {
-        setSliceAnalysis(await studioApi.getSliceAnalysis(project.session_id, objectId));
+        const value = await studioApi.getSliceAnalysis(sessionId, objectId);
+        if (!commit(setSliceAnalysis, value)) return;
       } else if (node.kind === "tree_path" && objectId) {
-        setTreeEvidence(await studioApi.getTreePath(project.session_id, objectId));
+        const value = await studioApi.getTreePath(sessionId, objectId);
+        if (!commit(setTreeEvidence, value)) return;
       } else if (node.kind === "explanation" && objectId) {
-        setExplanation(await studioApi.getExplanation(project.session_id, objectId));
+        const value = await studioApi.getExplanation(sessionId, objectId);
+        if (!commit(setExplanation, value)) return;
       } else if (node.kind === "explanation_check" && objectId) {
-        setExplanationCheck(await studioApi.getExplanationCheck(project.session_id, objectId));
+        const value = await studioApi.getExplanationCheck(sessionId, objectId);
+        if (!commit(setExplanationCheck, value)) return;
       } else if (node.kind === "generalization_contract" && objectId) {
-        setGeneralization(await studioApi.getGeneralization(project.session_id, objectId));
+        const value = await studioApi.getGeneralization(sessionId, objectId);
+        if (!commit(setGeneralization, value)) return;
         setScopeClassification(null);
       } else if (node.kind === "expert_correction" && objectId) {
-        const correction = await studioApi.getExpertCorrection(project.session_id, objectId);
-        const revisions = await studioApi.getFisRevisions(project.session_id);
+        const correction = await studioApi.getExpertCorrection(sessionId, objectId);
+        if (!isCurrent()) return;
+        const revisions = await studioApi.getFisRevisions(sessionId);
+        if (!isCurrent()) return;
         const resultRevision = revisions.find((revision) => revision.semantic_hash === correction.result_semantic_hash);
-        if (resultRevision) setFis(resultRevision);
-        setExpertCorrection(correction);
+        if (resultRevision && !commit(setFis, resultRevision)) return;
+        if (!commit(setExpertCorrection, correction)) return;
         setSelectedExpertCorrectionId(objectId);
       } else if (node.kind === "split_contract" && objectId) {
-        setDataGovernanceObject({ kind: "split_contract", value: await studioApi.getSplitContract(project.session_id, objectId) });
+        const value = await studioApi.getSplitContract(sessionId, objectId);
+        if (!commit(setDataGovernanceObject, { kind: "split_contract", value })) return;
       } else if (node.kind === "transform_pipeline" && objectId) {
-        setDataGovernanceObject({ kind: "transform_pipeline", value: await studioApi.getTransformPipeline(project.session_id, objectId) });
+        const value = await studioApi.getTransformPipeline(sessionId, objectId);
+        if (!commit(setDataGovernanceObject, { kind: "transform_pipeline", value })) return;
       } else if (node.kind === "leakage_audit" && objectId) {
-        setDataGovernanceObject({ kind: "leakage_audit", value: await studioApi.getLeakageAudit(project.session_id, objectId) });
+        const value = await studioApi.getLeakageAudit(sessionId, objectId);
+        if (!commit(setDataGovernanceObject, { kind: "leakage_audit", value })) return;
       } else if (node.kind === "behavior_spec" && objectId) {
-        const specs = await studioApi.listBehaviorSpecs(project.session_id);
+        const specs = await studioApi.listBehaviorSpecs(sessionId);
+        if (!isCurrent()) return;
         const spec = specs.find((candidate) => candidate.spec_id === objectId);
         if (!spec) throw new Error(`BehaviorSpec is no longer available: ${objectId}`);
-        setBehaviorSpec(spec);
+        if (!commit(setBehaviorSpec, spec)) return;
         setBehaviorResult(null);
       } else if (node.kind === "behavior_spec_result" && objectId) {
-        const results = await studioApi.listBehaviorResults(project.session_id);
+        const results = await studioApi.listBehaviorResults(sessionId);
+        if (!isCurrent()) return;
         const result = results.find((candidate) => candidate.result_id === objectId);
         if (!result) throw new Error(`BehaviorSpecResult is no longer available: ${objectId}`);
-        const specs = await studioApi.listBehaviorSpecs(project.session_id);
+        const specs = await studioApi.listBehaviorSpecs(sessionId);
+        if (!isCurrent()) return;
         const spec = specs.find((candidate) => candidate.spec_id === result.spec_id);
         if (!spec) throw new Error(`BehaviorSpec ${result.spec_id} for this result is no longer available`);
-        setBehaviorSpec(spec);
-        setBehaviorResult(result);
+        if (!commit(setBehaviorSpec, spec) || !commit(setBehaviorResult, result)) return;
       } else if (node.kind === "behavior_revision_comparison" && objectId) {
-        const comparisons = await studioApi.listBehaviorRevisionComparisons(project.session_id);
+        const comparisons = await studioApi.listBehaviorRevisionComparisons(sessionId);
+        if (!isCurrent()) return;
         const comparison = comparisons.find((candidate) => candidate.comparison_id === objectId);
         if (!comparison) throw new Error(`Behavior revision comparison is no longer available: ${objectId}`);
-        setLineageBehaviorComparison(comparison);
+        if (!commit(setLineageBehaviorComparison, comparison)) return;
       } else if (node.kind === "assurance_case" && objectId) {
-        setAssurance(await studioApi.getAssuranceCase(project.session_id, objectId));
+        const value = await studioApi.getAssuranceCase(sessionId, objectId);
+        if (!commit(setAssurance, value)) return;
         setAssuranceHydrationStatus("available");
         setAssuranceHydrationError(null);
       } else if (node.kind === "verification_bundle" && objectId) {
-        setVerificationBundleRecord(await studioApi.getVerificationBundle(project.session_id, objectId));
+        const value = await studioApi.getVerificationBundle(sessionId, objectId);
+        if (!commit(setVerificationBundleRecord, value)) return;
       } else if (node.kind === "explanation_reproducibility" && objectId) {
-        setReproducibility(await studioApi.getExplanationReproducibility(project.session_id, objectId));
+        const value = await studioApi.getExplanationReproducibility(sessionId, objectId);
+        if (!commit(setReproducibility, value)) return;
       } else if (node.kind === "exhaustive_lab" && objectId) {
-        setExhaustive(await studioApi.getExhaustiveLabResult(project.session_id, objectId));
+        const value = await studioApi.getExhaustiveLabResult(sessionId, objectId);
+        if (!commit(setExhaustive, value)) return;
       } else if (node.kind === "dataset") {
-        setDataGovernanceObject(null);
+        if (!commit(setDataGovernanceObject, null)) return;
       }
+      if (!isCurrent()) return;
       setActive(node.target);
       setStatus(`Opened lineage object: ${node.label}`);
     } catch (reason) {
+      if (!isCurrent()) return;
       setLineageRetryNode(node);
       setLineageObjectError(reason instanceof Error ? reason.message : "Could not open the selected persisted object.");
       setError(reason instanceof Error ? reason.message : "Could not open lineage object");

@@ -228,6 +228,33 @@ test("PRODUCT-02b retries a persisted decision-tree capability check without cla
   await expect(page.getByTestId("tree-path-recovery")).toHaveCount(0);
   expect(treePathPosts).toBe(1);
   await expect(page.locator(".tree-path-panel .info-message strong")).toContainText("EXACT TREE EXECUTION PATH");
+
+  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await page.getByLabel("Project path").fill(path);
+  await page.getByRole("button", { name: "Open project", exact: true }).click();
+  await page.getByRole("button", { name: "P", exact: true }).click();
+  const treeNode = page.locator(".lineage-node.lineage-tree_path").first();
+  const runNode = page.locator(".lineage-node.lineage-training_run").first();
+  await expect(treeNode).toBeVisible();
+  await expect(runNode).toBeVisible();
+  let releaseTreeRead!: () => void;
+  let markTreeReadStarted!: () => void;
+  const treeReadGate = new Promise<void>((resolve) => { releaseTreeRead = resolve; });
+  const treeReadStarted = new Promise<void>((resolve) => { markTreeReadStarted = resolve; });
+  await page.route("**/api/projects/*/evidence/tree-path/*", async (route) => {
+    markTreeReadStarted();
+    await treeReadGate;
+    await route.continue();
+  });
+  try {
+    await treeNode.click();
+    await treeReadStarted;
+    await runNode.click();
+    await expect(page.locator(".workspace-header .eyebrow")).toHaveText("STUDIES");
+  } finally {
+    releaseTreeRead();
+  }
+  await expect(page.locator(".workspace-header .eyebrow")).toHaveText("STUDIES");
 });
 
 test("PRODUCT-02 blocks validation policy changes when final-test access status is unavailable", async ({ page }) => {
