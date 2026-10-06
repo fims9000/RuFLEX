@@ -138,7 +138,8 @@
     "alpha_evidence_unmounted_callback_isolation",
     "alpha_project_workspace_callback_isolation",
     "alpha_session_bound_workspace_result_callbacks",
-    "alpha_recent_project_reopen"
+    "alpha_recent_project_reopen",
+    "alpha_stale_project_session_cleanup"
   ],
   "active_capability": "alpha_recent_project_reopen",
   "active_acceptance": [
@@ -146,7 +147,7 @@
     "Recent names/paths are stored only in this browser, bounded to eight entries, and can be cleared individually or all at once."
   ],
   "blockers": [],
-  "next_executable_work": "Continue auditing first-run and return-user workflows for avoidable friction or misleading empty states; keep changes small and verify the user path with a focused browser test. Do not push.",
+  "next_executable_work": "Audit project open/close and recent-project recovery states for actionable missing-path feedback; keep changes small and verify with focused browser tests. Do not push.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -288,6 +289,7 @@
     "alpha_evidence_unmounted_callback_isolation": "PASS: Explanation jobs/checks, BehaviorSpec, reproducibility, exhaustive analysis and AssuranceCase callbacks are bound at App level to their originating project session. Real delayed persisted AssuranceCase after close/switch did not hydrate the next project.",
     "alpha_project_workspace_callback_isolation": "PASS: Reviewed project-root hydration hooks in App.tsx for Stability, tree, comparison, slice, generalization, exhaustive, reproducibility, explanation/check, Assurance, BehaviorSpec, FIS, dataset, TrainingStudy, policy, evaluation, final-test, run history and Lineage; these use effect cleanup/session/request identity guards.",
     "alpha_session_bound_workspace_result_callbacks": "PASS: Parent callbacks are bound to projectSessionRef in App.tsx; delayed writes from a closed/switched project are discarded, while responses from the active project remain publishable after a workbench unmount. Four real close/open E2Es passed (TrainingRun, Study, validation Evaluation, AssuranceCase); a real TrainingRun race switched to Project Overview and confirmed the run appeared in the active project's Explorer. Frontend unit 23/23, TypeScript/Vite build, diff check and state JSON validation passed.",
-    "alpha_recent_project_reopen": "PASS: RuFLEX keeps up to eight recent local project names/paths in browser storage, exposes direct reopen buttons using the current read-only setting, supports forgetting one path or clearing all history, and discloses local storage. Playwright created two projects, reloaded, removed one record, reopened the other and cleared the list (1/1). Frontend unit 23/23, TypeScript/Vite production build and git diff --check passed."
+    "alpha_recent_project_reopen": "PASS: RuFLEX keeps up to eight recent local project names/paths in browser storage, exposes direct reopen buttons using the current read-only setting, supports forgetting one path or clearing all history, and discloses local storage. Playwright created two projects, reloaded, removed one record, reopened the other and cleared the list (1/1). Frontend unit 23/23, TypeScript/Vite production build and git diff --check passed.",
+    "alpha_stale_project_session_cleanup": "PASS: If a slower project-open response loses to a newer lifecycle request, Studio now closes the stale backend session without deleting the project. Focused Playwright race test confirmed the second project stays active and the stale session is closed; git diff --check passed."
   }
 }

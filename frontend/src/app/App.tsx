@@ -261,12 +261,18 @@ export function App() {
     setRecentProjects(next);
     try { localStorage.setItem(RECENT_PROJECTS_STORAGE_KEY, JSON.stringify(next)); } catch { /* keep the current session usable */ }
   }
+  function closeStaleProjectSession(sessionId: string) {
+    void studioApi.closeProject(sessionId).catch(() => undefined);
+  }
   async function openRecentProject(recent: RecentProject) {
     const requestId = ++projectLifecycleRequestRef.current;
     setError(null);
     try {
       const result = await studioApi.openProject(recent.path, readOnly);
-      if (requestId !== projectLifecycleRequestRef.current) return;
+      if (requestId !== projectLifecycleRequestRef.current) {
+        closeStaleProjectSession(result.session_id);
+        return;
+      }
       setProject(result);
       setDescription(result.description ?? "");
       rememberRecentProject(result);
@@ -1110,7 +1116,10 @@ export function App() {
         operation === "create"
           ? await studioApi.createProject(path, name)
           : await studioApi.openProject(path, readOnly);
-      if (requestId !== projectLifecycleRequestRef.current) return;
+      if (requestId !== projectLifecycleRequestRef.current) {
+        closeStaleProjectSession(result.session_id);
+        return;
+      }
       setProject(result);
       setDescription(result.description ?? "");
       rememberRecentProject(result);
