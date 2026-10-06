@@ -165,8 +165,10 @@ test("PRODUCT-02b retries a persisted decision-tree capability check without cla
   await page.getByRole("button", { name: "S", exact: true }).click();
   const backendCatalogError = page.getByTestId("execution-backend-catalog-error");
   await expect(backendCatalogError).toContainText("execution backend catalog temporarily unavailable");
+  await expect(page.getByRole("button", { name: "Run multi-seed study", exact: true })).toBeDisabled();
   await backendCatalogError.getByRole("button", { name: "Retry backend check" }).click();
   await expect(backendCatalogError).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Run multi-seed study", exact: true })).toBeEnabled();
   expect(backendCatalogReads).toBe(2);
   await page.getByLabel("Training model").selectOption("decision_tree");
   let capabilityReads = 0;
