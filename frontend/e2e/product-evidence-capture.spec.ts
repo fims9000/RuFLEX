@@ -197,6 +197,15 @@ test("PRODUCT-EVIDENCE captures the frozen V1 Studio route from persisted object
   ids.fis_behavior_spec = "runtime-generated persisted BehaviorSpec";
   ids.fis_behavior_result = "runtime-generated persisted BehaviorSpecResult";
 
+  let latestAssuranceReadFailed = false;
+  await page.route(`**/api/projects/*/evidence/assurance-cases/latest`, async (route) => {
+    if (!latestAssuranceReadFailed) {
+      latestAssuranceReadFailed = true;
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Temporary AssuranceCase read failure" }) });
+      return;
+    }
+    await route.continue();
+  });
   await page.getByRole("button", { name: "Close", exact: true }).click();
   await page.getByLabel("Project path").fill(path);
   await page.getByRole("button", { name: "Open project", exact: true }).click();
@@ -205,6 +214,8 @@ test("PRODUCT-EVIDENCE captures the frozen V1 Studio route from persisted object
   await expect(page.getByText("PROJECT LINEAGE", { exact: true })).toBeVisible();
   await capture(page, screenshots, "15_lineage.png", page.getByText("PROJECT LINEAGE", { exact: true }));
   await page.getByRole("button", { name: "E", exact: true }).click();
+  await expect(page.getByText("Temporary AssuranceCase read failure", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Retry AssuranceCase", exact: true }).click();
   await expect(page.getByTestId("assurance-case")).toBeVisible();
   await capture(page, screenshots, "19_close_reopen_restored.png", page.getByTestId("assurance-case"));
 

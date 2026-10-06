@@ -161,6 +161,9 @@ export function App() {
   const [reproducibility, setReproducibility] = useState<ExplanationReproducibilityAnalysis | null>(null);
   const [exhaustive, setExhaustive] = useState<ExhaustiveLabResult | null>(null);
   const [assurance, setAssurance] = useState<AssuranceCase | null>(null);
+  const [assuranceHydrationStatus, setAssuranceHydrationStatus] = useState<"idle" | "loading" | "none" | "available" | "error">("idle");
+  const [assuranceHydrationError, setAssuranceHydrationError] = useState<string | null>(null);
+  const [assuranceHydrationReload, setAssuranceHydrationReload] = useState(0);
   const [verificationBundleRecord, setVerificationBundleRecord] = useState<VerificationBundle | null>(null);
   const [expertCorrection, setExpertCorrection] = useState<ExpertCorrectionRevision | null>(null);
   const [lineage, setLineage] = useState<LineageGraph | null>(null);
@@ -240,6 +243,8 @@ export function App() {
       setReproducibility(null);
       setExhaustive(null);
       setAssurance(null);
+      setAssuranceHydrationStatus("idle");
+      setAssuranceHydrationError(null);
       setVerificationBundleRecord(null);
       setExpertCorrection(null);
       setGeneralization(null);
@@ -318,11 +323,32 @@ export function App() {
     studioApi.getLatestExplanationCheck(project.session_id).then(setExplanationCheck).catch(() => setExplanationCheck(null));
     studioApi.getLatestExplanationReproducibility(project.session_id).then(setReproducibility).catch(() => setReproducibility(null));
     studioApi.getLatestExhaustiveLab(project.session_id).then(setExhaustive).catch(() => setExhaustive(null));
-    studioApi.getLatestAssuranceCase(project.session_id).then(setAssurance).catch(() => setAssurance(null));
     studioApi.getLatestExpertCorrection(project.session_id).then(setExpertCorrection).catch(() => setExpertCorrection(null));
     studioApi.getActiveGeneralization(project.session_id).then(setGeneralization).catch(() => setGeneralization(null));
     return () => { active = false; };
   }, [project?.session_id, overviewContextReload]);
+  useEffect(() => {
+    let active = true;
+    if (!project) return () => { active = false; };
+    setAssurance(null);
+    setAssuranceHydrationError(null);
+    setAssuranceHydrationStatus("loading");
+    studioApi.getLatestAssuranceCase(project.session_id).then((result) => {
+      if (!active) return;
+      setAssurance(result);
+      setAssuranceHydrationStatus("available");
+    }).catch((reason: unknown) => {
+      if (!active) return;
+      setAssurance(null);
+      if (reason instanceof ProductApiError && reason.status === 404) {
+        setAssuranceHydrationStatus("none");
+        return;
+      }
+      setAssuranceHydrationError(reason instanceof Error ? reason.message : "Saved AssuranceCase could not be loaded.");
+      setAssuranceHydrationStatus("error");
+    });
+    return () => { active = false; };
+  }, [project?.session_id, assuranceHydrationReload]);
   useEffect(() => {
     let active = true;
     if (!project) return () => { active = false; };
@@ -654,6 +680,8 @@ export function App() {
         setLineageBehaviorComparison(comparison);
       } else if (node.kind === "assurance_case" && objectId) {
         setAssurance(await studioApi.getAssuranceCase(project.session_id, objectId));
+        setAssuranceHydrationStatus("available");
+        setAssuranceHydrationError(null);
       } else if (node.kind === "verification_bundle" && objectId) {
         setVerificationBundleRecord(await studioApi.getVerificationBundle(project.session_id, objectId));
       } else if (node.kind === "explanation_reproducibility" && objectId) {
@@ -1520,6 +1548,9 @@ export function App() {
           exhaustive={exhaustive}
           assurance={assurance}
           verificationBundleRecord={verificationBundleRecord}
+          assuranceHydrationStatus={assuranceHydrationStatus}
+          assuranceHydrationError={assuranceHydrationError}
+          onRetryAssurance={() => setAssuranceHydrationReload((current) => current + 1)}
           selectivePolicy={selectivePolicy}
           generalization={generalization}
           theme={theme}
@@ -1532,7 +1563,11 @@ export function App() {
           }}
           onReproducibility={setReproducibility}
           onExhaustive={setExhaustive}
-          onAssurance={setAssurance}
+          onAssurance={(value) => {
+            setAssurance(value);
+            setAssuranceHydrationStatus(value ? "available" : "none");
+            setAssuranceHydrationError(null);
+          }}
         />
       ) : (
         <section className="foundation-workspace">
