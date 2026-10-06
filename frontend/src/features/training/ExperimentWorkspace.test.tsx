@@ -32,7 +32,7 @@ const { studioApi } = vi.hoisted(() => ({ studioApi: {
   getLatestTreePath: vi.fn(),
 } }));
 
-vi.mock("../../api", () => ({ studioApi }));
+vi.mock("../../api", async (importOriginal) => ({ ...await importOriginal<typeof import("../../api")>(), studioApi }));
 vi.mock("../../components/StudioPrimitives", () => ({
   Button: ({ children, view: _view, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { view?: string }) => <button {...props}>{children}</button>,
   EmptyState: ({ title, children }: { title: string; children: React.ReactNode }) => <div><strong>{title}</strong>{children}</div>,
@@ -79,6 +79,25 @@ describe("ExperimentWorkspace dynamic model controls", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Trace exact tree path" })).toBeEnabled());
     expect(studioApi.getTrainingRunCapabilities).toHaveBeenNthCalledWith(1, "session", "tree-run");
     expect(studioApi.getTrainingRunCapabilities).toHaveBeenNthCalledWith(2, "session", "tree-run");
+  });
+
+  it("distinguishes unavailable saved tree-path evidence from absence and retries the same lookup", async () => {
+    const evidence = { evidence_id: "tree-evidence", run_id: "tree-run", model_artifact_sha256: "a".repeat(64), preprocessing_identity: "prep", input_sample: { x: 1 }, steps: [], leaf_id: 2, prediction: 1, class_probabilities: { "1": 1 }, label: "EXACT TREE EXECUTION PATH" };
+    studioApi.getTrainingRunCapabilities.mockResolvedValue({ run_id: "tree-run", decisions: [{ capability: "exact_tree_path", status: "AVAILABLE" }] });
+    studioApi.getLatestTreePath.mockRejectedValueOnce(new Error("tree path store temporarily unavailable")).mockResolvedValueOnce(evidence);
+    const run = {
+      run_id: "tree-run", model_kind: "decision_tree", trajectory: [], training_summary: { best_epoch: 1, epochs_ran: 1, monitor_name: "loss", best_monitor_value: 0.1 },
+      feature_columns: ["x"], model_artifact_sha256: "a".repeat(64), split: { train_count: 4, validation_count: 2, test_count: 2 }, seed: 3,
+    };
+    render(<ExperimentWorkspace project={project} dataset={dataset as never} run={run as never} study={null} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("tree path store temporarily unavailable");
+    fireEvent.click(screen.getByRole("button", { name: "Retry tree-path check" }));
+    await waitFor(() => expect(screen.getByText("EXACT TREE EXECUTION PATH", { exact: true })).toBeVisible());
+    expect(studioApi.getLatestTreePath).toHaveBeenCalledTimes(2);
+    expect(studioApi.getLatestTreePath).toHaveBeenNthCalledWith(1, "session");
+    expect(studioApi.getLatestTreePath).toHaveBeenNthCalledWith(2, "session");
   });
 
   it("does not report an empty dataset when persisted dataset hydration failed", () => {

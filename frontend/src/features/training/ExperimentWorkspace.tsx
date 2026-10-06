@@ -1,6 +1,6 @@
 import { EChartsOption } from "echarts";
 import { useEffect, useMemo, useState } from "react";
-import { DatasetState, ExecutionBackendDescriptor, LeakageAuditReport, ModelCapabilityContract, ProjectSummary, RunCapabilityNegotiation, SplitContract, StudyJob, TrainingRun, TrainingStudy, TransformPipelineContract, TreePathEvidence, studioApi } from "../../api";
+import { DatasetState, ExecutionBackendDescriptor, LeakageAuditReport, ModelCapabilityContract, ProductApiError, ProjectSummary, RunCapabilityNegotiation, SplitContract, StudyJob, TrainingRun, TrainingStudy, TransformPipelineContract, TreePathEvidence, studioApi } from "../../api";
 import { ChartSurface } from "../../charts/ChartSurface";
 import { Button, EmptyState, StatusBadge } from "../../components/StudioPrimitives";
 import { StudioTheme } from "../../design/tokens";
@@ -216,6 +216,9 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
   const [error, setError] = useState<string | null>(null);
   const [treeSample, setTreeSample] = useState<Record<string, string>>({});
   const [treeEvidence, setTreeEvidence] = useState<TreePathEvidence | null>(null);
+  const [treeEvidenceStatus, setTreeEvidenceStatus] = useState<"idle" | "loading" | "none" | "available" | "other_run" | "error">("idle");
+  const [treeEvidenceError, setTreeEvidenceError] = useState<string | null>(null);
+  const [treeEvidenceReload, setTreeEvidenceReload] = useState(0);
   const [transformPipeline, setTransformPipeline] = useState<TransformPipelineContract | null>(null);
   const [leakageAudit, setLeakageAudit] = useState<LeakageAuditReport | null>(null);
   const [runSplitContract, setRunSplitContract] = useState<SplitContract | null>(null);
@@ -239,11 +242,30 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
     setStudy(restoredStudy);
   }, [restoredStudy?.study_id]);
   useEffect(() => {
-    if (!run || run.model_kind !== "decision_tree") { setTreeEvidence(null); return; }
+    let active = true;
+    setTreeEvidence(null);
+    setTreeEvidenceError(null);
+    if (!run || run.model_kind !== "decision_tree") { setTreeEvidenceStatus("idle"); return () => { active = false; }; }
+    setTreeEvidenceStatus("loading");
     studioApi.getLatestTreePath(project.session_id).then((evidence) => {
-      setTreeEvidence(evidence.run_id === run.run_id ? evidence : null);
-    }).catch(() => setTreeEvidence(null));
-  }, [project.session_id, run?.run_id, run?.model_kind]);
+      if (!active) return;
+      if (evidence.run_id === run.run_id) {
+        setTreeEvidence(evidence);
+        setTreeEvidenceStatus("available");
+      } else {
+        setTreeEvidenceStatus("other_run");
+      }
+    }).catch((reason: unknown) => {
+      if (!active) return;
+      if (reason instanceof ProductApiError && reason.status === 404) {
+        setTreeEvidenceStatus("none");
+        return;
+      }
+      setTreeEvidenceStatus("error");
+      setTreeEvidenceError(reason instanceof Error ? reason.message : "Saved tree-path evidence could not be verified.");
+    });
+    return () => { active = false; };
+  }, [project.session_id, run?.run_id, run?.model_kind, treeEvidenceReload]);
   useEffect(() => {
     let active = true;
     setTransformPipeline(null);
@@ -478,7 +500,12 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
       return;
     }
     setRunning(true); setError(null);
-    try { setTreeEvidence(await studioApi.createTreePath(project.session_id, run.run_id, sample)); }
+    try {
+      const evidence = await studioApi.createTreePath(project.session_id, run.run_id, sample);
+      setTreeEvidence(evidence);
+      setTreeEvidenceStatus("available");
+      setTreeEvidenceError(null);
+    }
     catch (reason) { setError(reason instanceof Error ? reason.message : "Tree path trace failed"); }
     finally { setRunning(false); }
   }
@@ -620,7 +647,17 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
             {statistics && <div className="run-summary-strip"><div><span>Mean</span><strong>{statistics.mean.toFixed(5)}</strong></div><div><span>Median</span><strong>{statistics.median.toFixed(5)}</strong></div><div><span>Std</span><strong>{statistics.std.toFixed(5)}</strong></div><div><span>Min / max</span><strong>{statistics.min.toFixed(5)} / {statistics.max.toFixed(5)}</strong></div></div>}
             <div className="info-message">{study.selection_reason}</div>
           </>}
-          {run.model_kind === "decision_tree" && runCapabilitiesStatus === "loaded" && canExactTreePath && <section className="tree-path-panel"><span className="eyebrow">EXACT TREE EXECUTION PATH</span><p>Structural execution evidence from the persisted declarative tree; it is not a post-hoc attribution.</p><div className="training-config-grid">{run.feature_columns.map((column) => <label className="field-label" key={column}>{column}<input aria-label={`Tree input ${column}`} type="number" value={treeSample[column] ?? "0"} onChange={(event) => setTreeSample((current) => ({ ...current, [column]: event.target.value }))} /></label>)}</div><Button view="outlined" disabled={running || project.read_only} onClick={traceTree} data-ruflex-action="tree_path.trace">Trace exact tree path</Button>{treeEvidence && <div className="info-message"><strong>{treeEvidence.label}</strong><br />{treeEvidence.steps.map((step) => `Node ${step.node_id}: ${step.feature_name} ≤ ${step.threshold.toFixed(4)} → ${step.decision.toUpperCase()}`).join(" · ")}<br />Leaf {treeEvidence.leaf_id} → prediction {treeEvidence.prediction.toFixed(5)}</div>}</section>}
+          {run.model_kind === "decision_tree" && runCapabilitiesStatus === "loaded" && canExactTreePath && <section className="tree-path-panel">
+            <span className="eyebrow">EXACT TREE EXECUTION PATH</span>
+            <p>Structural execution evidence from the persisted declarative tree; it is not a post-hoc attribution.</p>
+            {treeEvidenceStatus === "loading" && <p role="status">Checking saved tree-path evidence for this run…</p>}
+            {treeEvidenceStatus === "none" && <p>No saved tree-path evidence exists yet for this project.</p>}
+            {treeEvidenceStatus === "other_run" && <p>The latest saved tree path belongs to another run; it is not shown as evidence for this run.</p>}
+            {treeEvidenceStatus === "error" && <div className="error" role="alert"><strong>Could not load saved tree-path evidence.</strong> {treeEvidenceError} <Button view="outlined" size="s" onClick={() => setTreeEvidenceReload((current) => current + 1)}>Retry tree-path check</Button></div>}
+            <div className="training-config-grid">{run.feature_columns.map((column) => <label className="field-label" key={column}>{column}<input aria-label={`Tree input ${column}`} type="number" value={treeSample[column] ?? "0"} onChange={(event) => setTreeSample((current) => ({ ...current, [column]: event.target.value }))} /></label>)}</div>
+            <Button view="outlined" disabled={running || project.read_only} onClick={traceTree} data-ruflex-action="tree_path.trace">Trace exact tree path</Button>
+            {treeEvidence && <div className="info-message"><strong>{treeEvidence.label}</strong><br />{treeEvidence.steps.map((step) => `Node ${step.node_id}: ${step.feature_name} ≤ ${step.threshold.toFixed(4)} → ${step.decision.toUpperCase()}`).join(" · ")}<br />Leaf {treeEvidence.leaf_id} → prediction {treeEvidence.prediction.toFixed(5)}</div>}
+          </section>}
           {run.model_kind === "random_forest" && <section className="tree-path-panel"><span className="eyebrow">ENSEMBLE STRUCTURAL EVIDENCE</span><h3>{String(run.model_spec.tree_count ?? "—")} persisted constituent trees</h3><p>The final forest prediction is an aggregation of all trees. RuFLEX deliberately does not present one tree path as an exact explanation of the ensemble.</p><dl className="compact-definition"><dt>Total nodes</dt><dd>{String(run.model_spec.node_count ?? "—")}</dd><dt>Maximum depth</dt><dd>{String(run.model_spec.max_depth ?? "—")}</dd><dt>Leaves</dt><dd>{String(run.model_spec.leaf_count ?? "—")}</dd><dt>Exact ensemble path</dt><dd>Not available</dd></dl></section>}
           {run.model_kind === "gradient_boosting" && <section className="tree-path-panel"><span className="eyebrow">STAGEWISE ENSEMBLE STRUCTURAL EVIDENCE</span><h3>{String(run.model_spec.tree_count ?? "—")} persisted boosting trees</h3><p>The prediction is a weighted stagewise aggregation. A single constituent-tree path is not an exact explanation of this ensemble.</p><dl className="compact-definition"><dt>Total nodes</dt><dd>{String(run.model_spec.node_count ?? "—")}</dd><dt>Maximum depth</dt><dd>{String(run.model_spec.max_depth ?? "—")}</dd><dt>Leaves</dt><dd>{String(run.model_spec.leaf_count ?? "—")}</dd><dt>Exact ensemble path</dt><dd>Not available</dd></dl></section>}
         </>}

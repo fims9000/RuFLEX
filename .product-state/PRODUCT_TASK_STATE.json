@@ -88,15 +88,16 @@
     "alpha_dataset_contract_hydration_truthfulness",
     "alpha_split_provenance_hydration_retry",
     "alpha_run_data_governance_evidence_retry",
-    "alpha_run_capability_hydration_truthfulness"
+    "alpha_run_capability_hydration_truthfulness",
+    "alpha_tree_path_evidence_hydration_retry"
   ],
-  "active_capability": "alpha_tree_path_evidence_hydration_retry",
+  "active_capability": "alpha_project_overview_context_truthfulness",
   "active_acceptance": [
-    "Distinguish absent latest tree-path evidence from a failed persisted-evidence read for the selected run.",
-    "Expose a retry that reloads the latest evidence and only display evidence bound to the current TrainingRun."
+    "Project Overview must not infer that a saved FIS or TrainingRun is absent from a failed context read.",
+    "Expose retry and suppress empty-project/quick-start claims until those persisted identities are resolved."
   ],
   "blockers": [],
-  "next_executable_work": "Make latest TreePathEvidence hydration distinguish no saved trace, saved trace for another run, and transient read failure; add retry and focused browser coverage. Preserve unrelated article changes; no push authorized.",
+  "next_executable_work": "Give the Project Overview FIS/latest-run context bundle explicit loading, loaded and failed/retry states; do not show empty-state guidance until successful resolution. Preserve unrelated article changes; no push authorized.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -174,6 +175,7 @@
     "alpha_dataset_contract_hydration_truthfulness": "PASS: Dataset bootstrap distinguishes loading, confirmed absence (404), available contract and transient failure. Data import/confirmation and Training/policy/final-test actions remain blocked until identity is known; retry recovers without treating errors as an empty project. Evaluation/Experiment component tests 18 passed, focused Studio 503-to-retry-to-404 browser E2E passed, TypeScript/Vite build and git diff --check passed. Commit 464ec8d.",
     "alpha_split_provenance_hydration_retry": "PASS: SplitContract inventory is an explicit loading/loaded/error state; training and new split freezing are paused until the read succeeds. Transient failures show retry, and retry restores controls without starting a fit. Experiment/Evaluation component tests 18 passed, focused Studio 503-to-retry E2E passed, TypeScript/Vite build and git diff --check passed. Commit 60d1d8f.",
     "alpha_run_data_governance_evidence_retry": "PASS: Saved run governance evidence distinguishes legacy absence from partial/malformed references; transient Split/Transform/Leakage reads retain an explicit unverified state and offer retry. Recovery reloads the exact run evidence identities. ExperimentWorkspace unit tests 11 passed, PRODUCT-02 real Studio training route with injected 503/retry passed, Vite/TypeScript build and git diff --check passed. Commit a91fd60.",
-    "alpha_run_capability_hydration_truthfulness": "PASS: Exact tree-path capability lookup now distinguishes pending, available and failed states; a temporary read failure no longer silently removes a supported action, and retry rechecks the same run ID. ExperimentWorkspace tests passed (11), focused decision-tree Studio 503-to-retry E2E passed, Vite/TypeScript build and git diff --check passed."
+    "alpha_run_capability_hydration_truthfulness": "PASS: Exact tree-path capability lookup now distinguishes pending, available and failed states; a temporary read failure no longer silently removes a supported action, and retry rechecks the same run ID. ExperimentWorkspace tests passed (11), focused decision-tree Studio 503-to-retry E2E passed, Vite/TypeScript build and git diff --check passed. Commit dd4249a.",
+    "alpha_tree_path_evidence_hydration_retry": "PASS: Latest tree-path evidence now distinguishes pending, confirmed absence, evidence for another run and transient read failure. Error state provides retry and only exact-run evidence is displayed; a fresh Decision Tree browser route verified capability error/retry and evidence 503/retry/404. ExperimentWorkspace tests 12 passed, Vite/TypeScript build and git diff --check passed."
   }
 }

@@ -128,10 +128,18 @@ test("PRODUCT-02b retries a persisted decision-tree capability check without cla
   await page.getByRole("button", { name: "S", exact: true }).click();
   await page.getByLabel("Training model").selectOption("decision_tree");
   let capabilityReads = 0;
+  let treePathReads = 0;
   await page.route("**/training/runs/*/capabilities", async (route) => {
     capabilityReads += 1;
     if (capabilityReads === 1) {
       return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "run capability store temporarily unavailable" }) });
+    }
+    return route.continue();
+  });
+  await page.route("**/evidence/tree-path/latest", async (route) => {
+    treePathReads += 1;
+    if (treePathReads === 1) {
+      return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "tree path evidence temporarily unavailable" }) });
     }
     return route.continue();
   });
@@ -143,6 +151,11 @@ test("PRODUCT-02b retries a persisted decision-tree capability check without cla
   await error.getByRole("button", { name: "Retry run capability check", exact: true }).click();
   await expect(page.getByRole("button", { name: "Trace exact tree path", exact: true })).toBeVisible();
   expect(capabilityReads).toBe(2);
+  const treeError = page.getByRole("alert").filter({ hasText: "tree path evidence temporarily unavailable" });
+  await expect(treeError).toBeVisible();
+  await treeError.getByRole("button", { name: "Retry tree-path check", exact: true }).click();
+  await expect(page.getByText("No saved tree-path evidence exists yet for this project.", { exact: true })).toBeVisible();
+  expect(treePathReads).toBe(2);
 });
 
 test("PRODUCT-02 blocks validation policy changes when final-test access status is unavailable", async ({ page }) => {
