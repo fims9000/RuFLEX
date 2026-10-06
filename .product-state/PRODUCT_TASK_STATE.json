@@ -103,7 +103,8 @@
     "alpha_generalization_contract_hydration_truthfulness",
     "alpha_analysis_comparison_hydration_truthfulness",
     "alpha_slice_analysis_hydration_truthfulness",
-    "alpha_stability_evidence_hydration_truthfulness"
+    "alpha_stability_evidence_hydration_truthfulness",
+    "alpha_condition_demo_hydration_truthfulness"
   ],
   "active_capability": "alpha_saved_evidence_hydration_audit",
   "active_acceptance": [
@@ -111,7 +112,7 @@
     "Prioritize evidence that must be identity-linked before presentation; add focused exact-route retry tests as findings justify."
   ],
   "blockers": [],
-  "next_executable_work": "Make the latest persisted ConditionMonitoringDemo distinguish confirmed absence from transient read failure; expose retry and block repeat demo creation until the saved result is resolved. Verify close/reopen through the real PRODUCT-EVIDENCE route. Preserve unrelated article changes and do not push.",
+  "next_executable_work": "Audit the saved BehaviorRevisionComparison and post-hoc ExplanationJob reopen reads; prioritize the persisted object/job identity and make failures visible without treating them as no result or starting duplicate work. Preserve unrelated article changes and do not push.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -204,6 +205,7 @@
     "alpha_generalization_contract_hydration_truthfulness": "PASS: Active GeneralizationContract reopen distinguishes confirmed 404 absence from transient read failure; scope actions and the scope-aware telemetry demo stay paused until identity resolves, with retry at Project/Data and Evidence surfaces. PRODUCT-EVIDENCE injected a 503 on project reopen, verified the condition demo was blocked, then retried and restored the saved contract. Vite/TypeScript build and focused browser route passed; an unrelated later ReactFlow node viewport assertion was stabilized by dispatching the selected node's click event.",
     "alpha_analysis_comparison_hydration_truthfulness": "PASS: Persisted validation AnalysisComparison reopen distinguishes confirmed 404 absence from transient errors, shows retry in Analyses, and prevents duplicate comparison creation until saved state resolves. PRODUCT-EVIDENCE creates a real study comparison, injects 503 after close/reopen, verifies creation is paused, then retries and restores the exact saved comparison. TypeScript/Vite production build and focused Playwright route passed.",
     "alpha_slice_analysis_hydration_truthfulness": "PASS: Latest SliceAnalysis reopen distinguishes confirmed 404 absence from transient failure, visibly reports and retries failed reads, and prevents a duplicate analysis until saved state resolves. PRODUCT-EVIDENCE injects a 503 after close/reopen, confirms the new slice action is blocked, retries, and restores the persisted Validation slice. TypeScript/Vite build, frontend unit suite (23), focused Playwright route, JSON state validation and diff check passed.",
-    "alpha_stability_evidence_hydration_truthfulness": "PASS: Stability Lab reopens analysis and gate inventories as explicit pending/loaded/error states, with retry and duplicate-creation controls disabled until saved identities resolve. Read failures are independently surfaced for StudyStabilityAnalysis and StabilityGatePolicy; successful retry restores both to the Lab and parent Project Explorer. Stability Lab close/reopen E2E injected two 503 reads per inventory then verified retry restored the analysis/map and gate/risk view; Vite build and git diff check passed."
+    "alpha_stability_evidence_hydration_truthfulness": "PASS: Stability Lab reopens analysis and gate inventories as explicit pending/loaded/error states, with retry and duplicate-creation controls disabled until saved identities resolve. Read failures are independently surfaced for StudyStabilityAnalysis and StabilityGatePolicy; successful retry restores both to the Lab and parent Project Explorer. Stability Lab close/reopen E2E injected two 503 reads per inventory then verified retry restored the analysis/map and gate/risk view; Vite build and git diff check passed.",
+    "alpha_condition_demo_hydration_truthfulness": "PASS: Persisted ConditionMonitoringDemo distinguishes loading, confirmed 404 absence, available result and transient read error. Retry reloads the exact latest demo; starting another demo remains blocked until status resolves. PRODUCT-EVIDENCE injected 503 after project reopen, confirmed both GeneralizationContract and demo error gates, retried each, and restored the persisted condition demo. Vite/TypeScript build and focused Playwright route passed."
   }
 }

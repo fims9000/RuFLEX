@@ -219,6 +219,15 @@ test("PRODUCT-EVIDENCE captures the frozen V1 Studio route from persisted object
     }
     await route.continue();
   });
+  let conditionDemoReadFailed = false;
+  await page.route(`**/api/projects/*/evidence/condition-monitoring-demo/latest`, async (route) => {
+    if (!conditionDemoReadFailed) {
+      conditionDemoReadFailed = true;
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Temporary condition-monitoring evidence read failure" }) });
+      return;
+    }
+    await route.continue();
+  });
   let comparisonReadFailed = false;
   await page.route(`**/api/projects/*/analyses/comparisons/latest`, async (route) => {
     if (!comparisonReadFailed) {
@@ -250,9 +259,13 @@ test("PRODUCT-EVIDENCE captures the frozen V1 Studio route from persisted object
   await page.getByLabel("Project path").fill(path);
   await page.getByRole("button", { name: "Open project", exact: true }).click();
   await expect(page.getByTestId("evidence-generalization-hydration-error")).toContainText("Temporary GeneralizationContract read failure");
+  await expect(page.getByTestId("condition-demo-hydration-error")).toContainText("Temporary condition-monitoring evidence read failure");
   await expect(page.getByRole("button", { name: "Run telemetry demonstration", exact: true })).toBeDisabled();
   await page.getByRole("button", { name: "Retry GeneralizationContract", exact: true }).click();
   await expect(page.getByTestId("evidence-generalization-hydration-error")).toHaveCount(0);
+  await page.getByRole("button", { name: "Retry condition-monitoring evidence", exact: true }).click();
+  await expect(page.getByTestId("condition-demo-hydration-error")).toHaveCount(0);
+  await expect(page.getByTestId("condition-monitoring-demo")).toBeVisible();
   await expect(page.getByRole("button", { name: "Run telemetry demonstration", exact: true })).toBeEnabled();
   await page.getByRole("button", { name: "A", exact: true }).click();
   await expect(page.getByTestId("comparison-hydration-error")).toContainText("Temporary validation comparison read failure");
