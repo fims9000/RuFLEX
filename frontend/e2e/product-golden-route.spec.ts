@@ -31,8 +31,20 @@ test("PRODUCT-01 persists data, builds an editable FIS, runs it and exposes exac
   await page.getByLabel("Rule 1 weight").fill("0.8");
   await page.getByLabel("FIS family").selectOption("sugeno");
   await page.getByLabel("Rule 1 Sugeno value").fill("0.8");
+  let fisSavePosts = 0;
+  await page.route("**/api/projects/fis/save", async (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    fisSavePosts += 1;
+    await route.fetch();
+    await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "FIS save response lost after persistence" }) });
+  });
   await page.getByRole("button", { name: "Save FIS", exact: true }).click();
-  await expect(page.getByText(/Canonical executable FIS saved with a semantic hash/)).toBeVisible();
+  const saveRecovery = page.getByTestId("fis-save-recovery");
+  await expect(saveRecovery).toContainText("FIS save response lost after persistence");
+  await page.getByRole("button", { name: "Retry exact FIS revision lookup", exact: true }).click();
+  await expect(saveRecovery).toHaveCount(0);
+  expect(fisSavePosts).toBe(1);
+  await expect(page.getByText(/Recovered the exact saved FIS revision after the response was lost/)).toBeVisible();
 
   await page.getByRole("button", { name: "Run exact inference", exact: true }).click();
   await expect(page.getByText("OUTPUT", { exact: true })).toBeVisible();

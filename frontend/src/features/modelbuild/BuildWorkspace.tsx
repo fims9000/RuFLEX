@@ -30,6 +30,16 @@ function canonicalJson(value: unknown): string {
   return JSON.stringify(value) ?? "undefined";
 }
 
+function fisSemanticPayload(fis: FISSpec): FISSpec {
+  const payload = cloneFis(fis);
+  payload.semantic_hash = null;
+  for (const variable of [...payload.inputs, payload.output]) {
+    delete (variable as Partial<typeof variable>).locked;
+    for (const term of variable.terms) delete (term as Partial<typeof term>).locked;
+  }
+  return payload;
+}
+
 const familyParameters: Record<MembershipFunction["kind"], number> = {
   triangular: 3,
   trapezoidal: 4,
@@ -355,6 +365,8 @@ export function BuildWorkspace({
   const [recoveringFisEvaluation, setRecoveringFisEvaluation] = useState(false);
   const [fisImportRecovery, setFisImportRecovery] = useState<{ source: string; error: string } | null>(null);
   const [retryingFisImport, setRetryingFisImport] = useState(false);
+  const [fisSaveRecovery, setFisSaveRecovery] = useState<{ spec: FISSpec; error: string; notFound: boolean } | null>(null);
+  const [recoveringFisSave, setRecoveringFisSave] = useState(false);
   const [surface, setSurface] = useState<ResponseSurface | null>(null);
   const [surfaceAxes, setSurfaceAxes] = useState<[string, string] | null>(null);
   const [diagnostics, setDiagnostics] = useState<
@@ -878,10 +890,11 @@ export function BuildWorkspace({
   }
 
   async function save() {
-    if (!working) return;
+    if (!working || fisSaveRecovery) return;
     setError(null);
+    const requestedSpec = cloneFis(working);
     try {
-      const saved = await studioApi.saveFis(project.session_id, working);
+      const saved = await studioApi.saveFis(project.session_id, requestedSpec);
       setWorking(saved);
       setEditorHistory((history) => [
         ...history.slice(0, historyIndex + 1),
@@ -891,9 +904,46 @@ export function BuildWorkspace({
       setRevisions(await studioApi.getFisRevisions(project.session_id));
       onFisChange(saved);
       setMessage("Canonical executable FIS saved with a semantic hash.");
+      setFisSaveRecovery(null);
     } catch (reason) {
+      setFisSaveRecovery({ spec: requestedSpec, error: reason instanceof Error ? reason.message : "FIS save response was uncertain.", notFound: false });
       setError(reason instanceof Error ? reason.message : "FIS save failed");
     }
+  }
+  async function recoverFisSave() {
+    const pending = fisSaveRecovery;
+    if (!pending) return;
+    setRecoveringFisSave(true); setError(null);
+    try {
+      const active = await studioApi.getActiveFis(project.session_id);
+      if (active.fis_id === pending.spec.fis_id && canonicalJson(fisSemanticPayload(active)) === canonicalJson(fisSemanticPayload(pending.spec))) {
+        setRevisions(await studioApi.getFisRevisions(project.session_id));
+        if (working && canonicalJson(fisSemanticPayload(working)) === canonicalJson(fisSemanticPayload(pending.spec))) setWorking(active);
+        onFisChange(active); setMessage("Recovered the exact saved FIS revision after the response was lost."); setFisSaveRecovery(null);
+      } else {
+        setFisSaveRecovery({ ...pending, notFound: true, error: "The active FIS is not the exact saved revision. You may retry only if the working copy is still unchanged." });
+      }
+    } catch (reason) {
+      setFisSaveRecovery({ ...pending, notFound: false, error: reason instanceof Error ? reason.message : "The saved FIS revision could not be verified." });
+    } finally { setRecoveringFisSave(false); }
+  }
+  async function explicitlyRepeatFisSave() {
+    const pending = fisSaveRecovery;
+    if (!pending?.notFound || !working || project.read_only || canonicalJson(fisSemanticPayload(working)) !== canonicalJson(fisSemanticPayload(pending.spec))) return;
+    setRecoveringFisSave(true); setError(null);
+    try {
+      const saved = await studioApi.saveFis(project.session_id, pending.spec);
+      setWorking(saved); setRevisions(await studioApi.getFisRevisions(project.session_id)); onFisChange(saved);
+      setMessage("The exact FIS save was safely repeated and resolved to its persisted semantic revision."); setFisSaveRecovery(null);
+    } catch (reason) {
+      setFisSaveRecovery({ ...pending, notFound: false, error: reason instanceof Error ? reason.message : "The explicitly repeated FIS save response was uncertain." });
+    } finally { setRecoveringFisSave(false); }
+  }
+  function restorePendingFisSaveSnapshot() {
+    if (!fisSaveRecovery) return;
+    const restored = cloneFis(fisSaveRecovery.spec);
+    setWorking(restored); setEditorHistory([cloneFis(restored)]); setHistoryIndex(0);
+    setMessage("Restored the exact FIS snapshot from the uncertain save; verify its persisted identity before retrying.");
   }
   async function refitExpertConsequents() {
     if (!working || working.system_type !== "sugeno") return;
@@ -1131,7 +1181,7 @@ export function BuildWorkspace({
               <option value="sugeno">Type-1 Sugeno</option>
             </select>
           </label>
-          <Button view="outlined" disabled={project.read_only || !!fisImportRecovery} onClick={save} data-ruflex-action="fis.save_revision">
+          <Button view="outlined" disabled={project.read_only || !!fisImportRecovery || !!fisSaveRecovery} onClick={save} data-ruflex-action="fis.save_revision">
             Save FIS
           </Button>
           <input
@@ -1144,7 +1194,7 @@ export function BuildWorkspace({
           />
           <Button
             view="outlined"
-            disabled={project.read_only || !!fisImportRecovery}
+            disabled={project.read_only || !!fisImportRecovery || !!fisSaveRecovery}
             onClick={() => importInputRef.current?.click()}
             data-ruflex-action="fis.import"
           >
@@ -1157,6 +1207,7 @@ export function BuildWorkspace({
             Run exact inference
           </Button>
         </div>
+        {fisSaveRecovery && <div className="error" role="alert" data-testid="fis-save-recovery"><strong>FIS save response is uncertain; the exact revision has not been resubmitted.</strong><p>{fisSaveRecovery.error}</p><Button view="outlined" disabled={recoveringFisSave} onClick={recoverFisSave}>Retry exact FIS revision lookup</Button>{fisSaveRecovery.notFound && working && canonicalJson(fisSemanticPayload(working)) !== canonicalJson(fisSemanticPayload(fisSaveRecovery.spec)) && <Button view="outlined" disabled={recoveringFisSave} onClick={restorePendingFisSaveSnapshot}>Restore exact pending FIS copy</Button>}{fisSaveRecovery.notFound && <Button view="outlined" disabled={recoveringFisSave || project.read_only || !working || canonicalJson(fisSemanticPayload(working)) !== canonicalJson(fisSemanticPayload(fisSaveRecovery.spec))} onClick={explicitlyRepeatFisSave}>Explicitly repeat unchanged FIS save</Button>}</div>}
         {fisImportRecovery && <div className="error" role="alert" data-testid="fis-import-recovery"><strong>MATLAB FIS import response is uncertain.</strong><p>{fisImportRecovery.error} The exact source is retained; retrying it will not create a duplicate imported revision.</p><Button view="outlined" disabled={retryingFisImport} onClick={retrySameMatlabImport}>Retry exact MATLAB FIS import</Button></div>}
       </div>
       <div className="designer-grid">
