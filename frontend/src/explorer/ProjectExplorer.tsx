@@ -33,6 +33,9 @@ export function ProjectExplorer({
   trainingRun,
   trainingStudy,
   stabilityAnalysis,
+  stabilityAnalysisHydrationStatus = "available",
+  stabilityAnalysisHydrationError,
+  onRetryStabilityAnalysis,
   stabilityGatePolicy,
   evaluation,
   evaluationStatus = "available",
@@ -66,6 +69,9 @@ export function ProjectExplorer({
   trainingRun: TrainingRun | null;
   trainingStudy: TrainingStudy | null;
   stabilityAnalysis: StudyStabilityAnalysis | null;
+  stabilityAnalysisHydrationStatus?: "idle" | "loading" | "none" | "available" | "error";
+  stabilityAnalysisHydrationError?: string | null;
+  onRetryStabilityAnalysis?: () => void;
   stabilityGatePolicy: StabilityGatePolicy | null;
   evaluation: FISEvaluation | null;
   evaluationStatus?: "idle" | "loading" | "none" | "available" | "error";
@@ -187,6 +193,8 @@ export function ProjectExplorer({
           <span className="tree-empty">No studies yet</span>
         )}
         {stabilityAnalysis && item("STUDIES", "Study Stability Analysis", `${stabilityAnalysis.case_count} validation cases · HCIR ${stabilityAnalysis.high_confidence_instability_rate === null ? "N/A" : `${(stabilityAnalysis.high_confidence_instability_rate * 100).toFixed(1)}%`}`)}
+        {!stabilityAnalysis && (stabilityAnalysisHydrationStatus === "idle" || stabilityAnalysisHydrationStatus === "loading") && <span className="tree-empty">Checking saved stability analyses…</span>}
+        {!stabilityAnalysis && stabilityAnalysisHydrationStatus === "error" && <div className="tree-empty" role="alert"><span>Saved stability analysis lookup unavailable. {stabilityAnalysisHydrationError}</span><button onClick={onRetryStabilityAnalysis}>Retry stability check</button></div>}
       </section>
       <section>
         <strong>ANALYSES</strong>

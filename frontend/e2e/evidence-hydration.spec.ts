@@ -2,13 +2,16 @@ import { expect, test } from "@playwright/test";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-test("saved tree-path hydration distinguishes unavailable from absent and can be retried", async ({ page }) => {
+test("project evidence indexes distinguish unavailable from absent and can be retried independently", async ({ page }) => {
   const projectPath = join(tmpdir(), `ruflex-evidence-hydration-${Date.now()}-${Math.random().toString(16).slice(2)}`);
-  await page.goto("/");
-  await page.getByLabel("Project path").fill(projectPath);
-  await page.getByLabel("Project name").fill("Evidence hydration");
-  await page.getByRole("button", { name: "Create project", exact: true }).click();
-
+  let stabilityReads = 0;
+  await page.route("**/api/projects/*/analyses/stability", async (route) => {
+    stabilityReads += 1;
+    if (stabilityReads === 1) {
+      return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "saved stability analysis temporarily unavailable" }) });
+    }
+    return route.fulfill({ status: 200, contentType: "application/json", body: "[]" });
+  });
   let latestReads = 0;
   let artifactReads = 0;
   await page.route("**/api/projects/*/artifacts", async (route) => {
@@ -25,6 +28,10 @@ test("saved tree-path hydration distinguishes unavailable from absent and can be
     }
     return route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ detail: "no saved tree path" }) });
   });
+  await page.goto("/");
+  await page.getByLabel("Project path").fill(projectPath);
+  await page.getByLabel("Project name").fill("Evidence hydration");
+  await page.getByRole("button", { name: "Create project", exact: true }).click();
   await page.getByTitle("EVIDENCE").click();
   const artifactError = page.getByTestId("artifact-hydration-error");
   await expect(artifactError).toContainText("project artifact store temporarily unavailable");
@@ -38,4 +45,10 @@ test("saved tree-path hydration distinguishes unavailable from absent and can be
   await expect(hydrationError).toHaveCount(0);
   await expect(page.getByTestId("tree-evidence-empty")).toBeVisible();
   expect(latestReads).toBe(2);
+  expect(stabilityReads).toBe(1);
+  const stabilityError = page.locator(".explorer").getByRole("alert").filter({ hasText: "saved stability analysis temporarily unavailable" });
+  await expect(stabilityError).toBeVisible();
+  await stabilityError.getByRole("button", { name: "Retry stability check" }).click();
+  await expect(stabilityError).toHaveCount(0);
+  expect(stabilityReads).toBe(2);
 });

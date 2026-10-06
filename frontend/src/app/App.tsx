@@ -1,4 +1,4 @@
-import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
+import { ChangeEvent, FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { AppShell } from "../shell/AppShell";
 import {
   Button,
@@ -139,6 +139,9 @@ export function App() {
   const [trainingStudyError, setTrainingStudyError] = useState<string | null>(null);
   const [trainingStudyReload, setTrainingStudyReload] = useState(0);
   const [stabilityAnalysis, setStabilityAnalysis] = useState<StudyStabilityAnalysis | null>(null);
+  const [stabilityAnalysisHydrationStatus, setStabilityAnalysisHydrationStatus] = useState<"idle" | "loading" | "none" | "available" | "error">("idle");
+  const [stabilityAnalysisHydrationError, setStabilityAnalysisHydrationError] = useState<string | null>(null);
+  const [stabilityAnalysisHydrationReload, setStabilityAnalysisHydrationReload] = useState(0);
   const [stabilityGatePolicy, setStabilityGatePolicy] = useState<StabilityGatePolicy | null>(null);
   const [analysisEvaluation, setAnalysisEvaluation] = useState<AnalysisEvaluation | null>(null);
   const [analysisEvaluationStatus, setAnalysisEvaluationStatus] = useState<"idle" | "loading" | "none" | "available" | "error">("idle");
@@ -165,6 +168,11 @@ export function App() {
   const [treeEvidenceHydrationStatus, setTreeEvidenceHydrationStatus] = useState<"idle" | "loading" | "none" | "available" | "error">("idle");
   const [treeEvidenceHydrationError, setTreeEvidenceHydrationError] = useState<string | null>(null);
   const [treeEvidenceHydrationReload, setTreeEvidenceHydrationReload] = useState(0);
+  const handleStabilityAnalysisChange = useCallback((analysis: StudyStabilityAnalysis | null) => {
+    setStabilityAnalysis(analysis);
+    setStabilityAnalysisHydrationStatus(analysis ? "available" : "none");
+    setStabilityAnalysisHydrationError(null);
+  }, []);
   const [explanation, setExplanation] = useState<ExplanationContract | null>(null);
   const [explanationHydrationStatus, setExplanationHydrationStatus] = useState<"idle" | "loading" | "none" | "available" | "error">("idle");
   const [explanationHydrationError, setExplanationHydrationError] = useState<string | null>(null);
@@ -263,6 +271,8 @@ export function App() {
       setTrainingStudyStatus("idle");
       setTrainingStudyError(null);
       setStabilityAnalysis(null);
+      setStabilityAnalysisHydrationStatus("idle");
+      setStabilityAnalysisHydrationError(null);
       setStabilityGatePolicy(null);
       setAnalysisEvaluation(null);
       setAnalysisEvaluationStatus("idle");
@@ -337,7 +347,6 @@ export function App() {
     setTrainingStudy(null);
     setTrainingStudyStatus("loading");
     setTrainingStudyError(null);
-    setStabilityAnalysis(null);
     setStabilityGatePolicy(null);
     setCalibrationTransform(null);
     setDecisionThreshold(null);
@@ -375,7 +384,40 @@ export function App() {
         setOverviewContextStatus("loaded");
       }
     });
-    studioApi.listStudyStabilityAnalyses(project.session_id).then((items) => setStabilityAnalysis(items.at(-1) ?? null)).catch(() => setStabilityAnalysis(null));
+    return () => { active = false; };
+  }, [project?.session_id, overviewContextReload]);
+  useEffect(() => {
+    let active = true;
+    if (!project) {
+      setStabilityAnalysis(null);
+      setStabilityAnalysisHydrationStatus("idle");
+      setStabilityAnalysisHydrationError(null);
+      return () => { active = false; };
+    }
+    setStabilityAnalysis(null);
+    setStabilityAnalysisHydrationStatus("loading");
+    setStabilityAnalysisHydrationError(null);
+    studioApi.listStudyStabilityAnalyses(project.session_id).then((items) => {
+      if (!active) return;
+      const latest = items.at(-1) ?? null;
+      setStabilityAnalysis(latest);
+      setStabilityAnalysisHydrationStatus(latest ? "available" : "none");
+    }).catch((reason: unknown) => {
+      if (!active) return;
+      setStabilityAnalysis(null);
+      setStabilityAnalysisHydrationError(reason instanceof Error ? reason.message : "Saved StudyStabilityAnalysis could not be verified.");
+      setStabilityAnalysisHydrationStatus("error");
+    });
+    return () => { active = false; };
+  }, [project?.session_id, stabilityAnalysisHydrationReload]);
+  useEffect(() => {
+    let active = true;
+    if (!project) {
+      setTreeEvidence(null);
+      setTreeEvidenceHydrationStatus("idle");
+      setTreeEvidenceHydrationError(null);
+      return () => { active = false; };
+    }
     setTreeEvidence(null);
     setTreeEvidenceHydrationStatus("loading");
     setTreeEvidenceHydrationError(null);
@@ -394,7 +436,7 @@ export function App() {
       setTreeEvidenceHydrationStatus("error");
     });
     return () => { active = false; };
-  }, [project?.session_id, overviewContextReload, treeEvidenceHydrationReload]);
+  }, [project?.session_id, treeEvidenceHydrationReload]);
   useEffect(() => {
     let active = true;
     if (!project) {
@@ -1279,6 +1321,9 @@ export function App() {
       trainingRun={trainingRun}
       trainingStudy={trainingStudy}
       stabilityAnalysis={stabilityAnalysis}
+      stabilityAnalysisHydrationStatus={stabilityAnalysisHydrationStatus}
+      stabilityAnalysisHydrationError={stabilityAnalysisHydrationError}
+      onRetryStabilityAnalysis={() => setStabilityAnalysisHydrationReload((current) => current + 1)}
       stabilityGatePolicy={stabilityGatePolicy}
       evaluation={fisEvaluation}
       evaluationStatus={fisEvaluationStatus}
@@ -1780,7 +1825,7 @@ export function App() {
               .catch(() => undefined);
           }}
           onStudy={(study) => { setTrainingStudy(study); setTrainingStudyStatus("available"); setTrainingStudyError(null); }}
-          onStabilityAnalysisChange={setStabilityAnalysis}
+          onStabilityAnalysisChange={handleStabilityAnalysisChange}
           onStabilityGatePolicyChange={setStabilityGatePolicy}
         />
       ) : active === "ANALYSES" ? (
