@@ -1104,6 +1104,20 @@ def cancel_study_job(project_root: Path, job_id: UUID) -> StudyJob:
     _, backend = _study_execution_backend(job)
     backend.cancel(project_root=project_root, job_id=job_id)
     _study_job_cancellations.setdefault(job_id, Event()).set()
+    if job.status == "QUEUED" and not backend.is_active(project_root=project_root, job_id=job_id):
+        # A persisted queued request can outlive its in-process worker (for
+        # example, after restart). If no worker owns it, cancellation must be
+        # terminal now rather than leaving an unresumable QUEUED job forever.
+        with _study_job_state_lock:
+            current = load_study_job(project_root, job_id)
+            if current.status == "QUEUED":
+                current.status = "CANCELLED"
+                current.finished_at = datetime.now(timezone.utc)
+                for state in current.seed_states:
+                    if state.status == "QUEUED":
+                        state.status = "CANCELLED"
+                _persist_study_job(project_root, current)
+                job = current
     return job
 
 
