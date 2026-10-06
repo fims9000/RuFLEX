@@ -66,9 +66,26 @@ type DataGovernanceObject =
   | { kind: "leakage_audit"; value: LeakageAuditReport };
 const initialTheme =
   (localStorage.getItem("ruflex.theme") as StudioTheme | null) ?? "light";
+const RECENT_PROJECTS_STORAGE_KEY = "ruflex.recent-projects.v1";
+type RecentProject = { name: string; path: string };
+
+function loadRecentProjects(): RecentProject[] {
+  try {
+    const stored: unknown = JSON.parse(localStorage.getItem(RECENT_PROJECTS_STORAGE_KEY) ?? "[]");
+    if (!Array.isArray(stored)) return [];
+    return stored.filter((item): item is RecentProject =>
+      Boolean(item) && typeof item === "object"
+      && typeof item.name === "string" && item.name.trim().length > 0
+      && typeof item.path === "string" && item.path.trim().length > 0,
+    ).slice(0, 8);
+  } catch {
+    return [];
+  }
+}
 
 export function App() {
   const [project, setProject] = useState<ProjectSummary | null>(null);
+  const [recentProjects, setRecentProjects] = useState<RecentProject[]>(loadRecentProjects);
   const [path, setPath] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -229,6 +246,30 @@ export function App() {
     return (...args: Arguments) => {
       if (projectSessionRef.current === sessionId) callback(...args);
     };
+  }
+  function rememberRecentProject(value: ProjectSummary) {
+    const next = [{ name: value.name, path: value.root }, ...recentProjects.filter((item) => item.path !== value.root)].slice(0, 8);
+    setRecentProjects(next);
+    try { localStorage.setItem(RECENT_PROJECTS_STORAGE_KEY, JSON.stringify(next)); } catch { /* project open must not fail because browser storage is unavailable */ }
+  }
+  function forgetRecentProjects() {
+    setRecentProjects([]);
+    try { localStorage.removeItem(RECENT_PROJECTS_STORAGE_KEY); } catch { /* keep the current session usable */ }
+  }
+  async function openRecentProject(recent: RecentProject) {
+    const requestId = ++projectLifecycleRequestRef.current;
+    setError(null);
+    try {
+      const result = await studioApi.openProject(recent.path, readOnly);
+      if (requestId !== projectLifecycleRequestRef.current) return;
+      setProject(result);
+      setDescription(result.description ?? "");
+      rememberRecentProject(result);
+      setStatus(`Opened ${result.name}`);
+    } catch (reason) {
+      if (requestId !== projectLifecycleRequestRef.current) return;
+      setError(reason instanceof Error ? reason.message : "Could not reopen this recent project.");
+    }
   }
   const refreshArtifactInventory = useCallback(async (sessionId: string) => {
     if (projectSessionRef.current !== sessionId) return;
@@ -1067,6 +1108,7 @@ export function App() {
       if (requestId !== projectLifecycleRequestRef.current) return;
       setProject(result);
       setDescription(result.description ?? "");
+      rememberRecentProject(result);
       setStatus(
         `${operation === "create" ? "Created" : "Opened"} ${result.name}`,
       );
@@ -1552,6 +1594,13 @@ export function App() {
               </Button>
             </div>
           </form>
+          {recentProjects.length > 0 && <section className="recent-projects" aria-label="Recent projects">
+            <div className="recent-projects-heading"><strong>Recent projects</strong><Button view="outlined" size="s" type="button" onClick={forgetRecentProjects}>Forget history</Button></div>
+            <div className="recent-project-list">{recentProjects.map((recent) => <button key={recent.path} type="button" className="recent-project-item" onClick={() => void openRecentProject(recent)}>
+              <span>{recent.name}</span><small>{recent.path}</small>
+            </button>)}</div>
+            <p className="property-description">Stored only in this browser on this device. Opening uses the current read-only setting.</p>
+          </section>}
           {error && (
             <div className="error" role="alert">
               {error}

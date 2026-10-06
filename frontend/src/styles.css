@@ -201,6 +201,41 @@ input:focus-visible,
   display: grid;
   gap: 16px;
 }
+.recent-projects {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--rf-border);
+}
+.recent-projects-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.recent-project-list {
+  display: grid;
+  gap: 8px;
+}
+.recent-project-item {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--rf-border);
+  border-radius: 8px;
+  background: var(--rf-surface);
+  color: var(--rf-text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+.recent-project-item:hover {
+  border-color: var(--rf-accent);
+}
+.recent-project-item small {
+  overflow-wrap: anywhere;
+  color: var(--rf-text-secondary);
+}
 .field-label {
   display: grid;
   gap: 6px;
