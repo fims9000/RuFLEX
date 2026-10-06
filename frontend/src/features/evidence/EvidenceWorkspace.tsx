@@ -193,6 +193,9 @@ export function EvidenceWorkspace({
   const [validatorKey, setValidatorKey] = useState("native_explanation_validator");
   const [executionBackends, setExecutionBackends] = useState<ExecutionBackendDescriptor[]>([]);
   const [executionBackendKey, setExecutionBackendKey] = useState("local_executor");
+  const [runtimeCatalogHydrationStatus, setRuntimeCatalogHydrationStatus] = useState<"loading" | "available" | "error">("loading");
+  const [runtimeCatalogHydrationError, setRuntimeCatalogHydrationError] = useState<string | null>(null);
+  const [runtimeCatalogHydrationReload, setRuntimeCatalogHydrationReload] = useState(0);
 
   useEffect(() => { setSample(initialSample); setComparisonSample(initialSample); }, [initialSample]);
   useEffect(() => setBehaviorResult(restoredBehaviorResult), [restoredBehaviorResult?.result_id]);
@@ -287,17 +290,28 @@ export function EvidenceWorkspace({
     return () => { active = false; };
   }, [project.session_id, persistedExplanationsHydrationReload]);
   useEffect(() => {
-    studioApi.getPluginCatalog().then(setValidatorPlugins).catch(() => setValidatorPlugins([]));
-    studioApi.getRuntimeExplainers().then(setRuntimeExplainers).catch(() => setRuntimeExplainers([]));
-    studioApi.getRuntimeValidators().then((validators) => {
+    let active = true;
+    setRuntimeCatalogHydrationStatus("loading");
+    setRuntimeCatalogHydrationError(null);
+    Promise.all([
+      studioApi.getPluginCatalog(), studioApi.getRuntimeExplainers(),
+      studioApi.getRuntimeValidators(), studioApi.getRuntimeBackends(),
+    ]).then(([plugins, explainers, validators, backends]) => {
+      if (!active) return;
+      setValidatorPlugins(plugins);
+      setRuntimeExplainers(explainers);
       setRuntimeValidators(validators);
       if (!validators.some((validator) => validator.identity.key === validatorKey)) setValidatorKey(validators[0]?.identity.key ?? "native_explanation_validator");
-    }).catch(() => setRuntimeValidators([]));
-    studioApi.getRuntimeBackends().then((backends) => {
       setExecutionBackends(backends);
       if (!backends.some((backend) => backend.identity.key === executionBackendKey)) setExecutionBackendKey(backends[0]?.identity.key ?? "local_executor");
-    }).catch(() => setExecutionBackends([]));
-  }, []);
+      setRuntimeCatalogHydrationStatus("available");
+    }).catch((reason: unknown) => {
+      if (!active) return;
+      setRuntimeCatalogHydrationError(reason instanceof Error ? reason.message : "Runtime explainer, validator and execution-backend catalogs could not be verified.");
+      setRuntimeCatalogHydrationStatus("error");
+    });
+    return () => { active = false; };
+  }, [runtimeCatalogHydrationReload]);
   useEffect(() => {
     let active = true;
     if (!run) {
@@ -531,7 +545,7 @@ export function EvidenceWorkspace({
                 {selectableMethods.map((candidate) => <option value={candidate} key={candidate}>{candidate === "occlusion" ? "Occlusion" : candidate === "shap" ? "SHAP · permutation" : candidate === "tree_shap" ? "TreeSHAP" : candidate === "integrated_gradients" ? "Integrated Gradients" : candidate === "gradient_shap" ? "GradientSHAP" : `${candidate} · runtime explainer`}</option>)}
               </select>
             </label>
-            <label className="field-label evidence-method-select">Execution backend<select aria-label="Evidence execution backend" value={executionBackendKey} disabled={busy || project.read_only || !executionBackends.length} onChange={(event) => setExecutionBackendKey(event.target.value)}>{executionBackends.map((backend) => <option key={backend.identity.key} value={backend.identity.key}>{backend.identity.key} · {backend.identity.provider}</option>)}</select></label>
+            <label className="field-label evidence-method-select">Execution backend<select aria-label="Evidence execution backend" value={executionBackendKey} disabled={busy || project.read_only || runtimeCatalogHydrationStatus !== "available" || !executionBackends.length} onChange={(event) => setExecutionBackendKey(event.target.value)}>{executionBackends.map((backend) => <option key={backend.identity.key} value={backend.identity.key}>{backend.identity.key} · {backend.identity.provider}</option>)}</select></label>
             <div className="evidence-sample-grid">
               {run.feature_columns.map((feature) => (
                 <label className="field-label" key={feature}>
@@ -545,12 +559,15 @@ export function EvidenceWorkspace({
               ))}
             </div>
             <div className="evidence-actions">
-              <Button view="action" disabled={busy || project.read_only || capabilityHydrationStatus !== "available" || selectableMethods.length === 0 || explanationJobHydrationStatus === "loading" || explanationJobHydrationStatus === "error"} onClick={generate} data-ruflex-action="explanation.generate">{busy ? "Generating…" : "Generate explanation"}</Button>
+              <Button view="action" disabled={busy || project.read_only || runtimeCatalogHydrationStatus !== "available" || !executionBackends.length || capabilityHydrationStatus !== "available" || selectableMethods.length === 0 || explanationJobHydrationStatus === "loading" || explanationJobHydrationStatus === "error"} onClick={generate} data-ruflex-action="explanation.generate">{busy ? "Generating…" : "Generate explanation"}</Button>
               <span className="property-description">{run.model_kind} · run {run.run_id.slice(0, 8)}</span>
             </div>
             {capabilityNegotiation && <div className="trace-card" data-testid="run-capability-negotiation"><strong>Run capability contract</strong><div className="property-list">{capabilityNegotiation.decisions.map((decision) => <div key={decision.capability}><span>{decision.capability.replaceAll("_", " ")}</span><span><StatusBadge tone={decision.status === "AVAILABLE" ? "success" : "info"}>{decision.status}</StatusBadge> {decision.detail}</span></div>)}</div></div>}
             {capabilityHydrationStatus === "loading" && <p role="status" data-testid="run-capability-loading">Checking explainer support for this exact run…</p>}
             {capabilityHydrationStatus === "error" && <div className="error" role="alert" data-testid="run-capability-error"><strong>Explainer support for this run could not be verified; generation is paused.</strong><p>{capabilityHydrationError}</p><Button view="outlined" onClick={() => setCapabilityHydrationReload((current) => current + 1)}>Retry run capabilities</Button></div>}
+            {runtimeCatalogHydrationStatus === "loading" && <p role="status" data-testid="runtime-catalog-loading">Loading runtime explainer, validator and execution-backend catalogs…</p>}
+            {runtimeCatalogHydrationStatus === "error" && <div className="error" role="alert" data-testid="runtime-catalog-error"><strong>Runtime catalogs could not be verified; evidence jobs are paused.</strong><p>{runtimeCatalogHydrationError}</p><Button view="outlined" onClick={() => setRuntimeCatalogHydrationReload((current) => current + 1)}>Retry runtime catalogs</Button></div>}
+            {runtimeCatalogHydrationStatus === "available" && !executionBackends.length && <p className="property-description" data-testid="runtime-backends-empty">No execution backend is available; evidence jobs cannot be started.</p>}
             {explanationJobHydrationStatus === "loading" && <p role="status" data-testid="explanation-job-loading">Loading saved explanation job…</p>}
             {explanationJobHydrationStatus === "none" && <p className="property-description" data-testid="explanation-job-empty">No saved explanation job is available.</p>}
             {explanationJobHydrationStatus === "error" && <div className="error" role="alert" data-testid="explanation-job-hydration-error"><strong>Saved explanation job could not be verified; starting another operation is paused.</strong><p>{explanationJobHydrationError}</p><Button view="outlined" onClick={() => setExplanationJobHydrationReload((current) => current + 1)}>Retry saved explanation job</Button></div>}
@@ -594,8 +611,8 @@ export function EvidenceWorkspace({
         <section className="evidence-section">
           <div className="feature-toolbar compact-toolbar">
             <div><span className="eyebrow">CHECK EXPLANATION</span><h3>Available technical checks</h3></div>
-            <label className="field-label">Validator<select aria-label="Explanation validator" value={validatorKey} disabled={busy || project.read_only || !runtimeValidators.length} onChange={(event) => setValidatorKey(event.target.value)}>{runtimeValidators.map((validator) => <option key={validator.identity.key} value={validator.identity.key}>{validator.identity.key} · {validator.identity.provider}</option>)}</select></label>
-            <Button view="outlined" disabled={busy || project.read_only || explanationJobHydrationStatus === "loading" || explanationJobHydrationStatus === "error"} onClick={check} data-ruflex-action="explanation.check">Run explanation checks</Button>
+            <label className="field-label">Validator<select aria-label="Explanation validator" value={validatorKey} disabled={busy || project.read_only || runtimeCatalogHydrationStatus !== "available" || !runtimeValidators.length} onChange={(event) => setValidatorKey(event.target.value)}>{runtimeValidators.map((validator) => <option key={validator.identity.key} value={validator.identity.key}>{validator.identity.key} · {validator.identity.provider}</option>)}</select></label>
+            <Button view="outlined" disabled={busy || project.read_only || runtimeCatalogHydrationStatus !== "available" || !runtimeValidators.length || !executionBackends.length || explanationJobHydrationStatus === "loading" || explanationJobHydrationStatus === "error"} onClick={check} data-ruflex-action="explanation.check">Run explanation checks</Button>
           </div>
           {explanationCheck && explanationCheck.explanation_id !== explanation.explanation_id ? <div className="error" role="alert" data-testid="explanation-check-mismatch"><strong>Saved check belongs to a different explanation.</strong><p>The persisted ExplanationCheck is not displayed as validation of the currently selected explanation.</p></div> : explanationCheck ? (
             <div className="trace-card">

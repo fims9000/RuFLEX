@@ -301,6 +301,15 @@ test("PRODUCT-EVIDENCE captures the frozen V1 Studio route from persisted object
     }
     await route.continue();
   });
+  let runtimeBackendsReadFailed = false;
+  await page.route("**/api/runtime/backends", async (route) => {
+    if (!runtimeBackendsReadFailed) {
+      runtimeBackendsReadFailed = true;
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Temporary runtime backend catalog failure" }) });
+      return;
+    }
+    await route.continue();
+  });
   let comparisonReadFailed = false;
   await page.route(`**/api/projects/*/analyses/comparisons/latest`, async (route) => {
     if (!comparisonReadFailed) {
@@ -341,6 +350,12 @@ test("PRODUCT-EVIDENCE captures the frozen V1 Studio route from persisted object
   await expect(page.getByTestId("condition-monitoring-demo")).toBeVisible();
   await expect(page.getByRole("button", { name: "Run telemetry demonstration", exact: true })).toBeEnabled();
   await page.getByRole("button", { name: "E", exact: true }).click();
+  await expect(page.getByTestId("runtime-catalog-error")).toContainText("Temporary runtime backend catalog failure");
+  await expect(page.getByLabel("Evidence execution backend")).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Generate explanation", exact: true })).toBeDisabled();
+  await page.getByRole("button", { name: "Retry runtime catalogs", exact: true }).click();
+  await expect(page.getByTestId("runtime-catalog-error")).toHaveCount(0);
+  await expect(page.getByLabel("Evidence execution backend")).toBeEnabled();
   await expect(page.getByTestId("run-capability-error")).toContainText("Temporary run capability read failure");
   await expect(page.getByRole("button", { name: "Generate explanation", exact: true })).toBeDisabled();
   await page.getByRole("button", { name: "Retry run capabilities", exact: true }).click();
