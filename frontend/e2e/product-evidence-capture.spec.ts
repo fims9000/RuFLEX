@@ -90,7 +90,18 @@ test("PRODUCT-EVIDENCE captures the frozen V1 Studio route from persisted object
   await expect(page.getByText("Validation f1 across seeds", { exact: true })).toBeVisible({ timeout: 45_000 });
   await capture(page, screenshots, "05_training_and_study.png", page.getByText("Validation f1 across seeds", { exact: true }));
   await page.getByRole("button", { name: "A", exact: true }).click();
+  let studyComparisonPostCount = 0;
+  await page.route("**/api/projects/analyses/comparisons", async (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    studyComparisonPostCount += 1;
+    await route.fetch();
+    await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Validation comparison response lost after persistence" }) });
+  });
   await page.getByRole("button", { name: "Compare study seeds", exact: true }).click();
+  await expect(page.getByTestId("comparison-recovery")).toContainText("Validation comparison response lost after persistence");
+  await page.getByRole("button", { name: "Retry exact comparison lookup", exact: true }).click();
+  await expect(page.getByTestId("comparison-recovery")).toHaveCount(0);
+  expect(studyComparisonPostCount).toBe(1);
   await expect(page.getByText("SAVED MODEL COMPARISON · VALIDATION ONLY", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "S", exact: true }).click();
 
