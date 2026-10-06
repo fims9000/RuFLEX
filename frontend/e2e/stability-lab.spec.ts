@@ -33,8 +33,32 @@ test("Stability Lab persists fixed-split multi-run evidence and its validation-o
   const screenshotPath = updateProductEvidence ? evidenceScreenshot : testInfo.outputPath("20_stability_lab.png");
   await mkdir(resolve(screenshotPath, ".."), { recursive: true });
   await page.screenshot({ path: screenshotPath });
+  let stabilityListFailures = 2;
+  await page.route("**/api/projects/*/analyses/stability", async (route) => {
+    if (stabilityListFailures > 0) {
+      stabilityListFailures -= 1;
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Temporary StabilityAnalysis read failure" }) });
+      return;
+    }
+    await route.continue();
+  });
+  let gateListFailures = 2;
+  await page.route("**/api/projects/*/analyses/stability-policies", async (route) => {
+    if (gateListFailures > 0) {
+      gateListFailures -= 1;
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Temporary StabilityGatePolicy read failure" }) });
+      return;
+    }
+    await route.continue();
+  });
   await page.getByRole("button", { name: "Close", exact: true }).click(); await page.getByLabel("Project path").fill(root); await page.getByRole("button", { name: "Open project", exact: true }).click(); await page.getByRole("button", { name: "S", exact: true }).click();
+  await expect(page.getByTestId("stability-analysis-load-error")).toContainText("Temporary StabilityAnalysis read failure");
+  await expect(page.getByTestId("stability-policy-load-error")).toContainText("Temporary StabilityGatePolicy read failure");
+  await expect(page.getByRole("button", { name: "Create Study Stability Analysis", exact: true })).toBeDisabled();
+  await page.getByRole("button", { name: "Retry Stability Analysis", exact: true }).click();
   await expect(page.getByText("Case Stability Map · selected-run agreement; red = high-confidence unstable", { exact: true })).toBeVisible();
+  await expect(page.getByTestId("stability-analysis-load-error")).toHaveCount(0);
+  await expect(page.getByTestId("stability-policy-load-error")).toHaveCount(0);
   await page.getByRole("button", { name: "P", exact: true }).click();
   const frozenPolicyNode = page.locator(".lineage-stability_gate_policy").first();
   await expect(frozenPolicyNode).toBeVisible();

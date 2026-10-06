@@ -1,6 +1,6 @@
 import { EChartsOption } from "echarts";
 import { useEffect, useMemo, useState } from "react";
-import { DatasetState, ExecutionBackendDescriptor, LeakageAuditReport, ModelCapabilityContract, ProductApiError, ProjectSummary, RunCapabilityNegotiation, SplitContract, StudyJob, TrainingRun, TrainingStudy, TransformPipelineContract, TreePathEvidence, studioApi } from "../../api";
+import { DatasetState, ExecutionBackendDescriptor, LeakageAuditReport, ModelCapabilityContract, ProductApiError, ProjectSummary, RunCapabilityNegotiation, SplitContract, StudyJob, StabilityGatePolicy, StudyStabilityAnalysis, TrainingRun, TrainingStudy, TransformPipelineContract, TreePathEvidence, studioApi } from "../../api";
 import { ChartSurface } from "../../charts/ChartSurface";
 import { Button, EmptyState, StatusBadge } from "../../components/StudioPrimitives";
 import { StudioTheme } from "../../design/tokens";
@@ -172,7 +172,7 @@ function validateTrainingParameters(model: ModelCapabilityContract | null, value
   return errors;
 }
 
-export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus = "available", datasetHydrationError = null, onRetryDatasetHydration = () => undefined, run, study: restoredStudy, studyHydrationStatus = "available", studyHydrationError = null, onRetryStudyHydration = () => undefined, theme, onRun, onStudy }: {
+export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus = "available", datasetHydrationError = null, onRetryDatasetHydration = () => undefined, run, study: restoredStudy, studyHydrationStatus = "available", studyHydrationError = null, onRetryStudyHydration = () => undefined, theme, onRun, onStudy, onStabilityAnalysisChange, onStabilityGatePolicyChange }: {
   project: ProjectSummary;
   dataset: DatasetState | null;
   datasetHydrationStatus?: "idle" | "loading" | "none" | "available" | "error";
@@ -186,6 +186,8 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
   theme: StudioTheme;
   onRun: (run: TrainingRun) => void;
   onStudy: (study: TrainingStudy) => void;
+  onStabilityAnalysisChange?: (analysis: StudyStabilityAnalysis | null) => void;
+  onStabilityGatePolicyChange?: (policy: StabilityGatePolicy | null) => void;
 }) {
   const [seed, setSeed] = useState(42);
   const [modelKind, setModelKind] = useState("flat_neuro_fuzzy");
@@ -664,7 +666,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
       </section>
     </div>
     <section className="comparison-card"><span className="eyebrow">MODEL RUNTIME · DECLARED CAPABILITIES</span><div className="data-table-wrap"><table className="data-table"><thead><tr><th>model</th><th>family</th><th>available</th><th>capabilities</th><th>evidence boundary</th></tr></thead><tbody>{catalog.map((entry) => <tr key={entry.key}><td>{entry.display_name}</td><td>{entry.family}</td><td>{entry.available ? "available" : entry.unavailability_reason ?? "not available"}</td><td>{Object.entries(entry.capabilities).filter(([, value]) => value).map(([key]) => key).join(", ") || "—"}</td><td>{entry.limitations.join(" ") || "—"}</td></tr>)}</tbody></table></div></section>
-    <StabilityLab project={project} study={study} theme={theme} />
+    <StabilityLab project={project} study={study} theme={theme} onAnalysisChange={onStabilityAnalysisChange} onPolicyChange={onStabilityGatePolicyChange} />
     {error && <div className="error" role="alert">{error}</div>}
   </section>;
 }
