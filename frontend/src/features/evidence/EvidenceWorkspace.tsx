@@ -165,6 +165,9 @@ export function EvidenceWorkspace({
   const [baselineBehaviorResultId, setBaselineBehaviorResultId] = useState("");
   const [candidateBehaviorResultId, setCandidateBehaviorResultId] = useState("");
   const [reproducibility, setReproducibility] = useState<ExplanationReproducibilityAnalysis | null>(restoredReproducibility);
+  const [reproducibilityRecoveryIds, setReproducibilityRecoveryIds] = useState<string[] | null>(null);
+  const [reproducibilityRecoveryError, setReproducibilityRecoveryError] = useState<string | null>(null);
+  const [reproducibilityRecoveryNotFound, setReproducibilityRecoveryNotFound] = useState(false);
   const [persistedExplanations, setPersistedExplanations] = useState<ExplanationContract[]>([]);
   const [persistedExplanationsHydrationStatus, setPersistedExplanationsHydrationStatus] = useState<"loading" | "available" | "error">("loading");
   const [persistedExplanationsHydrationError, setPersistedExplanationsHydrationError] = useState<string | null>(null);
@@ -552,11 +555,66 @@ export function EvidenceWorkspace({
 
   async function compareReproducibility() {
     setBusy(true); setError(null);
+    const explanationIds = [...selectedExplanationIds];
     try {
-      const result = await studioApi.createExplanationReproducibility(project.session_id, selectedExplanationIds);
-      setReproducibility(result); onReproducibility(result);
-    } catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
+      await submitReproducibility(explanationIds);
+    } catch (reason) {
+      setReproducibilityRecoveryIds(explanationIds);
+      setReproducibilityRecoveryError(reason instanceof Error ? reason.message : "The saved reproducibility analysis could not be confirmed.");
+      setReproducibilityRecoveryNotFound(false);
+      setError(reason instanceof Error ? reason.message : String(reason));
+    }
     finally { setBusy(false); }
+  }
+
+  async function submitReproducibility(explanationIds: string[]) {
+    const result = await studioApi.createExplanationReproducibility(project.session_id, explanationIds);
+    setReproducibility(result); onReproducibility(result);
+    setReproducibilityRecoveryIds(null);
+    setReproducibilityRecoveryError(null);
+    setReproducibilityRecoveryNotFound(false);
+  }
+
+  async function recoverReproducibility() {
+    if (!reproducibilityRecoveryIds) return;
+    setBusy(true); setError(null);
+    try {
+      let result: ExplanationReproducibilityAnalysis;
+      try {
+        result = await studioApi.getLatestExplanationReproducibility(project.session_id);
+      } catch (reason) {
+        if (reason instanceof ProductApiError && reason.status === 404) {
+          setReproducibilityRecoveryNotFound(true);
+          setReproducibilityRecoveryError("No persisted comparison is visible yet. Retry lookup later, or explicitly start a new comparison if the original request did not finish.");
+          return;
+        }
+        throw reason;
+      }
+      const expected = [...reproducibilityRecoveryIds].sort();
+      if ([...result.explanation_ids].sort().join("\n") !== expected.join("\n")) {
+        throw new Error("The latest saved analysis belongs to a different explanation set; no replacement was created.");
+      }
+      setReproducibility(result); onReproducibility(result);
+      setReproducibilityRecoveryIds(null);
+      setReproducibilityRecoveryError(null);
+      setReproducibilityRecoveryNotFound(false);
+    } catch (reason) {
+      setReproducibilityRecoveryError(reason instanceof Error ? reason.message : "Could not recover the exact saved reproducibility analysis.");
+      setReproducibilityRecoveryNotFound(false);
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally { setBusy(false); }
+  }
+
+  async function explicitlyRestartReproducibility() {
+    if (!reproducibilityRecoveryIds || !reproducibilityRecoveryNotFound) return;
+    setBusy(true); setError(null);
+    try {
+      await submitReproducibility(reproducibilityRecoveryIds);
+    } catch (reason) {
+      setReproducibilityRecoveryError(reason instanceof Error ? reason.message : "The replacement comparison could not be confirmed.");
+      setReproducibilityRecoveryNotFound(false);
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally { setBusy(false); }
   }
 
   async function runExhaustive(kind: ExhaustiveLabResult["kind"]) {
@@ -792,7 +850,8 @@ export function EvidenceWorkspace({
         {reproducibilityHydrationStatus === "error" && <div className="error" role="alert" data-testid="reproducibility-hydration-error"><strong>Saved reproducibility analysis could not be verified.</strong><p>{reproducibilityHydrationError}</p>{onRetryReproducibility && <Button view="outlined" onClick={onRetryReproducibility}>Retry reproducibility analysis</Button>}</div>}
         {persistedExplanationsHydrationStatus === "loading" && <p role="status" data-testid="persisted-explanations-loading">Loading saved explanations…</p>}
         {persistedExplanationsHydrationStatus === "error" && <div className="error" role="alert" data-testid="persisted-explanations-hydration-error"><strong>Saved explanations could not be verified; reproducibility comparison is paused.</strong><p>{persistedExplanationsHydrationError}</p><Button view="outlined" onClick={() => setPersistedExplanationsHydrationReload((current) => current + 1)}>Retry saved explanations</Button></div>}
-        {persistedExplanationsHydrationStatus === "available" && (persistedExplanations.length < 4 ? <EmptyState title="Need persisted explanation cases">Generate the same explanation method for the same declared cases across at least two compatible runs.</EmptyState> : <><div className="comparison-choice">{persistedExplanations.map((item) => <label key={item.explanation_id}><input type="checkbox" checked={selectedExplanationIds.includes(item.explanation_id)} onChange={(event) => setSelectedExplanationIds((current) => event.target.checked ? [...current, item.explanation_id] : current.filter((id) => id !== item.explanation_id))} />{item.run_id.slice(0, 8)} · {item.method} · case {item.sample_identity?.slice(-8)}</label>)}</div><Button view="action" disabled={busy || project.read_only || selectedExplanationIds.length < 4} onClick={compareReproducibility} data-ruflex-action="explanation.reproducibility.compare">{busy ? "Comparing…" : "Compare explanation reproducibility"}</Button></>)}
+        {reproducibilityRecoveryIds && <div className="error" role="alert" data-testid="reproducibility-recovery"><strong>Reproducibility request outcome is uncertain; resolve the same explanation set before changing it.</strong><p>{reproducibilityRecoveryError}</p><Button view="outlined" disabled={busy} onClick={recoverReproducibility}>Retry saved comparison lookup</Button>{reproducibilityRecoveryNotFound && <Button view="outlined" disabled={busy} onClick={explicitlyRestartReproducibility}>Start a new comparison explicitly</Button>}</div>}
+        {persistedExplanationsHydrationStatus === "available" && (persistedExplanations.length < 4 ? <EmptyState title="Need persisted explanation cases">Generate the same explanation method for the same declared cases across at least two compatible runs.</EmptyState> : <><div className="comparison-choice">{persistedExplanations.map((item) => <label key={item.explanation_id}><input type="checkbox" disabled={!!reproducibilityRecoveryIds} checked={selectedExplanationIds.includes(item.explanation_id)} onChange={(event) => setSelectedExplanationIds((current) => event.target.checked ? [...current, item.explanation_id] : current.filter((id) => id !== item.explanation_id))} />{item.run_id.slice(0, 8)} · {item.method} · case {item.sample_identity?.slice(-8)}</label>)}</div><Button view="action" disabled={busy || project.read_only || !!reproducibilityRecoveryIds || selectedExplanationIds.length < 4} onClick={compareReproducibility} data-ruflex-action="explanation.reproducibility.compare">{busy ? "Comparing…" : "Compare explanation reproducibility"}</Button></>)}
         {reproducibility && <div className="trace-card" data-testid="reproducibility-result"><p><StatusBadge tone="info">PREDICTION AGREEMENT</StatusBadge> class {(reproducibility.prediction_agreement.class_agreement * 100).toFixed(1)}% · mean |Δ| {reproducibility.prediction_agreement.mean_absolute_difference.toFixed(5)}</p><p><StatusBadge tone="warning">EXPLANATION AGREEMENT</StatusBadge> Spearman {reproducibility.explanation_agreement.mean_spearman?.toFixed(3) ?? "N/A"} · sign {(reproducibility.explanation_agreement.mean_sign_agreement * 100).toFixed(1)}% · top-k {(reproducibility.explanation_agreement.mean_top_k_overlap * 100).toFixed(1)}%</p><div className="data-table-wrap"><table className="data-table"><thead><tr><th>runs</th><th>prediction Δ</th><th>Spearman</th><th>sign</th><th>top-k</th></tr></thead><tbody>{reproducibility.pairwise.map((item) => <tr key={`${item.left_run_id}-${item.right_run_id}`}><td>{item.left_run_id.slice(0, 8)} / {item.right_run_id.slice(0, 8)}</td><td>{item.prediction_mean_absolute_difference.toFixed(5)}</td><td>{item.explanation_spearman?.toFixed(3) ?? "N/A"}</td><td>{(item.explanation_sign_agreement * 100).toFixed(1)}%</td><td>{(item.top_k_overlap * 100).toFixed(1)}%</td></tr>)}</tbody></table></div><div className="data-table-wrap"><table className="data-table"><thead><tr><th>feature</th><th>mean attribution</th><th>variability σ</th><th>sign agreement</th></tr></thead><tbody>{reproducibility.per_feature_variability.map((item) => <tr key={item.feature}><td>{item.feature}</td><td>{item.mean_attribution.toFixed(5)}</td><td>{item.standard_deviation.toFixed(5)}</td><td>{(item.sign_agreement * 100).toFixed(1)}%</td></tr>)}</tbody></table></div>{reproducibility.warnings.map((warning) => <p className="property-description" key={warning}>Warning · {warning}</p>)}</div>}
       </section>
     </section>

@@ -162,8 +162,26 @@ test("PRODUCT-EVIDENCE captures the frozen V1 Studio route from persisted object
   const explanationChoices = page.locator('.comparison-choice input[type="checkbox"]');
   await expect(explanationChoices).toHaveCount(4);
   for (let index = 0; index < 4; index += 1) await explanationChoices.nth(index).check();
+  let reproducibilityPostCount = 0;
+  let loseReproducibilityResponse = true;
+  await page.route("**/api/projects/evidence/explanation-reproducibility", async (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    reproducibilityPostCount += 1;
+    if (loseReproducibilityResponse) {
+      loseReproducibilityResponse = false;
+      await route.fetch();
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Reproducibility response lost after persistence" }) });
+      return;
+    }
+    await route.continue();
+  });
   await page.getByRole("button", { name: "Compare explanation reproducibility", exact: true }).click();
+  await expect(page.getByTestId("reproducibility-recovery")).toContainText("Reproducibility response lost after persistence");
+  await expect(page.getByRole("button", { name: "Compare explanation reproducibility", exact: true })).toBeDisabled();
+  await page.getByRole("button", { name: "Retry saved comparison lookup", exact: true }).click();
   await expect(page.getByTestId("reproducibility-result")).toContainText("EXPLANATION AGREEMENT");
+  await expect(page.getByTestId("reproducibility-recovery")).toHaveCount(0);
+  expect(reproducibilityPostCount).toBe(1);
   await capture(page, screenshots, "10_cross_run_reproducibility.png", page.getByTestId("reproducibility-result"));
 
   let behaviorRunPostCount = 0;
