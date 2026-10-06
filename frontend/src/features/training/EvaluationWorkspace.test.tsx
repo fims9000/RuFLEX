@@ -50,10 +50,13 @@ function renderWorkspace(readOnly = false, overrides: {
   finalTestEvidenceStatus?: "idle" | "loading" | "none" | "available" | "error";
   finalTestEvidenceError?: string | null;
   onRetryFinalTestEvidence?: () => void;
+  evaluationStatus?: "idle" | "loading" | "none" | "available" | "error";
+  evaluationError?: string | null;
+  onRetryEvaluation?: () => void;
 } = {}) {
   return render(<EvaluationWorkspace
     project={{ ...project, read_only: readOnly } as never} dataset={(overrides.dataset ?? null) as never} fis={null} run={(overrides.run === undefined ? run : overrides.run) as never} runs={(overrides.runs ?? [run]) as never} runListStatus={overrides.runListStatus ?? "loaded"} runListError={overrides.runListError ?? null} onRetryRunList={overrides.onRetryRunList ?? vi.fn()} study={null}
-    evaluation={evaluation as never} calibrationTransform={null} decisionThreshold={threshold as never} finalTestEvaluation={(overrides.finalTestEvaluation ?? null) as never}
+    evaluation={(overrides.evaluationStatus === "error" ? null : evaluation) as never} evaluationStatus={overrides.evaluationStatus ?? "available"} evaluationError={overrides.evaluationError ?? null} onRetryEvaluation={overrides.onRetryEvaluation ?? vi.fn()} calibrationTransform={null} decisionThreshold={threshold as never} finalTestEvaluation={(overrides.finalTestEvaluation ?? null) as never}
     finalTestEvidenceStatus={overrides.finalTestEvidenceStatus ?? "none"} finalTestEvidenceError={overrides.finalTestEvidenceError ?? null} onRetryFinalTestEvidence={overrides.onRetryFinalTestEvidence ?? vi.fn()}
     comparison={null} sliceAnalysis={null} selectivePolicy={null} stabilityGatePolicy={null} theme={"light" as never}
     onEvaluation={vi.fn()} onCalibration={vi.fn()} onThreshold={vi.fn()} onFinalTest={vi.fn()} onComparison={vi.fn()} onSliceAnalysis={vi.fn()} onSelectivePolicy={vi.fn()}
@@ -61,6 +64,19 @@ function renderWorkspace(readOnly = false, overrides: {
 }
 
 describe("EvaluationWorkspace final-test boundary", () => {
+  it("preserves run metrics but pauses new Evaluation and policy writes while saved Evaluation lookup fails", () => {
+    const retry = vi.fn();
+    renderWorkspace(false, { evaluationStatus: "error", evaluationError: "evaluation store unavailable", onRetryEvaluation: retry });
+    expect(screen.getByRole("alert")).toHaveTextContent("Could not verify saved validation Evaluation");
+    expect(screen.getByRole("alert")).toHaveTextContent("evaluation store unavailable");
+    expect(screen.getByText("0.8000")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save validation evidence" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Fit validation calibration" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Select F1 threshold (raw)" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Retry validation evidence check" }));
+    expect(retry).toHaveBeenCalledOnce();
+  });
+
   it("fails closed when persisted final-test access status cannot be verified", () => {
     const retry = vi.fn();
     renderWorkspace(false, { finalTestEvidenceStatus: "error", finalTestEvidenceError: "API unavailable", onRetryFinalTestEvidence: retry });

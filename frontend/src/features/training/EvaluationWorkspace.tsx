@@ -100,6 +100,9 @@ type Props = {
   onRetryRunList: () => void;
   study: TrainingStudy | null;
   evaluation: AnalysisEvaluation | null;
+  evaluationStatus: "idle" | "loading" | "none" | "available" | "error";
+  evaluationError: string | null;
+  onRetryEvaluation: () => void;
   calibrationTransform: CalibrationTransform | null;
   decisionThreshold: DecisionThresholdPolicy | null;
   finalTestEvaluation: FinalTestEvaluation | null;
@@ -131,6 +134,9 @@ export function EvaluationWorkspace({
   onRetryRunList,
   study,
   evaluation,
+  evaluationStatus,
+  evaluationError,
+  onRetryEvaluation,
   calibrationTransform,
   decisionThreshold,
   finalTestEvaluation,
@@ -191,6 +197,7 @@ export function EvaluationWorkspace({
     : null;
   const datasetTestBoundaryOpened = Boolean(datasetTestBoundaryAt);
   const finalTestBoundaryKnown = finalTestEvidenceStatus === "none" || finalTestEvidenceStatus === "available";
+  const evaluationStateKnown = evaluationStatus === "none" || evaluationStatus === "available";
 
   const option = useMemo(() => {
     if (!run) return null;
@@ -398,11 +405,15 @@ export function EvaluationWorkspace({
       <div className="toolbar-actions">
         <StatusBadge tone={activeFinalTest || datasetTestBoundaryOpened ? "danger" : "warning"}>{activeFinalTest ? "final test evaluated" : datasetTestBoundaryOpened ? "dataset final-test boundary opened" : finalTestBoundaryKnown ? "final test locked" : "final-test status unverified"}</StatusBadge>
         {study && <Button view="outlined" disabled={comparing || project.read_only} onClick={saveStudyComparison} data-ruflex-action="comparison.study.create">{comparing ? "Comparing…" : "Compare study seeds"}</Button>}
-        <Button view="outlined" disabled={saving || project.read_only} onClick={saveEvaluation} data-ruflex-action="evaluation.save">{saving ? "Saving…" : activeEvaluation ? "Save evaluation revision" : "Save validation evidence"}</Button>
-        {run.task === "binary_classification" && <Button view="outlined" disabled={calibrating || project.read_only || datasetTestBoundaryOpened || !finalTestBoundaryKnown} onClick={fitCalibration} data-ruflex-action="calibration.fit">{calibrating ? "Fitting…" : activeCalibration ? "Refit calibration" : "Fit validation calibration"}</Button>}
-        {run.task === "binary_classification" && <Button view="action" disabled={thresholding || project.read_only || datasetTestBoundaryOpened || !finalTestBoundaryKnown} onClick={selectThreshold} data-ruflex-action="threshold.select">{thresholding ? "Selecting…" : activeThreshold ? "Reselect threshold" : `Select F1 threshold (${activeCalibration ? "calibrated" : "raw"})`}</Button>}
+        <Button view="outlined" disabled={saving || project.read_only || !evaluationStateKnown} onClick={saveEvaluation} data-ruflex-action="evaluation.save">{saving ? "Saving…" : activeEvaluation ? "Save evaluation revision" : "Save validation evidence"}</Button>
+        {run.task === "binary_classification" && <Button view="outlined" disabled={calibrating || project.read_only || datasetTestBoundaryOpened || !finalTestBoundaryKnown || !evaluationStateKnown} onClick={fitCalibration} data-ruflex-action="calibration.fit">{calibrating ? "Fitting…" : activeCalibration ? "Refit calibration" : "Fit validation calibration"}</Button>}
+        {run.task === "binary_classification" && <Button view="action" disabled={thresholding || project.read_only || datasetTestBoundaryOpened || !finalTestBoundaryKnown || !evaluationStateKnown} onClick={selectThreshold} data-ruflex-action="threshold.select">{thresholding ? "Selecting…" : activeThreshold ? "Reselect threshold" : `Select F1 threshold (${activeCalibration ? "calibrated" : "raw"})`}</Button>}
       </div>
     </div>
+
+    {evaluationStatus === "loading" && <div role="status">Checking saved validation Evaluation before offering a new save or policy action…</div>}
+    {evaluationStatus === "idle" && <div role="status">Saved validation Evaluation status has not been checked; policy actions remain paused.</div>}
+    {evaluationStatus === "error" && <div className="error" role="alert"><strong>Could not verify saved validation Evaluation</strong><p>{evaluationError ?? "Saved evaluation state is unavailable; no empty state is inferred."}</p><Button view="outlined" onClick={onRetryEvaluation}>Retry validation evidence check</Button></div>}
 
     <div className="metric-grid">
       {metrics.map(([name, value]) => <div className="metric-card" key={name}><span>{name}</span><strong>{Number(value).toFixed(4)}</strong><small>validation · raw model</small></div>)}
@@ -447,7 +458,7 @@ export function EvaluationWorkspace({
       <span className="eyebrow">SELECTIVE PREDICTION · VALIDATION ONLY</span><h3>Accept confident cases; route the rest to review</h3>
       <p>This confidence cutoff is independent of the class threshold. It tunes ACCEPT / REVIEW coverage on validation evidence and never opens the final test.</p>
       <label className="field-label">Confidence cutoff<input aria-label="Selective confidence cutoff" type="number" min="0.5" max="1" step="0.05" value={selectiveCutoff} onChange={(event) => setSelectiveCutoff(event.target.value)} /></label>
-      <Button view="action" disabled={selectingReview || project.read_only || datasetTestBoundaryOpened || !finalTestBoundaryKnown || !activeThreshold} onClick={selectReviewPolicy} data-ruflex-action="selective_policy.create">{selectingReview ? "Selecting…" : "Save ACCEPT / REVIEW policy"}</Button>
+      <Button view="action" disabled={selectingReview || project.read_only || datasetTestBoundaryOpened || !finalTestBoundaryKnown || !evaluationStateKnown || !activeThreshold} onClick={selectReviewPolicy} data-ruflex-action="selective_policy.create">{selectingReview ? "Selecting…" : "Save ACCEPT / REVIEW policy"}</Button>
       {!activeThreshold && <small>Select the validation class threshold first; accepted risk uses that exact threshold, never an implicit 0.50.</small>}
       {selectivePolicy && <><p><StatusBadge tone="warning">REVIEW BELOW {selectivePolicy.confidence_cutoff.toFixed(2)}</StatusBadge> ACCEPT at or above cutoff · class threshold {selectivePolicy.class_threshold.toFixed(2)} · {selectivePolicy.probability_source} probability.</p><small className="mono">threshold {selectivePolicy.class_threshold_id.slice(0, 12)} · validation cases {selectivePolicy.fit_sample_identity.slice(0, 24)}…</small><div className="data-table-wrap"><table className="data-table"><thead><tr><th>confidence</th><th>coverage</th><th>accepted risk</th><th>accepted</th></tr></thead><tbody>{selectivePolicy.risk_coverage.map((point) => <tr key={point.confidence_cutoff}><td>{point.confidence_cutoff.toFixed(2)}</td><td>{(point.coverage * 100).toFixed(1)}%</td><td>{point.accepted_risk === null ? "—" : `${(point.accepted_risk * 100).toFixed(1)}%`}</td><td>{point.accepted_count}</td></tr>)}</tbody></table></div><small>{selectivePolicy.scientific_note}</small></>}
     </section>}
@@ -499,7 +510,7 @@ export function EvaluationWorkspace({
         {sliceKind === "manual" && <label className="field-label">Original source rows<input aria-label="Slice source rows" placeholder="2, 7, 11" value={sliceRows} onChange={(event) => setSliceRows(event.target.value)} /></label>}
         <label className="field-label">Metric<select aria-label="Slice metric" value={sliceMetric || (run.task === "binary_classification" ? "f1" : "rmse")} onChange={(event) => setSliceMetric(event.target.value)}>{run.task === "binary_classification" ? <><option value="f1">F1</option><option value="accuracy">Accuracy</option><option value="precision">Precision</option><option value="recall">Recall</option><option value="brier">Brier</option></> : <><option value="rmse">RMSE</option><option value="mae">MAE</option><option value="mse">MSE</option><option value="r2">R²</option></>}</select></label>
       </div>
-      <Button view="outlined" disabled={sliceRunning || project.read_only || !dataset} onClick={runSliceAnalysis} data-ruflex-action="slice.create">{sliceRunning ? "Calculating…" : "Run and persist slice"}</Button>
+      <Button view="outlined" disabled={sliceRunning || project.read_only || !dataset || !evaluationStateKnown} onClick={runSliceAnalysis} data-ruflex-action="slice.create">{sliceRunning ? "Calculating…" : "Run and persist slice"}</Button>
       {sliceAnalysis && <div className="data-table-wrap"><table className="data-table"><thead><tr><th>slice</th><th>kind</th><th>N</th><th>metric</th><th>value</th><th>overall</th><th>delta</th><th>metric status</th><th>declared scope</th></tr></thead><tbody>{sliceAnalysis.results.map((result) => <tr key={`${sliceAnalysis.analysis_id}-${result.name}`}><td>{result.name}</td><td>{result.kind}</td><td>{result.n}</td><td>{result.metric}</td><td>{result.value === null ? "—" : result.value.toFixed(4)}</td><td>{result.overall_value.toFixed(4)}</td><td>{result.delta_vs_overall === null ? "—" : result.delta_vs_overall.toFixed(4)}</td><td>{result.status}{result.warning ? ` · ${result.warning}` : ""}</td><td><StatusBadge tone={result.scope_disposition === "ALLOW" ? "success" : result.scope_disposition === "BLOCK" ? "danger" : "warning"}>{result.scope_disposition}</StatusBadge>{result.scope_reasons.length > 0 && <small className="slice-scope-reason">{result.scope_reasons.join(" ")}</small>}</td></tr>)}</tbody></table><p>{sliceAnalysis.generalization_contract_id ? `Scope classifications use GeneralizationContract ${sliceAnalysis.generalization_contract_id.slice(0, 12)}. ` : "No GeneralizationContract was linked; scope remains undeclared. "}{sliceAnalysis.scientific_note}</p></div>}
     </section>
     {error && <div className="error" role="alert">{error}</div>}

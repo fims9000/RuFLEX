@@ -105,12 +105,20 @@ test("PRODUCT-02 performs real neuro-fuzzy training, validation evaluation and r
 test("PRODUCT-02 blocks validation policy changes when final-test access status is unavailable", async ({ page }) => {
   test.setTimeout(45_000);
   let boundaryRequests = 0;
+  let evaluationRequests = 0;
   await page.route("**/api/projects/*/analyses/final-test/latest", async (route) => {
     boundaryRequests += 1;
     if (boundaryRequests === 1) {
       return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "final-test boundary store unavailable" }) });
     }
     return route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ detail: "No final-test evaluation exists in this project." }) });
+  });
+  await page.route("**/api/projects/*/analyses/evaluations/latest", async (route) => {
+    evaluationRequests += 1;
+    if (evaluationRequests === 1) {
+      return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "saved evaluation store unavailable" }) });
+    }
+    return route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ detail: "No saved evaluation exists in this project." }) });
   });
   const path = projectPath();
   await page.goto("/");
@@ -128,8 +136,13 @@ test("PRODUCT-02 blocks validation policy changes when final-test access status 
   await expect(page.locator(".run-provenance")).toBeVisible({ timeout: 30_000 });
   await page.getByRole("button", { name: "A", exact: true }).click();
 
+  await expect(page.getByText("Could not verify saved validation Evaluation", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save validation evidence" })).toBeDisabled();
+  await page.getByRole("button", { name: "Retry validation evidence check" }).click();
+  await expect(page.getByRole("button", { name: "Save validation evidence" })).toBeEnabled();
+  expect(evaluationRequests).toBe(2);
   await expect(page.getByRole("heading", { name: "Final-test state unavailable" })).toBeVisible();
-  await expect(page.getByRole("alert")).toContainText("final-test boundary store unavailable");
+  await expect(page.getByRole("alert").filter({ hasText: "final-test boundary store unavailable" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Select F1 threshold (raw)" })).toBeDisabled();
   await page.getByRole("button", { name: "Retry final-test status check" }).click();
   await expect(page.getByRole("heading", { name: "Final test remains closed" })).toBeVisible();
