@@ -83,6 +83,11 @@ function loadRecentProjects(): RecentProject[] {
   }
 }
 
+async function sha256Hex(bytes: ArrayBuffer): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
 export function App() {
   const [project, setProject] = useState<ProjectSummary | null>(null);
   const [recentProjects, setRecentProjects] = useState<RecentProject[]>(loadRecentProjects);
@@ -1356,9 +1361,14 @@ export function App() {
     setDatasetStateStatus("loading");
     setError(null);
     setStatus(`Importing ${file.name}`);
+    let importResponseReceived = false;
+    let sourceArtifactSha256: string | null = null;
+    const requestedIdColumns = idColumns.split(",").map((column) => column.trim()).filter(Boolean);
     try {
-      const bytes = new Uint8Array(await file.arrayBuffer());
+      const fileBytes = await file.arrayBuffer();
+      const bytes = new Uint8Array(fileBytes);
       if (!isCurrent()) return;
+      sourceArtifactSha256 = await sha256Hex(fileBytes);
       let binary = "";
       for (const byte of bytes) binary += String.fromCharCode(byte);
       const confirmed = await studioApi.importDataset(
@@ -1367,8 +1377,9 @@ export function App() {
         btoa(binary),
         target,
         task,
-        idColumns.split(",").map((column) => column.trim()).filter(Boolean),
+        requestedIdColumns,
       );
+      importResponseReceived = true;
       if (!isCurrent()) return;
       pendingImportedFingerprintRef.current = confirmed.contract.dataset_fingerprint;
       setDataset(confirmed);
@@ -1385,6 +1396,35 @@ export function App() {
       setError(null);
     } catch (reason) {
       if (!isCurrent()) return;
+      if (!importResponseReceived && sourceArtifactSha256) {
+        try {
+          const persisted = await studioApi.getDatasetState(sessionId);
+          if (!isCurrent()) return;
+          const sameContract = persisted.contract.source_artifact_sha256 === sourceArtifactSha256
+            && persisted.contract.target === target
+            && persisted.contract.task === task
+            && JSON.stringify(persisted.contract.id_columns) === JSON.stringify(requestedIdColumns);
+          setDatasetState(persisted);
+          setDataset({ contract: persisted.contract, audit: persisted.audit });
+          setProfile(persisted.profile);
+          setDatasetStateStatus("available");
+          setDatasetStateError(null);
+          if (sameContract) {
+            pendingImportedFingerprintRef.current = null;
+            setPendingDatasetFile(null);
+            setPendingDatasetProfile(null);
+            setError(null);
+            setStatus(`${file.name} is present in the project; restored its confirmation after the upload response was lost`);
+            void refreshArtifactInventory(sessionId);
+            return;
+          }
+          setError("The upload response was lost and the saved DatasetContract does not match this file and target. The file was not uploaded again; review the saved dataset before retrying.");
+          setStatus("Upload outcome could not be matched to the saved dataset");
+          return;
+        } catch {
+          /* Fall through to the explicit retry state if the persisted state cannot be read either. */
+        }
+      }
       setDatasetStateStatus("error");
       setDatasetStateError(reason instanceof Error ? reason.message : "Imported dataset state could not be restored.");
       setError(reason instanceof Error ? reason.message : "Dataset file import failed");

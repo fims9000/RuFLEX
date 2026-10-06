@@ -144,7 +144,8 @@
     "alpha_backend_startup_recovery",
     "alpha_project_entry_validation_recovery",
     "alpha_recent_project_error_lifecycle",
-    "alpha_dataset_import_persisted_confirmation_recovery"
+    "alpha_dataset_import_persisted_confirmation_recovery",
+    "alpha_dataset_import_lost_response_recovery"
   ],
   "active_capability": "alpha_recent_project_reopen",
   "active_acceptance": [
@@ -152,7 +153,7 @@
     "Recent names/paths are stored only in this browser, bounded to eight entries, and can be cleared individually or all at once."
   ],
   "blockers": [],
-  "next_executable_work": "Audit file import lost-response recovery, distinguishing a failed write from a committed import whose response was lost; avoid duplicate imports and verify with a focused browser test. Do not push.",
+  "next_executable_work": "Apply the same persisted-outcome reconciliation to editable CSV confirmation when its response is lost; keep it separate from file import and verify with a focused browser test. Do not push.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -300,6 +301,7 @@
     "alpha_backend_startup_recovery": "PASS: Studio represents startup backend failure separately from project errors, blocks project create/open while unavailable (including keyboard form submission), and exposes a retry action. Focused Playwright forced health to fail, verified Enter sent no create request, then recovered and created a project after retry; TypeScript/Vite production build passed.",
     "alpha_project_entry_validation_recovery": "PASS: Empty project paths are rejected before network activity, and duplicate create-path errors now guide the user to open the existing project. Focused Playwright verified blank-path validation, duplicate-path guidance, successful reopen; TypeScript/Vite build passed.",
     "alpha_recent_project_error_lifecycle": "PASS: Recent-project error state clears when its entry/history is forgotten or any project successfully opens/creates, preventing an old failure from reappearing beside a new history item. Recent-project E2Es (2/2) and TypeScript/Vite build passed.",
-    "alpha_dataset_import_persisted_confirmation_recovery": "PASS: When a file import succeeds but the confirming DatasetState read fails, retry now compares the persisted fingerprint to the just-imported contract and clears the stale upload draft rather than offering a duplicate import. Focused Playwright exercised persistence → failed read → retry; TypeScript/Vite production build passed."
+    "alpha_dataset_import_persisted_confirmation_recovery": "PASS: When a file import succeeds but the confirming DatasetState read fails, retry now compares the persisted fingerprint to the just-imported contract and clears the stale upload draft rather than offering a duplicate import. Focused Playwright exercised persistence → failed read → retry; TypeScript/Vite production build passed.",
+    "alpha_dataset_import_lost_response_recovery": "PASS: If file-import persistence succeeds but the HTTP response is interrupted, Studio checks the saved source SHA and contract settings before deciding whether to restore success; exact match clears the draft without re-uploading, mismatch is surfaced without retry. Playwright aborted the response after backend commit and confirmed one request only; dataset import recovery E2E and TypeScript/Vite build passed."
   }
 }
