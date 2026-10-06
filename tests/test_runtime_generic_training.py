@@ -348,6 +348,34 @@ def test_study_job_persists_and_uses_the_selected_external_execution_backend(tmp
     )
 
 
+def test_study_job_request_id_recovers_existing_job_and_rejects_config_mismatch(tmp_path: Path, monkeypatch) -> None:
+    from uuid import uuid4
+
+    _project(tmp_path)
+    from ruflex.application import training as training_app
+
+    monkeypatch.setattr(training_app, "_submit_study_job", lambda root, job_id: training_app.load_study_job(root, job_id))
+    request_id = uuid4()
+    request = {
+        "client_request_id": request_id,
+        "name": "recoverable study",
+        "model_kind": "logistic_regression",
+        "seeds": [3, 5, 7],
+        "selection_metric": "f1",
+        "execution_backend_key": "local_executor",
+        "max_epochs": 2,
+    }
+
+    first = training_app.start_study_job(tmp_path, **request)
+    retry = training_app.start_study_job(tmp_path, **request)
+
+    assert first.job_id == retry.job_id == request_id
+    assert retry.client_request_id == request_id
+    assert len(list((tmp_path / "studies" / "jobs").glob("*.json"))) == 1
+    with pytest.raises(training_app.TrainingError, match="different frozen configuration"):
+        training_app.start_study_job(tmp_path, **{**request, "max_epochs": 3})
+
+
 @pytest.mark.parametrize("adapter_key,model_kind,parameters", [
     ("native_flat_neuro_fuzzy", "flat_neuro_fuzzy", {"max_epochs": 2, "batch_size": 16, "patience": 2, "max_rules": 3, "learning_rate": .01}),
     ("native_linear", "logistic_regression", {}),

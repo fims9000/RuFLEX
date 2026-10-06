@@ -9,8 +9,8 @@ import tempfile
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from threading import Event
-from uuid import UUID
+from threading import Event, Lock
+from uuid import UUID, uuid4
 
 import numpy as np
 import pandas as pd
@@ -124,6 +124,7 @@ def _study_job_path(project_root: Path, job_id: UUID) -> Path:
 
 
 _study_job_cancellations: dict[UUID, Event] = {}
+_study_job_creation_lock = Lock()
 
 
 def _evaluations_root(project_root: Path) -> Path:
@@ -1208,7 +1209,7 @@ def _submit_study_job(project_root: Path, job_id: UUID) -> StudyJob:
     return load_study_job(project_root, job_id)
 
 
-def start_study_job(project_root: Path, *, name: str, model_kind: str, seeds: list[int], selection_metric: str, randomness_protocol: str = "LEGACY_COMBINED", split_seed: int | None = None, training_seed: int | None = None, execution_backend_key: str = "local_executor", adapter_key: str | None = None, adapter_version: str | None = None, **config) -> StudyJob:
+def start_study_job(project_root: Path, *, client_request_id: UUID | None = None, name: str, model_kind: str, seeds: list[int], selection_metric: str, randomness_protocol: str = "LEGACY_COMBINED", split_seed: int | None = None, training_seed: int | None = None, execution_backend_key: str = "local_executor", adapter_key: str | None = None, adapter_version: str | None = None, **config) -> StudyJob:
     pairs = _study_seed_pairs(seeds=seeds, randomness_protocol=randomness_protocol, split_seed=split_seed, training_seed=training_seed)
     descriptor, _ = resolve_execution_backend(execution_backend_key)
     from ruflex.runtime.registry import builtin_runtime_registry
@@ -1218,8 +1219,34 @@ def start_study_job(project_root: Path, *, name: str, model_kind: str, seeds: li
     if model_kind not in adapter.descriptor.training_model_kinds:
         raise TrainingError(f"Adapter {adapter.descriptor.identity.key!r} cannot train model kind {model_kind!r}.")
     identity = adapter.descriptor.identity
-    job = StudyJob(name=name, model_kind=model_kind, selection_metric=selection_metric, seed_states=[StudySeedState(seed=current_training, split_seed=current_split, training_seed=current_training) for current_split, current_training in pairs], randomness_protocol=randomness_protocol, split_seed=(pairs[0][0] if len({pair[0] for pair in pairs}) == 1 else None), execution_config=config, adapter_key=identity.key, adapter_version=identity.version, adapter_provider=identity.provider, execution_backend_key=descriptor.identity.key, execution_backend_version=descriptor.identity.version, execution_backend_provider=descriptor.identity.provider)
-    _persist_study_job(project_root, job)
+    request_id = client_request_id or uuid4()
+    seed_states = [StudySeedState(seed=current_training, split_seed=current_split, training_seed=current_training) for current_split, current_training in pairs]
+    with _study_job_creation_lock:
+        path = _study_job_path(project_root, request_id)
+        if path.exists():
+            existing = load_study_job(project_root, request_id)
+            same_request = (
+                existing.client_request_id == request_id
+                and existing.name == name
+                and existing.model_kind == model_kind
+                and existing.selection_metric == selection_metric
+                and existing.randomness_protocol == randomness_protocol
+                and existing.split_seed == (pairs[0][0] if len({pair[0] for pair in pairs}) == 1 else None)
+                and [state.model_dump(exclude={"status", "run_id", "runtime_seconds", "error"}) for state in existing.seed_states]
+                    == [state.model_dump(exclude={"status", "run_id", "runtime_seconds", "error"}) for state in seed_states]
+                and existing.execution_config == config
+                and (existing.adapter_key, existing.adapter_version, existing.adapter_provider)
+                    == (identity.key, identity.version, identity.provider)
+                and (existing.execution_backend_key, existing.execution_backend_version, existing.execution_backend_provider)
+                    == (descriptor.identity.key, descriptor.identity.version, descriptor.identity.provider)
+            )
+            if not same_request:
+                raise TrainingError("Study request ID was already used for a different frozen configuration.")
+            if existing.status in {"SUCCEEDED", "FAILED", "CANCELLED"}:
+                return existing
+            return _submit_study_job(project_root, existing.job_id)
+        job = StudyJob(job_id=request_id, client_request_id=request_id, name=name, model_kind=model_kind, selection_metric=selection_metric, seed_states=seed_states, randomness_protocol=randomness_protocol, split_seed=(pairs[0][0] if len({pair[0] for pair in pairs}) == 1 else None), execution_config=config, adapter_key=identity.key, adapter_version=identity.version, adapter_provider=identity.provider, execution_backend_key=descriptor.identity.key, execution_backend_version=descriptor.identity.version, execution_backend_provider=descriptor.identity.provider)
+        _persist_study_job(project_root, job)
     return _submit_study_job(project_root, job.job_id)
 
 

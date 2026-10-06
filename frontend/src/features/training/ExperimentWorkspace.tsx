@@ -1,5 +1,5 @@
 import { EChartsOption } from "echarts";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { DatasetState, ExecutionBackendDescriptor, LeakageAuditReport, ModelCapabilityContract, ProductApiError, ProjectSummary, RunCapabilityNegotiation, SplitContract, StudyJob, StabilityGatePolicy, StudyStabilityAnalysis, TrainingRun, TrainingStudy, TransformPipelineContract, TreePathEvidence, studioApi } from "../../api";
 import { ChartSurface } from "../../charts/ChartSurface";
 import { Button, EmptyState, StatusBadge } from "../../components/StudioPrimitives";
@@ -223,6 +223,8 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
   const [studyJobsError, setStudyJobsError] = useState<string | null>(null);
   const [studyJobsReload, setStudyJobsReload] = useState(0);
   const [studyJobPollError, setStudyJobPollError] = useState<string | null>(null);
+  const [pendingStudyRequest, setPendingStudyRequest] = useState<Parameters<typeof studioApi.startStudyJob>[1] | null>(null);
+  const pendingStudyRequestRef = useRef<Parameters<typeof studioApi.startStudyJob>[1] | null>(null);
   const [running, setRunning] = useState(false);
   const [trainingRecovery, setTrainingRecovery] = useState<{ config: Parameters<typeof studioApi.runTraining>[1]; requestedAt: number; error: string; notFound: boolean } | null>(null);
   const [recoveringTraining, setRecoveringTraining] = useState(false);
@@ -580,6 +582,22 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
     } finally { setRecoveringSplitContract(false); setRunning(false); }
   }
   async function trainStudy() {
+    const pendingRequest = pendingStudyRequestRef.current;
+    if (pendingRequest) {
+      setRunning(true);
+      setError(null);
+      try {
+        const job = await studioApi.startStudyJob(project.session_id, pendingRequest);
+        pendingStudyRequestRef.current = null;
+        setPendingStudyRequest(null);
+        await observeStudy(job);
+      } catch (reason) {
+        setError(reason instanceof Error ? reason.message : "The original Study request could not be recovered.");
+      } finally {
+        setRunning(false);
+      }
+      return;
+    }
     if (splitContractRecovery) return;
     if (studySeedValidation.error) {
       setError(studySeedValidation.error);
@@ -599,7 +617,12 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
     try {
       const selectionMetric = dataset?.contract.task === "regression" ? "rmse" : "f1";
       if (splitContract && studyMode !== "TRAINING_VARIABILITY") throw new Error("A frozen SplitContract can be used only with fixed-split training variability studies.");
-      let job = await studioApi.startStudyJob(project.session_id, { name: `Study ${new Date().toLocaleString()}`, model_kind: trainingModelKind, adapter_key: selectedAdapterKey, seeds, randomness_protocol: studyMode, split_seed: splitContract?.split_seed ?? splitSeed, training_seed: splitSeed, split_contract_id: splitContract?.split_id ?? null, execution_backend_key: executionBackendKey, selection_metric: selectionMetric, max_epochs: maxEpochs, learning_rate: learningRate, batch_size: batchSize, patience, validation_fraction: .2, test_fraction: .2, max_rules: maxRules, n_estimators: nEstimators, max_depth: maxDepth });
+      const request: Parameters<typeof studioApi.startStudyJob>[1] = { client_request_id: crypto.randomUUID(), name: `Study ${new Date().toLocaleString()}`, model_kind: trainingModelKind, adapter_key: selectedAdapterKey, seeds, randomness_protocol: studyMode, split_seed: splitContract?.split_seed ?? splitSeed, training_seed: splitSeed, split_contract_id: splitContract?.split_id ?? null, execution_backend_key: executionBackendKey, selection_metric: selectionMetric, max_epochs: maxEpochs, learning_rate: learningRate, batch_size: batchSize, patience, validation_fraction: .2, test_fraction: .2, max_rules: maxRules, n_estimators: nEstimators, max_depth: maxDepth };
+      pendingStudyRequestRef.current = request;
+      setPendingStudyRequest(request);
+      let job = await studioApi.startStudyJob(project.session_id, request);
+      pendingStudyRequestRef.current = null;
+      setPendingStudyRequest(null);
       await observeStudy(job);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Multi-seed study failed");
@@ -748,7 +771,8 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
         <Button view="action" disabled={running || !!trainingRecovery || !!splitContractRecovery || project.read_only || splitEvidenceStatus !== "loaded" || catalogStatus !== "loaded" || !selectedModel || parameterErrors.length > 0} onClick={train} data-ruflex-action="training.run">{running ? "Training…" : "Run real training"}</Button>
         <p id="study-seeds-help" className={studySeedValidation.error ? "error" : "property-description"} role={studySeedValidation.error ? "alert" : undefined}>{studySeedValidation.error ?? "Enter 3–32 distinct whole-number seeds, separated by commas."}</p>
         {parameterErrors.length > 0 && <div className="error" role="alert">Review model settings before training: {parameterErrors.join(" ")}</div>}
-        <Button view="outlined" disabled={running || !!trainingRecovery || !!splitContractRecovery || project.read_only || splitEvidenceStatus !== "loaded" || catalogStatus !== "loaded" || !selectedModel || Boolean(studySeedValidation.error) || parameterErrors.length > 0 || (studyHydrationStatus !== "none" && studyHydrationStatus !== "available") || studyJobsStatus !== "loaded" || executionBackendStatus !== "loaded" || !executionBackends.some((backend) => backend.identity.key === executionBackendKey)} onClick={trainStudy} data-ruflex-action="study.start">{running ? "Training…" : "Run multi-seed study"}</Button>
+        <Button view="outlined" disabled={running || project.read_only || (!pendingStudyRequest && (!!trainingRecovery || !!splitContractRecovery || splitEvidenceStatus !== "loaded" || catalogStatus !== "loaded" || !selectedModel || Boolean(studySeedValidation.error) || parameterErrors.length > 0 || (studyHydrationStatus !== "none" && studyHydrationStatus !== "available") || studyJobsStatus !== "loaded" || executionBackendStatus !== "loaded" || !executionBackends.some((backend) => backend.identity.key === executionBackendKey)))} onClick={trainStudy} data-ruflex-action="study.start">{running ? "Training…" : pendingStudyRequest ? "Retry same Study request" : "Run multi-seed study"}</Button>
+        {pendingStudyRequest && !running && <p role="status">Study submission status is uncertain. Retry uses the same request ID and frozen configuration; it will recover the existing job or safely report a mismatch.</p>}
         {studyJob && <div className="info-message"><strong>Study job {studyJob.status}</strong> · {studyJob.execution_backend_key ?? studyJob.execution_backend} · {studyJob.seed_states.map((state) => `seed ${state.seed}: ${state.status}`).join(" · ")} {(["QUEUED", "RUNNING"].includes(studyJob.status)) && <><Button view="flat" size="s" disabled={running} onClick={resumeStudy} data-ruflex-action="study.resume">Resume persisted study</Button><Button view="flat" size="s" disabled={running} onClick={cancelStudy} data-ruflex-action="study.cancel">Cancel study</Button></>} {studyJob.recovery_note && <small>{studyJob.recovery_note}</small>}{studyJobPollError && <div className="error" role="alert"><strong>Study status could not be refreshed.</strong> {studyJobPollError} <Button view="outlined" size="s" disabled={running} onClick={retryStudyStatus}>Retry Study status</Button></div>}</div>}
         <div className="info-message">A frozen SplitContract assigns exact source rows before fitting. GROUP keeps each declared identity in one role. It makes split membership auditable; it does not by itself establish generalization validity.</div>
         {splitEvidenceStatus === "loading" && <div role="status">Checking saved split provenance before enabling training…</div>}

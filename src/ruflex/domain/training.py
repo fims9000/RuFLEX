@@ -206,8 +206,11 @@ class StudyJob(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: int = 5
+    schema_version: int = 6
     job_id: UUID = Field(default_factory=uuid4)
+    # Client-generated idempotency key. New Studio requests bind this to the
+    # durable job id so a retried POST can recover the same persisted job.
+    client_request_id: UUID | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     started_at: datetime | None = None
     finished_at: datetime | None = None
