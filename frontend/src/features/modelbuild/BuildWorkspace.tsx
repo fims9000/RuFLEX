@@ -24,6 +24,12 @@ import {
 import { StudioTheme } from "../../design/tokens";
 import { MembershipEditorCanvas } from "./MembershipEditorCanvas";
 
+function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  if (value && typeof value === "object") return `{${Object.entries(value as Record<string, unknown>).sort(([left], [right]) => left.localeCompare(right)).map(([key, item]) => `${JSON.stringify(key)}:${canonicalJson(item)}`).join(",")}}`;
+  return JSON.stringify(value) ?? "undefined";
+}
+
 const familyParameters: Record<MembershipFunction["kind"], number> = {
   triangular: 3,
   trapezoidal: 4,
@@ -345,6 +351,8 @@ export function BuildWorkspace({
   const [selected, setSelected] = useState(0);
   const [runInputs, setRunInputs] = useState<Record<string, string>>({});
   const [lastOutput, setLastOutput] = useState<FISEvaluation | null>(evaluation);
+  const [fisEvaluationRecovery, setFisEvaluationRecovery] = useState<{ fisId: string; semanticHash: string; inputs: Record<string, number>; error: string; notFound: boolean } | null>(null);
+  const [recoveringFisEvaluation, setRecoveringFisEvaluation] = useState(false);
   const [surface, setSurface] = useState<ResponseSurface | null>(null);
   const [surfaceAxes, setSurfaceAxes] = useState<[string, string] | null>(null);
   const [diagnostics, setDiagnostics] = useState<
@@ -907,24 +915,54 @@ export function BuildWorkspace({
   }
 
   async function run() {
-    if (!working) return;
+    if (!working || fisEvaluationRecovery) return;
     setError(null);
+    const inputs = Object.fromEntries(Object.entries(runInputs).map(([name, value]) => [name, Number(value)]));
     try {
-      const evaluation = await studioApi.evaluateFis(
-        project.session_id,
-        Object.fromEntries(
-          Object.entries(runInputs).map(([n, v]) => [n, Number(v)]),
-        ),
-        !project.read_only,
-      );
+      const evaluation = await studioApi.evaluateFis(project.session_id, inputs, !project.read_only);
       setLastOutput(evaluation);
       onEvaluation(evaluation);
       setMessage("Exact fuzzy computation trace generated.");
+      setFisEvaluationRecovery(null);
     } catch (reason) {
+      if (!project.read_only) setFisEvaluationRecovery({ fisId: working.fis_id, semanticHash: working.semantic_hash ?? "", inputs, error: reason instanceof Error ? reason.message : "FIS evaluation response was uncertain.", notFound: false });
       setError(
         reason instanceof Error ? reason.message : "FIS evaluation failed",
       );
     }
+  }
+  async function recoverFisEvaluation() {
+    const pending = fisEvaluationRecovery;
+    if (!pending) return;
+    setRecoveringFisEvaluation(true); setError(null);
+    try {
+      const latest = await studioApi.getLatestFisTrace(project.session_id);
+      const trace = latest.evaluation.trace;
+      if (trace.fis_id !== pending.fisId || trace.semantic_hash !== pending.semanticHash || canonicalJson(trace.input_values) !== canonicalJson(pending.inputs)) {
+        setFisEvaluationRecovery({ ...pending, notFound: true, error: "The latest persisted FIS trace belongs to another model revision or input sample; no replacement was created." });
+        return;
+      }
+      setLastOutput(latest); onEvaluation(latest); setFisEvaluationRecovery(null); setMessage("Exact fuzzy computation trace restored from persisted evidence.");
+    } catch (reason) {
+      if (reason instanceof ProductApiError && reason.status === 404) {
+        setFisEvaluationRecovery({ ...pending, notFound: true, error: "No matching persisted FIS trace is visible yet. Retry lookup later, or explicitly repeat this exact inference if the original did not finish." });
+      } else {
+        const message = reason instanceof Error ? reason.message : "Could not recover the exact FIS trace.";
+        setFisEvaluationRecovery({ ...pending, notFound: false, error: message }); setError(message);
+      }
+    } finally { setRecoveringFisEvaluation(false); }
+  }
+  async function explicitlyRepeatFisEvaluation() {
+    const pending = fisEvaluationRecovery;
+    if (!pending?.notFound || working?.fis_id !== pending.fisId || working.semantic_hash !== pending.semanticHash) return;
+    setRecoveringFisEvaluation(true); setError(null);
+    try {
+      const evaluation = await studioApi.evaluateFis(project.session_id, pending.inputs, true);
+      setLastOutput(evaluation); onEvaluation(evaluation); setFisEvaluationRecovery(null); setMessage("Exact fuzzy computation trace generated.");
+    } catch (reason) {
+      const message = reason instanceof Error ? reason.message : "The explicitly repeated FIS inference could not be confirmed.";
+      setFisEvaluationRecovery({ ...pending, notFound: false, error: message }); setError(message);
+    } finally { setRecoveringFisEvaluation(false); }
   }
   async function refreshSurface() {
     if (!working || !surfaceAxes) return;
@@ -1102,7 +1140,7 @@ export function BuildWorkspace({
           <Button view="outlined" onClick={exportMatlabFile} data-ruflex-action="fis.export">
             Export MATLAB .fis
           </Button>
-          <Button view="action" onClick={run} data-ruflex-action="fis.evaluate">
+          <Button view="action" disabled={!!fisEvaluationRecovery} onClick={run} data-ruflex-action="fis.evaluate">
             Run exact inference
           </Button>
         </div>
@@ -2249,7 +2287,8 @@ export function BuildWorkspace({
         </section>
       )}
       {message && <div className="info-message">{message}</div>}
-      {error && (
+        {fisEvaluationRecovery && <div className="error" role="alert" data-testid="fis-evaluation-recovery"><strong>FIS inference outcome is uncertain; no duplicate trace was submitted.</strong><p>{fisEvaluationRecovery.error}</p><Button view="outlined" disabled={recoveringFisEvaluation} onClick={recoverFisEvaluation}>Retry exact FIS trace lookup</Button>{fisEvaluationRecovery.notFound && <Button view="outlined" disabled={recoveringFisEvaluation || project.read_only || working.fis_id !== fisEvaluationRecovery.fisId || working.semantic_hash !== fisEvaluationRecovery.semanticHash} onClick={explicitlyRepeatFisEvaluation}>Explicitly repeat this exact inference</Button>}</div>}
+        {error && (
         <div className="error" role="alert">
           {error}
         </div>

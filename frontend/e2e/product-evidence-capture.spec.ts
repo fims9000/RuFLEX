@@ -75,7 +75,18 @@ test("PRODUCT-EVIDENCE captures the frozen V1 Studio route from persisted object
   await capture(page, screenshots, "03_fis_designer.png");
   await page.getByLabel("FIS family").selectOption("sugeno");
   await page.getByRole("button", { name: "Save FIS", exact: true }).click();
+  let fisEvaluationPostCount = 0;
+  await page.route("**/api/projects/fis/evaluate", async (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    fisEvaluationPostCount += 1;
+    await route.fetch();
+    await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "FIS trace response lost after persistence" }) });
+  });
   await page.getByRole("button", { name: "Run exact inference", exact: true }).click();
+  await expect(page.getByTestId("fis-evaluation-recovery")).toContainText("FIS trace response lost after persistence");
+  await page.getByRole("button", { name: "Retry exact FIS trace lookup", exact: true }).click();
+  await expect(page.getByTestId("fis-evaluation-recovery")).toHaveCount(0);
+  expect(fisEvaluationPostCount).toBe(1);
   await expect(page.getByText("OUTPUT", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Open exact trace", exact: true }).click();
   await expect(page.getByText("E4 · EXACT COMPUTATIONAL TRACE", { exact: true })).toBeVisible();
