@@ -1286,14 +1286,23 @@ export function App() {
     setDatasetStateStatus("loading");
     setError(null);
     setStatus("Saving dataset contract");
+    let confirmationResponseReceived = false;
+    let sourceArtifactSha256: string | null = null;
+    const requestedIdColumns = idColumns.split(",").map((column) => column.trim()).filter(Boolean);
     try {
+      const csvBytes = new TextEncoder().encode(csvText);
+      const digestBuffer = new Uint8Array(csvBytes.byteLength);
+      digestBuffer.set(csvBytes);
+      sourceArtifactSha256 = await sha256Hex(digestBuffer.buffer);
+      if (!isCurrent()) return;
       const confirmed = await studioApi.confirmCsv(
         sessionId,
         csvText,
         target,
         task,
-        idColumns.split(",").map((column) => column.trim()).filter(Boolean),
+        requestedIdColumns,
       );
+      confirmationResponseReceived = true;
       if (!isCurrent()) return;
       setDataset(confirmed);
       const persisted = await studioApi.getDatasetState(sessionId);
@@ -1305,6 +1314,33 @@ export function App() {
       setStatus("Dataset bytes, profile, contract and audit saved");
     } catch (reason) {
       if (!isCurrent()) return;
+      if (!confirmationResponseReceived && sourceArtifactSha256) {
+        try {
+          const persisted = await studioApi.getDatasetState(sessionId);
+          if (!isCurrent()) return;
+          const sameContract = persisted.contract.source_artifact_sha256 === sourceArtifactSha256
+            && persisted.contract.target === target
+            && persisted.contract.task === task
+            && JSON.stringify(persisted.contract.id_columns) === JSON.stringify(requestedIdColumns)
+            && persisted.contract.source_format === "csv";
+          setDatasetState(persisted);
+          setDataset({ contract: persisted.contract, audit: persisted.audit });
+          setProfile(persisted.profile);
+          setDatasetStateStatus("available");
+          setDatasetStateError(null);
+          if (sameContract) {
+            setError(null);
+            setStatus("The CSV DatasetContract was saved; restored confirmation after the response was lost");
+            void refreshArtifactInventory(sessionId);
+            return;
+          }
+          setError("The confirmation response was lost and the saved DatasetContract does not match the current CSV and settings. No second confirmation was sent; review the saved dataset.");
+          setStatus("CSV confirmation outcome could not be matched to the saved dataset");
+          return;
+        } catch {
+          /* Fall through to the explicit retry state if the persisted state cannot be read either. */
+        }
+      }
       setDatasetStateStatus("error");
       setDatasetStateError(reason instanceof Error ? reason.message : "Dataset state could not be confirmed.");
       setError(

@@ -68,3 +68,26 @@ test("a committed file import is not repeated when its HTTP response is lost", a
   await expect(page.getByText(/Selected: committed\.csv/)).toHaveCount(0);
   expect(importRequests).toBe(1);
 });
+
+test("a saved editable CSV contract is restored when its response is lost", async ({ page }) => {
+  let confirmationRequests = 0;
+  await page.route("**/api/projects/dataset/confirm", async (route) => {
+    confirmationRequests += 1;
+    const response = await route.fetch();
+    expect(response.ok()).toBeTruthy();
+    await route.abort("connectionreset");
+  });
+
+  const projectPath = join(tmpdir(), `ruflex-csv-confirm-lost-response-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  await page.goto("/");
+  await page.getByLabel("Project path").fill(projectPath);
+  await page.getByLabel("Project name").fill("CSV confirmation recovery");
+  await page.getByRole("button", { name: "Create project", exact: true }).click();
+  await page.getByRole("button", { name: "Review or import data", exact: true }).click();
+  await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
+  await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
+
+  await expect(page.getByText(/restored confirmation after the response was lost/)).toBeVisible();
+  await expect(page.getByText(/Contract: target/)).toBeVisible();
+  expect(confirmationRequests).toBe(1);
+});
