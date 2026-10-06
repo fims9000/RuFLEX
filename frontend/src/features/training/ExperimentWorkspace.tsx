@@ -206,6 +206,7 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
   const [studyJobsStatus, setStudyJobsStatus] = useState<"idle" | "loading" | "loaded" | "error">("idle");
   const [studyJobsError, setStudyJobsError] = useState<string | null>(null);
   const [studyJobsReload, setStudyJobsReload] = useState(0);
+  const [studyJobPollError, setStudyJobPollError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [treeSample, setTreeSample] = useState<Record<string, string>>({});
@@ -344,10 +345,17 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
 
   async function observeStudy(initial: StudyJob) {
     let job = initial;
+    setStudyJobPollError(null);
     setStudyJob(job);
     while (["QUEUED", "RUNNING"].includes(job.status)) {
       await new Promise((resolve) => window.setTimeout(resolve, 250));
-      job = await studioApi.getStudyJob(project.session_id, job.job_id);
+      try {
+        job = await studioApi.getStudyJob(project.session_id, job.job_id);
+      } catch (reason) {
+        const message = reason instanceof Error ? reason.message : "Could not refresh the persisted Study job status.";
+        setStudyJobPollError(message);
+        return;
+      }
       setStudyJob(job);
     }
     if (job.status !== "SUCCEEDED") throw new Error(job.error ?? `Study ${job.status.toLowerCase()}`);
@@ -445,6 +453,16 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
     finally { setRunning(false); }
   }
 
+  async function retryStudyStatus() {
+    if (!studyJob) return;
+    setRunning(true);
+    setError(null);
+    setStudyJobPollError(null);
+    try { await observeStudy(await studioApi.getStudyJob(project.session_id, studyJob.job_id)); }
+    catch (reason) { setStudyJobPollError(reason instanceof Error ? reason.message : "Could not refresh the persisted Study job status."); }
+    finally { setRunning(false); }
+  }
+
   if (!dataset) return <section className="feature-workspace"><EmptyState title="No confirmed dataset">Confirm a DatasetContract in Data before training a model.</EmptyState></section>;
 
   return <section className="feature-workspace training-workspace">
@@ -502,7 +520,7 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
         <p id="study-seeds-help" className={studySeedValidation.error ? "error" : "property-description"} role={studySeedValidation.error ? "alert" : undefined}>{studySeedValidation.error ?? "Enter 3–32 distinct whole-number seeds, separated by commas."}</p>
         {parameterErrors.length > 0 && <div className="error" role="alert">Review model settings before training: {parameterErrors.join(" ")}</div>}
         <Button view="outlined" disabled={running || project.read_only || Boolean(splitEvidenceError) || catalogStatus !== "loaded" || !selectedModel || Boolean(studySeedValidation.error) || parameterErrors.length > 0 || (studyHydrationStatus !== "none" && studyHydrationStatus !== "available") || studyJobsStatus !== "loaded"} onClick={trainStudy} data-ruflex-action="study.start">{running ? "Training…" : "Run multi-seed study"}</Button>
-        {studyJob && <div className="info-message"><strong>Study job {studyJob.status}</strong> · {studyJob.execution_backend_key ?? studyJob.execution_backend} · {studyJob.seed_states.map((state) => `seed ${state.seed}: ${state.status}`).join(" · ")} {(["QUEUED", "RUNNING"].includes(studyJob.status)) && <><Button view="flat" size="s" onClick={resumeStudy} data-ruflex-action="study.resume">Resume persisted study</Button><Button view="flat" size="s" onClick={cancelStudy} data-ruflex-action="study.cancel">Cancel study</Button></>} {studyJob.recovery_note && <small>{studyJob.recovery_note}</small>}</div>}
+        {studyJob && <div className="info-message"><strong>Study job {studyJob.status}</strong> · {studyJob.execution_backend_key ?? studyJob.execution_backend} · {studyJob.seed_states.map((state) => `seed ${state.seed}: ${state.status}`).join(" · ")} {(["QUEUED", "RUNNING"].includes(studyJob.status)) && <><Button view="flat" size="s" disabled={running} onClick={resumeStudy} data-ruflex-action="study.resume">Resume persisted study</Button><Button view="flat" size="s" disabled={running} onClick={cancelStudy} data-ruflex-action="study.cancel">Cancel study</Button></>} {studyJob.recovery_note && <small>{studyJob.recovery_note}</small>}{studyJobPollError && <div className="error" role="alert"><strong>Study status could not be refreshed.</strong> {studyJobPollError} <Button view="outlined" size="s" disabled={running} onClick={retryStudyStatus}>Retry Study status</Button></div>}</div>}
         <div className="info-message">A frozen SplitContract assigns exact source rows before fitting. GROUP keeps each declared identity in one role. It makes split membership auditable; it does not by itself establish generalization validity.</div>
         {splitEvidenceError && <div className="error" role="alert">Saved split provenance is invalid or unavailable. Training is blocked rather than falling back to an unverified split. {splitEvidenceError}</div>}
         {project.read_only && <div className="info-message">Read-only projects cannot start training runs.</div>}

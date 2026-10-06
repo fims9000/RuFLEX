@@ -82,15 +82,16 @@
     "alpha_final_test_boundary_load_truthfulness",
     "alpha_validation_evaluation_load_truthfulness",
     "alpha_frozen_validation_policy_hydration",
-    "alpha_saved_study_and_job_hydration_truthfulness"
+    "alpha_saved_study_and_job_hydration_truthfulness",
+    "alpha_training_study_polling_recovery"
   ],
-  "active_capability": "alpha_training_study_polling_recovery",
+  "active_capability": "alpha_lineage_hydration_truthfulness",
   "active_acceptance": [
-    "A transient StudyJob status-poll failure does not discard persisted job identity or leave the user without a recovery action.",
-    "The user can explicitly retry observing or resume the same persisted job without submitting a replacement Study."
+    "Distinguish an empty project lineage from a transient failure to load persisted lineage.",
+    "Keep exact-object navigation unavailable while lineage identity is unresolved and provide an explicit retry without dropping other loaded Studio evidence."
   ],
   "blockers": [],
-  "next_executable_work": "Inspect observeStudy polling and resume behavior; add retry for transient getStudyJob errors while retaining the exact job ID and preventing duplicate Study submission. Keep changes local until separately authorized to push.",
+  "next_executable_work": "Add explicit project-lineage loading/empty/error/retry state in Studio, preserve existing evidence on retry failure, and verify exact-ID navigation after recovery. Keep changes local until separately authorized to push.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -162,6 +163,7 @@
     "alpha_final_test_boundary_load_truthfulness": "PASS: Evaluation no longer reports the final test as closed when persisted access lookup fails; calibration, threshold and selective-policy mutations and final-test evaluation remain disabled until resolved, with explicit retry. Unit suite 14 passed, Vite build passed, two focused E2Es passed (saved-run history retry and trained-model boundary recovery). Commit 75626b5.",
     "alpha_validation_evaluation_load_truthfulness": "PASS: Evaluation distinguishes a missing saved validation Evaluation (404) from an unavailable lookup, preserves TrainingRun validation metrics and pauses duplicate Evaluation/policy writes until explicit retry. Frontend unit suite 15 passed, Vite build passed, focused trained-model error/recovery E2E passed.",
     "alpha_frozen_validation_policy_hydration": "PASS: Calibration, threshold, selective-policy, and Stability Gate lookups are hydrated as one explicit persisted-policy state; 404 is a legitimate absence while other failures remain visible with retry. Validation policy mutation and final-test evaluation stay disabled until all identities resolve. Frontend unit suite 8 passed, Vite/TypeScript production build passed, focused real Studio policy-error/recovery E2E passed. Commit 56c2703.",
-    "alpha_saved_study_and_job_hydration_truthfulness": "PASS: Missing latest TrainingStudy (404) is distinguished from unavailable lookup; StudyJob list failures have visible retry and retain existing job identity. Multi-seed submission stays disabled until saved Study and job status resolves, avoiding duplicate jobs after a transient read failure. Focused frontend unit suite 15 passed, TypeScript/Vite build passed, E2E-10 real Studio recovery route passed. Local commit pending."
+    "alpha_saved_study_and_job_hydration_truthfulness": "PASS: Missing latest TrainingStudy (404) is distinguished from unavailable lookup; StudyJob list failures have visible retry and retain existing job identity. Multi-seed submission stays disabled until saved Study and job status resolves, avoiding duplicate jobs after a transient read failure. Focused frontend unit suite 15 passed, TypeScript/Vite build passed, E2E-10 real Studio recovery route passed. Commit 733d137.",
+    "alpha_training_study_polling_recovery": "PASS: A transient StudyJob status-poll error retains the same persisted job and offers Retry Study status; recovery reloads that exact job ID and does not create another Study. Focused Experiment/Evaluation component tests 16 passed, TypeScript/Vite build passed, E2E-10 saved-Study/jobs retry route passed, git diff --check passed. Local commit pending."
   }
 }

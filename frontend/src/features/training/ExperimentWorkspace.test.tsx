@@ -25,6 +25,9 @@ const { studioApi } = vi.hoisted(() => ({ studioApi: {
   ]),
   getRuntimeBackends: vi.fn().mockResolvedValue([{ identity: { key: "local_executor", version: "1", provider: "ruflex.builtin", kind: "execution_backend" }, supports_cancel: true, supports_resume: true }]),
   listStudyJobs: vi.fn().mockResolvedValue([]),
+  getStudyJob: vi.fn(),
+  resumeStudyJob: vi.fn(),
+  getLatestTrainingStudy: vi.fn(),
   getTrainingRunCapabilities: vi.fn().mockResolvedValue({ decisions: [] }),
   getLatestTreePath: vi.fn(),
 } }));
@@ -53,9 +56,32 @@ beforeEach(() => {
   studioApi.getTransformPipeline.mockReset();
   studioApi.getLeakageAudit.mockReset();
   studioApi.getTrainingRunCapabilities.mockResolvedValue({ decisions: [] });
+  studioApi.getStudyJob.mockReset();
+  studioApi.resumeStudyJob.mockReset();
+  studioApi.getLatestTrainingStudy.mockReset();
 });
 
 describe("ExperimentWorkspace dynamic model controls", () => {
+  it("retries the same persisted StudyJob after a transient status-poll failure", async () => {
+    const job = { job_id: "job-123", name: "Study", model_kind: "flat_neuro_fuzzy", selection_metric: "f1", status: "RUNNING", cancel_requested: false, seed_states: [], study_id: null, error: null, execution_backend: "LOCAL", execution_backend_key: "local_executor", recovery_note: null };
+    studioApi.listStudyJobs.mockResolvedValueOnce([job]);
+    studioApi.resumeStudyJob.mockResolvedValue(job);
+    studioApi.getStudyJob.mockRejectedValueOnce(new Error("job status store unavailable"));
+    studioApi.getStudyJob.mockResolvedValueOnce({ ...job, status: "SUCCEEDED", study_id: "study-123" });
+    studioApi.getLatestTrainingStudy.mockResolvedValue({ study_id: "study-123", selection_metric: "f1", selected_run_id: "selected", seed_runs: [] });
+    const onStudy = vi.fn();
+    render(<ExperimentWorkspace project={project} dataset={dataset as never} run={null} study={null} theme={"light" as never} onRun={vi.fn()} onStudy={onStudy} />);
+
+    const resume = await screen.findByRole("button", { name: "Resume persisted study" });
+    fireEvent.click(resume);
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Study status could not be refreshed"));
+    expect(studioApi.getStudyJob).toHaveBeenNthCalledWith(1, "session", "job-123");
+    fireEvent.click(screen.getByRole("button", { name: "Retry Study status" }));
+    await waitFor(() => expect(screen.getByText(/Study job SUCCEEDED/)).toBeVisible());
+    expect(studioApi.getStudyJob).toHaveBeenNthCalledWith(2, "session", "job-123");
+    expect(onStudy).toHaveBeenCalledOnce();
+  });
+
   it("keeps Study creation paused while saved Study and job lookups are unresolved, then retries", async () => {
     studioApi.listStudyJobs.mockRejectedValueOnce(new Error("job store unavailable"));
     const retryStudy = vi.fn();
