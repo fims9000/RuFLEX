@@ -108,6 +108,18 @@ describe("ExperimentWorkspace dynamic model controls", () => {
     expect(studioApi.startStudyJob).not.toHaveBeenCalled();
   });
 
+  it("shows the persisted StudyJob and per-seed failure reasons", async () => {
+    studioApi.listStudyJobs.mockResolvedValueOnce([{
+      job_id: "job-failed", name: "Failed Study", model_kind: "logistic_regression", selection_metric: "f1",
+      status: "FAILED", cancel_requested: false, seed_states: [{ seed: 9, status: "FAILED", run_id: null, runtime_seconds: null, error: "adapter runtime unavailable" }],
+      study_id: null, error: "Fewer than three seed runs succeeded; no scientific selection was produced.", execution_backend: "LOCAL", execution_backend_key: "local_executor", execution_config: {}, recovery_count: 0, recovery_note: null,
+    }]);
+    render(<ExperimentWorkspace project={project} dataset={dataset as never} run={null} study={null} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);
+
+    expect(await screen.findByText(/StudyJob error: Fewer than three seed runs succeeded/)).toBeVisible();
+    expect(screen.getByText("Seed 9: adapter runtime unavailable")).toBeVisible();
+  });
+
   it("does not hide exact tree-path support when the saved capability check fails and retries the same run", async () => {
     studioApi.getTrainingRunCapabilities
       .mockRejectedValueOnce(new Error("run capability store unavailable"))
