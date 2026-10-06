@@ -32,7 +32,7 @@ test("recent project history reopens local projects after a browser reload and c
   await expect(page.getByRole("region", { name: "Recent projects" })).toHaveCount(0);
 });
 
-test("a missing recent project explains recovery and can be forgotten", async ({ page }) => {
+test("a missing recent project explains recovery and clears stale errors when history is replaced", async ({ page }) => {
   const missingPath = join(tmpdir(), `ruflex-missing-recent-project-${Date.now()}-${Math.random().toString(16).slice(2)}`);
   await page.addInitScript((path) => {
     localStorage.setItem("ruflex.recent-projects.v1", JSON.stringify([{ name: "Moved project", path }]));
@@ -44,4 +44,11 @@ test("a missing recent project explains recovery and can be forgotten", async ({
   await expect(recent.getByRole("alert")).toContainText("choose the folder again");
   await recent.getByRole("button", { name: "Forget Moved project", exact: true }).click();
   await expect(recent).toHaveCount(0);
+
+  const replacementPath = join(tmpdir(), `ruflex-replacement-project-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  await page.getByLabel("Project path").fill(replacementPath);
+  await page.getByLabel("Project name").fill("Replacement project");
+  await page.getByRole("button", { name: "Create project", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Replacement project", exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Recent projects" }).getByRole("alert")).toHaveCount(0);
 });

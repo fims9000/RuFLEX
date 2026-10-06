@@ -255,10 +255,12 @@ export function App() {
   function rememberRecentProject(value: ProjectSummary) {
     const next = [{ name: value.name, path: value.root }, ...recentProjects.filter((item) => item.path !== value.root)].slice(0, 8);
     setRecentProjects(next);
+    setRecentProjectError(null);
     try { localStorage.setItem(RECENT_PROJECTS_STORAGE_KEY, JSON.stringify(next)); } catch { /* project open must not fail because browser storage is unavailable */ }
   }
   function forgetRecentProjects() {
     setRecentProjects([]);
+    setRecentProjectError(null);
     try { localStorage.removeItem(RECENT_PROJECTS_STORAGE_KEY); } catch { /* keep the current session usable */ }
   }
   function forgetRecentProject(pathToForget: string) {
