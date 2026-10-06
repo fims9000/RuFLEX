@@ -121,7 +121,8 @@
     "alpha_behavior_spec_creation_lost_response_recovery",
     "alpha_validation_evaluation_lost_response_recovery",
     "alpha_stability_chain_lost_response_recovery",
-    "alpha_slice_analysis_lost_response_recovery"
+    "alpha_slice_analysis_lost_response_recovery",
+    "alpha_validation_policy_lost_response_recovery"
   ],
   "active_capability": "alpha_saved_evidence_hydration_audit",
   "active_acceptance": [
@@ -129,7 +130,7 @@
     "Prioritize identity-linked EvidenceWorkspace reads and guard any action that could duplicate persisted work until its inventory resolves."
   ],
   "blockers": [],
-  "next_executable_work": "Audit validation policy writes (calibration, threshold and selective policy) for exact lost-response recovery, then remaining evaluation comparisons/final-test actions; preserve article changes and keep verification resource-light. Do not push.",
+  "next_executable_work": "Audit synchronous validation comparison writes and final-test Evaluation response-loss semantics; preserve article changes and keep verification resource-light. Do not push.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -240,6 +241,7 @@
     "alpha_behavior_spec_creation_lost_response_recovery": "PASS: If BehaviorSpec creation persists but its POST response is lost, Studio retains the exact run-bound spec payload, looks up an exact matching persisted BehaviorSpec before any create retry, then resumes its result by exact spec ID. If lookup confirms absence, repeat creation is an explicit user action. PRODUCT-EVIDENCE simulated lost create response followed by lost result response, recovered both stages and verified one create POST and one run POST. Frontend unit 23/23, Vite build, focused Playwright and diff/JSON checks passed.",
     "alpha_validation_evaluation_lost_response_recovery": "PASS: EvaluationWorkspace now retains the exact TrainingRun identity when synchronous validation Evaluation creation has an uncertain outcome, retries latest-object lookup and restores only a matching run-bound Evaluation. Dependent calibration/threshold/selective/slice/final-test actions remain blocked until resolution; creating another Evaluation after confirmed absence is explicit. PRODUCT-EVIDENCE simulated response loss after persistence and verified one Evaluation POST plus exact recovery. Frontend unit 23/23, Vite build, focused Playwright, JSON and diff checks passed.",
     "alpha_stability_chain_lost_response_recovery": "PASS: Stability Lab's multi-object build now recovers an exact Evaluation by selected run, a raw uncalibrated threshold by Evaluation ID, and a Stability Analysis by study/evaluation/threshold identity. Missing later stages require an explicit continue action; gate policy creation recovery verifies exact analysis/evaluation and frozen 0.90/0.80/0.15 criteria. Focused E2E simulated lost Evaluation and gate POST responses after persistence; frontend unit 23/23 and Vite build passed.",
-    "alpha_slice_analysis_lost_response_recovery": "PASS: Slice Lab retains the exact validation Evaluation, metric and normalized SliceDefinition after an uncertain save; it restores only a matching persisted analysis and requires explicit confirmation before any rerun. PRODUCT-EVIDENCE simulated a lost POST response after persistence and verified exact recovery with one POST. Frontend unit 23/23, TypeScript/Vite build, focused E2E and git diff --check passed."
+    "alpha_slice_analysis_lost_response_recovery": "PASS: Slice Lab retains the exact validation Evaluation, metric and normalized SliceDefinition after an uncertain save; it restores only a matching persisted analysis and requires explicit confirmation before any rerun. PRODUCT-EVIDENCE simulated a lost POST response after persistence and verified exact recovery with one POST. Frontend unit 23/23, TypeScript/Vite build, focused E2E and git diff --check passed.",
+    "alpha_validation_policy_lost_response_recovery": "PASS: Calibration, decision-threshold and selective-policy saves retain exact validation input identity after uncertain responses, recover only matching persisted objects, and require explicit repeat after confirmed absence. Pending policy saves disable dependent policy/final-test actions. PRODUCT-EVIDENCE simulated lost responses after persistence for all three APIs and verified exact recovery with one POST each. Frontend unit 23/23, TypeScript/Vite build, focused PRODUCT-EVIDENCE E2E and diff check passed."
   }
 }
