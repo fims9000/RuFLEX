@@ -108,8 +108,20 @@ test("PRODUCT-06 persists revision-bound BehaviorSpec evidence through reopen", 
   const candidateResultId = await candidateSelector.inputValue();
   expect(baselineResultId).not.toBe(candidateResultId);
   await expect(page.getByRole("button", { name: "Compare revisions", exact: true })).toBeEnabled();
+  let comparisonPostCount = 0;
+  await page.route("**/api/projects/evidence/behavior-specs/compare", async (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    comparisonPostCount += 1;
+    await route.fetch();
+    await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Revision comparison response lost after persistence" }) });
+  });
   await page.getByRole("button", { name: "Compare revisions", exact: true }).click();
+  await expect(page.getByTestId("behavior-comparison-recovery")).toContainText("Revision comparison response lost after persistence");
+  await expect(page.getByRole("button", { name: "Compare revisions", exact: true })).toBeDisabled();
+  await page.getByRole("button", { name: "Retry saved comparison lookup", exact: true }).click();
   await expect(page.getByText("PASS TO PASS", { exact: true })).toBeVisible();
+  await expect(page.getByTestId("behavior-comparison-recovery")).toHaveCount(0);
+  expect(comparisonPostCount).toBe(1);
   let latestBehaviorReadFailed = false;
   await page.route(`**/api/projects/*/evidence/behavior-specs/latest`, async (route) => {
     if (!latestBehaviorReadFailed) {
