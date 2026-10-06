@@ -135,15 +135,16 @@
     "alpha_training_unmounted_callback_isolation",
     "alpha_study_unmounted_callback_isolation",
     "alpha_evaluation_unmounted_callback_isolation",
-    "alpha_evidence_unmounted_callback_isolation"
+    "alpha_evidence_unmounted_callback_isolation",
+    "alpha_project_workspace_callback_isolation"
   ],
-  "active_capability": "alpha_evidence_unmounted_callback_isolation",
+  "active_capability": "alpha_project_workspace_callback_isolation",
   "active_acceptance": [
-    "Persisted Explanation, ExplanationCheck, BehaviorSpecResult, reproducibility, exhaustive and AssuranceCase callbacks must only update App state while their originating EvidenceWorkspace remains mounted.",
-    "A background evidence job may finish and persist after navigation, but its result must never hydrate another project's App state."
+    "All project-root hydration hooks must be bound to the active session and ignore stale success/error completions after project switch or close.",
+    "All feature-workspace parent result callbacks are isolated to the mounted originating project instance."
   ],
   "blockers": [],
-  "next_executable_work": "Audit project-root async hydration and workspace switching for remaining cross-project response races outside feature callbacks; add one focused regression for a delayed saved-evidence hydration response if a gap remains. Keep checks resource-conscious and do not push.",
+  "next_executable_work": "Audit model/runtime and project file import outcomes for cross-project session binding; then choose the next alpha workflow gap from the task state. Keep checks resource-conscious and do not push.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -282,6 +283,7 @@
     "alpha_training_unmounted_callback_isolation": "PASS: ExperimentWorkspace callbacks for single-run training, recovered runs, completed TrainingStudies, selected Study runs, and Stability Lab evidence now publish only while the originating workspace remains mounted. E2E held a successfully persisted Decision Tree TrainingRun response, closed the source project, opened a blank project, released the response and verified no run appeared in the new project's Explorer. Focused Playwright 1/1, frontend unit 23/23, TypeScript/Vite production build and git diff --check passed.",
     "alpha_study_unmounted_callback_isolation": "PASS: A real three-seed Decision Tree Study completed and persisted; the E2E held its successful latest-Study response, closed the source project, opened a blank project, released the response and confirmed neither the TrainingStudy nor selected TrainingRun appeared in the new project's Explorer. Study response isolation is enforced by the ExperimentWorkspace mounted-instance callback guard. Focused Playwright 1/1 and git diff --check passed.",
     "alpha_evaluation_unmounted_callback_isolation": "PASS: EvaluationWorkspace now guards every parent callback (Evaluation, calibration, threshold, selective policy, FinalTestEvaluation, comparison and slice analysis) with its mounted-instance lifecycle. E2E persisted a real validation Evaluation, held its response, closed the source project, opened a blank project, released the response and verified the new project still had no Analysis or run. Focused Playwright 1/1, frontend unit 23/23, TypeScript/Vite production build and git diff --check passed.",
-    "alpha_evidence_unmounted_callback_isolation": "PASS: EvidenceWorkspace now guards all parent result callbacks for explanation jobs/checks, behavior results, reproducibility, exhaustive analysis and AssuranceCase. E2E completed a persisted Assurance job, held the successful result read, closed the source project, opened a blank project, released the response and verified the new project still showed no saved AssuranceCase. Focused Playwright 1/1, frontend unit 23/23, TypeScript/Vite production build and git diff --check passed."
+    "alpha_evidence_unmounted_callback_isolation": "PASS: EvidenceWorkspace now guards all parent result callbacks for explanation jobs/checks, behavior results, reproducibility, exhaustive analysis and AssuranceCase. E2E completed a persisted Assurance job, held the successful result read, closed the source project, opened a blank project, released the response and verified the new project still showed no saved AssuranceCase. Focused Playwright 1/1, frontend unit 23/23, TypeScript/Vite production build and git diff --check passed.",
+    "alpha_project_workspace_callback_isolation": "PASS: Reviewed project-level hydration hooks in App.tsx for Stability, tree, comparison, slice, generalization, exhaustive, reproducibility, explanation/check, Assurance, BehaviorSpec, FIS, dataset, TrainingStudy, policy, evaluation, final-test, run history and Lineage; these use effect cleanup/session/request identity guards. Stale result callbacks from ExperimentWorkspace, EvaluationWorkspace, EvidenceWorkspace and BuildWorkspace are now lifecycle-isolated. Focused real close/open E2Es passed for TrainingRun, TrainingStudy, validation Evaluation and AssuranceCase; frontend unit 23/23, TypeScript/Vite build and diff check passed."
   }
 }
