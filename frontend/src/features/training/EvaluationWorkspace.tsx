@@ -1,5 +1,5 @@
 import { EChartsOption } from "echarts";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AnalysisComparison,
   AnalysisEvaluation,
@@ -196,6 +196,18 @@ export function EvaluationWorkspace({
   onSliceAnalysis,
   onSelectivePolicy,
 }: Props) {
+  const mountedRef = useRef(false);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+  const publishEvaluation = (value: AnalysisEvaluation) => { if (mountedRef.current) onEvaluation(value); };
+  const publishCalibration = (value: CalibrationTransform | null) => { if (mountedRef.current) onCalibration(value); };
+  const publishThreshold = (value: DecisionThresholdPolicy | null) => { if (mountedRef.current) onThreshold(value); };
+  const publishFinalTest = (value: FinalTestEvaluation | null) => { if (mountedRef.current) onFinalTest(value); };
+  const publishComparison = (value: AnalysisComparison) => { if (mountedRef.current) onComparison(value); };
+  const publishSliceAnalysis = (value: SliceAnalysis) => { if (mountedRef.current) onSliceAnalysis(value); };
+  const publishSelectivePolicy = (value: SelectivePredictionPolicy | null) => { if (mountedRef.current) onSelectivePolicy(value); };
   const [saving, setSaving] = useState(false);
   const [evaluationRecoveryRunId, setEvaluationRecoveryRunId] = useState<string | null>(null);
   const [evaluationRecoveryError, setEvaluationRecoveryError] = useState<string | null>(null);
@@ -273,7 +285,7 @@ export function EvaluationWorkspace({
   async function createEvaluationForRun(targetRunId: string): Promise<AnalysisEvaluation> {
     try {
       const created = await studioApi.createAnalysisEvaluation(project.session_id, targetRunId);
-      onEvaluation(created); onCalibration(null); onThreshold(null);
+      publishEvaluation(created); publishCalibration(null); publishThreshold(null);
       setEvaluationRecoveryRunId(null); setEvaluationRecoveryError(null); setEvaluationRecoveryNotFound(false);
       return created;
     } catch (reason) {
@@ -321,7 +333,7 @@ export function EvaluationWorkspace({
         setEvaluationRecoveryError("The latest Evaluation belongs to another run; no replacement was created.");
         return;
       }
-      onEvaluation(latest); onCalibration(null); onThreshold(null);
+      publishEvaluation(latest); publishCalibration(null); publishThreshold(null);
       setEvaluationRecoveryRunId(null); setEvaluationRecoveryError(null); setEvaluationRecoveryNotFound(false);
     } catch (reason) {
       setEvaluationRecoveryError(reason instanceof Error ? reason.message : "Could not recover the saved validation Evaluation.");
@@ -347,15 +359,15 @@ export function EvaluationWorkspace({
         if (pending.kind === "calibration") {
           const latest = await studioApi.getLatestAnalysisCalibration(project.session_id);
           if (latest.evaluation_id !== pending.evaluationId) throw new Error("The latest calibration belongs to another Evaluation; no replacement was created.");
-          onCalibration(latest); onThreshold(null);
+          publishCalibration(latest); publishThreshold(null);
         } else if (pending.kind === "threshold") {
           const latest = await studioApi.getLatestAnalysisThreshold(project.session_id);
           if (latest.evaluation_id !== pending.evaluationId || latest.calibration_id !== pending.calibrationId) throw new Error("The latest threshold belongs to another Evaluation or calibration; no replacement was created.");
-          onThreshold(latest);
+          publishThreshold(latest);
         } else {
           const latest = await studioApi.getLatestSelectivePolicy(project.session_id);
           if (latest.evaluation_id !== pending.evaluationId || latest.confidence_cutoff !== pending.confidenceCutoff || latest.calibration_id !== pending.calibrationId || latest.class_threshold_id !== pending.thresholdId) throw new Error("The latest selective policy does not match the exact Evaluation, cutoff, calibration and threshold; no replacement was created.");
-          onSelectivePolicy(latest);
+          publishSelectivePolicy(latest);
         }
         setPolicyRecovery(null);
       } catch (reason) {
@@ -378,11 +390,11 @@ export function EvaluationWorkspace({
     try {
       if (pending.kind === "calibration") {
         const created = await studioApi.fitAnalysisCalibration(project.session_id, pending.evaluationId);
-        onCalibration(created); onThreshold(null);
+        publishCalibration(created); publishThreshold(null);
       } else if (pending.kind === "threshold") {
-        onThreshold(await studioApi.selectAnalysisThreshold(project.session_id, pending.evaluationId, pending.calibrationId));
+        publishThreshold(await studioApi.selectAnalysisThreshold(project.session_id, pending.evaluationId, pending.calibrationId));
       } else {
-        onSelectivePolicy(await studioApi.createSelectivePolicy(project.session_id, pending.evaluationId, pending.confidenceCutoff, pending.calibrationId, pending.thresholdId));
+        publishSelectivePolicy(await studioApi.createSelectivePolicy(project.session_id, pending.evaluationId, pending.confidenceCutoff, pending.calibrationId, pending.thresholdId));
       }
       setPolicyRecovery(null);
     } catch (reason) {
@@ -403,8 +415,8 @@ export function EvaluationWorkspace({
         setPolicyRecovery({ kind: "calibration", evaluationId: current.evaluation_id, error: reason instanceof Error ? reason.message : "Calibration response was uncertain.", notFound: false });
         throw reason;
       }
-      onCalibration(fitted);
-      onThreshold(null);
+      publishCalibration(fitted);
+      publishThreshold(null);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Could not fit validation calibration");
     } finally {
@@ -428,7 +440,7 @@ export function EvaluationWorkspace({
         setPolicyRecovery({ kind: "threshold", evaluationId: current.evaluation_id, calibrationId, error: reason instanceof Error ? reason.message : "Threshold response was uncertain.", notFound: false });
         throw reason;
       }
-      onThreshold(selected);
+      publishThreshold(selected);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Could not select validation decision threshold");
     } finally {
@@ -445,7 +457,7 @@ export function EvaluationWorkspace({
       if (!activeThreshold) throw new Error("Select a validation DecisionThreshold before creating a selective policy.");
       const confidenceCutoff = Number(selectiveCutoff);
       const calibrationId = activeCalibration?.calibration_id ?? null;
-      try { onSelectivePolicy(await studioApi.createSelectivePolicy(project.session_id, current.evaluation_id, confidenceCutoff, calibrationId, activeThreshold.threshold_id)); }
+      try { publishSelectivePolicy(await studioApi.createSelectivePolicy(project.session_id, current.evaluation_id, confidenceCutoff, calibrationId, activeThreshold.threshold_id)); }
       catch (reason) {
         setPolicyRecovery({ kind: "selective", evaluationId: current.evaluation_id, confidenceCutoff, calibrationId, thresholdId: activeThreshold.threshold_id, error: reason instanceof Error ? reason.message : "Selective policy response was uncertain.", notFound: false });
         throw reason;
@@ -494,7 +506,7 @@ export function EvaluationWorkspace({
         request.selectivePolicyId,
         request.stabilityGatePolicyId,
       );
-      onFinalTest(result);
+      publishFinalTest(result);
       setFinalTestConfirmed(false);
       setFinalTestRecovery(null);
     } catch (reason) {
@@ -515,7 +527,7 @@ export function EvaluationWorkspace({
         setFinalTestRecovery({ ...pending, error: "The latest FinalTestEvaluation has different frozen policy identities. No new final-test evaluation was submitted; inspect persisted lineage before proceeding." });
         return;
       }
-      onFinalTest(latest); setFinalTestRecovery(null); setFinalTestConfirmed(false);
+      publishFinalTest(latest); setFinalTestRecovery(null); setFinalTestConfirmed(false);
     } catch (reason) {
       const message = reason instanceof ProductApiError && reason.status === 404
         ? "No matching FinalTestEvaluation is visible yet. The dataset boundary may still have opened; do not submit another test request. Retry this lookup or reopen and inspect persisted evidence."
@@ -528,7 +540,7 @@ export function EvaluationWorkspace({
     const includeFis = request.fisId !== null;
     if (includeFis && fis?.fis_id !== request.fisId) throw new Error("The active FIS revision changed; the original comparison request cannot be repeated safely.");
     try {
-      onComparison(await studioApi.createAnalysisComparison(project.session_id, request.runIds, includeFis));
+      publishComparison(await studioApi.createAnalysisComparison(project.session_id, request.runIds, includeFis));
       setComparisonRecovery(null);
     } catch (reason) {
       const pending = { ...request, error: reason instanceof Error ? reason.message : "Comparison response was uncertain.", notFound: false };
@@ -564,7 +576,7 @@ export function EvaluationWorkspace({
         setComparisonRecovery({ ...pending, notFound: true, error: "The latest comparison has different run/FIS identities; no replacement was created." });
         return;
       }
-      onComparison(latest); setComparisonRecovery(null);
+      publishComparison(latest); setComparisonRecovery(null);
     } catch (reason) {
       if (reason instanceof ProductApiError && reason.status === 404) {
         setComparisonRecovery({ ...pending, notFound: true, error: "No matching saved comparison is visible yet. Retry lookup later, or explicitly repeat this exact validation comparison." });
@@ -623,7 +635,7 @@ export function EvaluationWorkspace({
       const request = { evaluationId: current.evaluation_id, metric, definitions: [persistedDefinition] };
       try {
         const result = await studioApi.createSliceAnalysis(project.session_id, request.evaluationId, request.metric, request.definitions);
-        onSliceAnalysis(result); setSliceRecoveryRequest(null); setSliceRecoveryError(null); setSliceRecoveryNotFound(false);
+        publishSliceAnalysis(result); setSliceRecoveryRequest(null); setSliceRecoveryError(null); setSliceRecoveryNotFound(false);
       } catch (reason) {
         setSliceRecoveryRequest(request); setSliceRecoveryError(reason instanceof Error ? reason.message : "The saved SliceAnalysis could not be confirmed."); setSliceRecoveryNotFound(false);
         throw reason;
@@ -651,7 +663,7 @@ export function EvaluationWorkspace({
       if (latest.evaluation_id !== request.evaluationId || latest.metric !== request.metric || canonicalJson(latest.definitions) !== canonicalJson(request.definitions)) {
         setSliceRecoveryNotFound(true); setSliceRecoveryError("The latest saved SliceAnalysis belongs to another definition; no replacement was created."); return;
       }
-      onSliceAnalysis(latest); setSliceRecoveryRequest(null); setSliceRecoveryError(null); setSliceRecoveryNotFound(false);
+      publishSliceAnalysis(latest); setSliceRecoveryRequest(null); setSliceRecoveryError(null); setSliceRecoveryNotFound(false);
     } catch (reason) {
       setSliceRecoveryError(reason instanceof Error ? reason.message : "Could not recover the exact SliceAnalysis."); setSliceRecoveryNotFound(false);
       setError(reason instanceof Error ? reason.message : String(reason));
@@ -663,7 +675,7 @@ export function EvaluationWorkspace({
     setSliceRunning(true); setError(null);
     try {
       const request = sliceRecoveryRequest;
-      onSliceAnalysis(await studioApi.createSliceAnalysis(project.session_id, request.evaluationId, request.metric, request.definitions));
+      publishSliceAnalysis(await studioApi.createSliceAnalysis(project.session_id, request.evaluationId, request.metric, request.definitions));
       setSliceRecoveryRequest(null); setSliceRecoveryError(null); setSliceRecoveryNotFound(false);
     } catch (reason) {
       setSliceRecoveryError(reason instanceof Error ? reason.message : "The explicitly repeated SliceAnalysis could not be confirmed."); setSliceRecoveryNotFound(false);

@@ -133,15 +133,16 @@
     "alpha_fis_save_lost_response_recovery",
     "alpha_train_only_expert_refit_lost_response_recovery",
     "alpha_training_unmounted_callback_isolation",
-    "alpha_study_unmounted_callback_isolation"
+    "alpha_study_unmounted_callback_isolation",
+    "alpha_evaluation_unmounted_callback_isolation"
   ],
-  "active_capability": "alpha_study_unmounted_callback_isolation",
+  "active_capability": "alpha_evaluation_unmounted_callback_isolation",
   "active_acceptance": [
-    "A completed multi-seed Study returned after its source ExperimentWorkspace closes must not publish the Study or selected run into a newly opened project.",
-    "The persisted Study remains attached to its source project and can be reopened normally."
+    "Persisted Evaluation, policy, comparison, slice and final-test responses must only update App state while their originating EvaluationWorkspace remains mounted.",
+    "The persisted evidence stays attached to its source project; closing it before a response returns cannot contaminate the next project."
   ],
   "blockers": [],
-  "next_executable_work": "Audit EvaluationWorkspace asynchronous save/recovery callbacks for project-instance isolation; a delayed validation evaluation or frozen policy response must not hydrate the next project. Keep verification focused and do not push.",
+  "next_executable_work": "Audit remaining workspace-level callbacks and parent hydration boundaries for any asynchronous response that can publish evidence after project close; focus on a single representative persisted final-test result path if the component guard lacks coverage. Keep verification resource-conscious and do not push.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -278,6 +279,7 @@
     "alpha_generalization_response_ordering": "PASS: Generalization create/freeze responses are bound to the current project session and mutation generation; overlapping scope classifications use latest-request-wins semantics. E2E held a preview-row classification, completed a newer candidate classification, released the older response and confirmed the candidate result remained. Focused E2E, frontend unit 23/23, TypeScript/Vite build and diff check passed.",
     "alpha_fis_unmounted_callback_isolation": "PASS: FIS/Evaluation/ExpertCorrection callbacks publish to the App only while their originating BuildWorkspace instance remains mounted, preventing late operations from contaminating a newly opened project. E2E held the successful persisted FIS-create response, closed the source project, opened a blank project, released the response and verified the new project still had no FIS model. Focused browser E2E, frontend unit 23/23, TypeScript/Vite build and diff check passed.",
     "alpha_training_unmounted_callback_isolation": "PASS: ExperimentWorkspace callbacks for single-run training, recovered runs, completed TrainingStudies, selected Study runs, and Stability Lab evidence now publish only while the originating workspace remains mounted. E2E held a successfully persisted Decision Tree TrainingRun response, closed the source project, opened a blank project, released the response and verified no run appeared in the new project's Explorer. Focused Playwright 1/1, frontend unit 23/23, TypeScript/Vite production build and git diff --check passed.",
-    "alpha_study_unmounted_callback_isolation": "PASS: A real three-seed Decision Tree Study completed and persisted; the E2E held its successful latest-Study response, closed the source project, opened a blank project, released the response and confirmed neither the TrainingStudy nor selected TrainingRun appeared in the new project's Explorer. Study response isolation is enforced by the ExperimentWorkspace mounted-instance callback guard. Focused Playwright 1/1 and git diff --check passed."
+    "alpha_study_unmounted_callback_isolation": "PASS: A real three-seed Decision Tree Study completed and persisted; the E2E held its successful latest-Study response, closed the source project, opened a blank project, released the response and confirmed neither the TrainingStudy nor selected TrainingRun appeared in the new project's Explorer. Study response isolation is enforced by the ExperimentWorkspace mounted-instance callback guard. Focused Playwright 1/1 and git diff --check passed.",
+    "alpha_evaluation_unmounted_callback_isolation": "PASS: EvaluationWorkspace now guards every parent callback (Evaluation, calibration, threshold, selective policy, FinalTestEvaluation, comparison and slice analysis) with its mounted-instance lifecycle. E2E persisted a real validation Evaluation, held its response, closed the source project, opened a blank project, released the response and verified the new project still had no Analysis or run. Focused Playwright 1/1, frontend unit 23/23, TypeScript/Vite production build and git diff --check passed."
   }
 }
