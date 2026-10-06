@@ -13,6 +13,7 @@ class ExhaustiveLabResult(BaseModel):
     exactness_label:Literal["EXACT_FINITE_STRUCTURE","EXACT_ON_DECLARED_DISCRETE_GRID"]
     run_id:UUID|None=None
     fis_semantic_hash:str|None=None
+    requested_grid_points:int|None=Field(default=None,ge=2,le=9)
     declared_grid:dict[str,list[float]]=Field(default_factory=dict)
     state_count:int=Field(ge=0)
     state_estimate:int=Field(ge=0)

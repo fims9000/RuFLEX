@@ -114,7 +114,9 @@
     "alpha_assurance_bundle_job_poll_resume",
     "alpha_behavior_spec_uncertain_result_recovery",
     "alpha_explanation_check_result_recovery",
-    "alpha_reproducibility_lost_response_recovery"
+    "alpha_reproducibility_lost_response_recovery",
+    "alpha_exhaustive_result_lost_response_recovery",
+    "alpha_condition_demo_lost_response_recovery"
   ],
   "active_capability": "alpha_saved_evidence_hydration_audit",
   "active_acceptance": [
@@ -122,7 +124,7 @@
     "Prioritize identity-linked EvidenceWorkspace reads and guard any action that could duplicate persisted work until its inventory resolves."
   ],
   "blockers": [],
-  "next_executable_work": "Audit Exhaustive Lab and condition-monitoring demo create-and-read actions for lost-response duplicates and exact persisted-result recovery; then review final QA scope and preserve article changes. Do not push.",
+  "next_executable_work": "Audit final alpha workflow for any remaining persisted create/read actions with uncertain-response or duplicate-result risks; review final QA scope and preserve article changes. Do not push.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -226,6 +228,8 @@
     "alpha_assurance_bundle_job_poll_resume": "PASS: AssuranceCase and VerificationBundle jobs now have a distinct persisted-operation identity rather than being displayed as ExplanationJobs. Polling errors retain the exact job, pause duplicate Assurance/Bundle submissions and can resume by ID; successful AssuranceCase restoration fetches the job's exact assurance_id, and bundle output is validated after resume. PRODUCT-EVIDENCE injected status 503 into both operations, resumed each, and verified all reads remained bound to their original job IDs. Frontend unit 23/23, TypeScript/Vite build, focused Playwright and git diff --check passed.",
     "alpha_behavior_spec_uncertain_result_recovery": "PASS: If BehaviorSpec creation succeeded but the result response was lost, Evidence retains the saved spec identity and pauses creation of a duplicate. Retry first checks persisted results for that exact spec_id, restoring an existing result without rerunning or otherwise executing the same saved spec. PRODUCT-EVIDENCE simulated a lost response after backend persistence, recovered by spec_id and verified exactly one run POST. Frontend unit 23/23, TypeScript/Vite build, focused Playwright and git diff --check passed.",
     "alpha_explanation_check_result_recovery": "PASS: A succeeded explanation-check job whose persisted ExplanationCheck read fails can now recover from its exact job output check_id; it blocks launching another check until result hydration succeeds. PRODUCT-EVIDENCE simulated a lost response after ExplanationCheck persistence, recovered from the succeeded job, and verified exactly one check-job POST. Frontend unit 23/23, TypeScript/Vite build, focused Playwright and git diff --check passed.",
-    "alpha_reproducibility_lost_response_recovery": "PASS: If cross-run reproducibility creation returns an uncertain response, Evidence locks the original explanation IDs and recovers only an exact persisted analysis; it never silently reposts after a confirmed-absent read. A separate explicit action is required to start a new comparison. PRODUCT-EVIDENCE simulated response loss after persistence, recovered the exact analysis, and verified one POST. Frontend unit 23/23, TypeScript/Vite build, focused Playwright and git diff --check passed."
+    "alpha_reproducibility_lost_response_recovery": "PASS: If cross-run reproducibility creation returns an uncertain response, Evidence locks the original explanation IDs and recovers only an exact persisted analysis; it never silently reposts after a confirmed-absent read. A separate explicit action is required to start a new comparison. PRODUCT-EVIDENCE simulated response loss after persistence, recovered the exact analysis, and verified one POST. Frontend unit 23/23, TypeScript/Vite build, focused Playwright and git diff --check passed.",
+    "alpha_exhaustive_result_lost_response_recovery": "PASS: Exhaustive evidence writes now persist requested FIS grid-point count as backward-compatible provenance. On uncertain response, Evidence recovers only the exact tree-run or grid request, keeps inputs/actions locked during lookup, and requires explicit confirmation before rerun if no saved result is found. Backend reopen test, compileall, frontend 23/23, Vite build, and PRODUCT-EVIDENCE lost-response-after-persist E2E passed.",
+    "alpha_condition_demo_lost_response_recovery": "PASS: ConditionMonitoringDemo now persists policy, telemetry, metadata, and GeneralizationContract input provenance. Studio recovers only a result with the exact policy/telemetry/scope identity, blocks duplicate requests while unresolved, and requires explicit confirmation before rerun after confirmed absence. PRODUCT-EVIDENCE lost-response-after-persist plus existing close/reopen retry flow passed; frontend 23/23, Vite build and changed Python compileall passed."
   }
 }

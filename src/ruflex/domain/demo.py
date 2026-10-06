@@ -11,6 +11,8 @@ class ConditionMonitoringDemo(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     policy_id: UUID
     telemetry: dict[str, float]
+    metadata: dict[str, object] = Field(default_factory=dict)
+    generalization_contract_id: UUID | None = None
     predicted_class: int
     probability: float
     confidence: float

@@ -37,6 +37,10 @@ function statusTone(status: ExplanationCheck["status"] | ExplanationCheck["check
   return "success" as const;
 }
 
+function sameNumericRecord(left: Record<string, number>, right: Record<string, number>) {
+  return JSON.stringify(Object.entries(left).sort(([a], [b]) => a.localeCompare(b))) === JSON.stringify(Object.entries(right).sort(([a], [b]) => a.localeCompare(b)));
+}
+
 export function EvidenceWorkspace({
   project,
   dataset,
@@ -175,6 +179,9 @@ export function EvidenceWorkspace({
   const [selectedExplanationIds, setSelectedExplanationIds] = useState<string[]>([]);
   const [exhaustive, setExhaustive] = useState<ExhaustiveLabResult | null>(restoredExhaustive);
   const [gridPoints, setGridPoints] = useState("3");
+  const [exhaustiveRecoveryRequest, setExhaustiveRecoveryRequest] = useState<{ kind: ExhaustiveLabResult["kind"]; runId: string | null; gridPoints: number; maxStates: number } | null>(null);
+  const [exhaustiveRecoveryError, setExhaustiveRecoveryError] = useState<string | null>(null);
+  const [exhaustiveRecoveryNotFound, setExhaustiveRecoveryNotFound] = useState(false);
   const [assurance, setAssurance] = useState<AssuranceCase | null>(restoredAssurance);
   const [evidenceOperationJob, setEvidenceOperationJob] = useState<ProductJob | null>(null);
   const [evidenceOperationPollError, setEvidenceOperationPollError] = useState<string | null>(null);
@@ -185,6 +192,9 @@ export function EvidenceWorkspace({
   const [demoHydrationStatus, setDemoHydrationStatus] = useState<"idle" | "loading" | "none" | "available" | "error">("idle");
   const [demoHydrationError, setDemoHydrationError] = useState<string | null>(null);
   const [demoHydrationReload, setDemoHydrationReload] = useState(0);
+  const [demoRecoveryRequest, setDemoRecoveryRequest] = useState<{ telemetry: Record<string, number>; policyId: string; generalizationContractId: string | null } | null>(null);
+  const [demoRecoveryError, setDemoRecoveryError] = useState<string | null>(null);
+  const [demoRecoveryNotFound, setDemoRecoveryNotFound] = useState(false);
   const [explanationJob, setExplanationJob] = useState<ProductJob | null>(null);
   const [explanationJobHydrationStatus, setExplanationJobHydrationStatus] = useState<"loading" | "none" | "available" | "error">("loading");
   const [explanationJobHydrationError, setExplanationJobHydrationError] = useState<string | null>(null);
@@ -383,15 +393,66 @@ export function EvidenceWorkspace({
 
   async function runConditionDemo() {
     if (!selectivePolicy) { setError("Create a validation-derived selective policy before running the condition-monitoring demo."); return; }
+    if (demoRecoveryRequest) { setError("Resolve the saved condition-monitoring request before starting another demonstration."); return; }
     if (demoHydrationStatus !== "none" && demoHydrationStatus !== "available") { setError("Resolve the saved condition-monitoring evidence before starting another run."); return; }
     if (generalizationHydrationStatus === "loading" || generalizationHydrationStatus === "error" || generalizationHydrationStatus === "idle") {
       setError("Resolve the saved GeneralizationContract state before running the scope-aware condition-monitoring demo.");
       return;
     }
+    const request = { telemetry: numericSample(), policyId: selectivePolicy.policy_id, generalizationContractId: generalization?.contract.contract_id ?? null };
     setBusy(true); setError(null);
-    try { setDemo(await studioApi.runConditionMonitoringDemo(project.session_id, numericSample(), selectivePolicy.policy_id, generalization?.contract.contract_id ?? null)); setDemoHydrationStatus("available"); setDemoHydrationError(null); }
-    catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
+    try { await submitConditionDemo(request); }
+    catch (reason) {
+      setDemoRecoveryRequest(request);
+      setDemoRecoveryError(reason instanceof Error ? reason.message : "The saved condition-monitoring result could not be confirmed.");
+      setDemoRecoveryNotFound(false);
+      setError(reason instanceof Error ? reason.message : String(reason));
+    }
     finally { setBusy(false); }
+  }
+
+  async function submitConditionDemo(request: { telemetry: Record<string, number>; policyId: string; generalizationContractId: string | null }) {
+    const result = await studioApi.runConditionMonitoringDemo(project.session_id, request.telemetry, request.policyId, request.generalizationContractId);
+    setDemo(result); setDemoHydrationStatus("available"); setDemoHydrationError(null);
+    setDemoRecoveryRequest(null); setDemoRecoveryError(null); setDemoRecoveryNotFound(false);
+  }
+
+  async function recoverConditionDemo() {
+    const request = demoRecoveryRequest;
+    if (!request) return;
+    setBusy(true); setError(null);
+    try {
+      let result: ConditionMonitoringDemo;
+      try { result = await studioApi.getLatestConditionMonitoringDemo(project.session_id); }
+      catch (reason) {
+        if (reason instanceof ProductApiError && reason.status === 404) {
+          setDemoRecoveryNotFound(true);
+          setDemoRecoveryError("No persisted result is visible yet. Retry lookup later, or explicitly rerun the saved request if it did not finish.");
+          return;
+        }
+        throw reason;
+      }
+      if (result.policy_id !== request.policyId || !sameNumericRecord(result.telemetry, request.telemetry) || (result.generalization_contract_id ?? null) !== request.generalizationContractId) {
+        throw new Error("The latest saved demonstration belongs to different inputs or policy; no replacement was created.");
+      }
+      setDemo(result); setDemoHydrationStatus("available"); setDemoHydrationError(null);
+      setDemoRecoveryRequest(null); setDemoRecoveryError(null); setDemoRecoveryNotFound(false);
+    } catch (reason) {
+      setDemoRecoveryError(reason instanceof Error ? reason.message : "Could not recover the exact condition-monitoring result.");
+      setDemoRecoveryNotFound(false);
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally { setBusy(false); }
+  }
+
+  async function explicitlyRestartConditionDemo() {
+    if (!demoRecoveryRequest || !demoRecoveryNotFound) return;
+    setBusy(true); setError(null);
+    try { await submitConditionDemo(demoRecoveryRequest); }
+    catch (reason) {
+      setDemoRecoveryError(reason instanceof Error ? reason.message : "The replacement demonstration could not be confirmed.");
+      setDemoRecoveryNotFound(false);
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally { setBusy(false); }
   }
 
   async function generate() {
@@ -617,11 +678,61 @@ export function EvidenceWorkspace({
     } finally { setBusy(false); }
   }
 
+  async function submitExhaustive(request: { kind: ExhaustiveLabResult["kind"]; runId: string | null; gridPoints: number; maxStates: number }) {
+    const result = await studioApi.runExhaustiveLab(project.session_id, request.kind, request.runId, request.gridPoints, request.maxStates);
+    setExhaustive(result); onExhaustive(result);
+    setExhaustiveRecoveryRequest(null); setExhaustiveRecoveryError(null); setExhaustiveRecoveryNotFound(false);
+  }
+
   async function runExhaustive(kind: ExhaustiveLabResult["kind"]) {
+    const request = { kind, runId: kind === "decision_tree_structure" ? run?.run_id ?? null : null, gridPoints: Number(gridPoints), maxStates: 10000 };
     setBusy(true); setError(null);
-    try { const result=await studioApi.runExhaustiveLab(project.session_id, kind, kind === "decision_tree_structure" ? run?.run_id ?? null : null, Number(gridPoints)); setExhaustive(result); onExhaustive(result); }
-    catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
-    finally { setBusy(false); }
+    try { await submitExhaustive(request); }
+    catch (reason) {
+      setExhaustiveRecoveryRequest(request);
+      setExhaustiveRecoveryError(reason instanceof Error ? reason.message : "The exhaustive result could not be confirmed.");
+      setExhaustiveRecoveryNotFound(false);
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally { setBusy(false); }
+  }
+
+  async function recoverExhaustive() {
+    const request = exhaustiveRecoveryRequest;
+    if (!request) return;
+    setBusy(true); setError(null);
+    try {
+      let result: ExhaustiveLabResult;
+      try { result = await studioApi.getLatestExhaustiveLab(project.session_id); }
+      catch (reason) {
+        if (reason instanceof ProductApiError && reason.status === 404) {
+          setExhaustiveRecoveryNotFound(true);
+          setExhaustiveRecoveryError("No persisted exhaustive result is visible yet. Retry lookup later, or explicitly rerun the saved request if it did not finish.");
+          return;
+        }
+        throw reason;
+      }
+      const matches = result.kind === request.kind && (request.kind === "decision_tree_structure"
+        ? result.run_id === request.runId
+        : result.requested_grid_points === request.gridPoints && result.max_states === request.maxStates);
+      if (!matches) throw new Error("The latest saved exhaustive result belongs to a different request; no replacement was created.");
+      setExhaustive(result); onExhaustive(result);
+      setExhaustiveRecoveryRequest(null); setExhaustiveRecoveryError(null); setExhaustiveRecoveryNotFound(false);
+    } catch (reason) {
+      setExhaustiveRecoveryError(reason instanceof Error ? reason.message : "Could not recover the exact saved exhaustive result.");
+      setExhaustiveRecoveryNotFound(false);
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally { setBusy(false); }
+  }
+
+  async function explicitlyRestartExhaustive() {
+    if (!exhaustiveRecoveryRequest || !exhaustiveRecoveryNotFound) return;
+    setBusy(true); setError(null);
+    try { await submitExhaustive(exhaustiveRecoveryRequest); }
+    catch (reason) {
+      setExhaustiveRecoveryError(reason instanceof Error ? reason.message : "The replacement exhaustive request could not be confirmed.");
+      setExhaustiveRecoveryNotFound(false);
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally { setBusy(false); }
   }
   async function waitForEvidenceOperation(job: ProductJob) {
     setEvidenceOperationJob(job);
@@ -832,7 +943,7 @@ export function EvidenceWorkspace({
           <section className="trace-card"><strong>Revision transition</strong><p>Compare two executions of the exact same persisted behavior requirement across model or FIS revisions. A PASS → FAIL transition is retained as regression evidence.</p>{behaviorResultsHydrationStatus === "loading" && <p role="status" data-testid="behavior-results-loading">Loading saved BehaviorSpec results…</p>}{behaviorResultsHydrationStatus === "error" && <div className="error" role="alert" data-testid="behavior-results-hydration-error"><strong>Saved BehaviorSpec results could not be verified; comparison is paused.</strong><p>{behaviorResultsHydrationError}</p><Button view="outlined" onClick={() => setBehaviorResultsHydrationReload((current) => current + 1)}>Retry BehaviorSpec results</Button></div>}<div className="training-config-grid"><label className="field-label">Baseline result<select aria-label="Behavior baseline result" value={baselineBehaviorResultId} onChange={(event) => setBaselineBehaviorResultId(event.target.value)}><option value="">Choose result</option>{behaviorResults.map((item) => <option key={item.result_id} value={item.result_id}>{item.result_id.slice(0, 8)} · {item.status}</option>)}</select></label><label className="field-label">Candidate result<select aria-label="Behavior candidate result" value={candidateBehaviorResultId} onChange={(event) => setCandidateBehaviorResultId(event.target.value)}><option value="">Choose result</option>{behaviorResults.map((item) => <option key={item.result_id} value={item.result_id}>{item.result_id.slice(0, 8)} · {item.status}</option>)}</select></label></div><Button view="outlined" disabled={busy || project.read_only || behaviorResultsHydrationStatus !== "available" || behaviorComparisonHydrationStatus === "loading" || behaviorComparisonHydrationStatus === "error" || !baselineBehaviorResultId || !candidateBehaviorResultId || baselineBehaviorResultId === candidateBehaviorResultId} onClick={compareBehaviorRevisions} data-ruflex-action="behavior.revision.compare">Compare revisions</Button>{behaviorComparisonHydrationStatus === "loading" && <p role="status" data-testid="behavior-comparison-loading">Loading saved revision comparison…</p>}{behaviorComparisonHydrationStatus === "none" && <p className="property-description" data-testid="behavior-comparison-empty">No saved revision comparison is available.</p>}{behaviorComparisonHydrationStatus === "error" && <div className="error" role="alert" data-testid="behavior-comparison-hydration-error"><strong>Saved revision comparison could not be verified; creating another comparison is paused.</strong><p>{behaviorComparisonHydrationError}</p><Button view="outlined" onClick={() => setBehaviorComparisonHydrationReload((current) => current + 1)}>Retry saved revision comparison</Button></div>}{behaviorComparison && <p data-testid="behavior-revision-comparison"><strong>{behaviorComparison.transition.replaceAll("_", " ")}</strong> · {behaviorComparison.regression_detected ? "regression retained as evidence" : "no PASS-to-FAIL regression in this transition"}</p>}</section>
         </>}
       </section>
-      <section className="evidence-section"><div className="feature-toolbar compact-toolbar"><div><span className="eyebrow">CONDITION MONITORING DEMO</span><h3>Telemetry decision support with review and scope safeguards</h3><p>Telemetry → frozen class/selective policy → scope → explanation check → AssuranceCase → VerificationBundle → ACCEPT / REVIEW / OUT-OF-SCOPE. This is not targeting or actuator control.</p></div><Button view="action" disabled={busy || project.read_only || !run || !selectivePolicy || !["none", "available"].includes(demoHydrationStatus) || generalizationHydrationStatus === "loading" || generalizationHydrationStatus === "error" || generalizationHydrationStatus === "idle"} onClick={runConditionDemo} data-ruflex-action="condition_demo.run">Run telemetry demonstration</Button></div>{demoHydrationStatus === "loading" && <p role="status" data-testid="condition-demo-loading">Loading saved condition-monitoring evidence…</p>}{demoHydrationStatus === "none" && <p className="property-description" data-testid="condition-demo-empty">No saved condition-monitoring result is available.</p>}{demoHydrationStatus === "error" && <div className="error" role="alert" data-testid="condition-demo-hydration-error"><strong>Saved condition-monitoring evidence could not be verified; another demonstration is paused.</strong><p>{demoHydrationError}</p><Button view="outlined" onClick={() => setDemoHydrationReload((current) => current + 1)}>Retry condition-monitoring evidence</Button></div>}{generalizationHydrationStatus === "loading" && <p role="status">Resolving the saved GeneralizationContract before scope-aware review…</p>}{generalizationHydrationStatus === "none" && <p className="property-description">No GeneralizationContract is saved; this demonstration will report scope as undeclared.</p>}{generalizationHydrationStatus === "error" && <div className="error" role="alert" data-testid="evidence-generalization-hydration-error"><strong>Saved GeneralizationContract could not be verified; the scope-aware demonstration is paused.</strong><p>{generalizationHydrationError}</p>{onRetryGeneralization && <Button view="outlined" onClick={onRetryGeneralization}>Retry GeneralizationContract</Button>}</div>}{!selectivePolicy && <p className="property-description">A validation-derived selective policy is required before this demonstration can make an ACCEPT/REVIEW decision.</p>}{demo && <div className="trace-card" data-testid="condition-monitoring-demo"><StatusBadge tone={demo.decision === "ACCEPT" ? "success" : demo.decision === "OUT_OF_SCOPE" ? "danger" : "warning"}>{demo.decision}</StatusBadge><p>Class {demo.predicted_class} · probability {demo.probability.toFixed(4)} · confidence {demo.confidence.toFixed(4)} · scope {demo.scope_disposition}</p><small className="mono">Explanation {demo.explanation_id?.slice(0, 12)} · check {demo.explanation_check_id?.slice(0, 12)} · AssuranceCase {demo.assurance_id?.slice(0, 12)} · VerificationBundle {demo.verification_bundle_sha256?.slice(0, 12)}</small><p>{demo.explanation_note}</p><small>{demo.safety_note}</small></div>}</section>
+      <section className="evidence-section"><div className="feature-toolbar compact-toolbar"><div><span className="eyebrow">CONDITION MONITORING DEMO</span><h3>Telemetry decision support with review and scope safeguards</h3><p>Telemetry → frozen class/selective policy → scope → explanation check → AssuranceCase → VerificationBundle → ACCEPT / REVIEW / OUT-OF-SCOPE. This is not targeting or actuator control.</p></div><Button view="action" disabled={busy || project.read_only || !run || !selectivePolicy || !!demoRecoveryRequest || !["none", "available"].includes(demoHydrationStatus) || generalizationHydrationStatus === "loading" || generalizationHydrationStatus === "error" || generalizationHydrationStatus === "idle"} onClick={runConditionDemo} data-ruflex-action="condition_demo.run">Run telemetry demonstration</Button></div>{demoRecoveryRequest && <div className="error" role="alert" data-testid="condition-demo-recovery"><strong>Demonstration request outcome is uncertain; resolve its exact saved inputs and policy first.</strong><p>{demoRecoveryError}</p><Button view="outlined" disabled={busy} onClick={recoverConditionDemo}>Retry saved demo lookup</Button>{demoRecoveryNotFound && <Button view="outlined" disabled={busy} onClick={explicitlyRestartConditionDemo}>Rerun saved demo explicitly</Button>}</div>}{demoHydrationStatus === "loading" && <p role="status" data-testid="condition-demo-loading">Loading saved condition-monitoring evidence…</p>}{demoHydrationStatus === "none" && <p className="property-description" data-testid="condition-demo-empty">No saved condition-monitoring result is available.</p>}{demoHydrationStatus === "error" && <div className="error" role="alert" data-testid="condition-demo-hydration-error"><strong>Saved condition-monitoring evidence could not be verified; another demonstration is paused.</strong><p>{demoHydrationError}</p><Button view="outlined" onClick={() => setDemoHydrationReload((current) => current + 1)}>Retry condition-monitoring evidence</Button></div>}{generalizationHydrationStatus === "loading" && <p role="status">Resolving the saved GeneralizationContract before scope-aware review…</p>}{generalizationHydrationStatus === "none" && <p className="property-description">No GeneralizationContract is saved; this demonstration will report scope as undeclared.</p>}{generalizationHydrationStatus === "error" && <div className="error" role="alert" data-testid="evidence-generalization-hydration-error"><strong>Saved GeneralizationContract could not be verified; the scope-aware demonstration is paused.</strong><p>{generalizationHydrationError}</p>{onRetryGeneralization && <Button view="outlined" onClick={onRetryGeneralization}>Retry GeneralizationContract</Button>}</div>}{!selectivePolicy && <p className="property-description">A validation-derived selective policy is required before this demonstration can make an ACCEPT/REVIEW decision.</p>}{demo && <div className="trace-card" data-testid="condition-monitoring-demo"><StatusBadge tone={demo.decision === "ACCEPT" ? "success" : demo.decision === "OUT_OF_SCOPE" ? "danger" : "warning"}>{demo.decision}</StatusBadge><p>Class {demo.predicted_class} · probability {demo.probability.toFixed(4)} · confidence {demo.confidence.toFixed(4)} · scope {demo.scope_disposition}</p><small className="mono">Explanation {demo.explanation_id?.slice(0, 12)} · check {demo.explanation_check_id?.slice(0, 12)} · AssuranceCase {demo.assurance_id?.slice(0, 12)} · VerificationBundle {demo.verification_bundle_sha256?.slice(0, 12)}</small><p>{demo.explanation_note}</p><small>{demo.safety_note}</small></div>}</section>
       <section className="evidence-section"><div className="feature-toolbar compact-toolbar"><div><span className="eyebrow">ASSURANCE CASE</span><h3>Independent evidence gates and qualified claims</h3><p>No universal trust score is produced.</p></div><Button view="action" disabled={busy || project.read_only || evidenceOperationPending} onClick={buildAssurance} data-ruflex-action="assurance.create">{busy ? "Building…" : "Build AssuranceCase"}</Button></div>{evidenceOperationPending && <div className={evidenceOperationPollError ? "error" : "property-description"} role={evidenceOperationPollError ? "alert" : "status"} data-testid="evidence-operation-resume"><strong>{evidenceOperationJob?.kind.replaceAll("_", " ")} · job {evidenceOperationJob?.job_id.slice(0, 12)}</strong>{evidenceOperationPollError ? <p>{evidenceOperationPollError}</p> : <p>This persisted evidence operation is still active; duplicate evidence jobs are paused.</p>}<Button view="outlined" disabled={busy} onClick={resumeEvidenceOperation}>Resume saved evidence job</Button></div>}{assuranceHydrationStatus === "loading" && <p role="status">Loading saved AssuranceCase…</p>}{assuranceHydrationStatus === "none" && !assurance && <p className="property-description" data-testid="assurance-empty">No saved AssuranceCase is available for this project.</p>}{assuranceHydrationStatus === "error" && <div className="error" role="alert"><strong>Saved AssuranceCase could not be verified.</strong><p>{assuranceHydrationError}</p>{onRetryAssurance && <Button view="outlined" onClick={onRetryAssurance}>Retry AssuranceCase</Button>}</div>}{assurance && <div className="trace-card" data-testid="assurance-case"><p>{assurance.scientific_note}</p><div className="data-table-wrap"><table className="data-table"><thead><tr><th>gate</th><th>status</th><th>evidence / risk</th></tr></thead><tbody>{assurance.gates.map((gate) => <tr key={gate.key}><td>{gate.key.replaceAll("_", " ")}</td><td><StatusBadge tone={gate.status === "PASS" ? "success" : gate.status === "FAIL" ? "danger" : "warning"}>{gate.status}</StatusBadge></td><td>{gate.evidence.join(", ") || gate.risk || "—"}</td></tr>)}</tbody></table></div>{assurance.claims.length > 0 && <div className="assurance-claims"><strong>Claim graph</strong>{assurance.claims.map((claim) => <div className="property-description" key={claim.claim_id}><StatusBadge tone={claim.status === "SUPPORTED" ? "success" : claim.status === "UNSUPPORTED" ? "danger" : "warning"}>{claim.status}</StatusBadge><p>{claim.statement}</p><small>Evidence: {claim.evidence_ids.join(", ")}</small>{claim.limitations.map((limitation) => <small key={limitation}>Limitation: {limitation}</small>)}</div>)}</div>}{assurance.unresolved_risks.map((risk) => <p className="property-description" key={risk}>Unresolved risk · {risk}</p>)}</div>}</section>
       <section className="evidence-section"><div className="feature-toolbar compact-toolbar"><div><span className="eyebrow">VERIFICATION BUNDLE</span><h3>Inspection-first evidence export</h3><p>Exports declarative evidence and checksums; it excludes executable code, pickle/joblib, raw datasets, credentials, caches and node_modules.</p></div><Button view="outlined" disabled={busy || project.read_only || !assurance || evidenceOperationPending} onClick={exportBundle} data-ruflex-action="bundle.export">Export and validate bundle</Button></div>{verificationBundleRecord && <div className="trace-card" data-testid="verification-bundle-record"><div className="evidence-check-header"><strong>Persisted VerificationBundle</strong><StatusBadge tone="info">inspection first</StatusBadge></div><p>{verificationBundleRecord.entry_count} declarative entries · SHA-256 {verificationBundleRecord.sha256}</p><small>Manifest {verificationBundleRecord.manifest_sha256} · linked AssuranceCase {verificationBundleRecord.assurance_id}</small></div>}{bundle && <div className="trace-card" data-testid="verification-bundle"><p>{bundle.entry_count} inspection entries · SHA-256 {bundle.sha256}</p><small>{bundle.path}</small>{bundleValidation && <><div className="evidence-check-header"><strong>Portable validation</strong><StatusBadge tone={bundleValidation.status === "PASS" ? "success" : "danger"}>{bundleValidation.status}</StatusBadge></div><p>{bundleValidation.status === "PASS" ? `${bundleValidation.checked_entries} checksummed entries validated after export.` : bundleValidation.errors.join(" ")}</p>{bundleValidation.warnings.map((warning) => <p className="property-description" key={warning}>{warning}</p>)}</>}</div>}</section>
       <section className="evidence-section">
@@ -840,7 +951,8 @@ export function EvidenceWorkspace({
         {exhaustiveHydrationStatus === "loading" && <p role="status">Loading saved exhaustive evidence…</p>}
         {exhaustiveHydrationStatus === "none" && <p className="property-description" data-testid="exhaustive-empty">No saved exhaustive evidence is available.</p>}
         {exhaustiveHydrationStatus === "error" && <div className="error" role="alert" data-testid="exhaustive-hydration-error"><strong>Saved exhaustive evidence could not be verified.</strong><p>{exhaustiveHydrationError}</p>{onRetryExhaustive && <Button view="outlined" onClick={onRetryExhaustive}>Retry exhaustive evidence</Button>}</div>}
-        <div className="toolbar-actions">{run?.model_kind === "decision_tree" && <Button view="action" disabled={busy || project.read_only} onClick={() => runExhaustive("decision_tree_structure")} data-ruflex-action="exhaustive.tree.run">Enumerate exact Decision Tree paths</Button>}{evaluation && <><label className="field-label">Grid points/input<input aria-label="Exhaustive grid points" type="number" min="2" max="9" value={gridPoints} onChange={(event) => setGridPoints(event.target.value)} /></label><Button view="outlined" disabled={busy || project.read_only} onClick={() => runExhaustive("fis_discrete_grid")} data-ruflex-action="exhaustive.fis.run">Evaluate declared FIS grid</Button></>}</div>
+        {exhaustiveRecoveryRequest && <div className="error" role="alert" data-testid="exhaustive-recovery"><strong>Exhaustive request outcome is uncertain; resolve the saved request before changing it.</strong><p>{exhaustiveRecoveryError}</p><Button view="outlined" disabled={busy} onClick={recoverExhaustive}>Retry saved result lookup</Button>{exhaustiveRecoveryNotFound && <Button view="outlined" disabled={busy} onClick={explicitlyRestartExhaustive}>Rerun saved request explicitly</Button>}</div>}
+        <div className="toolbar-actions">{run?.model_kind === "decision_tree" && <Button view="action" disabled={busy || project.read_only || !!exhaustiveRecoveryRequest} onClick={() => runExhaustive("decision_tree_structure")} data-ruflex-action="exhaustive.tree.run">Enumerate exact Decision Tree paths</Button>}{evaluation && <><label className="field-label">Grid points/input<input aria-label="Exhaustive grid points" type="number" min="2" max="9" value={gridPoints} disabled={!!exhaustiveRecoveryRequest} onChange={(event) => setGridPoints(event.target.value)} /></label><Button view="outlined" disabled={busy || project.read_only || !!exhaustiveRecoveryRequest} onClick={() => runExhaustive("fis_discrete_grid")} data-ruflex-action="exhaustive.fis.run">Evaluate declared FIS grid</Button></>}</div>
         {exhaustive && <div className="trace-card" data-testid="exhaustive-result"><StatusBadge tone="info">{exhaustive.exactness_label}</StatusBadge><p>{exhaustive.scientific_note}</p><p>{exhaustive.state_count} enumerated states (preflight estimate {exhaustive.state_estimate}, limit {exhaustive.max_states}) · uncovered {exhaustive.uncovered_states.length} · dead rules on declared grid {exhaustive.dead_rules.length} · overlap states {exhaustive.conflict_states.length}</p>{exhaustive.kind === "decision_tree_structure" && <div className="data-table-wrap"><table className="data-table"><thead><tr><th>leaf</th><th>constraints</th></tr></thead><tbody>{exhaustive.paths.slice(0, 20).map((item, index) => <tr key={index}><td>{String(item.leaf_id)}</td><td>{Array.isArray(item.constraints) ? item.constraints.join("; ") : "—"}</td></tr>)}</tbody></table></div>}{exhaustive.uncovered_states.length > 0 && <p className="property-description">Uncovered/undefined declared states are retained as evidence; they are not silently filled.</p>}</div>}
       </section>
       <section className="evidence-section">

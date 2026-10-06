@@ -11,6 +11,8 @@ from pydantic import ValidationError
 
 from ruflex.api.main import app
 from ruflex.application.jobs import Job, JobStatus, persist_job
+from ruflex.domain.demo import ConditionMonitoringDemo
+from ruflex.domain.exhaustive import ExhaustiveLabResult
 
 
 def _frame(rows: int = 48) -> pd.DataFrame:
@@ -58,6 +60,21 @@ def _train(client: TestClient, session_id: str, model_kind: str) -> dict:
     )
     assert response.status_code == 201, response.text
     return response.json()
+
+
+def test_legacy_exhaustive_and_condition_demo_objects_load_with_input_provenance_defaults() -> None:
+    legacy_exhaustive = ExhaustiveLabResult.model_validate({
+        "kind": "fis_discrete_grid", "exactness_label": "EXACT_ON_DECLARED_DISCRETE_GRID",
+        "state_count": 0, "state_estimate": 0, "max_states": 10000, "scientific_note": "legacy",
+    })
+    legacy_demo = ConditionMonitoringDemo.model_validate({
+        "policy_id": "00000000-0000-0000-0000-000000000001", "telemetry": {"x": 1.0},
+        "predicted_class": 0, "probability": 0.2, "confidence": 0.8,
+        "decision": "REVIEW", "scope_disposition": "UNDECLARED",
+    })
+    assert legacy_exhaustive.requested_grid_points is None
+    assert legacy_demo.metadata == {}
+    assert legacy_demo.generalization_contract_id is None
 
 
 def test_posthoc_occlusion_is_persisted_checked_and_not_mislabeled_exact(tmp_path: Path) -> None:
@@ -435,6 +452,7 @@ def test_exhaustive_lab_persists_exact_tree_structure_and_declared_fis_grid(tmp_
     grid_result = client.post("/api/projects/evidence/exhaustive-lab", json={"session_id": session_id, "kind": "fis_discrete_grid", "grid_points": 3})
     assert grid_result.status_code == 201, grid_result.text
     assert grid_result.json()["exactness_label"] == "EXACT_ON_DECLARED_DISCRETE_GRID"
+    assert grid_result.json()["requested_grid_points"] == 3
     assert "does not fully explain" in grid_result.json()["scientific_note"]
     assert client.post("/api/projects/close", json={"session_id": session_id}).status_code == 204
     reopened = client.post("/api/projects/open", json={"path": str(root), "read_only": False}).json()["session_id"]

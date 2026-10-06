@@ -205,8 +205,19 @@ test("PRODUCT-EVIDENCE captures the frozen V1 Studio route from persisted object
   await expect(page.getByTestId("behavior-run-recovery")).toHaveCount(0);
   expect(behaviorRunPostCount).toBe(1);
   await capture(page, screenshots, "11_behavior_specs.png", page.getByTestId("behavior-result"));
+  let exhaustivePostCount = 0;
+  await page.route("**/api/projects/evidence/exhaustive-lab", async (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    exhaustivePostCount += 1;
+    await route.fetch();
+    await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Exhaustive result response lost after persistence" }) });
+  });
   await page.getByRole("button", { name: "Enumerate exact Decision Tree paths", exact: true }).click();
+  await expect(page.getByTestId("exhaustive-recovery")).toContainText("Exhaustive result response lost after persistence");
+  await page.getByRole("button", { name: "Retry saved result lookup", exact: true }).click();
   await expect(page.getByTestId("exhaustive-result")).toContainText("EXACT_FINITE_STRUCTURE");
+  await expect(page.getByTestId("exhaustive-recovery")).toHaveCount(0);
+  expect(exhaustivePostCount).toBe(1);
   await capture(page, screenshots, "13_exhaustive_lab.png", page.getByTestId("exhaustive-result"));
 
   // The FIS is a persisted model revision. Open its actual workbench and run
@@ -257,8 +268,33 @@ test("PRODUCT-EVIDENCE captures the frozen V1 Studio route from persisted object
   await expect(page.getByTestId("evidence-operation-resume")).toHaveCount(0);
   expect(evidenceOperationStatusUrls.every((url) => url.endsWith(`/evidence/explanation-jobs/${assuranceJob.job_id}`) || url.endsWith(`/evidence/explanation-jobs/${bundleJob.job_id}`))).toBeTruthy();
   await capture(page, screenshots, "17_verification_bundle.png", page.getByTestId("verification-bundle"));
+  let conditionDemoPostCount = 0;
+  let conditionDemoRequest: { telemetry: Record<string, number>; policy_id: string; generalization_contract_id: string | null } | null = null;
+  let recoveredConditionDemo: { telemetry: Record<string, number>; policy_id: string; generalization_contract_id: string | null; metadata: Record<string, unknown> } | null = null;
+  await page.route("**/api/projects/evidence/condition-monitoring-demo", async (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    conditionDemoPostCount += 1;
+    conditionDemoRequest = route.request().postDataJSON() as { telemetry: Record<string, number>; policy_id: string; generalization_contract_id: string | null };
+    await route.fetch();
+    await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Condition demo response lost after persistence" }) });
+  });
+  await page.route("**/api/projects/*/evidence/condition-monitoring-demo/latest", async (route) => {
+    if (route.request().method() !== "GET") return route.continue();
+    const response = await route.fetch();
+    const body = await response.json() as typeof recoveredConditionDemo;
+    recoveredConditionDemo = body;
+    await route.fulfill({ response, body: JSON.stringify(body) });
+  });
   await page.getByRole("button", { name: "Run telemetry demonstration", exact: true }).click();
+  await expect(page.getByTestId("condition-demo-recovery")).toContainText("Condition demo response lost after persistence");
+  await page.getByRole("button", { name: "Retry saved demo lookup", exact: true }).click();
   await expect(page.getByTestId("condition-monitoring-demo")).toBeVisible();
+  await expect(page.getByTestId("condition-demo-recovery")).toHaveCount(0);
+  expect(conditionDemoPostCount).toBe(1);
+  expect(recoveredConditionDemo?.policy_id).toBe(conditionDemoRequest?.policy_id);
+  expect(recoveredConditionDemo?.telemetry).toEqual(conditionDemoRequest?.telemetry);
+  expect(recoveredConditionDemo?.generalization_contract_id).toBe(conditionDemoRequest?.generalization_contract_id);
+  expect(recoveredConditionDemo?.metadata).toEqual({});
   await capture(page, screenshots, "18_condition_monitoring_demo.png", page.getByTestId("condition-monitoring-demo"));
 
   // Add one FIS-bound BehaviorSpec through the real API boundary. The Studio

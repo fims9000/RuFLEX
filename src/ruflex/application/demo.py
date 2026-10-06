@@ -16,7 +16,7 @@ def run_condition_monitoring_demo(root: Path, telemetry: dict[str, float], *, po
     check = check_explanation(root, explanation.explanation_id)
     assurance = create_assurance_case(root)
     bundle = export_verification_bundle(root)
-    result = ConditionMonitoringDemo(policy_id=policy.policy_id, telemetry=telemetry, predicted_class=decision.predicted_label, probability=decision.probability, confidence=decision.confidence, decision=decision.disposition, scope_disposition=decision.scope_disposition, explanation_id=explanation.explanation_id, explanation_check_id=check.check_id, assurance_id=assurance.assurance_id, verification_bundle_sha256=bundle["sha256"])
+    result = ConditionMonitoringDemo(policy_id=policy.policy_id, telemetry=telemetry, metadata=metadata or {}, generalization_contract_id=generalization_contract_id, predicted_class=decision.predicted_label, probability=decision.probability, confidence=decision.confidence, decision=decision.disposition, scope_disposition=decision.scope_disposition, explanation_id=explanation.explanation_id, explanation_check_id=check.check_id, assurance_id=assurance.assurance_id, verification_bundle_sha256=bundle["sha256"])
     directory = Path(root).resolve() / "evidence" / "condition-monitoring-demo"; directory.mkdir(parents=True, exist_ok=True)
     _atomic_write_text(directory / f"{result.demo_id}.json", result.model_dump_json(indent=2))
     _atomic_write_text(directory / "active-demo.json", json.dumps({"demo_id": str(result.demo_id)}))
