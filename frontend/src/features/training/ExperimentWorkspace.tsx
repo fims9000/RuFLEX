@@ -220,6 +220,8 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
   const [leakageAudit, setLeakageAudit] = useState<LeakageAuditReport | null>(null);
   const [runSplitContract, setRunSplitContract] = useState<SplitContract | null>(null);
   const [dataEvidenceState, setDataEvidenceState] = useState<"idle" | "loading" | "loaded" | "error">("idle");
+  const [dataEvidenceError, setDataEvidenceError] = useState<string | null>(null);
+  const [dataEvidenceReload, setDataEvidenceReload] = useState(0);
   const [catalog, setCatalog] = useState<ModelCapabilityContract[]>([]);
   const [catalogStatus, setCatalogStatus] = useState<"loading" | "loaded" | "error">("loading");
   const [catalogError, setCatalogError] = useState<string | null>(null);
@@ -244,14 +246,27 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
     setTransformPipeline(null);
     setLeakageAudit(null);
     setRunSplitContract(null);
-    if (!run?.transform_pipeline_id || !run.leakage_audit_id) {
+    setDataEvidenceError(null);
+    if (!run) {
       setDataEvidenceState("idle");
+      return () => { active = false; };
+    }
+    const pipelineId = run.transform_pipeline_id;
+    const auditId = run.leakage_audit_id;
+    const hasSplit = Boolean(run.split.split_contract_id);
+    if (!pipelineId && !auditId && !hasSplit) {
+      setDataEvidenceState("idle");
+      return () => { active = false; };
+    }
+    if (!pipelineId || !auditId) {
+      setDataEvidenceState("error");
+      setDataEvidenceError("The saved run has incomplete data-governance references; the missing evidence is not treated as absent or valid.");
       return () => { active = false; };
     }
     setDataEvidenceState("loading");
     Promise.all([
-      studioApi.getTransformPipeline(project.session_id, run.transform_pipeline_id),
-      studioApi.getLeakageAudit(project.session_id, run.leakage_audit_id),
+      studioApi.getTransformPipeline(project.session_id, pipelineId),
+      studioApi.getLeakageAudit(project.session_id, auditId),
       run.split.split_contract_id ? studioApi.getSplitContract(project.session_id, run.split.split_contract_id) : Promise.resolve(null),
     ]).then(([pipeline, audit, frozenSplit]) => {
       if (!active) return;
@@ -260,11 +275,14 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
       setLeakageAudit(audit);
       setRunSplitContract(frozenSplit);
       setDataEvidenceState("loaded");
-    }).catch(() => {
-      if (active) setDataEvidenceState("error");
+    }).catch((reason: unknown) => {
+      if (active) {
+        setDataEvidenceState("error");
+        setDataEvidenceError(reason instanceof Error ? reason.message : "Persisted data-governance evidence could not be reopened.");
+      }
     });
     return () => { active = false; };
-  }, [project.session_id, dataset?.contract.dataset_fingerprint, run?.run_id, run?.transform_pipeline_id, run?.leakage_audit_id, run?.split.split_contract_id]);
+  }, [project.session_id, dataset?.contract.dataset_fingerprint, run?.run_id, run?.transform_pipeline_id, run?.leakage_audit_id, run?.split.split_contract_id, dataEvidenceReload]);
   useEffect(() => {
     let active = true;
     setSplitEvidenceStatus("loading");
@@ -559,7 +577,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
           <details className="data-governance-evidence" data-testid="data-governance-evidence">
             <summary>Data governance evidence</summary>
             {dataEvidenceState === "loading" && <p role="status">Loading persisted split, preprocessing and leakage-audit evidence…</p>}
-            {dataEvidenceState === "error" && <p className="error" role="alert">Could not reopen this run’s data-governance evidence. The saved run references are not being treated as verified.</p>}
+            {dataEvidenceState === "error" && <div className="error" role="alert"><strong>Could not verify this run’s data-governance evidence.</strong> {dataEvidenceError ?? "The saved run references are not treated as verified."} <Button view="outlined" size="s" onClick={() => setDataEvidenceReload((current) => current + 1)}>Retry data evidence</Button></div>}
             {dataEvidenceState === "idle" && <p>No persisted transform or leakage-audit evidence is linked to this run.</p>}
             {dataEvidenceState === "loaded" && transformPipeline && leakageAudit && <>
               <dl className="compact-definition">

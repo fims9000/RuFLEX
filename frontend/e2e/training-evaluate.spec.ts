@@ -46,6 +46,14 @@ test("PRODUCT-02 performs real neuro-fuzzy training, validation evaluation and r
   await expect(page.getByLabel("Trees / estimators")).toHaveCount(0);
   await page.getByLabel("Epochs").fill("2");
   await page.getByLabel("Batch size").fill("16");
+  let transformReads = 0;
+  await page.route("**/api/projects/*/dataset/transforms/*", async (route) => {
+    transformReads += 1;
+    if (transformReads === 1) {
+      return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "saved transform temporarily unavailable" }) });
+    }
+    return route.continue();
+  });
   await page.getByRole("button", { name: "Run real training", exact: true }).click();
 
   const runEvidence = page.locator(".run-provenance");
@@ -53,9 +61,13 @@ test("PRODUCT-02 performs real neuro-fuzzy training, validation evaluation and r
   await expect(runEvidence).toContainText("model artifact persisted");
   await expect(runEvidence).toContainText("train-only preprocessing persisted");
   await page.getByText("Data governance evidence", { exact: true }).click();
+  const governanceError = page.getByRole("alert").filter({ hasText: "saved transform temporarily unavailable" });
+  await expect(governanceError).toBeVisible();
+  await governanceError.getByRole("button", { name: "Retry data evidence", exact: true }).click();
   await expect(page.getByText(/RANDOM · seed 42/)).toBeVisible();
   await expect(page.getByText(/Train \d+ · validation \d+ · locked test \d+/)).toBeVisible();
   await expect(page.getByText("TRAIN only · 2 persisted step(s)")).toBeVisible();
+  expect(transformReads).toBe(2);
   await expect(page.getByText("No structural leakage findings were recorded by this audit.", { exact: true })).toBeVisible();
   await expect(page.locator(".run-summary-strip")).toBeVisible();
   await expect(page.getByText("Training trajectory · epoch 0 included", { exact: true })).toBeVisible();

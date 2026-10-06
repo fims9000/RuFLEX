@@ -205,6 +205,28 @@ describe("ExperimentWorkspace dynamic model controls", () => {
     expect(studioApi.getSplitContract).toHaveBeenCalledWith("session", split.split_id);
   });
 
+  it("keeps linked run provenance unverified after a transient read error and retries the exact evidence", async () => {
+    const run = {
+      run_id: "run-retry", model_kind: "logistic_regression", trajectory: [], training_summary: { best_epoch: 1, epochs_ran: 1, monitor_name: "loss", best_monitor_value: 0.1 },
+      model_artifact_sha256: "c".repeat(64), transform_pipeline_id: "pipeline-retry", leakage_audit_id: "audit-retry",
+      feature_columns: ["x"], split: { split_contract_id: null, train_count: 4, validation_count: 2, test_count: 2 }, seed: 7, model_spec: {},
+    };
+    studioApi.getTransformPipeline
+      .mockRejectedValueOnce(new Error("pipeline store temporarily unavailable"))
+      .mockResolvedValueOnce({ pipeline_id: "pipeline-retry", dataset_fingerprint: "fingerprint", split_contract_id: null, feature_order: ["x"], fit_role: "TRAIN", preprocessing_artifact_sha256: "b".repeat(64), pipeline_identity: "pipeline-identity", steps: [], schema_version: 1, scientific_note: "TRAIN only" });
+    studioApi.getLeakageAudit.mockResolvedValue({ audit_id: "audit-retry", dataset_fingerprint: "fingerprint", split_contract_id: null, transform_pipeline_id: "pipeline-retry", status: "PASS", rigor_profile: "CONFIRMATORY", findings: [], schema_version: 1, scientific_note: "Declared checks only." });
+    render(<ExperimentWorkspace project={project} dataset={dataset as never} run={run as never} study={null} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);
+
+    fireEvent.click(screen.getByText("Data governance evidence"));
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("pipeline store temporarily unavailable");
+    fireEvent.click(screen.getByRole("button", { name: "Retry data evidence" }));
+    await waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument());
+    expect(studioApi.getTransformPipeline).toHaveBeenCalledTimes(2);
+    expect(studioApi.getTransformPipeline).toHaveBeenLastCalledWith("session", "pipeline-retry");
+    expect(studioApi.getLeakageAudit).toHaveBeenCalledWith("session", "audit-retry");
+  });
+
   it("keeps runtime selection visible but blocks mutating training actions in read-only mode", async () => {
     render(<ExperimentWorkspace project={{ ...project, read_only: true }} dataset={dataset as never} run={null} study={null} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);
 
