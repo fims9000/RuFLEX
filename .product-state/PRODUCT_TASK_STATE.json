@@ -146,15 +146,16 @@
     "alpha_recent_project_error_lifecycle",
     "alpha_dataset_import_persisted_confirmation_recovery",
     "alpha_dataset_import_lost_response_recovery",
-    "alpha_csv_confirmation_lost_response_recovery"
+    "alpha_csv_confirmation_lost_response_recovery",
+    "alpha_exact_training_run_recovery_identity"
   ],
-  "active_capability": "alpha_recent_project_reopen",
+  "active_capability": "alpha_exact_training_run_recovery_identity",
   "active_acceptance": [
-    "After closing a local project, the user can reopen it from a small recent-project list without remembering its path.",
-    "Recent names/paths are stored only in this browser, bounded to eight entries, and can be cleared individually or all at once."
+    "When a training response is lost, Studio may recover only the uniquely persisted TrainingRun whose declared model, adapter, and complete request config match the original request.",
+    "Legacy runs without exact declared training config fail closed and require explicit recovery action."
   ],
   "blockers": [],
-  "next_executable_work": "Inspect first-run training submission for lost-response ambiguity; only add recovery if the persisted TrainingRun can be matched without retraining. Keep verification focused and memory-light.",
+  "next_executable_work": "Audit multi-seed Study submission and recovery identity so a lost response cannot attach to a similarly configured older StudyJob; keep changes bounded and verify without broad browser runs.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -304,6 +305,7 @@
     "alpha_recent_project_error_lifecycle": "PASS: Recent-project error state clears when its entry/history is forgotten or any project successfully opens/creates, preventing an old failure from reappearing beside a new history item. Recent-project E2Es (2/2) and TypeScript/Vite build passed.",
     "alpha_dataset_import_persisted_confirmation_recovery": "PASS: When a file import succeeds but the confirming DatasetState read fails, retry now compares the persisted fingerprint to the just-imported contract and clears the stale upload draft rather than offering a duplicate import. Focused Playwright exercised persistence → failed read → retry; TypeScript/Vite production build passed.",
     "alpha_dataset_import_lost_response_recovery": "PASS: If file-import persistence succeeds but the HTTP response is interrupted, Studio checks the saved source SHA and contract settings before deciding whether to restore success; exact match clears the draft without re-uploading, mismatch is surfaced without retry. Playwright aborted the response after backend commit and confirmed one request only; dataset import recovery E2E and TypeScript/Vite build passed.",
-    "alpha_csv_confirmation_lost_response_recovery": "PASS: If editable-CSV confirmation commits but its response is lost, Studio hashes the exact UTF-8 input and reopens DatasetState; it restores success only when source hash and target/task/ID columns all match, without issuing a second confirmation. Focused Playwright aborted the response after backend commit; all 3 dataset-import recovery E2Es and TypeScript/Vite build passed."
+    "alpha_csv_confirmation_lost_response_recovery": "PASS: If editable-CSV confirmation commits but its response is lost, Studio hashes the exact UTF-8 input and reopens DatasetState; it restores success only when source hash and target/task/ID columns all match, without issuing a second confirmation. Focused Playwright aborted the response after backend commit; all 3 dataset-import recovery E2Es and TypeScript/Vite build passed.",
+    "alpha_exact_training_run_recovery_identity": "PASS: New TrainingRuns persist versioned request-level model/adapter/config provenance, and lost-response recovery now accepts only exact canonical config matches; same-seed but different max_depth and legacy records without config fail closed. Unit matcher tests (2), full real Studio lost-response/recovery E2E, TypeScript/Vite build and Python TrainingRun persistence tests (6) passed."
   }
 }

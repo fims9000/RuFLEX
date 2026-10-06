@@ -984,6 +984,13 @@ def train_model(project_root: Path, *, model_kind: str, adapter_key: str | None 
             test_fraction=config.get("test_fraction", .2), parameters=config,
             split_contract_id=config.get("split_contract_id"),
         )
+        run.declared_training_config = {
+            "schema_version": 1,
+            "model_kind": model_kind,
+            "adapter_key": run.adapter_key,
+            "adapter_version": run.adapter_version,
+            "parameters": {"model_kind": model_kind, "adapter_key": adapter_key, **config},
+        }
     except Exception as error:
         if isinstance(error, TrainingError):
             raise

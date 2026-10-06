@@ -123,6 +123,9 @@ class TrainingRun(BaseModel):
     patience: int | None
     split: SplitProvenance
     model_spec: dict
+    # Exact request-level fit settings used to distinguish persisted runs
+    # during lost-response recovery. Optional for legacy run reopen.
+    declared_training_config: dict | None = None
     normalization: dict
     # Content-addressed, train-only preprocessing payload. Optional only for
     # legacy project reopen; newly trained runs must carry this binding.

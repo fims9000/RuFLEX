@@ -1225,6 +1225,13 @@ export type TrainingRun = {
     test_status: "LOCKED_NOT_EVALUATED";
   };
   model_spec: Record<string, unknown>;
+  declared_training_config?: {
+    schema_version: number;
+    model_kind: string;
+    adapter_key: string | null;
+    adapter_version: string | null;
+    parameters: Record<string, unknown>;
+  } | null;
   normalization: Record<string, unknown>;
   preprocessing_artifact_sha256: string | null;
   transform_pipeline_id?: string | null;
