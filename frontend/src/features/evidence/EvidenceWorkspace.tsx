@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   DatasetState,
   ProductApiError,
@@ -149,17 +149,6 @@ export function EvidenceWorkspace({
   assuranceHydrationError?: string | null;
   onRetryAssurance?: () => void;
 }) {
-  const mountedRef = useRef(false);
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => { mountedRef.current = false; };
-  }, []);
-  const publishExplanation = (value: ExplanationContract | null) => { if (mountedRef.current) onExplanation(value); };
-  const publishExplanationCheck = (value: ExplanationCheck | null) => { if (mountedRef.current) onExplanationCheck(value); };
-  const publishBehaviorResult = (value: BehaviorSpecResult | null) => { if (mountedRef.current) onBehaviorResult(value); };
-  const publishReproducibility = (value: ExplanationReproducibilityAnalysis | null) => { if (mountedRef.current) onReproducibility(value); };
-  const publishExhaustive = (value: ExhaustiveLabResult | null) => { if (mountedRef.current) onExhaustive(value); };
-  const publishAssurance = (value: AssuranceCase | null) => { if (mountedRef.current) onAssurance(value); };
   const initialSample = useMemo(() => {
     if (!run) return {} as Record<string, string>;
     const preview = dataset?.preview?.[0] ?? {};
@@ -525,19 +514,19 @@ export function EvidenceWorkspace({
     if (job.status !== "succeeded") throw new Error(job.error ?? job.message ?? "Explanation evidence job did not complete successfully.");
     if (job.kind === "explanation_generation" && job.output.explanation_id) {
       try {
-        publishExplanation(await studioApi.getExplanation(project.session_id, job.output.explanation_id));
+        onExplanation(await studioApi.getExplanation(project.session_id, job.output.explanation_id));
       } catch (reason) {
         setExplanationJobPollError(reason instanceof Error ? reason.message : "The saved explanation output could not be loaded.");
         throw reason;
       }
       setExplanationJobPollError(null);
       setPersistedExplanationsHydrationReload((current) => current + 1);
-      publishExplanationCheck(null);
+      onExplanationCheck(null);
       return;
     }
     if (job.kind === "explanation_check" && job.output.check_id) {
       try {
-        publishExplanationCheck(await studioApi.getExplanationCheck(project.session_id, job.output.check_id));
+        onExplanationCheck(await studioApi.getExplanationCheck(project.session_id, job.output.check_id));
       } catch (reason) {
         setExplanationJobPollError(reason instanceof Error ? reason.message : "The saved ExplanationCheck output could not be loaded.");
         throw reason;
@@ -613,7 +602,7 @@ export function EvidenceWorkspace({
       setBehaviorSpecCreationRecoveryRequest(null); setBehaviorSpecCreationRecoveryError(null); setBehaviorSpecCreationNotFound(false);
       setBehaviorExecutionRecoveryError(null);
       const result = await studioApi.runBehaviorSpec(project.session_id, created.spec_id);
-      setBehaviorResult(result); publishBehaviorResult(result); setBehaviorResultsHydrationReload((current) => current + 1);
+      setBehaviorResult(result); onBehaviorResult(result); setBehaviorResultsHydrationReload((current) => current + 1);
     } catch (reason) {
       if (createdSpec) setBehaviorExecutionRecoveryError(reason instanceof Error ? reason.message : "The saved BehaviorSpec result could not be confirmed.");
       else if (request) {
@@ -644,7 +633,7 @@ export function EvidenceWorkspace({
       setBehaviorSpec(created); setBehaviorSpecCreationRecoveryRequest(null); setBehaviorSpecCreationRecoveryError(null); setBehaviorSpecCreationNotFound(false);
       const results = await studioApi.listBehaviorResults(project.session_id);
       const result = results.find((item) => item.spec_id === created.spec_id) ?? await studioApi.runBehaviorSpec(project.session_id, created.spec_id);
-      setBehaviorResult(result); publishBehaviorResult(result); setBehaviorResultsHydrationReload((current) => current + 1);
+      setBehaviorResult(result); onBehaviorResult(result); setBehaviorResultsHydrationReload((current) => current + 1);
       setBehaviorExecutionRecoveryError(null);
     } catch (reason) {
       if (!matchedSpec) setBehaviorSpecCreationRecoveryError(reason instanceof Error ? reason.message : "Could not recover the saved BehaviorSpec.");
@@ -664,7 +653,7 @@ export function EvidenceWorkspace({
       setBehaviorSpec(created); setBehaviorSpecCreationRecoveryRequest(null); setBehaviorSpecCreationRecoveryError(null); setBehaviorSpecCreationNotFound(false);
       setBehaviorExecutionRecoveryError(null);
       const result = await studioApi.runBehaviorSpec(project.session_id, created.spec_id);
-      setBehaviorResult(result); publishBehaviorResult(result); setBehaviorResultsHydrationReload((current) => current + 1);
+      setBehaviorResult(result); onBehaviorResult(result); setBehaviorResultsHydrationReload((current) => current + 1);
     } catch (reason) {
       if (createdSpec) setBehaviorExecutionRecoveryError(reason instanceof Error ? reason.message : "The newly saved BehaviorSpec result could not be confirmed.");
       else { setBehaviorSpecCreationRecoveryError(reason instanceof Error ? reason.message : "The repeated BehaviorSpec creation could not be confirmed."); setBehaviorSpecCreationNotFound(false); }
@@ -680,7 +669,7 @@ export function EvidenceWorkspace({
       const existing = results.find((item) => item.spec_id === behaviorSpec.spec_id);
       const result = existing ?? await studioApi.runBehaviorSpec(project.session_id, behaviorSpec.spec_id);
       setBehaviorResult(result);
-      publishBehaviorResult(result);
+      onBehaviorResult(result);
       setBehaviorExecutionRecoveryError(null);
       setBehaviorResultsHydrationReload((current) => current + 1);
     } catch (reason) {
@@ -758,7 +747,7 @@ export function EvidenceWorkspace({
 
   async function submitReproducibility(explanationIds: string[]) {
     const result = await studioApi.createExplanationReproducibility(project.session_id, explanationIds);
-    setReproducibility(result); publishReproducibility(result);
+    setReproducibility(result); onReproducibility(result);
     setReproducibilityRecoveryIds(null);
     setReproducibilityRecoveryError(null);
     setReproducibilityRecoveryNotFound(false);
@@ -783,7 +772,7 @@ export function EvidenceWorkspace({
       if ([...result.explanation_ids].sort().join("\n") !== expected.join("\n")) {
         throw new Error("The latest saved analysis belongs to a different explanation set; no replacement was created.");
       }
-      setReproducibility(result); publishReproducibility(result);
+      setReproducibility(result); onReproducibility(result);
       setReproducibilityRecoveryIds(null);
       setReproducibilityRecoveryError(null);
       setReproducibilityRecoveryNotFound(false);
@@ -808,7 +797,7 @@ export function EvidenceWorkspace({
 
   async function submitExhaustive(request: { kind: ExhaustiveLabResult["kind"]; runId: string | null; gridPoints: number; maxStates: number }) {
     const result = await studioApi.runExhaustiveLab(project.session_id, request.kind, request.runId, request.gridPoints, request.maxStates);
-    setExhaustive(result); publishExhaustive(result);
+    setExhaustive(result); onExhaustive(result);
     setExhaustiveRecoveryRequest(null); setExhaustiveRecoveryError(null); setExhaustiveRecoveryNotFound(false);
   }
 
@@ -843,7 +832,7 @@ export function EvidenceWorkspace({
         ? result.run_id === request.runId
         : result.requested_grid_points === request.gridPoints && result.max_states === request.maxStates);
       if (!matches) throw new Error("The latest saved exhaustive result belongs to a different request; no replacement was created.");
-      setExhaustive(result); publishExhaustive(result);
+      setExhaustive(result); onExhaustive(result);
       setExhaustiveRecoveryRequest(null); setExhaustiveRecoveryError(null); setExhaustiveRecoveryNotFound(false);
     } catch (reason) {
       setExhaustiveRecoveryError(reason instanceof Error ? reason.message : "Could not recover the exact saved exhaustive result.");
@@ -887,7 +876,7 @@ export function EvidenceWorkspace({
       if (!job.output.assurance_id) throw new Error("Assurance job did not return its persisted AssuranceCase identity.");
       const result = await studioApi.getAssuranceCase(project.session_id, job.output.assurance_id);
       setAssurance(result);
-      publishAssurance(result);
+      onAssurance(result);
       return;
     }
     if (job.kind === "verification_bundle_export") {

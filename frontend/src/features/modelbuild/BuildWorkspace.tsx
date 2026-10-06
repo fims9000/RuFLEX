@@ -394,14 +394,9 @@ export function BuildWorkspace({
   const [revisionHistoryError, setRevisionHistoryError] = useState<string | null>(null);
   const [revisionHistoryReload, setRevisionHistoryReload] = useState(0);
   const importInputRef = useRef<HTMLInputElement>(null);
-  const mountedRef = useRef(false);
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => { mountedRef.current = false; };
-  }, []);
-  const publishFisChange = (value: FISSpec) => { if (mountedRef.current) onFisChange(value); };
-  const publishEvaluation = (value: FISEvaluation) => { if (mountedRef.current) onEvaluation(value); };
-  const publishExpertCorrection = (value: ExpertCorrectionRevision | null) => { if (mountedRef.current) onExpertCorrection?.(value); };
+  const publishFisChange = onFisChange;
+  const publishEvaluation = onEvaluation;
+  const publishExpertCorrection = onExpertCorrection ?? (() => undefined);
   useEffect(() => {
     setLinkSourceExplanation(false);
   }, [sourceExplanationId]);

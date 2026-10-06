@@ -225,6 +225,11 @@ export function App() {
   const scopeClassificationRequestRef = useRef(0);
   const artifactInventoryRequestRef = useRef(0);
   projectSessionRef.current = project?.session_id ?? null;
+  function bindProjectSession<Arguments extends unknown[]>(sessionId: string, callback: (...args: Arguments) => void) {
+    return (...args: Arguments) => {
+      if (projectSessionRef.current === sessionId) callback(...args);
+    };
+  }
   const refreshArtifactInventory = useCallback(async (sessionId: string) => {
     if (projectSessionRef.current !== sessionId) return;
     const requestId = ++artifactInventoryRequestRef.current;
@@ -1898,15 +1903,15 @@ export function App() {
           fis={fis}
           sourceExplanationId={explanation?.explanation_id ?? null}
           selectedExpertCorrectionId={selectedExpertCorrectionId}
-          onExpertCorrection={setExpertCorrection}
-          onFisChange={setFis}
-          onEvaluation={(evaluation) => {
+          onExpertCorrection={bindProjectSession(project.session_id, setExpertCorrection)}
+          onFisChange={bindProjectSession(project.session_id, setFis)}
+          onEvaluation={bindProjectSession(project.session_id, (evaluation) => {
             setPreviousFisEvaluation(fisEvaluation);
             setFisEvaluation(evaluation);
             setFisEvaluationStatus("available");
             setFisEvaluationError(null);
             void refreshArtifactInventory(project.session_id);
-          }}
+          })}
           onOpenTrace={() => setActive("EVIDENCE")}
         />
       ) : active === "STUDIES" ? (
@@ -1922,18 +1927,18 @@ export function App() {
           studyHydrationError={trainingStudyError}
           onRetryStudyHydration={() => setTrainingStudyReload((current) => current + 1)}
           theme={theme}
-          onRun={(run) => {
+          onRun={bindProjectSession(project.session_id, (run) => {
             setTrainingRun(run);
             setTrainingRunsReload((current) => current + 1);
             setStatus(`Training run ${run.run_id.slice(0, 8)} completed`);
             void refreshArtifactInventory(project.session_id);
-          }}
-          onStudy={(study) => { setTrainingStudy(study); setTrainingStudyStatus("available"); setTrainingStudyError(null); }}
-          onStabilityAnalysisChange={handleStabilityAnalysisChange}
-          onStabilityGatePolicyChange={setStabilityGatePolicy}
+          })}
+          onStudy={bindProjectSession(project.session_id, (study) => { setTrainingStudy(study); setTrainingStudyStatus("available"); setTrainingStudyError(null); })}
+          onStabilityAnalysisChange={bindProjectSession(project.session_id, handleStabilityAnalysisChange)}
+          onStabilityGatePolicyChange={bindProjectSession(project.session_id, setStabilityGatePolicy)}
         />
       ) : active === "ANALYSES" ? (
-        <EvaluationWorkspace project={project} dataset={datasetState} datasetHydrationStatus={datasetStateStatus} datasetHydrationError={datasetStateError} onRetryDatasetHydration={() => setDatasetStateReload((current) => current + 1)} fis={fis} run={trainingRun} runs={trainingRuns} runListStatus={trainingRunsStatus} runListError={trainingRunsError} onRetryRunList={() => setTrainingRunsReload((current) => current + 1)} study={trainingStudy} evaluation={analysisEvaluation} evaluationStatus={analysisEvaluationStatus} evaluationError={analysisEvaluationError} onRetryEvaluation={() => setAnalysisEvaluationReload((current) => current + 1)} validationPolicyEvidenceStatus={validationPolicyEvidenceStatus} validationPolicyEvidenceError={validationPolicyEvidenceError} onRetryValidationPolicyEvidence={() => setValidationPolicyEvidenceReload((current) => current + 1)} calibrationTransform={calibrationTransform} decisionThreshold={decisionThreshold} finalTestEvaluation={finalTestEvaluation} finalTestEvidenceStatus={finalTestEvidenceStatus} finalTestEvidenceError={finalTestEvidenceError} onRetryFinalTestEvidence={() => setFinalTestEvidenceReload((current) => current + 1)} comparison={analysisComparison} comparisonHydrationStatus={analysisComparisonHydrationStatus} comparisonHydrationError={analysisComparisonHydrationError} onRetryComparison={() => setAnalysisComparisonHydrationReload((current) => current + 1)} sliceAnalysis={sliceAnalysis} sliceAnalysisHydrationStatus={sliceAnalysisHydrationStatus} sliceAnalysisHydrationError={sliceAnalysisHydrationError} onRetrySliceAnalysis={() => setSliceAnalysisHydrationReload((current) => current + 1)} selectivePolicy={selectivePolicy} stabilityGatePolicy={stabilityGatePolicy} theme={theme} onEvaluation={(evaluation) => { setAnalysisEvaluation(evaluation); setAnalysisEvaluationStatus("available"); }} onCalibration={setCalibrationTransform} onThreshold={setDecisionThreshold} onSelectivePolicy={setSelectivePolicy} onFinalTest={(evaluation) => { setFinalTestEvaluation(evaluation); if (evaluation) setFinalTestEvidenceStatus("available"); }} onComparison={(comparison) => { setAnalysisComparison(comparison); setAnalysisComparisonHydrationStatus("available"); setAnalysisComparisonHydrationError(null); }} onSliceAnalysis={(analysis) => { setSliceAnalysis(analysis); setSliceAnalysisHydrationStatus("available"); setSliceAnalysisHydrationError(null); }} />
+        <EvaluationWorkspace project={project} dataset={datasetState} datasetHydrationStatus={datasetStateStatus} datasetHydrationError={datasetStateError} onRetryDatasetHydration={() => setDatasetStateReload((current) => current + 1)} fis={fis} run={trainingRun} runs={trainingRuns} runListStatus={trainingRunsStatus} runListError={trainingRunsError} onRetryRunList={() => setTrainingRunsReload((current) => current + 1)} study={trainingStudy} evaluation={analysisEvaluation} evaluationStatus={analysisEvaluationStatus} evaluationError={analysisEvaluationError} onRetryEvaluation={() => setAnalysisEvaluationReload((current) => current + 1)} validationPolicyEvidenceStatus={validationPolicyEvidenceStatus} validationPolicyEvidenceError={validationPolicyEvidenceError} onRetryValidationPolicyEvidence={() => setValidationPolicyEvidenceReload((current) => current + 1)} calibrationTransform={calibrationTransform} decisionThreshold={decisionThreshold} finalTestEvaluation={finalTestEvaluation} finalTestEvidenceStatus={finalTestEvidenceStatus} finalTestEvidenceError={finalTestEvidenceError} onRetryFinalTestEvidence={() => setFinalTestEvidenceReload((current) => current + 1)} comparison={analysisComparison} comparisonHydrationStatus={analysisComparisonHydrationStatus} comparisonHydrationError={analysisComparisonHydrationError} onRetryComparison={() => setAnalysisComparisonHydrationReload((current) => current + 1)} sliceAnalysis={sliceAnalysis} sliceAnalysisHydrationStatus={sliceAnalysisHydrationStatus} sliceAnalysisHydrationError={sliceAnalysisHydrationError} onRetrySliceAnalysis={() => setSliceAnalysisHydrationReload((current) => current + 1)} selectivePolicy={selectivePolicy} stabilityGatePolicy={stabilityGatePolicy} theme={theme} onEvaluation={bindProjectSession(project.session_id, (evaluation) => { setAnalysisEvaluation(evaluation); setAnalysisEvaluationStatus("available"); })} onCalibration={bindProjectSession(project.session_id, setCalibrationTransform)} onThreshold={bindProjectSession(project.session_id, setDecisionThreshold)} onSelectivePolicy={bindProjectSession(project.session_id, setSelectivePolicy)} onFinalTest={bindProjectSession(project.session_id, (evaluation) => { setFinalTestEvaluation(evaluation); if (evaluation) setFinalTestEvidenceStatus("available"); })} onComparison={bindProjectSession(project.session_id, (comparison) => { setAnalysisComparison(comparison); setAnalysisComparisonHydrationStatus("available"); setAnalysisComparisonHydrationError(null); })} onSliceAnalysis={bindProjectSession(project.session_id, (analysis) => { setSliceAnalysis(analysis); setSliceAnalysisHydrationStatus("available"); setSliceAnalysisHydrationError(null); })} />
       ) : active === "EVIDENCE" ? (
         <EvidenceWorkspace
           project={project}
@@ -1978,36 +1983,36 @@ export function App() {
           generalizationHydrationError={generalizationHydrationError}
           onRetryGeneralization={() => setGeneralizationHydrationReload((current) => current + 1)}
           theme={theme}
-          onExplanation={(value) => {
+          onExplanation={bindProjectSession(project.session_id, (value) => {
             setExplanation(value);
             setExplanationHydrationStatus(value ? "available" : "none");
             setExplanationHydrationError(null);
-          }}
-          onExplanationCheck={(value) => {
+          })}
+          onExplanationCheck={bindProjectSession(project.session_id, (value) => {
             setExplanationCheck(value);
             setExplanationCheckHydrationStatus(value ? "available" : "none");
             setExplanationCheckHydrationError(null);
-          }}
-          onBehaviorResult={(result) => {
+          })}
+          onBehaviorResult={bindProjectSession(project.session_id, (result) => {
             setBehaviorResult(result);
             setBehaviorSpecResultStatus(result ? "available" : "none");
             setBehaviorSpecResultError(null);
-          }}
-          onReproducibility={(value) => {
+          })}
+          onReproducibility={bindProjectSession(project.session_id, (value) => {
             setReproducibility(value);
             setReproducibilityHydrationStatus(value ? "available" : "none");
             setReproducibilityHydrationError(null);
-          }}
-          onExhaustive={(value) => {
+          })}
+          onExhaustive={bindProjectSession(project.session_id, (value) => {
             setExhaustive(value);
             setExhaustiveHydrationStatus(value ? "available" : "none");
             setExhaustiveHydrationError(null);
-          }}
-          onAssurance={(value) => {
+          })}
+          onAssurance={bindProjectSession(project.session_id, (value) => {
             setAssurance(value);
             setAssuranceHydrationStatus(value ? "available" : "none");
             setAssuranceHydrationError(null);
-          }}
+          })}
         />
       ) : (
         <section className="foundation-workspace">

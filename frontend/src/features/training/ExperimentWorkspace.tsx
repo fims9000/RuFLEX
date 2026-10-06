@@ -1,5 +1,5 @@
 import { EChartsOption } from "echarts";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DatasetState, ExecutionBackendDescriptor, LeakageAuditReport, ModelCapabilityContract, ProductApiError, ProjectSummary, RunCapabilityNegotiation, SplitContract, StudyJob, StabilityGatePolicy, StudyStabilityAnalysis, TrainingRun, TrainingStudy, TransformPipelineContract, TreePathEvidence, studioApi } from "../../api";
 import { ChartSurface } from "../../charts/ChartSurface";
 import { Button, EmptyState, StatusBadge } from "../../components/StudioPrimitives";
@@ -195,15 +195,6 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
   onStabilityAnalysisChange?: (analysis: StudyStabilityAnalysis | null) => void;
   onStabilityGatePolicyChange?: (policy: StabilityGatePolicy | null) => void;
 }) {
-  const mountedRef = useRef(false);
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => { mountedRef.current = false; };
-  }, []);
-  const publishRun = (value: TrainingRun) => { if (mountedRef.current) onRun(value); };
-  const publishStudy = (value: TrainingStudy) => { if (mountedRef.current) onStudy(value); };
-  const publishStabilityAnalysis = (value: StudyStabilityAnalysis | null) => { if (mountedRef.current) onStabilityAnalysisChange?.(value); };
-  const publishStabilityGatePolicy = (value: StabilityGatePolicy | null) => { if (mountedRef.current) onStabilityGatePolicyChange?.(value); };
   const [seed, setSeed] = useState(42);
   const [modelKind, setModelKind] = useState("flat_neuro_fuzzy");
   const [maxEpochs, setMaxEpochs] = useState(20);
@@ -463,10 +454,10 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
     }
     if (job.status !== "SUCCEEDED") throw new Error(job.error ?? `Study ${job.status.toLowerCase()}`);
     const result = await studioApi.getLatestTrainingStudy(project.session_id);
-    setStudy(result); publishStudy(result);
+    setStudy(result); onStudy(result);
     setStudyJobsStatus("loaded");
     const selected = result.seed_runs.find((item) => item.run_id === result.selected_run_id);
-    if (selected) publishRun(selected);
+    if (selected) onRun(selected);
   }
 
   async function train() {
@@ -489,7 +480,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
     };
     const requestedAt = Date.now();
     try {
-      publishRun(await studioApi.runTraining(project.session_id, config)); setTrainingRecovery(null);
+      onRun(await studioApi.runTraining(project.session_id, config)); setTrainingRecovery(null);
     } catch (reason) {
       setTrainingRecovery({ config, requestedAt, error: reason instanceof Error ? reason.message : "Training result response was uncertain.", notFound: false });
       setError(reason instanceof Error ? reason.message : "Training failed");
@@ -523,7 +514,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
     try {
       const matches = (await studioApi.getTrainingRuns(project.session_id)).filter((candidate) => trainingRunMatchesRecovery(candidate, pending));
       if (matches.length === 1) {
-        publishRun(matches[0]); setTrainingRecovery(null); return;
+        onRun(matches[0]); setTrainingRecovery(null); return;
       }
       if (matches.length > 1) {
         setTrainingRecovery({ ...pending, notFound: false, error: "Multiple runs match this request window and configuration. No run was selected; reopen run history and resolve the exact persisted identity." });
@@ -539,7 +530,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
     const pending = trainingRecovery;
     if (!pending?.notFound || project.read_only) return;
     setRecoveringTraining(true); setRunning(true); setError(null);
-    try { publishRun(await studioApi.runTraining(project.session_id, pending.config)); setTrainingRecovery(null); }
+    try { onRun(await studioApi.runTraining(project.session_id, pending.config)); setTrainingRecovery(null); }
     catch (reason) {
       const message = reason instanceof Error ? reason.message : "The explicitly repeated training request could not be confirmed.";
       setTrainingRecovery({ ...pending, notFound: false, error: message }); setError(message);
@@ -850,7 +841,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
       </section>
     </div>
     <section className="comparison-card"><span className="eyebrow">MODEL RUNTIME · DECLARED CAPABILITIES</span><div className="data-table-wrap"><table className="data-table"><thead><tr><th>model</th><th>family</th><th>available</th><th>capabilities</th><th>evidence boundary</th></tr></thead><tbody>{catalog.map((entry) => <tr key={entry.key}><td>{entry.display_name}</td><td>{entry.family}</td><td>{entry.available ? "available" : entry.unavailability_reason ?? "not available"}</td><td>{Object.entries(entry.capabilities).filter(([, value]) => value).map(([key]) => key).join(", ") || "—"}</td><td>{entry.limitations.join(" ") || "—"}</td></tr>)}</tbody></table></div></section>
-    <StabilityLab project={project} study={study} theme={theme} onAnalysisChange={publishStabilityAnalysis} onPolicyChange={publishStabilityGatePolicy} />
+    <StabilityLab project={project} study={study} theme={theme} onAnalysisChange={onStabilityAnalysisChange} onPolicyChange={onStabilityGatePolicyChange} />
     {error && <div className="error" role="alert">{error}</div>}
   </section>;
 }
