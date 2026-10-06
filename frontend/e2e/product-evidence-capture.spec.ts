@@ -378,6 +378,36 @@ test("PRODUCT-EVIDENCE captures the frozen V1 Studio route from persisted object
   await page.getByRole("button", { name: "Retry saved explanations", exact: true }).click();
   await expect(page.getByTestId("persisted-explanations-hydration-error")).toHaveCount(0);
   expect(await page.locator('.comparison-choice input[type="checkbox"]').count()).toBeGreaterThanOrEqual(4);
+  let generationPostCount = 0;
+  let failFirstJobStatusRead = true;
+  const resumedJobStatusUrls: string[] = [];
+  await page.route("**/api/projects/evidence/explanation-jobs", async (route) => {
+    if (route.request().method() === "POST") generationPostCount += 1;
+    await route.continue();
+  });
+  await page.route("**/api/projects/*/evidence/explanation-jobs/*", async (route) => {
+    if (route.request().method() !== "GET") return route.continue();
+    resumedJobStatusUrls.push(route.request().url());
+    if (failFirstJobStatusRead) {
+      failFirstJobStatusRead = false;
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Temporary ExplanationJob status read failure" }) });
+      return;
+    }
+    await route.continue();
+  });
+  const generationResponsePromise = page.waitForResponse((response) => response.request().method() === "POST" && response.url().endsWith("/api/projects/evidence/explanation-jobs"));
+  await page.getByRole("button", { name: "Generate explanation", exact: true }).click();
+  const generationResponse = await generationResponsePromise;
+  expect(generationResponse.ok()).toBeTruthy();
+  const generatedJob = await generationResponse.json() as { job_id: string; status: string };
+  await expect(page.getByTestId("explanation-job-resume")).toContainText("Temporary ExplanationJob status read failure");
+  await expect(page.getByRole("button", { name: "Generate explanation", exact: true })).toBeDisabled();
+  await page.getByRole("button", { name: "Resume saved job", exact: true }).click();
+  await expect(page.getByTestId("explanation-job")).toContainText("SUCCEEDED");
+  await expect(page.getByTestId("explanation-job-resume")).toHaveCount(0);
+  expect(generationPostCount).toBe(1);
+  expect(resumedJobStatusUrls.length).toBeGreaterThanOrEqual(2);
+  expect(resumedJobStatusUrls.every((url) => url.endsWith(`/evidence/explanation-jobs/${generatedJob.job_id}`))).toBeTruthy();
   await page.getByRole("button", { name: "A", exact: true }).click();
   await expect(page.getByTestId("comparison-hydration-error")).toContainText("Temporary validation comparison read failure");
   await expect(page.getByRole("button", { name: "Compare study seeds", exact: true })).toBeDisabled();
