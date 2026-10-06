@@ -111,7 +111,7 @@ test("E2E-08 confirms a dataset contract in Data workspace and preserves it acro
   await expect(page.getByRole("region", { name: "Optional quick start" })).toHaveCount(0);
   const trainingRequests: string[] = [];
   page.on("request", (request) => {
-    if (request.method() === "POST" && /\/api\/projects\/training(?:\/|$)|\/api\/projects\/studies(?:\/|$)/.test(request.url())) {
+    if (request.method() === "POST" && /\/api\/projects\/training\/(?:run|study-jobs)(?:\/|$)/.test(request.url())) {
       trainingRequests.push(request.url());
     }
   });
@@ -119,12 +119,24 @@ test("E2E-08 confirms a dataset contract in Data workspace and preserves it acro
   await expect(optionalTraining).toContainText("Your dataset is ready for a model fit");
   await expect(optionalTraining).toContainText("Nothing runs until you choose “Run real training”");
   await expect(optionalTraining).toContainText("held-out test split stays locked");
+  await page.route("**/api/models", (route) => route.fulfill({ status: 503, body: "model catalog unavailable" }));
   await optionalTraining.getByRole("button", { name: "Open Training", exact: true }).click();
   await expect(page.locator(".training-workspace")).toBeVisible();
   await expect(page.getByRole("region", { name: "Training choices" })).toContainText("creates one fitted TrainingRun");
   await expect(page.getByRole("region", { name: "Training choices" })).toContainText("preserves the per-seed results as a TrainingStudy");
   await expect(page.getByRole("region", { name: "Training choices" })).toContainText("does not start computation or unlock the test split");
   await expect(page.getByRole("button", { name: "Run real training", exact: true })).toBeVisible();
+  expect(trainingRequests).toEqual([]);
+  const retry = page.getByRole("button", { name: "Retry model check", exact: true });
+  await retry.click();
+  await expect(page.getByRole("alert")).toContainText("Could not check available models");
+  await expect(page.getByRole("button", { name: "Run real training", exact: true })).toBeDisabled();
+  await page.unroute("**/api/models");
+  await page.route("**/api/models", (route) => route.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
+  await page.getByRole("button", { name: "Retry model check", exact: true }).click();
+  await expect(page.getByText("No compatible model is available.", { exact: false })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Run real training", exact: true })).toBeDisabled();
+  await page.unroute("**/api/models");
   expect(trainingRequests).toEqual([]);
   await page.locator(".project-object-tree .object-tree-item").filter({ hasText: "target" }).first().click();
   await expect(page.locator(".data-workspace")).toBeVisible();

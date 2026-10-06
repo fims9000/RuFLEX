@@ -129,6 +129,9 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
   const [runSplitContract, setRunSplitContract] = useState<SplitContract | null>(null);
   const [dataEvidenceState, setDataEvidenceState] = useState<"idle" | "loading" | "loaded" | "error">("idle");
   const [catalog, setCatalog] = useState<ModelCapabilityContract[]>([]);
+  const [catalogStatus, setCatalogStatus] = useState<"loading" | "loaded" | "error">("loading");
+  const [catalogError, setCatalogError] = useState<string | null>(null);
+  const [catalogReload, setCatalogReload] = useState(0);
   const [executionBackends, setExecutionBackends] = useState<ExecutionBackendDescriptor[]>([]);
   const [executionBackendKey, setExecutionBackendKey] = useState("local_executor");
   const [runCapabilities, setRunCapabilities] = useState<RunCapabilityNegotiation | null>(null);
@@ -188,7 +191,22 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
     if (!run) { setRunCapabilities(null); return; }
     studioApi.getTrainingRunCapabilities(project.session_id, run.run_id).then(setRunCapabilities).catch(() => setRunCapabilities(null));
   }, [project.session_id, run?.run_id]);
-  useEffect(() => { studioApi.getModels().then(setCatalog).catch(() => setCatalog([])); }, []);
+  useEffect(() => {
+    let active = true;
+    setCatalogStatus("loading");
+    setCatalogError(null);
+    studioApi.getModels().then((models) => {
+      if (!active) return;
+      setCatalog(models);
+      setCatalogStatus("loaded");
+    }).catch((reason) => {
+      if (!active) return;
+      setCatalog([]);
+      setCatalogError(reason instanceof Error ? reason.message : "Model capability catalog request failed.");
+      setCatalogStatus("error");
+    });
+    return () => { active = false; };
+  }, [catalogReload]);
   useEffect(() => { studioApi.getRuntimeBackends().then((backends) => {
     setExecutionBackends(backends);
     if (!backends.some((backend) => backend.identity.key === executionBackendKey)) setExecutionBackendKey(backends[0]?.identity.key ?? "local_executor");
@@ -359,6 +377,9 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
           <label className="field-label">Study randomness protocol<select aria-label="Study randomness protocol" value={studyMode} disabled={running || project.read_only} onChange={(event) => setStudyMode(event.target.value as typeof studyMode)}><option value="TRAINING_VARIABILITY">Training variability (fixed split)</option><option value="SPLIT_VARIABILITY">Split variability (fixed training seed)</option><option value="COMBINED_VARIABILITY">Combined variability</option></select></label>
           <label className="field-label">Study execution backend<select aria-label="Study execution backend" value={executionBackendKey} disabled={running || project.read_only || !executionBackends.length} onChange={(event) => setExecutionBackendKey(event.target.value)}>{executionBackends.map((backend) => <option key={backend.identity.key} value={backend.identity.key}>{backend.identity.key} · {backend.identity.provider}</option>)}</select></label>
         </div>
+        {catalogStatus === "loading" && <p role="status">Checking available model adapters for this task…</p>}
+        {catalogStatus === "error" && <div className="error" role="alert"><strong>Could not check available models.</strong> {catalogError} <Button view="outlined" size="s" onClick={() => setCatalogReload((current) => current + 1)} data-ruflex-action="training.catalog.retry">Retry model check</Button></div>}
+        {catalogStatus === "loaded" && compatibleModels.length === 0 && <div className="info-message" role="status"><strong>No compatible model is available.</strong> The catalog loaded, but no available adapter declares fit support for {datasetTask}. Training remains disabled; install/register a compatible adapter or choose a dataset for a supported task.</div>}
         <Button view="outlined" disabled={running || project.read_only || Boolean(splitEvidenceError)} onClick={freezeSplitContract} data-ruflex-action="split.freeze">Freeze {splitFamily} SplitContract</Button>
         <section className="info-message" aria-label="Training choices">
           <strong>Choose how to start</strong>
@@ -366,8 +387,8 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
           <p><strong>Run multi-seed study</strong> executes the distinct seeds listed above under the selected randomness protocol and preserves the per-seed results as a TrainingStudy. It requires at least three seeds.</p>
           <p>Both paths use the declared training/validation workflow; opening this screen or changing settings does not start computation or unlock the test split.</p>
         </section>
-        <Button view="action" disabled={running || project.read_only || Boolean(splitEvidenceError)} onClick={train} data-ruflex-action="training.run">{running ? "Training…" : "Run real training"}</Button>
-        <Button view="outlined" disabled={running || project.read_only || Boolean(splitEvidenceError)} onClick={trainStudy} data-ruflex-action="study.start">{running ? "Training…" : "Run multi-seed study"}</Button>
+        <Button view="action" disabled={running || project.read_only || Boolean(splitEvidenceError) || catalogStatus !== "loaded" || !selectedModel} onClick={train} data-ruflex-action="training.run">{running ? "Training…" : "Run real training"}</Button>
+        <Button view="outlined" disabled={running || project.read_only || Boolean(splitEvidenceError) || catalogStatus !== "loaded" || !selectedModel} onClick={trainStudy} data-ruflex-action="study.start">{running ? "Training…" : "Run multi-seed study"}</Button>
         {studyJob && <div className="info-message"><strong>Study job {studyJob.status}</strong> · {studyJob.execution_backend_key ?? studyJob.execution_backend} · {studyJob.seed_states.map((state) => `seed ${state.seed}: ${state.status}`).join(" · ")} {(["QUEUED", "RUNNING"].includes(studyJob.status)) && <><Button view="flat" size="s" onClick={resumeStudy} data-ruflex-action="study.resume">Resume persisted study</Button><Button view="flat" size="s" onClick={cancelStudy} data-ruflex-action="study.cancel">Cancel study</Button></>} {studyJob.recovery_note && <small>{studyJob.recovery_note}</small>}</div>}
         <div className="info-message">A frozen SplitContract assigns exact source rows before fitting. GROUP keeps each declared identity in one role. It makes split membership auditable; it does not by itself establish generalization validity.</div>
         {splitEvidenceError && <div className="error" role="alert">Saved split provenance is invalid or unavailable. Training is blocked rather than falling back to an unverified split. {splitEvidenceError}</div>}

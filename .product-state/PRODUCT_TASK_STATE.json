@@ -73,16 +73,17 @@
     "alpha_readonly_project_guidance_audit",
     "alpha_import_busy_state_feedback",
     "alpha_post_import_next_step_guidance",
-    "alpha_training_choice_guidance"
+    "alpha_training_choice_guidance",
+    "alpha_training_catalog_failure_states"
   ],
-  "active_capability": "alpha_training_capability_availability_feedback",
+  "active_capability": "alpha_training_configuration_recovery",
   "active_acceptance": [
-    "When no available compatible model adapter exists, explain why Training cannot start and how to recover; distinguish model-catalog loading failure from an empty compatible catalog.",
-    "Keep the run disabled in both cases and do not silently substitute a model or execution backend.",
+    "Audit train/study form validation and error recovery against backend constraints, then address one concrete first-run failure mode without changing training or split semantics.",
+    "Keep computation user-initiated and preserve existing final-test boundaries.",
     "Keep unrelated article and interrupted S03 work out of the committed product baseline."
   ],
   "blockers": [],
-  "next_executable_work": "Add explicit loading/error/empty states for the training model capability catalog; keep Training actions blocked when there is no available compatible fit adapter and verify backend unavailability with a focused Studio test.",
+  "next_executable_work": "Inspect the single-run and multi-seed configuration controls for client-side constraints that differ from API validation; add focused, recoverable feedback only where a concrete mismatch is demonstrated.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -145,6 +146,7 @@
     "alpha_readonly_project_guidance_audit": "PASS: Read-only Data now states which dataset mutations are disabled and how to reopen writable; Evaluation explains saved evidence remains viewable while new evidence/policies/final-test access cannot be saved. Existing enforcement unchanged. Read-only project lifecycle E2E 1/1, frontend component unit 10/10 and Vite/TypeScript build passed.",
     "alpha_import_busy_state_feedback": "PASS: File inspection/import and CSV confirmation now expose progress labels, disable duplicate submissions, and lock contract fields during persistence; failed inspection/import remains retryable. One-worker E2E delayed inspection/import HTTP routes to verify loading/disabled states and persisted reopen (2/2), frontend unit 10/10 and Vite/TypeScript build passed.",
     "alpha_post_import_next_step_guidance": "PASS: Project Overview offers an optional route from a confirmed DatasetContract to the actual Training workspace when no run exists. Copy states that no fit starts until explicit user action and that the held-out test remains locked. E2E confirms the card after close/reopen, opens Training, and records no training/Study POST; action inventory, frontend unit tests (10) and TypeScript/Vite production build passed.",
-    "alpha_training_choice_guidance": "PASS: Training explains the difference between one fitted TrainingRun and a multi-seed TrainingStudy, including its minimum of three distinct seeds and that merely opening/configuring Training does not start compute or unlock test. The reopened-dataset Studio route asserts these explanations before any training request; focused browser 2/2, frontend unit 10/10, TypeScript/Vite build and diff check passed."
+    "alpha_training_choice_guidance": "PASS: Training explains the difference between one fitted TrainingRun and a multi-seed TrainingStudy, including its minimum of three distinct seeds and that merely opening/configuring Training does not start compute or unlock test. The reopened-dataset Studio route asserts these explanations before any training request; focused browser 2/2, frontend unit 10/10, TypeScript/Vite build and diff check passed.",
+    "alpha_training_catalog_failure_states": "PASS: Training now distinguishes model-catalog request failure (visible error with explicit retry) from a loaded catalog with no compatible fit adapter (visible not-applicable explanation). Single-run and Study actions stay disabled in both states; retry does not substitute an adapter. Focused real Studio route verifies 503 → retry → empty compatible catalog, no training/Study POST, inventory, frontend unit tests (10) and TypeScript/Vite production build passed."
   }
 }
