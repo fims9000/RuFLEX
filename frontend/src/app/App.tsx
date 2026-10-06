@@ -83,6 +83,9 @@ export function App() {
     bottom: false,
   });
   const [artifacts, setArtifacts] = useState<ArtifactRecord[]>([]);
+  const [artifactsHydrationStatus, setArtifactsHydrationStatus] = useState<"idle" | "loading" | "loaded" | "error">("idle");
+  const [artifactsHydrationError, setArtifactsHydrationError] = useState<string | null>(null);
+  const [artifactsHydrationReload, setArtifactsHydrationReload] = useState(0);
   const [csvText, setCsvText] = useState(
     "entity_id,temperature,torque,target\na,10,20,0\nb,20,50,1\nc,30,80,1\n",
   );
@@ -215,13 +218,28 @@ export function App() {
       });
   }, []);
   useEffect(() => {
-    if (project)
-      studioApi
-        .listArtifacts(project.session_id)
-        .then(setArtifacts)
-        .catch((reason: Error) => setError(reason.message));
-    else setArtifacts([]);
-  }, [project?.session_id]);
+    let active = true;
+    if (!project) {
+      setArtifacts([]);
+      setArtifactsHydrationError(null);
+      setArtifactsHydrationStatus("idle");
+      return () => { active = false; };
+    }
+    setArtifacts([]);
+    setArtifactsHydrationError(null);
+    setArtifactsHydrationStatus("loading");
+    studioApi.listArtifacts(project.session_id).then((items) => {
+      if (!active) return;
+      setArtifacts(items);
+      setArtifactsHydrationStatus("loaded");
+    }).catch((reason: unknown) => {
+      if (!active) return;
+      setArtifacts([]);
+      setArtifactsHydrationError(reason instanceof Error ? reason.message : "Project artifacts could not be verified.");
+      setArtifactsHydrationStatus("error");
+    });
+    return () => { active = false; };
+  }, [project?.session_id, artifactsHydrationReload]);
   useEffect(() => {
     let active = true;
     if (!project) {
@@ -1234,16 +1252,18 @@ export function App() {
       </p>
       <div className="artifact-details">
         <strong>Artifacts</strong>
-        {artifacts.length ? (
+        {artifactsHydrationStatus === "loading" && <span role="status">Loading project artifacts…</span>}
+        {artifactsHydrationStatus === "error" && <div className="error" role="alert" data-testid="artifact-hydration-error"><span>Project artifacts could not be verified. {artifactsHydrationError}</span><Button view="outlined" size="s" onClick={() => setArtifactsHydrationReload((current) => current + 1)}>Retry artifact list</Button></div>}
+        {artifactsHydrationStatus === "loaded" && artifacts.length ? (
           artifacts.map((artifact) => (
             <div key={artifact.sha256} className="mono">
               {artifact.sha256.slice(0, 12)} · {artifact.size_bytes} B ·{" "}
               {artifact.source_kind}
             </div>
           ))
-        ) : (
+        ) : artifactsHydrationStatus === "loaded" ? (
           <span>No immutable artifacts yet.</span>
-        )}
+        ) : null}
       </div>
     </>
   ) : (
