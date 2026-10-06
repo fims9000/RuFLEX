@@ -120,6 +120,9 @@ type Props = {
   comparisonHydrationError?: string | null;
   onRetryComparison?: () => void;
   sliceAnalysis: SliceAnalysis | null;
+  sliceAnalysisHydrationStatus?: "idle" | "loading" | "none" | "available" | "error";
+  sliceAnalysisHydrationError?: string | null;
+  onRetrySliceAnalysis?: () => void;
   selectivePolicy: SelectivePredictionPolicy | null;
   stabilityGatePolicy: StabilityGatePolicy | null;
   theme: StudioTheme;
@@ -163,6 +166,9 @@ export function EvaluationWorkspace({
   comparisonHydrationError = null,
   onRetryComparison,
   sliceAnalysis,
+  sliceAnalysisHydrationStatus = "available",
+  sliceAnalysisHydrationError = null,
+  onRetrySliceAnalysis,
   selectivePolicy,
   stabilityGatePolicy,
   theme,
@@ -539,7 +545,10 @@ export function EvaluationWorkspace({
         {sliceKind === "manual" && <label className="field-label">Original source rows<input aria-label="Slice source rows" placeholder="2, 7, 11" value={sliceRows} onChange={(event) => setSliceRows(event.target.value)} /></label>}
         <label className="field-label">Metric<select aria-label="Slice metric" value={sliceMetric || (run.task === "binary_classification" ? "f1" : "rmse")} onChange={(event) => setSliceMetric(event.target.value)}>{run.task === "binary_classification" ? <><option value="f1">F1</option><option value="accuracy">Accuracy</option><option value="precision">Precision</option><option value="recall">Recall</option><option value="brier">Brier</option></> : <><option value="rmse">RMSE</option><option value="mae">MAE</option><option value="mse">MSE</option><option value="r2">R²</option></>}</select></label>
       </div>
-      <Button view="outlined" disabled={sliceRunning || project.read_only || !dataset || !evaluationStateKnown} onClick={runSliceAnalysis} data-ruflex-action="slice.create">{sliceRunning ? "Calculating…" : "Run and persist slice"}</Button>
+      {sliceAnalysisHydrationStatus === "loading" && <p role="status" data-testid="slice-hydration-loading">Loading saved slice evidence…</p>}
+      {sliceAnalysisHydrationStatus === "none" && <p className="property-description" data-testid="slice-hydration-empty">No saved SliceAnalysis is available for this project.</p>}
+      {sliceAnalysisHydrationStatus === "error" && <div className="error" role="alert" data-testid="slice-hydration-error"><strong>Saved SliceAnalysis could not be verified.</strong><p>{sliceAnalysisHydrationError}</p>{onRetrySliceAnalysis && <Button view="outlined" onClick={onRetrySliceAnalysis}>Retry slice evidence</Button>}</div>}
+      <Button view="outlined" disabled={sliceRunning || project.read_only || !dataset || !evaluationStateKnown || !["none", "available"].includes(sliceAnalysisHydrationStatus)} onClick={runSliceAnalysis} data-ruflex-action="slice.create">{sliceRunning ? "Calculating…" : "Run and persist slice"}</Button>
       {sliceAnalysis && <div className="data-table-wrap"><table className="data-table"><thead><tr><th>slice</th><th>kind</th><th>N</th><th>metric</th><th>value</th><th>overall</th><th>delta</th><th>metric status</th><th>declared scope</th></tr></thead><tbody>{sliceAnalysis.results.map((result) => <tr key={`${sliceAnalysis.analysis_id}-${result.name}`}><td>{result.name}</td><td>{result.kind}</td><td>{result.n}</td><td>{result.metric}</td><td>{result.value === null ? "—" : result.value.toFixed(4)}</td><td>{result.overall_value.toFixed(4)}</td><td>{result.delta_vs_overall === null ? "—" : result.delta_vs_overall.toFixed(4)}</td><td>{result.status}{result.warning ? ` · ${result.warning}` : ""}</td><td><StatusBadge tone={result.scope_disposition === "ALLOW" ? "success" : result.scope_disposition === "BLOCK" ? "danger" : "warning"}>{result.scope_disposition}</StatusBadge>{result.scope_reasons.length > 0 && <small className="slice-scope-reason">{result.scope_reasons.join(" ")}</small>}</td></tr>)}</tbody></table><p>{sliceAnalysis.generalization_contract_id ? `Scope classifications use GeneralizationContract ${sliceAnalysis.generalization_contract_id.slice(0, 12)}. ` : "No GeneralizationContract was linked; scope remains undeclared. "}{sliceAnalysis.scientific_note}</p></div>}
     </section>
     {error && <div className="error" role="alert">{error}</div>}

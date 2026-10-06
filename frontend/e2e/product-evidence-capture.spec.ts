@@ -228,6 +228,15 @@ test("PRODUCT-EVIDENCE captures the frozen V1 Studio route from persisted object
     }
     await route.continue();
   });
+  let sliceReadFailed = false;
+  await page.route(`**/api/projects/*/analyses/slices/latest`, async (route) => {
+    if (!sliceReadFailed) {
+      sliceReadFailed = true;
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Temporary SliceAnalysis read failure" }) });
+      return;
+    }
+    await route.continue();
+  });
   let latestAssuranceReadFailed = false;
   await page.route(`**/api/projects/*/evidence/assurance-cases/latest`, async (route) => {
     if (!latestAssuranceReadFailed) {
@@ -250,6 +259,10 @@ test("PRODUCT-EVIDENCE captures the frozen V1 Studio route from persisted object
   await expect(page.getByRole("button", { name: "Compare study seeds", exact: true })).toBeDisabled();
   await page.getByRole("button", { name: "Retry validation comparison", exact: true }).click();
   await expect(page.getByText("SAVED MODEL COMPARISON · VALIDATION ONLY", { exact: true })).toBeVisible();
+  await expect(page.getByTestId("slice-hydration-error")).toContainText("Temporary SliceAnalysis read failure");
+  await expect(page.getByRole("button", { name: "Run and persist slice", exact: true })).toBeDisabled();
+  await page.getByRole("button", { name: "Retry slice evidence", exact: true }).click();
+  await expect(page.getByText("Validation slice", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "M", exact: true }).click();
   await expect(page.getByTestId("expert-correction-load-error")).toContainText("Temporary expert correction read failure");
   await page.getByRole("button", { name: "Retry expert correction", exact: true }).click();

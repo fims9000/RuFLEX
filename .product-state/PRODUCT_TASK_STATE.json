@@ -101,7 +101,8 @@
     "alpha_exhaustive_lab_hydration_truthfulness",
     "alpha_expert_correction_hydration_truthfulness",
     "alpha_generalization_contract_hydration_truthfulness",
-    "alpha_analysis_comparison_hydration_truthfulness"
+    "alpha_analysis_comparison_hydration_truthfulness",
+    "alpha_slice_analysis_hydration_truthfulness"
   ],
   "active_capability": "alpha_saved_evidence_hydration_audit",
   "active_acceptance": [
@@ -109,7 +110,7 @@
     "Prioritize evidence that must be identity-linked before presentation; add focused exact-route retry tests as findings justify."
   ],
   "blockers": [],
-  "next_executable_work": "Audit the remaining project-bootstrap validation artifacts (SliceAnalysis and tree-path evidence) for silent failure-to-empty behavior; choose one bounded consumer and add explicit load/retry only where the evidence is operationally presented. Preserve unrelated article changes and do not push.",
+  "next_executable_work": "Audit latest tree-path evidence hydration for silent failure-to-empty behavior; if the exact saved run evidence is surfaced as a capability, distinguish confirmed absence from lookup failure and provide retry without changing the training run. Preserve unrelated article changes and do not push.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -200,6 +201,7 @@
     "alpha_exhaustive_lab_hydration_truthfulness": "PASS: Saved ExhaustiveLabResult reopen distinguishes loading, confirmed 404 absence, available evidence and transient read failure with retry. PRODUCT-09 injected a temporary 503, retried the saved result and verified the exact finite-tree evidence returned; Vite/TypeScript build and git diff --check passed.",
     "alpha_expert_correction_hydration_truthfulness": "PASS: The Model workbench now distinguishes loading, no saved correction, verified revision, and transient/missing exact-ID errors. The duplicate App-level fetch was removed to prevent competing reads from overwriting valid state; retry re-reads the same selected ID. PRODUCT-EVIDENCE injected a 503 during reopen after a real TRAIN-only refit, verified retry restored the saved correction; Vite/TypeScript build and diff check passed.",
     "alpha_generalization_contract_hydration_truthfulness": "PASS: Active GeneralizationContract reopen distinguishes confirmed 404 absence from transient read failure; scope actions and the scope-aware telemetry demo stay paused until identity resolves, with retry at Project/Data and Evidence surfaces. PRODUCT-EVIDENCE injected a 503 on project reopen, verified the condition demo was blocked, then retried and restored the saved contract. Vite/TypeScript build and focused browser route passed; an unrelated later ReactFlow node viewport assertion was stabilized by dispatching the selected node's click event.",
-    "alpha_analysis_comparison_hydration_truthfulness": "PASS: Persisted validation AnalysisComparison reopen distinguishes confirmed 404 absence from transient errors, shows retry in Analyses, and prevents duplicate comparison creation until saved state resolves. PRODUCT-EVIDENCE creates a real study comparison, injects 503 after close/reopen, verifies creation is paused, then retries and restores the exact saved comparison. TypeScript/Vite production build and focused Playwright route passed."
+    "alpha_analysis_comparison_hydration_truthfulness": "PASS: Persisted validation AnalysisComparison reopen distinguishes confirmed 404 absence from transient errors, shows retry in Analyses, and prevents duplicate comparison creation until saved state resolves. PRODUCT-EVIDENCE creates a real study comparison, injects 503 after close/reopen, verifies creation is paused, then retries and restores the exact saved comparison. TypeScript/Vite production build and focused Playwright route passed.",
+    "alpha_slice_analysis_hydration_truthfulness": "PASS: Latest SliceAnalysis reopen distinguishes confirmed 404 absence from transient failure, visibly reports and retries failed reads, and prevents a duplicate analysis until saved state resolves. PRODUCT-EVIDENCE injects a 503 after close/reopen, confirms the new slice action is blocked, retries, and restores the persisted Validation slice. TypeScript/Vite build, frontend unit suite (23), focused Playwright route, JSON state validation and diff check passed."
   }
 }
