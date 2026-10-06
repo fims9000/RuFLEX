@@ -151,15 +151,16 @@
     "alpha_study_job_idempotent_submission_recovery",
     "alpha_study_job_cancel_finalization_race",
     "alpha_orphaned_queued_study_job_cancellation",
-    "alpha_study_terminal_state_guidance"
+    "alpha_study_terminal_state_guidance",
+    "alpha_prevent_duplicate_active_study_submission"
   ],
-  "active_capability": "alpha_study_terminal_state_guidance",
+  "active_capability": "alpha_prevent_duplicate_active_study_submission",
   "active_acceptance": [
     "When a training response is lost, Studio may recover only the uniquely persisted TrainingRun whose declared model, adapter, and complete request config match the original request.",
-    "StudyJobs preserve accepted cancellation through seed progress writes and finalization; cancelled jobs retain completed runs, orphaned queued jobs terminate immediately, and Studio explains terminal CANCELLED/FAILED recovery semantics."
+    "StudyJobs preserve accepted cancellation through seed progress writes and finalization; cancelled jobs retain completed runs, orphaned queued jobs terminate immediately, Studio explains terminal states, and active persisted jobs block a second multi-seed submission."
   ],
   "blockers": [],
-  "next_executable_work": "Continue a resource-light pass over the Studio training path for silent fallback or retry behavior that could launch duplicate fits; add one narrow test/fix only when a concrete case is demonstrated.",
+  "next_executable_work": "Continue with one low-memory integrity slice: inspect persisted Study hydration and selected-run identity after reload, focusing on whether terminal StudyJob and TrainingStudy can diverge without an actionable message.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -314,6 +315,7 @@
     "alpha_study_job_idempotent_submission_recovery": "PASS: Multi-seed Study submissions accept a client idempotency UUID bound to the durable StudyJob ID. Retries recover only that same job and exact frozen config; request-ID reuse with changed config fails closed. Frontend unit verifies lost-response retry resends the identical payload; backend idempotency regression passes; ExperimentWorkspace unit 13/13, Python focused tests 2 passed, compileall, diff check and Vite build passed.",
     "alpha_study_job_cancel_finalization_race": "PASS: A cancellation arriving during the last seed can no longer be overwritten by worker success finalization. In-flight fit remains persisted as SUCCEEDED, job is CANCELLED, and no TrainingStudy aggregate is created; durable cancellation survives progress writes under a short state lock. Regression uses a small local Logistic Regression fixture; focused Python tests (2) and compileall/diff check passed.",
     "alpha_orphaned_queued_study_job_cancellation": "PASS: Cancelling a persisted QUEUED StudyJob with no active worker now marks the job and untouched seeds CANCELLED immediately, preventing an unresumable queued record after worker loss/restart. Focused Python cancellation regressions (3), compileall and git diff --check passed.",
-    "alpha_study_terminal_state_guidance": "PASS: Studio explicitly explains that terminal CANCELLED StudyJobs cannot resume and completed seed fits remain persisted, while FAILED jobs did not produce a selected TrainingStudy and require per-seed error review before new fits. ExperimentWorkspace unit tests (14/14) and Vite production build passed."
+    "alpha_study_terminal_state_guidance": "PASS: Studio explicitly explains that terminal CANCELLED StudyJobs cannot resume and completed seed fits remain persisted, while FAILED jobs did not produce a selected TrainingStudy and require per-seed error review before new fits. ExperimentWorkspace unit tests (14/14) and Vite production build passed.",
+    "alpha_prevent_duplicate_active_study_submission": "PASS: A persisted QUEUED/RUNNING StudyJob now disables a second multi-seed submission and the handler independently refuses to create another job; users are directed to resume/inspect the exact active job. ExperimentWorkspace unit tests (15/15), Vite production build and diff check passed."
   }
 }
