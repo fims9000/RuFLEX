@@ -151,7 +151,7 @@
     "Recent names/paths are stored only in this browser, bounded to eight entries, and can be cleared individually or all at once."
   ],
   "blockers": [],
-  "next_executable_work": "Inspect the alpha first-run route for missing feedback after project creation and first data import; keep the next slice focused on one user-visible transition. Do not push.",
+  "next_executable_work": "Inspect first data-import success/error transitions for clear persisted-state feedback and safe retry behavior; keep the next slice focused and use a targeted browser test. Do not push.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -296,7 +296,7 @@
     "alpha_recent_project_reopen": "PASS: RuFLEX keeps up to eight recent local project names/paths in browser storage, exposes direct reopen buttons using the current read-only setting, supports forgetting one path or clearing all history, and discloses local storage. Playwright created two projects, reloaded, removed one record, reopened the other and cleared the list (1/1). Frontend unit 23/23, TypeScript/Vite production build and git diff --check passed.",
     "alpha_stale_project_session_cleanup": "PASS: If a slower project-open response loses to a newer lifecycle request, Studio now closes the stale backend session without deleting the project. Focused Playwright race test confirmed the second project stays active and the stale session is closed; git diff --check passed.",
     "alpha_recent_project_missing_path_recovery": "PASS: Failed recent-project opens now preserve the API reason next to the saved entry and explain that the user can forget a moved/deleted path or choose it again. Focused Playwright seeded a missing path, verified recovery guidance and forgot the entry; existing recent-project reopen E2E also passed.",
-    "alpha_backend_startup_recovery": "PASS: Studio represents startup backend failure separately from project errors, disables project create/open while unavailable, and exposes a retry action. Focused Playwright forced health to fail then recover and created a project after retry; TypeScript/Vite production build passed.",
+    "alpha_backend_startup_recovery": "PASS: Studio represents startup backend failure separately from project errors, blocks project create/open while unavailable (including keyboard form submission), and exposes a retry action. Focused Playwright forced health to fail, verified Enter sent no create request, then recovered and created a project after retry; TypeScript/Vite production build passed.",
     "alpha_project_entry_validation_recovery": "PASS: Empty project paths are rejected before network activity, and duplicate create-path errors now guide the user to open the existing project. Focused Playwright verified blank-path validation, duplicate-path guidance, successful reopen; TypeScript/Vite build passed.",
     "alpha_recent_project_error_lifecycle": "PASS: Recent-project error state clears when its entry/history is forgotten or any project successfully opens/creates, preventing an old failure from reappearing beside a new history item. Recent-project E2Es (2/2) and TypeScript/Vite build passed."
   }

@@ -1134,6 +1134,7 @@ export function App() {
     setCollapsed((current) => ({ ...current, [panel]: !current[panel] }));
   async function submit(event: FormEvent, operation: "create" | "open") {
     event.preventDefault();
+    if (backendStatus !== "available") return;
     setProjectFormError(null);
     if (!path.trim()) {
       setProjectFormError("Enter a project folder path before creating or opening a project.");
