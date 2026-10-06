@@ -165,6 +165,9 @@ export function App() {
   const [lineageBehaviorComparison, setLineageBehaviorComparison] = useState<BehaviorRevisionComparison | null>(null);
   const [selectivePolicy, setSelectivePolicy] = useState<SelectivePredictionPolicy | null>(null);
   const [reproducibility, setReproducibility] = useState<ExplanationReproducibilityAnalysis | null>(null);
+  const [reproducibilityHydrationStatus, setReproducibilityHydrationStatus] = useState<"idle" | "loading" | "none" | "available" | "error">("idle");
+  const [reproducibilityHydrationError, setReproducibilityHydrationError] = useState<string | null>(null);
+  const [reproducibilityHydrationReload, setReproducibilityHydrationReload] = useState(0);
   const [exhaustive, setExhaustive] = useState<ExhaustiveLabResult | null>(null);
   const [assurance, setAssurance] = useState<AssuranceCase | null>(null);
   const [assuranceHydrationStatus, setAssuranceHydrationStatus] = useState<"idle" | "loading" | "none" | "available" | "error">("idle");
@@ -253,6 +256,8 @@ export function App() {
       setLineageBehaviorComparison(null);
       setSelectivePolicy(null);
       setReproducibility(null);
+      setReproducibilityHydrationStatus("idle");
+      setReproducibilityHydrationError(null);
       setExhaustive(null);
       setAssurance(null);
       setAssuranceHydrationStatus("idle");
@@ -333,12 +338,33 @@ export function App() {
       .catch(() => setAnalysisComparison(null));
     studioApi.getLatestSliceAnalysis(project.session_id).then(setSliceAnalysis).catch(() => setSliceAnalysis(null));
     studioApi.getLatestTreePath(project.session_id).then(setTreeEvidence).catch(() => setTreeEvidence(null));
-    studioApi.getLatestExplanationReproducibility(project.session_id).then(setReproducibility).catch(() => setReproducibility(null));
     studioApi.getLatestExhaustiveLab(project.session_id).then(setExhaustive).catch(() => setExhaustive(null));
     studioApi.getLatestExpertCorrection(project.session_id).then(setExpertCorrection).catch(() => setExpertCorrection(null));
     studioApi.getActiveGeneralization(project.session_id).then(setGeneralization).catch(() => setGeneralization(null));
     return () => { active = false; };
   }, [project?.session_id, overviewContextReload]);
+  useEffect(() => {
+    let active = true;
+    if (!project) return () => { active = false; };
+    setReproducibility(null);
+    setReproducibilityHydrationError(null);
+    setReproducibilityHydrationStatus("loading");
+    studioApi.getLatestExplanationReproducibility(project.session_id).then((value) => {
+      if (!active) return;
+      setReproducibility(value);
+      setReproducibilityHydrationStatus("available");
+    }).catch((reason: unknown) => {
+      if (!active) return;
+      setReproducibility(null);
+      if (reason instanceof ProductApiError && reason.status === 404) {
+        setReproducibilityHydrationStatus("none");
+        return;
+      }
+      setReproducibilityHydrationError(reason instanceof Error ? reason.message : "Saved reproducibility analysis could not be loaded.");
+      setReproducibilityHydrationStatus("error");
+    });
+    return () => { active = false; };
+  }, [project?.session_id, reproducibilityHydrationReload]);
   useEffect(() => {
     let active = true;
     if (!project) return () => { active = false; };
@@ -1612,6 +1638,9 @@ export function App() {
           onRetryBehaviorSpecResult={() => setBehaviorSpecResultReload((current) => current + 1)}
           lineageBehaviorComparison={lineageBehaviorComparison}
           reproducibility={reproducibility}
+          reproducibilityHydrationStatus={reproducibilityHydrationStatus}
+          reproducibilityHydrationError={reproducibilityHydrationError}
+          onRetryReproducibility={() => setReproducibilityHydrationReload((current) => current + 1)}
           exhaustive={exhaustive}
           assurance={assurance}
           verificationBundleRecord={verificationBundleRecord}
@@ -1636,7 +1665,11 @@ export function App() {
             setBehaviorSpecResultStatus(result ? "available" : "none");
             setBehaviorSpecResultError(null);
           }}
-          onReproducibility={setReproducibility}
+          onReproducibility={(value) => {
+            setReproducibility(value);
+            setReproducibilityHydrationStatus(value ? "available" : "none");
+            setReproducibilityHydrationError(null);
+          }}
           onExhaustive={setExhaustive}
           onAssurance={(value) => {
             setAssurance(value);

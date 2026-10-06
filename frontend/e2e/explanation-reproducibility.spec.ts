@@ -15,7 +15,16 @@ test("PRODUCT-08 persists separate cross-run prediction and explanation reproduc
   await page.getByRole("button", {name:"E",exact:true}).click(); await generate.click(); await expect(generate).toBeEnabled(); await page.getByLabel("temperature").fill("30"); await generate.click(); await expect(generate).toBeEnabled();
   const checks=page.locator('.comparison-choice input[type="checkbox"]'); await expect(checks).toHaveCount(4); for(let i=0;i<4;i+=1) await checks.nth(i).check(); await page.getByRole("button", {name:"Compare explanation reproducibility",exact:true}).click();
   await expect(page.getByTestId("reproducibility-result")).toContainText("PREDICTION AGREEMENT",{timeout:15000}); await expect(page.getByTestId("reproducibility-result")).toContainText("EXPLANATION AGREEMENT"); await expect(page.getByText(/must not be interpreted as explanation stability/)).toBeVisible();
-  await page.getByRole("button", {name:"Close",exact:true}).click(); await page.getByLabel("Project path").fill(path); await page.getByRole("button", {name:"Open project",exact:true}).click(); await page.getByRole("button", {name:"E",exact:true}).click(); await expect(page.getByTestId("reproducibility-result")).toContainText("EXPLANATION AGREEMENT",{timeout:15000});
+  let reproducibilityReadFailed = false;
+  await page.route(`**/api/projects/*/evidence/explanation-reproducibility/latest`, async (route) => {
+    if (!reproducibilityReadFailed) {
+      reproducibilityReadFailed = true;
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Temporary reproducibility read failure" }) });
+      return;
+    }
+    await route.continue();
+  });
+  await page.getByRole("button", {name:"Close",exact:true}).click(); await page.getByLabel("Project path").fill(path); await page.getByRole("button", {name:"Open project",exact:true}).click(); await page.getByRole("button", {name:"E",exact:true}).click(); await expect(page.getByTestId("reproducibility-hydration-error")).toContainText("Temporary reproducibility read failure"); await page.getByRole("button", {name:"Retry reproducibility analysis",exact:true}).click(); await expect(page.getByTestId("reproducibility-result")).toContainText("EXPLANATION AGREEMENT",{timeout:15000});
   await page.getByRole("button", { name: "P", exact: true }).click();
   const reproducibilityNode = page.locator(".lineage-explanation_reproducibility").first();
   await expect(reproducibilityNode).toBeVisible();
