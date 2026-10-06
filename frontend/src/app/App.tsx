@@ -150,7 +150,13 @@ export function App() {
   const [sliceAnalysis, setSliceAnalysis] = useState<SliceAnalysis | null>(null);
   const [treeEvidence, setTreeEvidence] = useState<TreePathEvidence | null>(null);
   const [explanation, setExplanation] = useState<ExplanationContract | null>(null);
+  const [explanationHydrationStatus, setExplanationHydrationStatus] = useState<"idle" | "loading" | "none" | "available" | "error">("idle");
+  const [explanationHydrationError, setExplanationHydrationError] = useState<string | null>(null);
+  const [explanationHydrationReload, setExplanationHydrationReload] = useState(0);
   const [explanationCheck, setExplanationCheck] = useState<ExplanationCheck | null>(null);
+  const [explanationCheckHydrationStatus, setExplanationCheckHydrationStatus] = useState<"idle" | "loading" | "none" | "available" | "error">("idle");
+  const [explanationCheckHydrationError, setExplanationCheckHydrationError] = useState<string | null>(null);
+  const [explanationCheckHydrationReload, setExplanationCheckHydrationReload] = useState(0);
   const [behaviorResult, setBehaviorResult] = useState<BehaviorSpecResult | null>(null);
   const [behaviorSpec, setBehaviorSpec] = useState<BehaviorSpec | null>(null);
   const [behaviorSpecResultStatus, setBehaviorSpecResultStatus] = useState<"idle" | "loading" | "none" | "available" | "error">("idle");
@@ -235,7 +241,11 @@ export function App() {
       setSliceAnalysis(null);
       setTreeEvidence(null);
       setExplanation(null);
+      setExplanationHydrationStatus("idle");
+      setExplanationHydrationError(null);
       setExplanationCheck(null);
+      setExplanationCheckHydrationStatus("idle");
+      setExplanationCheckHydrationError(null);
       setBehaviorSpec(null);
       setBehaviorResult(null);
       setBehaviorSpecResultStatus("idle");
@@ -323,14 +333,56 @@ export function App() {
       .catch(() => setAnalysisComparison(null));
     studioApi.getLatestSliceAnalysis(project.session_id).then(setSliceAnalysis).catch(() => setSliceAnalysis(null));
     studioApi.getLatestTreePath(project.session_id).then(setTreeEvidence).catch(() => setTreeEvidence(null));
-    studioApi.getLatestExplanation(project.session_id).then(setExplanation).catch(() => setExplanation(null));
-    studioApi.getLatestExplanationCheck(project.session_id).then(setExplanationCheck).catch(() => setExplanationCheck(null));
     studioApi.getLatestExplanationReproducibility(project.session_id).then(setReproducibility).catch(() => setReproducibility(null));
     studioApi.getLatestExhaustiveLab(project.session_id).then(setExhaustive).catch(() => setExhaustive(null));
     studioApi.getLatestExpertCorrection(project.session_id).then(setExpertCorrection).catch(() => setExpertCorrection(null));
     studioApi.getActiveGeneralization(project.session_id).then(setGeneralization).catch(() => setGeneralization(null));
     return () => { active = false; };
   }, [project?.session_id, overviewContextReload]);
+  useEffect(() => {
+    let active = true;
+    if (!project) return () => { active = false; };
+    setExplanation(null);
+    setExplanationHydrationError(null);
+    setExplanationHydrationStatus("loading");
+    studioApi.getLatestExplanation(project.session_id).then((value) => {
+      if (!active) return;
+      setExplanation(value);
+      setExplanationHydrationStatus("available");
+    }).catch((reason: unknown) => {
+      if (!active) return;
+      setExplanation(null);
+      if (reason instanceof ProductApiError && reason.status === 404) {
+        setExplanationHydrationStatus("none");
+        return;
+      }
+      setExplanationHydrationError(reason instanceof Error ? reason.message : "Saved explanation could not be loaded.");
+      setExplanationHydrationStatus("error");
+    });
+    return () => { active = false; };
+  }, [project?.session_id, explanationHydrationReload]);
+  useEffect(() => {
+    let active = true;
+    if (!project) return () => { active = false; };
+    setExplanationCheck(null);
+    setExplanationCheckHydrationError(null);
+    setExplanationCheckHydrationStatus("loading");
+    studioApi.getLatestExplanationCheck(project.session_id).then((value) => {
+      if (!active) return;
+      setExplanationCheck(value);
+      setExplanationCheckHydrationStatus("available");
+    }).catch((reason: unknown) => {
+      if (!active) return;
+      setExplanationCheck(null);
+      if (reason instanceof ProductApiError && reason.status === 404) {
+        setExplanationCheckHydrationStatus("none");
+        return;
+      }
+      setExplanationCheckHydrationError(reason instanceof Error ? reason.message : "Saved explanation check could not be loaded.");
+      setExplanationCheckHydrationStatus("error");
+    });
+    return () => { active = false; };
+  }, [project?.session_id, explanationCheckHydrationReload]);
   useEffect(() => {
     let active = true;
     if (!project) return () => { active = false; };
@@ -1546,7 +1598,13 @@ export function App() {
           previousEvaluation={previousFisEvaluation}
           treeEvidence={treeEvidence}
           explanation={explanation}
+          explanationHydrationStatus={explanationHydrationStatus}
+          explanationHydrationError={explanationHydrationError}
+          onRetryExplanation={() => setExplanationHydrationReload((current) => current + 1)}
           explanationCheck={explanationCheck}
+          explanationCheckHydrationStatus={explanationCheckHydrationStatus}
+          explanationCheckHydrationError={explanationCheckHydrationError}
+          onRetryExplanationCheck={() => setExplanationCheckHydrationReload((current) => current + 1)}
           behaviorResult={behaviorResult}
           behaviorSpec={behaviorSpec}
           behaviorSpecResultStatus={behaviorSpecResultStatus}
@@ -1563,8 +1621,16 @@ export function App() {
           selectivePolicy={selectivePolicy}
           generalization={generalization}
           theme={theme}
-          onExplanation={setExplanation}
-          onExplanationCheck={setExplanationCheck}
+          onExplanation={(value) => {
+            setExplanation(value);
+            setExplanationHydrationStatus(value ? "available" : "none");
+            setExplanationHydrationError(null);
+          }}
+          onExplanationCheck={(value) => {
+            setExplanationCheck(value);
+            setExplanationCheckHydrationStatus(value ? "available" : "none");
+            setExplanationCheckHydrationError(null);
+          }}
           onBehaviorResult={(result) => {
             setBehaviorResult(result);
             setBehaviorSpecResultStatus(result ? "available" : "none");

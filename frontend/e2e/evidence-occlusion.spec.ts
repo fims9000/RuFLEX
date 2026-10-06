@@ -46,10 +46,31 @@ test("PRODUCT-05 persists post-hoc evidence separately from exact traces", async
   await expect(page.getByText("replay integrity", { exact: true })).toBeVisible();
   await expect(page.getByTestId("validator-plugin")).toContainText("native_explanation_validator v1");
 
+  let explanationReadFailed = false;
+  await page.route(`**/api/projects/*/evidence/explanations/latest`, async (route) => {
+    if (!explanationReadFailed) {
+      explanationReadFailed = true;
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Temporary explanation read failure" }) });
+      return;
+    }
+    await route.continue();
+  });
+  let checkReadFailed = false;
+  await page.route(`**/api/projects/*/evidence/explanation-checks/latest`, async (route) => {
+    if (!checkReadFailed) {
+      checkReadFailed = true;
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Temporary explanation-check read failure" }) });
+      return;
+    }
+    await route.continue();
+  });
   await page.getByRole("button", { name: "Close", exact: true }).click();
   await page.getByLabel("Project path").fill(path);
   await page.getByRole("button", { name: "Open project", exact: true }).click();
-  await page.getByRole("button", { name: /Post-hoc occlusion/ }).click();
+  await expect(page.getByTestId("explanation-hydration-error")).toContainText("Temporary explanation read failure");
+  await page.getByRole("button", { name: "Retry saved explanation", exact: true }).click();
+  await expect(page.getByTestId("explanation-check-hydration-error")).toContainText("Temporary explanation-check read failure");
+  await page.getByRole("button", { name: "Retry explanation check", exact: true }).click();
   await expect(page.getByTestId("explanation-job")).toContainText("SUCCEEDED");
   await expect(page.getByText("PASSED_AVAILABLE_CHECKS", { exact: true })).toBeVisible();
 });

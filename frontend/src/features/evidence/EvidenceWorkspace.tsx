@@ -45,7 +45,13 @@ export function EvidenceWorkspace({
   previousEvaluation,
   treeEvidence,
   explanation,
+  explanationHydrationStatus = "available",
+  explanationHydrationError = null,
+  onRetryExplanation,
   explanationCheck,
+  explanationCheckHydrationStatus = "available",
+  explanationCheckHydrationError = null,
+  onRetryExplanationCheck,
   behaviorSpec: restoredBehaviorSpec,
   lineageBehaviorComparison,
   behaviorResult: restoredBehaviorResult,
@@ -76,7 +82,13 @@ export function EvidenceWorkspace({
   previousEvaluation: FISEvaluation | null;
   treeEvidence: TreePathEvidence | null;
   explanation: ExplanationContract | null;
+  explanationHydrationStatus?: "idle" | "loading" | "none" | "available" | "error";
+  explanationHydrationError?: string | null;
+  onRetryExplanation?: () => void;
   explanationCheck: ExplanationCheck | null;
+  explanationCheckHydrationStatus?: "idle" | "loading" | "none" | "available" | "error";
+  explanationCheckHydrationError?: string | null;
+  onRetryExplanationCheck?: () => void;
   behaviorSpec: BehaviorSpec | null;
   lineageBehaviorComparison: BehaviorRevisionComparison | null;
   behaviorResult: BehaviorSpecResult | null;
@@ -383,6 +395,9 @@ export function EvidenceWorkspace({
           </div>
           <StatusBadge tone="warning">post-hoc</StatusBadge>
         </div>
+        {explanationHydrationStatus === "loading" && <p role="status">Loading saved explanation…</p>}
+        {explanationHydrationStatus === "none" && <p className="property-description" data-testid="explanation-empty">No saved explanation is available for this project.</p>}
+        {explanationHydrationStatus === "error" && <div className="error" role="alert" data-testid="explanation-hydration-error"><strong>Saved explanation could not be verified.</strong><p>{explanationHydrationError}</p>{onRetryExplanation && <Button view="outlined" onClick={onRetryExplanation}>Retry saved explanation</Button>}</div>}
         {!run ? (
           <EmptyState title="No trained model selected">Train or reopen a catalog model to generate a local attribution.</EmptyState>
         ) : (
@@ -453,7 +468,7 @@ export function EvidenceWorkspace({
             <label className="field-label">Validator<select aria-label="Explanation validator" value={validatorKey} disabled={busy || project.read_only || !runtimeValidators.length} onChange={(event) => setValidatorKey(event.target.value)}>{runtimeValidators.map((validator) => <option key={validator.identity.key} value={validator.identity.key}>{validator.identity.key} · {validator.identity.provider}</option>)}</select></label>
             <Button view="outlined" disabled={busy || project.read_only} onClick={check} data-ruflex-action="explanation.check">Run explanation checks</Button>
           </div>
-          {explanationCheck ? (
+          {explanationCheck && explanationCheck.explanation_id !== explanation.explanation_id ? <div className="error" role="alert" data-testid="explanation-check-mismatch"><strong>Saved check belongs to a different explanation.</strong><p>The persisted ExplanationCheck is not displayed as validation of the currently selected explanation.</p></div> : explanationCheck ? (
             <div className="trace-card">
               <div className="evidence-check-header"><strong>Check result</strong><StatusBadge tone={statusTone(explanationCheck.status)}>{explanationCheck.status}</StatusBadge></div>
               {validatorPlugins.filter((plugin) => explanationCheck.checks.some((item) => item.validator_key === plugin.key)).map((plugin) => <p className="property-description" data-testid="validator-plugin" key={plugin.key}>Validator · {plugin.key} v{plugin.version} · {Object.entries(plugin.capabilities).filter(([, available]) => available).map(([key]) => key.replaceAll("_", " ")).join(", ")}</p>)}
@@ -465,7 +480,7 @@ export function EvidenceWorkspace({
               ))}
               <p>{explanationCheck.scientific_note}</p>
             </div>
-          ) : <p className="property-description">Not checked yet. A generated explanation is not automatically validated.</p>}
+          ) : explanationCheckHydrationStatus === "error" ? <div className="error" role="alert" data-testid="explanation-check-hydration-error"><strong>Saved explanation check could not be verified.</strong><p>{explanationCheckHydrationError}</p>{onRetryExplanationCheck && <Button view="outlined" onClick={onRetryExplanationCheck}>Retry explanation check</Button>}</div> : explanationCheckHydrationStatus === "loading" ? <p role="status">Loading saved explanation check…</p> : <p className="property-description">Not checked yet. A generated explanation is not automatically validated.</p>}
         </section>
       )}
       <section className="evidence-section">

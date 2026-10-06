@@ -95,15 +95,16 @@
     "alpha_fis_evaluation_hydration_truthfulness",
     "alpha_behavior_spec_result_hydration_truthfulness",
     "alpha_assurance_hydration_truthfulness",
-    "alpha_lineage_exact_object_retry"
+    "alpha_lineage_exact_object_retry",
+    "alpha_explanation_evidence_hydration_truthfulness"
   ],
-  "active_capability": "alpha_lineage_exact_object_retry",
+  "active_capability": "alpha_saved_evidence_hydration_audit",
   "active_acceptance": [
-    "When an exact object selected in Project Lineage fails to load, preserve the selected object identity and show a scoped retry.",
-    "Verify the behavior with an injected transient failure on a persisted VerificationBundle and successful exact-ID retry."
+    "Continue auditing project reopen reads for persisted evidence that silently becomes null on transient failure.",
+    "Prioritize evidence that must be identity-linked before presentation; add focused exact-route retry tests as findings justify."
   ],
   "blockers": [],
-  "next_executable_work": "Continue the alpha audit at the next persisted Studio path that collapses transient evidence-read errors into absence. Keep changes bounded, preserve unrelated article changes, and do not push.",
+  "next_executable_work": "Inspect remaining latest evidence reads in App project hydration (reproducibility, exhaustive lab, expert correction and generalization). Select one coherent evidence chain and make its absence/error semantics explicit without turning every 404 into an error. Preserve unrelated article changes and do not push.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -188,6 +189,7 @@
     "alpha_fis_evaluation_hydration_truthfulness": "PASS: Latest FIS trace hydration distinguishes loading, confirmed absence, available trace and read failure. The Explorer and Model workbench show unavailable state with retry rather than silent empty evidence; retry restores exact trace status. TypeScript/Vite build and CENTROID-01 real FIS close/reopen 503-to-retry E2E passed; git diff --check passed.",
     "alpha_behavior_spec_result_hydration_truthfulness": "PASS: Project reopen now loads the latest BehaviorSpecResult with its exact referenced BehaviorSpec as one verified chain; 404 means confirmed absence only for the result endpoint, while transient errors or missing referenced specs remain explicit errors with retry. PRODUCT-06 real Studio close/reopen 503-to-retry passed; TypeScript/Vite build and git diff --check passed.",
     "alpha_assurance_hydration_truthfulness": "PASS: Saved AssuranceCase hydration now distinguishes confirmed 404 absence from transient read failure, exposes retry and preserves the persisted object only after successful load. The real product evidence route injected 503 during project reopen, showed the error, retried, and restored AssuranceCase successfully; Vite/TypeScript build and diff check passed.",
-    "alpha_lineage_exact_object_retry": "PASS: Failed exact-ID opens from Project Lineage now show an inline scoped error and retry the same persisted node. A retry clears the stale global error only when a new open attempt begins. PRODUCT-EVIDENCE injected a VerificationBundle 503, retried the exact object, verified restoration and error clearance; Vite/TypeScript build and git diff --check passed."
+    "alpha_lineage_exact_object_retry": "PASS: Failed exact-ID opens from Project Lineage now show an inline scoped error and retry the same persisted node. A retry clears the stale global error only when a new open attempt begins. PRODUCT-EVIDENCE injected a VerificationBundle 503, retried the exact object, verified restoration and error clearance; Vite/TypeScript build and git diff --check passed.",
+    "alpha_explanation_evidence_hydration_truthfulness": "PASS: Explanation and ExplanationCheck reopen now expose loading, confirmed 404 absence, available and transient-error states with retries. The UI refuses to present an ExplanationCheck as validation of a different explanation ID. PRODUCT-05 verified injected failures and recovery for both reads; Vite/TypeScript build and diff check passed."
   }
 }
