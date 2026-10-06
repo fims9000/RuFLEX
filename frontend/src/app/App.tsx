@@ -218,6 +218,7 @@ export function App() {
   const datasetFileInputRef = useRef<HTMLInputElement>(null);
   const datasetFileSelectionId = useRef(0);
   const projectSessionRef = useRef<string | null>(null);
+  const projectLifecycleRequestRef = useRef(0);
   const artifactInventoryRequestRef = useRef(0);
   projectSessionRef.current = project?.session_id ?? null;
   const refreshArtifactInventory = useCallback(async (sessionId: string) => {
@@ -1047,18 +1048,21 @@ export function App() {
     setCollapsed((current) => ({ ...current, [panel]: !current[panel] }));
   async function submit(event: FormEvent, operation: "create" | "open") {
     event.preventDefault();
+    const requestId = ++projectLifecycleRequestRef.current;
     setError(null);
     try {
       const result =
         operation === "create"
           ? await studioApi.createProject(path, name)
           : await studioApi.openProject(path, readOnly);
+      if (requestId !== projectLifecycleRequestRef.current) return;
       setProject(result);
       setDescription(result.description ?? "");
       setStatus(
         `${operation === "create" ? "Created" : "Opened"} ${result.name}`,
       );
     } catch (reason) {
+      if (requestId !== projectLifecycleRequestRef.current) return;
       setError(
         reason instanceof Error ? reason.message : "Unknown request failure",
       );
@@ -1066,12 +1070,15 @@ export function App() {
   }
   async function save() {
     if (!project) return;
+    const sessionId = project.session_id;
     setError(null);
     try {
-      const result = await studioApi.saveProject(project.session_id);
+      const result = await studioApi.saveProject(sessionId);
+      if (projectSessionRef.current !== sessionId) return;
       setProject(result);
       setStatus(`Saved ${result.name}`);
     } catch (reason) {
+      if (projectSessionRef.current !== sessionId) return;
       setError(
         reason instanceof Error ? reason.message : "Unknown request failure",
       );
@@ -1079,20 +1086,24 @@ export function App() {
   }
   async function updateDescription() {
     if (!project || project.read_only) return;
+    const sessionId = project.session_id;
     try {
       const result = await studioApi.updateProjectMetadata(
-        project.session_id,
+        sessionId,
         description,
       );
+      if (projectSessionRef.current !== sessionId) return;
       setProject(result);
       setStatus(`Updated ${result.name}`);
     } catch (reason) {
+      if (projectSessionRef.current !== sessionId) return;
       setError(
         reason instanceof Error ? reason.message : "Unknown request failure",
       );
     }
   }
   async function close() {
+    const requestId = ++projectLifecycleRequestRef.current;
     datasetFileSelectionId.current += 1;
     if (project) {
       try {
@@ -1101,6 +1112,7 @@ export function App() {
         /* cleanup is best effort for a local session */
       }
     }
+    if (requestId !== projectLifecycleRequestRef.current) return;
     setProject(null);
     setDatasetState(null);
     setPendingDatasetFile(null);
