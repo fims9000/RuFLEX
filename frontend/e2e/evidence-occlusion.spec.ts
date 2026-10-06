@@ -89,10 +89,21 @@ test("PRODUCT-06 persists revision-bound BehaviorSpec evidence through reopen", 
   await expect(page.getByRole("button", { name: "Compare revisions", exact: true })).toBeEnabled();
   await page.getByRole("button", { name: "Compare revisions", exact: true }).click();
   await expect(page.getByText("PASS TO PASS", { exact: true })).toBeVisible();
+  let latestBehaviorReadFailed = false;
+  await page.route(`**/api/projects/*/evidence/behavior-specs/latest`, async (route) => {
+    if (!latestBehaviorReadFailed) {
+      latestBehaviorReadFailed = true;
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Temporary BehaviorSpec read failure" }) });
+      return;
+    }
+    await route.continue();
+  });
   await page.getByRole("button", { name: "Close", exact: true }).click();
   await page.getByLabel("Project path").fill(path);
   await page.getByRole("button", { name: "Open project", exact: true }).click();
   await page.getByRole("button", { name: "E", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("Temporary BehaviorSpec read failure");
+  await page.getByRole("button", { name: "Retry saved BehaviorSpec", exact: true }).click();
   await expect(page.getByTestId("behavior-result")).toContainText("expected nondecreasing", { timeout: 15_000 });
   await page.reload();
   await page.getByLabel("Project path").fill(path);

@@ -153,6 +153,9 @@ export function App() {
   const [explanationCheck, setExplanationCheck] = useState<ExplanationCheck | null>(null);
   const [behaviorResult, setBehaviorResult] = useState<BehaviorSpecResult | null>(null);
   const [behaviorSpec, setBehaviorSpec] = useState<BehaviorSpec | null>(null);
+  const [behaviorSpecResultStatus, setBehaviorSpecResultStatus] = useState<"idle" | "loading" | "none" | "available" | "error">("idle");
+  const [behaviorSpecResultError, setBehaviorSpecResultError] = useState<string | null>(null);
+  const [behaviorSpecResultReload, setBehaviorSpecResultReload] = useState(0);
   const [lineageBehaviorComparison, setLineageBehaviorComparison] = useState<BehaviorRevisionComparison | null>(null);
   const [selectivePolicy, setSelectivePolicy] = useState<SelectivePredictionPolicy | null>(null);
   const [reproducibility, setReproducibility] = useState<ExplanationReproducibilityAnalysis | null>(null);
@@ -230,6 +233,8 @@ export function App() {
       setExplanationCheck(null);
       setBehaviorSpec(null);
       setBehaviorResult(null);
+      setBehaviorSpecResultStatus("idle");
+      setBehaviorSpecResultError(null);
       setLineageBehaviorComparison(null);
       setSelectivePolicy(null);
       setReproducibility(null);
@@ -302,11 +307,6 @@ export function App() {
         setOverviewContextStatus("loaded");
       }
     });
-    studioApi.getLatestBehaviorSpecResult(project.session_id).then(async (result) => {
-      setBehaviorResult(result);
-      const specs = await studioApi.listBehaviorSpecs(project.session_id);
-      setBehaviorSpec(specs.find((candidate) => candidate.spec_id === result.spec_id) ?? null);
-    }).catch(() => { setBehaviorResult(null); setBehaviorSpec(null); });
     studioApi.listStudyStabilityAnalyses(project.session_id).then((items) => setStabilityAnalysis(items.at(-1) ?? null)).catch(() => setStabilityAnalysis(null));
     studioApi
       .getLatestAnalysisComparison(project.session_id)
@@ -316,7 +316,6 @@ export function App() {
     studioApi.getLatestTreePath(project.session_id).then(setTreeEvidence).catch(() => setTreeEvidence(null));
     studioApi.getLatestExplanation(project.session_id).then(setExplanation).catch(() => setExplanation(null));
     studioApi.getLatestExplanationCheck(project.session_id).then(setExplanationCheck).catch(() => setExplanationCheck(null));
-    studioApi.getLatestBehaviorResult(project.session_id).then(setBehaviorResult).catch(() => setBehaviorResult(null));
     studioApi.getLatestExplanationReproducibility(project.session_id).then(setReproducibility).catch(() => setReproducibility(null));
     studioApi.getLatestExhaustiveLab(project.session_id).then(setExhaustive).catch(() => setExhaustive(null));
     studioApi.getLatestAssuranceCase(project.session_id).then(setAssurance).catch(() => setAssurance(null));
@@ -324,6 +323,36 @@ export function App() {
     studioApi.getActiveGeneralization(project.session_id).then(setGeneralization).catch(() => setGeneralization(null));
     return () => { active = false; };
   }, [project?.session_id, overviewContextReload]);
+  useEffect(() => {
+    let active = true;
+    if (!project) return () => { active = false; };
+    setBehaviorResult(null);
+    setBehaviorSpec(null);
+    setBehaviorSpecResultError(null);
+    setBehaviorSpecResultStatus("loading");
+    let resultLoaded = false;
+    studioApi.getLatestBehaviorSpecResult(project.session_id).then(async (result) => {
+      resultLoaded = true;
+      const specs = await studioApi.listBehaviorSpecs(project.session_id);
+      const spec = specs.find((candidate) => candidate.spec_id === result.spec_id);
+      if (!spec) throw new Error(`Saved BehaviorSpec ${result.spec_id} referenced by result ${result.result_id} is missing.`);
+      if (!active) return;
+      setBehaviorResult(result);
+      setBehaviorSpec(spec);
+      setBehaviorSpecResultStatus("available");
+    }).catch((reason: unknown) => {
+      if (!active) return;
+      setBehaviorResult(null);
+      setBehaviorSpec(null);
+      if (!resultLoaded && reason instanceof ProductApiError && reason.status === 404) {
+        setBehaviorSpecResultStatus("none");
+        return;
+      }
+      setBehaviorSpecResultError(reason instanceof Error ? reason.message : "Saved BehaviorSpec evidence could not be loaded.");
+      setBehaviorSpecResultStatus("error");
+    });
+    return () => { active = false; };
+  }, [project?.session_id, behaviorSpecResultReload]);
   useEffect(() => {
     let active = true;
     if (!project) return () => { active = false; };
@@ -1483,6 +1512,9 @@ export function App() {
           explanationCheck={explanationCheck}
           behaviorResult={behaviorResult}
           behaviorSpec={behaviorSpec}
+          behaviorSpecResultStatus={behaviorSpecResultStatus}
+          behaviorSpecResultError={behaviorSpecResultError}
+          onRetryBehaviorSpecResult={() => setBehaviorSpecResultReload((current) => current + 1)}
           lineageBehaviorComparison={lineageBehaviorComparison}
           reproducibility={reproducibility}
           exhaustive={exhaustive}
@@ -1493,7 +1525,11 @@ export function App() {
           theme={theme}
           onExplanation={setExplanation}
           onExplanationCheck={setExplanationCheck}
-          onBehaviorResult={setBehaviorResult}
+          onBehaviorResult={(result) => {
+            setBehaviorResult(result);
+            setBehaviorSpecResultStatus(result ? "available" : "none");
+            setBehaviorSpecResultError(null);
+          }}
           onReproducibility={setReproducibility}
           onExhaustive={setExhaustive}
           onAssurance={setAssurance}

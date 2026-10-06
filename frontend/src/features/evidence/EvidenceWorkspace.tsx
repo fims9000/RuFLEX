@@ -59,6 +59,9 @@ export function EvidenceWorkspace({
   onExplanation,
   onExplanationCheck,
   onBehaviorResult,
+  behaviorSpecResultStatus = "available",
+  behaviorSpecResultError = null,
+  onRetryBehaviorSpecResult,
   onReproducibility,
   onExhaustive,
   onAssurance,
@@ -84,6 +87,9 @@ export function EvidenceWorkspace({
   onExplanation: (value: ExplanationContract | null) => void;
   onExplanationCheck: (value: ExplanationCheck | null) => void;
   onBehaviorResult: (value: BehaviorSpecResult | null) => void;
+  behaviorSpecResultStatus?: "idle" | "loading" | "none" | "available" | "error";
+  behaviorSpecResultError?: string | null;
+  onRetryBehaviorSpecResult?: () => void;
   onReproducibility: (value: ExplanationReproducibilityAnalysis | null) => void;
   onExhaustive: (value: ExhaustiveLabResult | null) => void;
   onAssurance: (value: AssuranceCase | null) => void;
@@ -458,6 +464,9 @@ export function EvidenceWorkspace({
       )}
       <section className="evidence-section">
         <div className="feature-toolbar compact-toolbar"><div><span className="eyebrow">BEHAVIOR SPECS</span><h3>Revision-bound engineering checks</h3><p>Each execution binds to the persisted model artifact; PASS/FAIL is evidence, not a trust score.</p></div></div>
+        {behaviorSpecResultStatus === "loading" && <p role="status">Loading saved BehaviorSpec result and its exact specification…</p>}
+        {behaviorSpecResultStatus === "none" && <p className="property-description" data-testid="behavior-result-empty">No saved BehaviorSpec result is available for this project.</p>}
+        {behaviorSpecResultStatus === "error" && <div className="error" role="alert"><strong>Saved BehaviorSpec evidence could not be verified.</strong><p>{behaviorSpecResultError}</p>{onRetryBehaviorSpecResult && <Button view="outlined" onClick={onRetryBehaviorSpecResult}>Retry saved BehaviorSpec</Button>}</div>}
         {!run ? <EmptyState title="No trained model selected">Select a persisted training run before defining behavior evidence.</EmptyState> : <>
           <div className="contract-grid"><label className="field-label">Name<TextInput aria-label="Behavior spec name" value={behaviorName} onUpdate={setBehaviorName} /></label><label className="field-label">Type<select aria-label="Behavior spec type" value={behaviorKind} onChange={(event) => setBehaviorKind(event.target.value as BehaviorSpec["kind"])}><option value="output_range">Output range</option><option value="monotonic_pair">Monotonic pair</option><option value="invariance_pair">Invariance pair</option><option value="symmetry_pair">Symmetry pair</option><option value="bounded_perturbation">Bounded perturbation</option><option value="categorical_invariance">Categorical invariance</option><option value="forbidden_region">Forbidden output region</option><option value="required_order">Required order</option><option value="domain_constraint">Domain constraint</option><option value="regression_case">Expert regression case</option><option value="batch_regression_suite">Two-case regression suite</option></select></label>{(["monotonic_pair", "required_order"] as string[]).includes(behaviorKind) && <label className="field-label">Direction<select aria-label="Monotonic direction" value={direction} onChange={(event) => setDirection(event.target.value as typeof direction)}><option value="nondecreasing">Nondecreasing</option><option value="nonincreasing">Nonincreasing</option></select></label>}{behaviorKind === "bounded_perturbation" && <label className="field-label">Maximum delta<input aria-label="Behavior maximum delta" type="number" value={maximumDelta} onChange={(event) => setMaximumDelta(event.target.value)} /></label>}{!(["monotonic_pair", "invariance_pair", "symmetry_pair", "bounded_perturbation", "categorical_invariance", "required_order"] as string[]).includes(behaviorKind) && <><label className="field-label">Minimum<input aria-label="Behavior minimum" type="number" value={minimum} onChange={(event) => setMinimum(event.target.value)} /></label><label className="field-label">Maximum<input aria-label="Behavior maximum" type="number" value={maximum} onChange={(event) => setMaximum(event.target.value)} /></label></>}</div>
           {(["monotonic_pair", "invariance_pair", "symmetry_pair", "bounded_perturbation", "categorical_invariance", "required_order", "batch_regression_suite"] as string[]).includes(behaviorKind) && <><p className="field-help">Define both cases explicitly. RuFLEX does not infer a pairwise requirement from a single sample.</p><div className="evidence-sample-grid">{run.feature_columns.map((feature) => <label className="field-label" key={`comparison-${feature}`}>Comparison {feature}<input aria-label={`Behavior comparison ${feature}`} type="number" value={comparisonSample[feature] ?? ""} onChange={(event) => setComparisonSample((current) => ({ ...current, [feature]: event.target.value }))} /></label>)}</div></>}
