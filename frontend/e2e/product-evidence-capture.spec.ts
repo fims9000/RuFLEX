@@ -274,6 +274,24 @@ test("PRODUCT-EVIDENCE captures the frozen V1 Studio route from persisted object
     }
     await route.continue();
   });
+  let behaviorResultsReadFailed = false;
+  await page.route(`**/api/projects/*/evidence/behavior-specs/results`, async (route) => {
+    if (!behaviorResultsReadFailed) {
+      behaviorResultsReadFailed = true;
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Temporary BehaviorSpec results read failure" }) });
+      return;
+    }
+    await route.continue();
+  });
+  let persistedExplanationsReadFailed = false;
+  await page.route(`**/api/projects/*/evidence/explanations`, async (route) => {
+    if (!persistedExplanationsReadFailed) {
+      persistedExplanationsReadFailed = true;
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Temporary saved explanations read failure" }) });
+      return;
+    }
+    await route.continue();
+  });
   let comparisonReadFailed = false;
   await page.route(`**/api/projects/*/analyses/comparisons/latest`, async (route) => {
     if (!comparisonReadFailed) {
@@ -323,6 +341,15 @@ test("PRODUCT-EVIDENCE captures the frozen V1 Studio route from persisted object
   await expect(page.getByTestId("explanation-job-hydration-error")).toHaveCount(0);
   await expect(page.getByTestId("explanation-job")).toBeVisible();
   await expect(page.getByRole("button", { name: "Generate explanation", exact: true })).toBeEnabled();
+  await expect(page.getByTestId("behavior-results-hydration-error")).toContainText("Temporary BehaviorSpec results read failure");
+  await expect(page.getByRole("button", { name: "Compare revisions", exact: true })).toBeDisabled();
+  await expect(page.getByTestId("persisted-explanations-hydration-error")).toContainText("Temporary saved explanations read failure");
+  await page.getByRole("button", { name: "Retry BehaviorSpec results", exact: true }).click();
+  await expect(page.getByTestId("behavior-results-hydration-error")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Compare revisions", exact: true })).toBeEnabled();
+  await page.getByRole("button", { name: "Retry saved explanations", exact: true }).click();
+  await expect(page.getByTestId("persisted-explanations-hydration-error")).toHaveCount(0);
+  expect(await page.locator('.comparison-choice input[type="checkbox"]').count()).toBeGreaterThanOrEqual(4);
   await page.getByRole("button", { name: "A", exact: true }).click();
   await expect(page.getByTestId("comparison-hydration-error")).toContainText("Temporary validation comparison read failure");
   await expect(page.getByRole("button", { name: "Compare study seeds", exact: true })).toBeDisabled();
