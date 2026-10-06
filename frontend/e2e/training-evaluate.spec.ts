@@ -172,8 +172,21 @@ test("PRODUCT-02b retries a persisted decision-tree capability check without cla
     }
     return route.continue();
   });
+  let artifactRefreshReads = 0;
+  await page.route("**/api/projects/*/artifacts", async (route) => {
+    artifactRefreshReads += 1;
+    if (artifactRefreshReads === 1) {
+      return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "post-training artifact inventory temporarily unavailable" }) });
+    }
+    return route.continue();
+  });
   await page.getByRole("button", { name: "Run real training", exact: true }).click();
   await expect(page.locator(".run-provenance")).toBeVisible({ timeout: 30_000 });
+  const artifactRefreshError = page.getByTestId("artifact-hydration-error");
+  await expect(artifactRefreshError).toContainText("post-training artifact inventory temporarily unavailable");
+  await artifactRefreshError.getByRole("button", { name: "Retry artifact list" }).click();
+  await expect(artifactRefreshError).toHaveCount(0);
+  expect(artifactRefreshReads).toBe(2);
   const error = page.getByRole("alert").filter({ hasText: "Could not verify saved run capabilities" });
   await expect(error).toContainText("run capability store temporarily unavailable");
   await expect(page.getByRole("button", { name: "Trace exact tree path", exact: true })).toHaveCount(0);

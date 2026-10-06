@@ -216,6 +216,24 @@ export function App() {
   const [selectedExpertCorrectionId, setSelectedExpertCorrectionId] = useState<string | null>(null);
   const datasetFileInputRef = useRef<HTMLInputElement>(null);
   const datasetFileSelectionId = useRef(0);
+  const projectSessionRef = useRef<string | null>(null);
+  projectSessionRef.current = project?.session_id ?? null;
+  const refreshArtifactInventory = useCallback(async (sessionId: string) => {
+    if (projectSessionRef.current !== sessionId) return;
+    setArtifactsHydrationStatus("loading");
+    setArtifactsHydrationError(null);
+    try {
+      const items = await studioApi.listArtifacts(sessionId);
+      if (projectSessionRef.current !== sessionId) return;
+      setArtifacts(items);
+      setArtifactsHydrationStatus("loaded");
+    } catch (reason) {
+      if (projectSessionRef.current !== sessionId) return;
+      setArtifacts([]);
+      setArtifactsHydrationError(reason instanceof Error ? reason.message : "Project artifacts could not be verified.");
+      setArtifactsHydrationStatus("error");
+    }
+  }, []);
   useEffect(() => {
     studioApi
       .health()
@@ -1099,7 +1117,7 @@ export function App() {
       setDatasetState(persisted);
       setProfile(persisted.profile);
       setDatasetStateStatus("available");
-      setArtifacts(await studioApi.listArtifacts(project.session_id));
+      await refreshArtifactInventory(project.session_id);
       setStatus("Dataset bytes, profile, contract and audit saved");
     } catch (reason) {
       setDatasetStateStatus("error");
@@ -1171,7 +1189,7 @@ export function App() {
       setDatasetState(persisted);
       setDatasetStateStatus("available");
       setProfile(persisted.profile);
-      setArtifacts(await studioApi.listArtifacts(project.session_id));
+      await refreshArtifactInventory(project.session_id);
       setStatus(`${pendingDatasetFile.name} saved as a verified dataset artifact`);
       setPendingDatasetFile(null);
       setPendingDatasetProfile(null);
@@ -1795,10 +1813,7 @@ export function App() {
             setFisEvaluation(evaluation);
             setFisEvaluationStatus("available");
             setFisEvaluationError(null);
-            studioApi
-              .listArtifacts(project.session_id)
-              .then(setArtifacts)
-              .catch(() => undefined);
+            void refreshArtifactInventory(project.session_id);
           }}
           onOpenTrace={() => setActive("EVIDENCE")}
         />
@@ -1819,10 +1834,7 @@ export function App() {
             setTrainingRun(run);
             setTrainingRunsReload((current) => current + 1);
             setStatus(`Training run ${run.run_id.slice(0, 8)} completed`);
-            studioApi
-              .listArtifacts(project.session_id)
-              .then(setArtifacts)
-              .catch(() => undefined);
+            void refreshArtifactInventory(project.session_id);
           }}
           onStudy={(study) => { setTrainingStudy(study); setTrainingStudyStatus("available"); setTrainingStudyError(null); }}
           onStabilityAnalysisChange={handleStabilityAnalysisChange}
