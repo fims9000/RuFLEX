@@ -603,6 +603,7 @@ export function App() {
   async function openLineageNode(node: LineageNode) {
     if (!project) return;
     const objectId = node.object_id;
+    setError(null);
     setLineageObjectError(null);
     setLineageRetryNode(null);
     try {

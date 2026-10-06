@@ -226,6 +226,7 @@ test("PRODUCT-EVIDENCE captures the frozen V1 Studio route from persisted object
   await expect(page.getByTestId("lineage-object-load-error")).toContainText("Temporary VerificationBundle read failure");
   await page.getByRole("button", { name: "Retry selected object", exact: true }).click();
   await expect(page.getByTestId("verification-bundle-record")).toBeVisible();
+  await expect(page.getByText("Temporary VerificationBundle read failure", { exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "E", exact: true }).click();
   await expect(page.getByText("Temporary AssuranceCase read failure", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Retry AssuranceCase", exact: true }).click();
