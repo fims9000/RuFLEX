@@ -9,6 +9,15 @@ test("PRODUCT-09 persists exact finite Decision Tree Exhaustive Lab evidence", a
   await page.getByRole("button",{name:/Data.*No dataset/}).click(); await page.getByLabel("CSV data").fill(`${rows.join("\n")}\n`); await page.getByRole("button",{name:"Inspect dataset",exact:true}).click(); await page.getByRole("button",{name:"Confirm dataset contract",exact:true}).click();
   await page.getByRole("button",{name:"S",exact:true}).click(); await page.getByLabel("Training model").selectOption("decision_tree"); await page.getByRole("button",{name:"Run real training",exact:true}).click(); await expect(page.locator(".run-provenance")).toContainText("model artifact persisted",{timeout:30000});
   await page.getByRole("button",{name:"E",exact:true}).click(); await page.getByRole("button",{name:"Enumerate exact Decision Tree paths",exact:true}).click(); await expect(page.getByTestId("exhaustive-result")).toContainText("EXACT_FINITE_STRUCTURE",{timeout:15000}); await expect(page.getByText(/does not claim exhaustive explanation/)).toBeVisible();
-  await page.getByRole("button",{name:"Close",exact:true}).click(); await page.getByLabel("Project path").fill(path); await page.getByRole("button",{name:"Open project",exact:true}).click(); await page.getByRole("button",{name:"E",exact:true}).click(); await expect(page.getByTestId("exhaustive-result")).toContainText("EXACT_FINITE_STRUCTURE",{timeout:15000});
+  let exhaustiveReadFailed = false;
+  await page.route(`**/api/projects/*/evidence/exhaustive-lab/latest`, async (route) => {
+    if (!exhaustiveReadFailed) {
+      exhaustiveReadFailed = true;
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Temporary exhaustive evidence read failure" }) });
+      return;
+    }
+    await route.continue();
+  });
+  await page.getByRole("button",{name:"Close",exact:true}).click(); await page.getByLabel("Project path").fill(path); await page.getByRole("button",{name:"Open project",exact:true}).click(); await page.getByRole("button",{name:"E",exact:true}).click(); await expect(page.getByTestId("exhaustive-hydration-error")).toContainText("Temporary exhaustive evidence read failure"); await page.getByRole("button",{name:"Retry exhaustive evidence",exact:true}).click(); await expect(page.getByTestId("exhaustive-result")).toContainText("EXACT_FINITE_STRUCTURE",{timeout:15000});
   await page.getByRole("button",{name:"P",exact:true}).click(); const resultNode=page.locator(".lineage-exhaustive_lab").first(); await expect(resultNode).toBeVisible(); await resultNode.click({force:true}); await expect(page.getByText("Opened lineage object: EXACT FINITE STRUCTURE",{exact:true})).toBeVisible(); await expect(page.getByTestId("exhaustive-result")).toContainText("EXACT_FINITE_STRUCTURE");
 });

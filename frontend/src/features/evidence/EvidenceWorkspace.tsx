@@ -60,6 +60,9 @@ export function EvidenceWorkspace({
   reproducibilityHydrationError = null,
   onRetryReproducibility,
   exhaustive: restoredExhaustive,
+  exhaustiveHydrationStatus = "available",
+  exhaustiveHydrationError = null,
+  onRetryExhaustive,
   assurance: restoredAssurance,
   verificationBundleRecord: restoredVerificationBundleRecord,
   selectivePolicy,
@@ -100,6 +103,9 @@ export function EvidenceWorkspace({
   reproducibilityHydrationError?: string | null;
   onRetryReproducibility?: () => void;
   exhaustive: ExhaustiveLabResult | null;
+  exhaustiveHydrationStatus?: "idle" | "loading" | "none" | "available" | "error";
+  exhaustiveHydrationError?: string | null;
+  onRetryExhaustive?: () => void;
   assurance: AssuranceCase | null;
   verificationBundleRecord: VerificationBundle | null;
   selectivePolicy: import("../../api").SelectivePredictionPolicy | null;
@@ -509,6 +515,9 @@ export function EvidenceWorkspace({
       <section className="evidence-section"><div className="feature-toolbar compact-toolbar"><div><span className="eyebrow">VERIFICATION BUNDLE</span><h3>Inspection-first evidence export</h3><p>Exports declarative evidence and checksums; it excludes executable code, pickle/joblib, raw datasets, credentials, caches and node_modules.</p></div><Button view="outlined" disabled={busy || project.read_only || !assurance} onClick={exportBundle} data-ruflex-action="bundle.export">Export and validate bundle</Button></div>{verificationBundleRecord && <div className="trace-card" data-testid="verification-bundle-record"><div className="evidence-check-header"><strong>Persisted VerificationBundle</strong><StatusBadge tone="info">inspection first</StatusBadge></div><p>{verificationBundleRecord.entry_count} declarative entries · SHA-256 {verificationBundleRecord.sha256}</p><small>Manifest {verificationBundleRecord.manifest_sha256} · linked AssuranceCase {verificationBundleRecord.assurance_id}</small></div>}{bundle && <div className="trace-card" data-testid="verification-bundle"><p>{bundle.entry_count} inspection entries · SHA-256 {bundle.sha256}</p><small>{bundle.path}</small>{bundleValidation && <><div className="evidence-check-header"><strong>Portable validation</strong><StatusBadge tone={bundleValidation.status === "PASS" ? "success" : "danger"}>{bundleValidation.status}</StatusBadge></div><p>{bundleValidation.status === "PASS" ? `${bundleValidation.checked_entries} checksummed entries validated after export.` : bundleValidation.errors.join(" ")}</p>{bundleValidation.warnings.map((warning) => <p className="property-description" key={warning}>{warning}</p>)}</>}</div>}</section>
       <section className="evidence-section">
         <div className="feature-toolbar compact-toolbar"><div><span className="eyebrow">EXHAUSTIVE LAB</span><h3>Finite structure and declared discrete-grid evidence</h3><p>Exactness applies only to the finite tree structure or the explicitly declared FIS grid—not to arbitrary continuous models.</p></div></div>
+        {exhaustiveHydrationStatus === "loading" && <p role="status">Loading saved exhaustive evidence…</p>}
+        {exhaustiveHydrationStatus === "none" && <p className="property-description" data-testid="exhaustive-empty">No saved exhaustive evidence is available.</p>}
+        {exhaustiveHydrationStatus === "error" && <div className="error" role="alert" data-testid="exhaustive-hydration-error"><strong>Saved exhaustive evidence could not be verified.</strong><p>{exhaustiveHydrationError}</p>{onRetryExhaustive && <Button view="outlined" onClick={onRetryExhaustive}>Retry exhaustive evidence</Button>}</div>}
         <div className="toolbar-actions">{run?.model_kind === "decision_tree" && <Button view="action" disabled={busy || project.read_only} onClick={() => runExhaustive("decision_tree_structure")} data-ruflex-action="exhaustive.tree.run">Enumerate exact Decision Tree paths</Button>}{evaluation && <><label className="field-label">Grid points/input<input aria-label="Exhaustive grid points" type="number" min="2" max="9" value={gridPoints} onChange={(event) => setGridPoints(event.target.value)} /></label><Button view="outlined" disabled={busy || project.read_only} onClick={() => runExhaustive("fis_discrete_grid")} data-ruflex-action="exhaustive.fis.run">Evaluate declared FIS grid</Button></>}</div>
         {exhaustive && <div className="trace-card" data-testid="exhaustive-result"><StatusBadge tone="info">{exhaustive.exactness_label}</StatusBadge><p>{exhaustive.scientific_note}</p><p>{exhaustive.state_count} enumerated states (preflight estimate {exhaustive.state_estimate}, limit {exhaustive.max_states}) · uncovered {exhaustive.uncovered_states.length} · dead rules on declared grid {exhaustive.dead_rules.length} · overlap states {exhaustive.conflict_states.length}</p>{exhaustive.kind === "decision_tree_structure" && <div className="data-table-wrap"><table className="data-table"><thead><tr><th>leaf</th><th>constraints</th></tr></thead><tbody>{exhaustive.paths.slice(0, 20).map((item, index) => <tr key={index}><td>{String(item.leaf_id)}</td><td>{Array.isArray(item.constraints) ? item.constraints.join("; ") : "—"}</td></tr>)}</tbody></table></div>}{exhaustive.uncovered_states.length > 0 && <p className="property-description">Uncovered/undefined declared states are retained as evidence; they are not silently filled.</p>}</div>}
       </section>

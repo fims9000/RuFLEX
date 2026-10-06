@@ -169,6 +169,9 @@ export function App() {
   const [reproducibilityHydrationError, setReproducibilityHydrationError] = useState<string | null>(null);
   const [reproducibilityHydrationReload, setReproducibilityHydrationReload] = useState(0);
   const [exhaustive, setExhaustive] = useState<ExhaustiveLabResult | null>(null);
+  const [exhaustiveHydrationStatus, setExhaustiveHydrationStatus] = useState<"idle" | "loading" | "none" | "available" | "error">("idle");
+  const [exhaustiveHydrationError, setExhaustiveHydrationError] = useState<string | null>(null);
+  const [exhaustiveHydrationReload, setExhaustiveHydrationReload] = useState(0);
   const [assurance, setAssurance] = useState<AssuranceCase | null>(null);
   const [assuranceHydrationStatus, setAssuranceHydrationStatus] = useState<"idle" | "loading" | "none" | "available" | "error">("idle");
   const [assuranceHydrationError, setAssuranceHydrationError] = useState<string | null>(null);
@@ -259,6 +262,8 @@ export function App() {
       setReproducibilityHydrationStatus("idle");
       setReproducibilityHydrationError(null);
       setExhaustive(null);
+      setExhaustiveHydrationStatus("idle");
+      setExhaustiveHydrationError(null);
       setAssurance(null);
       setAssuranceHydrationStatus("idle");
       setAssuranceHydrationError(null);
@@ -338,11 +343,32 @@ export function App() {
       .catch(() => setAnalysisComparison(null));
     studioApi.getLatestSliceAnalysis(project.session_id).then(setSliceAnalysis).catch(() => setSliceAnalysis(null));
     studioApi.getLatestTreePath(project.session_id).then(setTreeEvidence).catch(() => setTreeEvidence(null));
-    studioApi.getLatestExhaustiveLab(project.session_id).then(setExhaustive).catch(() => setExhaustive(null));
     studioApi.getLatestExpertCorrection(project.session_id).then(setExpertCorrection).catch(() => setExpertCorrection(null));
     studioApi.getActiveGeneralization(project.session_id).then(setGeneralization).catch(() => setGeneralization(null));
     return () => { active = false; };
   }, [project?.session_id, overviewContextReload]);
+  useEffect(() => {
+    let active = true;
+    if (!project) return () => { active = false; };
+    setExhaustive(null);
+    setExhaustiveHydrationError(null);
+    setExhaustiveHydrationStatus("loading");
+    studioApi.getLatestExhaustiveLab(project.session_id).then((value) => {
+      if (!active) return;
+      setExhaustive(value);
+      setExhaustiveHydrationStatus("available");
+    }).catch((reason: unknown) => {
+      if (!active) return;
+      setExhaustive(null);
+      if (reason instanceof ProductApiError && reason.status === 404) {
+        setExhaustiveHydrationStatus("none");
+        return;
+      }
+      setExhaustiveHydrationError(reason instanceof Error ? reason.message : "Saved exhaustive evidence could not be loaded.");
+      setExhaustiveHydrationStatus("error");
+    });
+    return () => { active = false; };
+  }, [project?.session_id, exhaustiveHydrationReload]);
   useEffect(() => {
     let active = true;
     if (!project) return () => { active = false; };
@@ -1642,6 +1668,9 @@ export function App() {
           reproducibilityHydrationError={reproducibilityHydrationError}
           onRetryReproducibility={() => setReproducibilityHydrationReload((current) => current + 1)}
           exhaustive={exhaustive}
+          exhaustiveHydrationStatus={exhaustiveHydrationStatus}
+          exhaustiveHydrationError={exhaustiveHydrationError}
+          onRetryExhaustive={() => setExhaustiveHydrationReload((current) => current + 1)}
           assurance={assurance}
           verificationBundleRecord={verificationBundleRecord}
           assuranceHydrationStatus={assuranceHydrationStatus}
@@ -1670,7 +1699,11 @@ export function App() {
             setReproducibilityHydrationStatus(value ? "available" : "none");
             setReproducibilityHydrationError(null);
           }}
-          onExhaustive={setExhaustive}
+          onExhaustive={(value) => {
+            setExhaustive(value);
+            setExhaustiveHydrationStatus(value ? "available" : "none");
+            setExhaustiveHydrationError(null);
+          }}
           onAssurance={(value) => {
             setAssurance(value);
             setAssuranceHydrationStatus(value ? "available" : "none");
