@@ -9,6 +9,7 @@ import {
   FuzzyRule,
   FuzzyVariable,
   MembershipFunction,
+  ProductApiError,
   ProjectSummary,
   ResponseSurface,
   studioApi,
@@ -359,6 +360,9 @@ export function BuildWorkspace({
   >([]);
   const [expertLockedRules, setExpertLockedRules] = useState<string[]>([]);
   const [expertCorrection, setExpertCorrection] = useState<ExpertCorrectionRevision | null>(null);
+  const [expertCorrectionLoadStatus, setExpertCorrectionLoadStatus] = useState<"idle" | "loading" | "none" | "available" | "error">("idle");
+  const [expertCorrectionLoadError, setExpertCorrectionLoadError] = useState<string | null>(null);
+  const [expertCorrectionReload, setExpertCorrectionReload] = useState(0);
   const [linkSourceExplanation, setLinkSourceExplanation] = useState(false);
   const [canonicalYaml, setCanonicalYaml] = useState<string | null>(null);
   const [historyBaseHash, setHistoryBaseHash] = useState<string | null>(null);
@@ -367,6 +371,7 @@ export function BuildWorkspace({
     setLinkSourceExplanation(false);
   }, [sourceExplanationId]);
   useEffect(() => {
+    let active = true;
     setWorking(fis);
     setEditorHistory(fis ? [cloneFis(fis)] : []);
     setHistoryIndex(0);
@@ -376,30 +381,46 @@ export function BuildWorkspace({
         .then(setRevisions)
         .catch(() => setRevisions([]));
       if (fis.system_type === "sugeno") {
+        setExpertCorrection(null);
+        setExpertCorrectionLoadError(null);
+        setExpertCorrectionLoadStatus("loading");
         const request = selectedExpertCorrectionId
           ? studioApi.getExpertCorrection(project.session_id, selectedExpertCorrectionId)
           : studioApi.getLatestExpertCorrection(project.session_id);
         request
           .then((correction) => {
+            if (!active) return;
             setExpertCorrection(correction);
+            setExpertCorrectionLoadStatus("available");
             onExpertCorrection?.(correction);
-          })
-          .catch(() => {
+          }).catch((reason: unknown) => {
+            if (!active) return;
             setExpertCorrection(null);
             onExpertCorrection?.(null);
+            if (reason instanceof ProductApiError && reason.status === 404 && !selectedExpertCorrectionId) {
+              setExpertCorrectionLoadStatus("none");
+              return;
+            }
+            setExpertCorrectionLoadError(reason instanceof Error ? reason.message : "Saved expert correction could not be loaded.");
+            setExpertCorrectionLoadStatus("error");
           });
       } else {
         setExpertCorrection(null);
+        setExpertCorrectionLoadError(null);
+        setExpertCorrectionLoadStatus("none");
         onExpertCorrection?.(null);
       }
       setExpertLockedRules((current) => current.filter((id) => fis.rules.some((rule) => rule.rule_id === id)));
     } else {
       setRevisions([]);
       setExpertCorrection(null);
+      setExpertCorrectionLoadError(null);
+      setExpertCorrectionLoadStatus("idle");
       onExpertCorrection?.(null);
       setExpertLockedRules([]);
     }
-  }, [fis, selectedExpertCorrectionId]);
+    return () => { active = false; };
+  }, [fis, selectedExpertCorrectionId, expertCorrectionReload]);
   useEffect(() => {
     if (!fis) {
       setRunInputs({});
@@ -871,6 +892,8 @@ export function BuildWorkspace({
       setEditorHistory((history) => [...history.slice(0, historyIndex + 1), cloneFis(result.fis)]);
       setHistoryIndex((index) => index + 1);
       setExpertCorrection(result.correction);
+      setExpertCorrectionLoadStatus("available");
+      setExpertCorrectionLoadError(null);
       onExpertCorrection?.(result.correction);
       setRevisions(await studioApi.getFisRevisions(project.session_id));
       onFisChange(result.fis);
@@ -2104,6 +2127,9 @@ export function BuildWorkspace({
           </div>
           <div className="expert-correction-summary">
             <span>{expertLockedRules.length} consequent(s) preserved by expert lock.</span>
+            {expertCorrectionLoadStatus === "loading" && <span role="status">Loading saved expert correction…</span>}
+            {expertCorrectionLoadStatus === "none" && <span data-testid="expert-correction-empty">No saved expert correction is available for this FIS revision.</span>}
+            {expertCorrectionLoadStatus === "error" && <div className="error" role="alert" data-testid="expert-correction-load-error"><strong>Saved expert correction could not be verified.</strong><p>{expertCorrectionLoadError}</p><Button view="outlined" onClick={() => setExpertCorrectionReload((current) => current + 1)}>Retry expert correction</Button></div>}
             {sourceExplanationId && (
               <label className="comparison-choice">
                 <input

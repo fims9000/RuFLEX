@@ -155,7 +155,7 @@ test("PRODUCT-EVIDENCE captures the frozen V1 Studio route from persisted object
   await expect(page.getByText("EXPERT CORRECTION", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Refit unlocked consequents on TRAIN", exact: true }).click();
   await expect(page.getByText(/Last correction:/)).toBeVisible({ timeout: 20_000 });
-  await capture(page, screenshots, "14_expert_correction.png", page.getByText(/Last correction:/));
+  await capture(page, screenshots, "14_expert_correction.png");
 
   await page.getByRole("button", { name: "E", exact: true }).click();
   await page.getByRole("button", { name: "Build AssuranceCase", exact: true }).click();
@@ -197,6 +197,15 @@ test("PRODUCT-EVIDENCE captures the frozen V1 Studio route from persisted object
   ids.fis_behavior_spec = "runtime-generated persisted BehaviorSpec";
   ids.fis_behavior_result = "runtime-generated persisted BehaviorSpecResult";
 
+  let expertCorrectionReadFailed = false;
+  await page.route(`**/api/projects/*/fis/expert-correction/latest`, async (route) => {
+    if (!expertCorrectionReadFailed) {
+      expertCorrectionReadFailed = true;
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Temporary expert correction read failure" }) });
+      return;
+    }
+    await route.continue();
+  });
   let latestAssuranceReadFailed = false;
   await page.route(`**/api/projects/*/evidence/assurance-cases/latest`, async (route) => {
     if (!latestAssuranceReadFailed) {
@@ -209,6 +218,10 @@ test("PRODUCT-EVIDENCE captures the frozen V1 Studio route from persisted object
   await page.getByRole("button", { name: "Close", exact: true }).click();
   await page.getByLabel("Project path").fill(path);
   await page.getByRole("button", { name: "Open project", exact: true }).click();
+  await page.getByRole("button", { name: "M", exact: true }).click();
+  await expect(page.getByTestId("expert-correction-load-error")).toContainText("Temporary expert correction read failure");
+  await page.getByRole("button", { name: "Retry expert correction", exact: true }).click();
+  await expect(page.getByText(/Last correction:/)).toBeVisible();
   // The Lineage screen is reached through the restored real project view.
   await page.getByRole("button", { name: "P", exact: true }).click();
   await expect(page.getByText("PROJECT LINEAGE", { exact: true })).toBeVisible();
