@@ -223,6 +223,8 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
   const [studyJobsReload, setStudyJobsReload] = useState(0);
   const [studyJobPollError, setStudyJobPollError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
+  const [trainingRecovery, setTrainingRecovery] = useState<{ config: Parameters<typeof studioApi.runTraining>[1]; requestedAt: number; error: string; notFound: boolean } | null>(null);
+  const [recoveringTraining, setRecoveringTraining] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [treeSample, setTreeSample] = useState<Record<string, string>>({});
   const [treeEvidence, setTreeEvidence] = useState<TreePathEvidence | null>(null);
@@ -443,30 +445,80 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
   }
 
   async function train() {
-    if (splitContractRecovery) return;
+    if (splitContractRecovery || trainingRecovery) return;
     setRunning(true);
     setError(null);
+    const config: Parameters<typeof studioApi.runTraining>[1] = {
+      model_kind: trainingModelKind, adapter_key: selectedAdapterKey,
+      seed, split_seed: splitContract?.split_seed ?? null, training_seed: seed, split_contract_id: splitContract?.split_id ?? null,
+      rigor_profile: rigorProfile,
+      max_epochs: maxEpochs,
+      learning_rate: learningRate,
+      batch_size: batchSize,
+      patience,
+      validation_fraction: 0.2,
+      test_fraction: 0.2,
+      max_rules: maxRules,
+      n_estimators: nEstimators,
+      max_depth: maxDepth,
+    };
+    const requestedAt = Date.now();
     try {
-      const result = await studioApi.runTraining(project.session_id, {
-        model_kind: trainingModelKind, adapter_key: selectedAdapterKey,
-        seed, split_seed: splitContract?.split_seed ?? null, training_seed: seed, split_contract_id: splitContract?.split_id ?? null,
-        rigor_profile: rigorProfile,
-        max_epochs: maxEpochs,
-        learning_rate: learningRate,
-        batch_size: batchSize,
-        patience,
-        validation_fraction: 0.2,
-        test_fraction: 0.2,
-        max_rules: maxRules,
-        n_estimators: nEstimators,
-        max_depth: maxDepth,
-      });
-      onRun(result);
+      onRun(await studioApi.runTraining(project.session_id, config)); setTrainingRecovery(null);
     } catch (reason) {
+      setTrainingRecovery({ config, requestedAt, error: reason instanceof Error ? reason.message : "Training result response was uncertain.", notFound: false });
       setError(reason instanceof Error ? reason.message : "Training failed");
     } finally {
       setRunning(false);
     }
+  }
+  function trainingRunMatchesRecovery(candidate: TrainingRun, pending: NonNullable<typeof trainingRecovery>): boolean {
+    const config = pending.config;
+    const requestedSplitSeed = config.split_seed ?? config.seed;
+    const createdAt = Date.parse(candidate.created_at);
+    if (!Number.isFinite(createdAt) || createdAt < pending.requestedAt - 10_000) return false;
+    if (!dataset || candidate.dataset_fingerprint !== dataset.contract.dataset_fingerprint || candidate.dataset_artifact_sha256 !== dataset.contract.source_artifact_sha256 || candidate.target !== dataset.contract.target || candidate.feature_columns.join("\u0000") !== dataset.contract.feature_columns.join("\u0000")) return false;
+    const builtInAdapterByModel: Record<string, string> = {
+      flat_neuro_fuzzy: "native_flat_neuro_fuzzy", decision_tree: "native_decision_tree",
+      random_forest: "native_random_forest", gradient_boosting: "native_gradient_boosting",
+      logistic_regression: "native_linear", linear_regression: "native_linear",
+    };
+    const resolvedAdapterKey = config.adapter_key ?? builtInAdapterByModel[config.model_kind ?? "flat_neuro_fuzzy"] ?? null;
+    if (candidate.model_kind !== config.model_kind || candidate.adapter_key !== resolvedAdapterKey || candidate.seed !== (config.training_seed ?? config.seed) || candidate.training_seed !== (config.training_seed ?? config.seed) || candidate.split_seed !== requestedSplitSeed) return false;
+    if (candidate.split.split_contract_id !== (config.split_contract_id ?? null) || candidate.split.validation_fraction !== config.validation_fraction || candidate.split.test_fraction !== config.test_fraction) return false;
+    if (candidate.model_kind === "flat_neuro_fuzzy") return candidate.max_epochs === config.max_epochs && candidate.learning_rate === config.learning_rate && candidate.batch_size === config.batch_size && candidate.patience === config.patience;
+    if (candidate.model_kind === "random_forest") return candidate.model_spec.tree_count === config.n_estimators;
+    if (candidate.model_kind === "gradient_boosting") return candidate.model_spec.tree_count === config.n_estimators && candidate.learning_rate === config.learning_rate;
+    return candidate.model_kind === "decision_tree";
+  }
+  async function recoverTrainingRun() {
+    const pending = trainingRecovery;
+    if (!pending) return;
+    setRecoveringTraining(true); setError(null);
+    try {
+      const matches = (await studioApi.getTrainingRuns(project.session_id)).filter((candidate) => trainingRunMatchesRecovery(candidate, pending));
+      if (matches.length === 1) {
+        onRun(matches[0]); setTrainingRecovery(null); return;
+      }
+      if (matches.length > 1) {
+        setTrainingRecovery({ ...pending, notFound: false, error: "Multiple runs match this request window and configuration. No run was selected; reopen run history and resolve the exact persisted identity." });
+        return;
+      }
+      setTrainingRecovery({ ...pending, notFound: true, error: "No matching persisted TrainingRun is visible yet. Retry lookup later, or explicitly start a new fit with the frozen original settings." });
+    } catch (reason) {
+      const message = reason instanceof Error ? reason.message : "Could not verify persisted TrainingRun history.";
+      setTrainingRecovery({ ...pending, notFound: false, error: message }); setError(message);
+    } finally { setRecoveringTraining(false); }
+  }
+  async function explicitlyRepeatTraining() {
+    const pending = trainingRecovery;
+    if (!pending?.notFound || project.read_only) return;
+    setRecoveringTraining(true); setRunning(true); setError(null);
+    try { onRun(await studioApi.runTraining(project.session_id, pending.config)); setTrainingRecovery(null); }
+    catch (reason) {
+      const message = reason instanceof Error ? reason.message : "The explicitly repeated training request could not be confirmed.";
+      setTrainingRecovery({ ...pending, notFound: false, error: message }); setError(message);
+    } finally { setRecoveringTraining(false); setRunning(false); }
   }
   async function freezeSplitContract() {
     if (splitContractRecovery) return;
@@ -691,10 +743,11 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
           <p><strong>Run multi-seed study</strong> executes the distinct seeds listed above under the selected randomness protocol and preserves the per-seed results as a TrainingStudy. It requires at least three seeds.</p>
           <p>Both paths use the declared training/validation workflow; opening this screen or changing settings does not start computation or unlock the test split.</p>
         </section>
-        <Button view="action" disabled={running || !!splitContractRecovery || project.read_only || splitEvidenceStatus !== "loaded" || catalogStatus !== "loaded" || !selectedModel || parameterErrors.length > 0} onClick={train} data-ruflex-action="training.run">{running ? "Training…" : "Run real training"}</Button>
+        {trainingRecovery && <div className="error" role="alert" data-testid="training-run-recovery"><strong>Training response is uncertain; no second fit was started.</strong><p>{trainingRecovery.error}</p><Button view="outlined" disabled={recoveringTraining} onClick={recoverTrainingRun}>Retry exact TrainingRun lookup</Button>{trainingRecovery.notFound && <Button view="outlined" disabled={recoveringTraining || running || project.read_only} onClick={explicitlyRepeatTraining}>Explicitly start a new fit with these settings</Button>}</div>}
+        <Button view="action" disabled={running || !!trainingRecovery || !!splitContractRecovery || project.read_only || splitEvidenceStatus !== "loaded" || catalogStatus !== "loaded" || !selectedModel || parameterErrors.length > 0} onClick={train} data-ruflex-action="training.run">{running ? "Training…" : "Run real training"}</Button>
         <p id="study-seeds-help" className={studySeedValidation.error ? "error" : "property-description"} role={studySeedValidation.error ? "alert" : undefined}>{studySeedValidation.error ?? "Enter 3–32 distinct whole-number seeds, separated by commas."}</p>
         {parameterErrors.length > 0 && <div className="error" role="alert">Review model settings before training: {parameterErrors.join(" ")}</div>}
-        <Button view="outlined" disabled={running || !!splitContractRecovery || project.read_only || splitEvidenceStatus !== "loaded" || catalogStatus !== "loaded" || !selectedModel || Boolean(studySeedValidation.error) || parameterErrors.length > 0 || (studyHydrationStatus !== "none" && studyHydrationStatus !== "available") || studyJobsStatus !== "loaded"} onClick={trainStudy} data-ruflex-action="study.start">{running ? "Training…" : "Run multi-seed study"}</Button>
+        <Button view="outlined" disabled={running || !!trainingRecovery || !!splitContractRecovery || project.read_only || splitEvidenceStatus !== "loaded" || catalogStatus !== "loaded" || !selectedModel || Boolean(studySeedValidation.error) || parameterErrors.length > 0 || (studyHydrationStatus !== "none" && studyHydrationStatus !== "available") || studyJobsStatus !== "loaded"} onClick={trainStudy} data-ruflex-action="study.start">{running ? "Training…" : "Run multi-seed study"}</Button>
         {studyJob && <div className="info-message"><strong>Study job {studyJob.status}</strong> · {studyJob.execution_backend_key ?? studyJob.execution_backend} · {studyJob.seed_states.map((state) => `seed ${state.seed}: ${state.status}`).join(" · ")} {(["QUEUED", "RUNNING"].includes(studyJob.status)) && <><Button view="flat" size="s" disabled={running} onClick={resumeStudy} data-ruflex-action="study.resume">Resume persisted study</Button><Button view="flat" size="s" disabled={running} onClick={cancelStudy} data-ruflex-action="study.cancel">Cancel study</Button></>} {studyJob.recovery_note && <small>{studyJob.recovery_note}</small>}{studyJobPollError && <div className="error" role="alert"><strong>Study status could not be refreshed.</strong> {studyJobPollError} <Button view="outlined" size="s" disabled={running} onClick={retryStudyStatus}>Retry Study status</Button></div>}</div>}
         <div className="info-message">A frozen SplitContract assigns exact source rows before fitting. GROUP keeps each declared identity in one role. It makes split membership auditable; it does not by itself establish generalization validity.</div>
         {splitEvidenceStatus === "loading" && <div role="status">Checking saved split provenance before enabling training…</div>}

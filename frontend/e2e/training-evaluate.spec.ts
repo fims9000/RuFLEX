@@ -66,7 +66,24 @@ test("PRODUCT-02 performs real neuro-fuzzy training, validation evaluation and r
     }
     return route.continue();
   });
+  let trainingPostCount = 0;
+  let trainingRequestBody: Record<string, unknown> | null = null;
+  await page.route("**/api/projects/training/run", async (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    trainingPostCount += 1;
+    trainingRequestBody = route.request().postDataJSON() as Record<string, unknown>;
+    await route.fetch();
+    await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "TrainingRun response lost after persistence" }) });
+  });
   await page.getByRole("button", { name: "Run real training", exact: true }).click();
+
+  const trainingRecovery = page.getByTestId("training-run-recovery");
+  await expect(trainingRecovery).toContainText("TrainingRun response lost after persistence");
+  await expect(page.getByRole("button", { name: "Run real training", exact: true })).toBeDisabled();
+  await page.getByRole("button", { name: "Retry exact TrainingRun lookup", exact: true }).click();
+  await expect(trainingRecovery).toHaveCount(0);
+  expect(trainingPostCount).toBe(1);
+  expect(trainingRequestBody?.model_kind).toBe("flat_neuro_fuzzy");
 
   const runEvidence = page.locator(".run-provenance");
   await expect(runEvidence).toBeVisible({ timeout: 30_000 });
