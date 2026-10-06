@@ -241,6 +241,23 @@ export function EvaluationWorkspace({
     && decisionThreshold.evaluation_id === activeEvaluation.evaluation_id
     ? decisionThreshold
     : null;
+  const activeSelectivePolicy = selectivePolicy && activeEvaluation && activeThreshold
+    && selectivePolicy.run_id === runId
+    && selectivePolicy.evaluation_id === activeEvaluation.evaluation_id
+    && selectivePolicy.class_threshold_id === activeThreshold.threshold_id
+    && selectivePolicy.class_threshold === activeThreshold.selected_threshold
+    && selectivePolicy.calibration_id === activeThreshold.calibration_id
+    ? selectivePolicy
+    : null;
+  const activeStabilityGatePolicy = stabilityGatePolicy && activeEvaluation && activeThreshold && dataset
+    && stabilityGatePolicy.selected_run_id === runId
+    && stabilityGatePolicy.evaluation_id === activeEvaluation.evaluation_id
+    && stabilityGatePolicy.class_threshold_id === activeThreshold.threshold_id
+    && stabilityGatePolicy.calibration_id === activeThreshold.calibration_id
+    && stabilityGatePolicy.dataset_fingerprint === dataset.contract.dataset_fingerprint
+    && stabilityGatePolicy.dataset_artifact_sha256 === dataset.contract.source_artifact_sha256
+    ? stabilityGatePolicy
+    : null;
   const activeFinalTest = finalTestEvaluation && finalTestEvaluation.run_id === runId
     ? finalTestEvaluation
     : null;
@@ -481,8 +498,8 @@ export function EvaluationWorkspace({
       evaluationId: activeEvaluation.evaluation_id,
       calibrationId: activeThreshold?.probability_source === "calibrated" ? activeCalibration?.calibration_id ?? null : null,
       thresholdId: activeThreshold?.threshold_id ?? null,
-      selectivePolicyId: selectivePolicy?.policy_id ?? null,
-      stabilityGatePolicyId: stabilityGatePolicy?.policy_id ?? null,
+      selectivePolicyId: activeSelectivePolicy?.policy_id ?? null,
+      stabilityGatePolicyId: activeStabilityGatePolicy?.policy_id ?? null,
       error: "",
     };
     try {
@@ -723,7 +740,7 @@ export function EvaluationWorkspace({
     <div className="evaluation-grid">
       <ChartSurface title={run.task === "binary_classification" ? "Validation reliability" : "Validation predictions"} option={option} theme={theme} />
       {matrix ? <section className="confusion-card">
-        <div><span className="eyebrow">CONFUSION MATRIX · VALIDATION</span><h3>Threshold {activeThreshold?.selected_threshold.toFixed(2) ?? "0.50"}</h3></div>
+        <div><span className="eyebrow">CONFUSION MATRIX · VALIDATION</span><h3>{activeThreshold ? `Frozen policy threshold ${activeThreshold.selected_threshold.toFixed(2)}` : "Preview at default cutoff 0.50 · no frozen threshold policy"}</h3></div>
         <div className="confusion-grid">
           <div><span>TN</span><strong>{matrix.true_negative}</strong></div>
           <div><span>FP</span><strong>{matrix.false_positive}</strong></div>
@@ -756,7 +773,8 @@ export function EvaluationWorkspace({
       <label className="field-label">Confidence cutoff<input aria-label="Selective confidence cutoff" type="number" min="0.5" max="1" step="0.05" value={selectiveCutoff} onChange={(event) => setSelectiveCutoff(event.target.value)} /></label>
       <Button view="action" disabled={selectingReview || !!finalTestRecovery || !!policyRecovery || !!evaluationRecoveryRunId || project.read_only || datasetTestBoundaryOpened || !datasetIdentityKnown || !finalTestBoundaryKnown || !evaluationStateKnown || !validationPoliciesKnown || !activeThreshold} onClick={selectReviewPolicy} data-ruflex-action="selective_policy.create">{selectingReview ? "Selecting…" : "Save ACCEPT / REVIEW policy"}</Button>
       {!activeThreshold && <small>Select the validation class threshold first; accepted risk uses that exact threshold, never an implicit 0.50.</small>}
-      {selectivePolicy && <><p><StatusBadge tone="warning">REVIEW BELOW {selectivePolicy.confidence_cutoff.toFixed(2)}</StatusBadge> ACCEPT at or above cutoff · class threshold {selectivePolicy.class_threshold.toFixed(2)} · {selectivePolicy.probability_source} probability.</p><small className="mono">threshold {selectivePolicy.class_threshold_id.slice(0, 12)} · validation cases {selectivePolicy.fit_sample_identity.slice(0, 24)}…</small><div className="data-table-wrap"><table className="data-table"><thead><tr><th>confidence</th><th>coverage</th><th>accepted risk</th><th>accepted</th></tr></thead><tbody>{selectivePolicy.risk_coverage.map((point) => <tr key={point.confidence_cutoff}><td>{point.confidence_cutoff.toFixed(2)}</td><td>{(point.coverage * 100).toFixed(1)}%</td><td>{point.accepted_risk === null ? "—" : `${(point.accepted_risk * 100).toFixed(1)}%`}</td><td>{point.accepted_count}</td></tr>)}</tbody></table></div><small>{selectivePolicy.scientific_note}</small></>}
+      {selectivePolicy && !activeSelectivePolicy && <p className="property-description" role="status">A saved selective policy belongs to a different run, Evaluation or threshold and is not shown or applied here.</p>}
+      {activeSelectivePolicy && <><p><StatusBadge tone="warning">REVIEW BELOW {activeSelectivePolicy.confidence_cutoff.toFixed(2)}</StatusBadge> ACCEPT at or above cutoff · class threshold {activeSelectivePolicy.class_threshold.toFixed(2)} · {activeSelectivePolicy.probability_source} probability.</p><small className="mono">threshold {activeSelectivePolicy.class_threshold_id.slice(0, 12)} · validation cases {activeSelectivePolicy.fit_sample_identity.slice(0, 24)}…</small><div className="data-table-wrap"><table className="data-table"><thead><tr><th>confidence</th><th>coverage</th><th>accepted risk</th><th>accepted</th></tr></thead><tbody>{activeSelectivePolicy.risk_coverage.map((point) => <tr key={point.confidence_cutoff}><td>{point.confidence_cutoff.toFixed(2)}</td><td>{(point.coverage * 100).toFixed(1)}%</td><td>{point.accepted_risk === null ? "—" : `${(point.accepted_risk * 100).toFixed(1)}%`}</td><td>{point.accepted_count}</td></tr>)}</tbody></table></div><small>{activeSelectivePolicy.scientific_note}</small></>}
     </section>}
 
     <section>
@@ -783,7 +801,7 @@ export function EvaluationWorkspace({
         <small className="mono">policy {activeFinalTest.policy_identity.slice(0, 36)}… · cases {(activeFinalTest.test_case_identity ?? activeFinalTest.test_sample_identity).slice(0, 36)}…</small>
         {activeFinalTest.dataset_test_unlock_at && <small className="mono">dataset test gate opened {new Date(activeFinalTest.dataset_test_unlock_at).toLocaleString()} · only policies frozen before this boundary and using the same holdout cases remain eligible</small>}
       </> : <>
-        {datasetTestBoundaryOpened ? <><p>The first test access for this dataset has already occurred. This run has no persisted FinalTestEvaluation. Only policies frozen before the recorded boundary and reconstructing the same holdout rows remain eligible.</p><small className="mono">Dataset test gate opened {new Date(datasetTestBoundaryAt!).toLocaleString()}</small></> : <p>Validation remains the only evidence used for model selection, probability calibration and threshold selection. The first final-test access freezes the dataset-level eligibility boundary. Additional pre-specified policies may be evaluated only if they were already frozen and reconstruct the same holdout rows.</p>}{stabilityGatePolicy && <small>Stability Gate {stabilityGatePolicy.policy_id.slice(0, 12)} is validation-derived and will be bound to this final-test evidence; it is not fitted on final-test data.</small>}
+        {datasetTestBoundaryOpened ? <><p>The first test access for this dataset has already occurred. This run has no persisted FinalTestEvaluation. Only policies frozen before the recorded boundary and reconstructing the same holdout rows remain eligible.</p><small className="mono">Dataset test gate opened {new Date(datasetTestBoundaryAt!).toLocaleString()}</small></> : <p>Validation remains the only evidence used for model selection, probability calibration and threshold selection. The first final-test access freezes the dataset-level eligibility boundary. Additional pre-specified policies may be evaluated only if they were already frozen and reconstruct the same holdout rows.</p>}{stabilityGatePolicy && !activeStabilityGatePolicy && <small role="status">The saved Stability Gate is bound to a different run, Evaluation, threshold or dataset and will not be applied here.</small>}{activeStabilityGatePolicy && <small>Stability Gate {activeStabilityGatePolicy.policy_id.slice(0, 12)} is validation-derived and will be bound to this final-test evidence; it is not fitted on final-test data.</small>}
         <label className="final-test-confirm"><input type="checkbox" checked={finalTestConfirmed} onChange={(event) => setFinalTestConfirmed(event.target.checked)} />{datasetTestBoundaryOpened ? "I confirm this policy was frozen before the recorded dataset-level test boundary; final-test results will not be used for retuning." : "I confirm this policy was frozen before final-test access; final-test results will not be used to retune or create another eligible policy."}</label>
       <Button view="action" disabled={project.read_only || finalTesting || !!finalTestRecovery || !!policyRecovery || !!evaluationRecoveryRunId || !datasetIdentityKnown || !finalTestBoundaryKnown || !activeEvaluation || !finalTestConfirmed || !validationPoliciesKnown || (run.task === "binary_classification" && !activeThreshold)} onClick={evaluateFinalTest} data-ruflex-action="final_test.execute">{finalTesting ? "Evaluating final test…" : "Evaluate frozen final test"}</Button>
         {run.task === "binary_classification" && !activeThreshold && <small>Select a validation-derived decision threshold first. Calibration is optional; a calibrated threshold automatically requires its persisted calibration transform.</small>}

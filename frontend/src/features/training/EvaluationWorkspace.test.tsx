@@ -36,10 +36,10 @@ const evaluation = {
 };
 const threshold = {
   threshold_id: "threshold-123456789", evaluation_id: evaluation.evaluation_id, selected_threshold: .6, selection_result: .8,
-  probability_source: "raw", source_split: "validation", objective: "f1", decisions: [], confusion_matrix: run.confusion_matrix,
+  probability_source: "raw", calibration_id: null, source_split: "validation", objective: "f1", decisions: [], confusion_matrix: run.confusion_matrix,
 };
 const dataset = {
-  contract: { dataset_fingerprint: "dataset-fingerprint", feature_columns: ["feature"] },
+  contract: { dataset_fingerprint: "dataset-fingerprint", source_artifact_sha256: "dataset-artifact", feature_columns: ["feature"] },
   profile: { columns: [{ name: "feature" }] },
 };
 
@@ -59,6 +59,9 @@ function renderWorkspace(readOnly = false, overrides: {
   onRetryFinalTestEvidence?: () => void;
   evaluationStatus?: "idle" | "loading" | "none" | "available" | "error";
   evaluationError?: string | null;
+  decisionThreshold?: unknown;
+  selectivePolicy?: unknown;
+  stabilityGatePolicy?: unknown;
   onRetryEvaluation?: () => void;
   validationPolicyEvidenceStatus?: "idle" | "loading" | "available" | "error";
   validationPolicyEvidenceError?: string | null;
@@ -66,14 +69,25 @@ function renderWorkspace(readOnly = false, overrides: {
 } = {}) {
   return render(<EvaluationWorkspace
     project={{ ...project, read_only: readOnly } as never} dataset={(overrides.dataset === undefined ? dataset : overrides.dataset) as never} datasetHydrationStatus={overrides.datasetHydrationStatus ?? "available"} datasetHydrationError={overrides.datasetHydrationError ?? null} onRetryDatasetHydration={overrides.onRetryDatasetHydration ?? vi.fn()} fis={null} run={(overrides.run === undefined ? run : overrides.run) as never} runs={(overrides.runs ?? [run]) as never} runListStatus={overrides.runListStatus ?? "loaded"} runListError={overrides.runListError ?? null} onRetryRunList={overrides.onRetryRunList ?? vi.fn()} study={null}
-    evaluation={(overrides.evaluationStatus === "error" ? null : evaluation) as never} evaluationStatus={overrides.evaluationStatus ?? "available"} evaluationError={overrides.evaluationError ?? null} onRetryEvaluation={overrides.onRetryEvaluation ?? vi.fn()} validationPolicyEvidenceStatus={overrides.validationPolicyEvidenceStatus ?? "available"} validationPolicyEvidenceError={overrides.validationPolicyEvidenceError ?? null} onRetryValidationPolicyEvidence={overrides.onRetryValidationPolicyEvidence ?? vi.fn()} calibrationTransform={null} decisionThreshold={threshold as never} finalTestEvaluation={(overrides.finalTestEvaluation ?? null) as never}
+    evaluation={(overrides.evaluationStatus === "error" ? null : evaluation) as never} evaluationStatus={overrides.evaluationStatus ?? "available"} evaluationError={overrides.evaluationError ?? null} onRetryEvaluation={overrides.onRetryEvaluation ?? vi.fn()} validationPolicyEvidenceStatus={overrides.validationPolicyEvidenceStatus ?? "available"} validationPolicyEvidenceError={overrides.validationPolicyEvidenceError ?? null} onRetryValidationPolicyEvidence={overrides.onRetryValidationPolicyEvidence ?? vi.fn()} calibrationTransform={null} decisionThreshold={(overrides.decisionThreshold === undefined ? threshold : overrides.decisionThreshold) as never} finalTestEvaluation={(overrides.finalTestEvaluation ?? null) as never}
     finalTestEvidenceStatus={overrides.finalTestEvidenceStatus ?? "none"} finalTestEvidenceError={overrides.finalTestEvidenceError ?? null} onRetryFinalTestEvidence={overrides.onRetryFinalTestEvidence ?? vi.fn()}
-    comparison={null} sliceAnalysis={null} selectivePolicy={null} stabilityGatePolicy={null} theme={"light" as never}
+    comparison={null} sliceAnalysis={null} selectivePolicy={(overrides.selectivePolicy ?? null) as never} stabilityGatePolicy={(overrides.stabilityGatePolicy ?? null) as never} theme={"light" as never}
     onEvaluation={vi.fn()} onCalibration={vi.fn()} onThreshold={vi.fn()} onFinalTest={vi.fn()} onComparison={vi.fn()} onSliceAnalysis={vi.fn()} onSelectivePolicy={vi.fn()}
   />);
 }
 
 describe("EvaluationWorkspace final-test boundary", () => {
+  it("labels the default 0.50 confusion matrix as a preview rather than a frozen threshold policy", () => {
+    renderWorkspace(false, { decisionThreshold: null });
+    expect(screen.getByRole("heading", { name: "Preview at default cutoff 0.50 · no frozen threshold policy" })).toBeVisible();
+    expect(screen.queryByText("Frozen policy threshold 0.60")).not.toBeInTheDocument();
+  });
+
+  it("identifies a persisted validation threshold as the frozen policy cutoff", () => {
+    renderWorkspace();
+    expect(screen.getByRole("heading", { name: "Frozen policy threshold 0.60" })).toBeVisible();
+  });
+
   it("keeps dataset-dependent policy and final-test actions paused until dataset identity is restored", () => {
     const retry = vi.fn();
     renderWorkspace(false, { datasetHydrationStatus: "error", datasetHydrationError: "dataset store unavailable", onRetryDatasetHydration: retry });
@@ -139,13 +153,30 @@ describe("EvaluationWorkspace final-test boundary", () => {
 
   it("requires explicit confirmation before the frozen final-test operation is callable", async () => {
     studioApi.evaluateFinalTest.mockResolvedValue({ final_test_id: "final", run_id: run.run_id, metrics: {}, test_row_count: 2, policy_identity: "policy", test_case_identity: "case" });
-    renderWorkspace();
+    renderWorkspace(false, {
+      selectivePolicy: { policy_id: "old-selective", evaluation_id: "old-evaluation", run_id: "old-run", calibration_id: null, class_threshold_id: "old-threshold", class_threshold: .6, fit_sample_identity: "old-samples", confidence_cutoff: .8, probability_source: "raw", risk_coverage: [], scientific_note: "old policy" },
+      stabilityGatePolicy: { policy_id: "old-stability", evaluation_id: "old-evaluation", selected_run_id: "old-run", class_threshold_id: "old-threshold", calibration_id: null, dataset_fingerprint: "old-dataset", dataset_artifact_sha256: "old-artifact" },
+    });
+    expect(screen.getByText(/saved selective policy belongs to a different run/)).toHaveAttribute("role", "status");
+    expect(screen.getByText(/saved Stability Gate is bound to a different run/)).toHaveAttribute("role", "status");
     const execute = screen.getByRole("button", { name: "Evaluate frozen final test" });
     expect(execute).toBeDisabled();
     fireEvent.click(screen.getByRole("checkbox", { name: /I confirm this policy was frozen/ }));
     expect(execute).toBeEnabled();
     fireEvent.click(execute);
     await waitFor(() => expect(studioApi.evaluateFinalTest).toHaveBeenCalledWith("session", evaluation.evaluation_id, null, threshold.threshold_id, null, null));
+  });
+
+  it("passes only exact Evaluation/run/dataset-bound frozen policies to final-test application", async () => {
+    studioApi.evaluateFinalTest.mockResolvedValue({ final_test_id: "final", run_id: run.run_id, metrics: {}, test_row_count: 2, policy_identity: "policy", test_case_identity: "case" });
+    renderWorkspace(false, {
+      selectivePolicy: { policy_id: "selective-current", evaluation_id: evaluation.evaluation_id, run_id: run.run_id, calibration_id: null, class_threshold_id: threshold.threshold_id, class_threshold: threshold.selected_threshold, fit_sample_identity: "validation-cases", confidence_cutoff: .8, probability_source: "raw", risk_coverage: [], scientific_note: "frozen validation policy" },
+      stabilityGatePolicy: { policy_id: "stability-current", evaluation_id: evaluation.evaluation_id, selected_run_id: run.run_id, class_threshold_id: threshold.threshold_id, calibration_id: null, dataset_fingerprint: dataset.contract.dataset_fingerprint, dataset_artifact_sha256: dataset.contract.source_artifact_sha256 },
+    });
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /I confirm this policy was frozen/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Evaluate frozen final test" }));
+    await waitFor(() => expect(studioApi.evaluateFinalTest).toHaveBeenCalledWith("session", evaluation.evaluation_id, null, threshold.threshold_id, "selective-current", "stability-current"));
   });
 
   it("keeps final-test and validation-mutating controls disabled in a read-only project", () => {

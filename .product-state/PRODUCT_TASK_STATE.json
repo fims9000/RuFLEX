@@ -154,15 +154,16 @@
     "alpha_study_terminal_state_guidance",
     "alpha_prevent_duplicate_active_study_submission",
     "alpha_study_failure_reason_visibility",
-    "alpha_first_write_training_request_provenance"
+    "alpha_first_write_training_request_provenance",
+    "alpha_run_bound_evaluation_policy_application"
   ],
-  "active_capability": "alpha_first_write_training_request_provenance",
+  "active_capability": "alpha_run_bound_evaluation_policy_application",
   "active_acceptance": [
     "When a training response is lost, Studio may recover only the uniquely persisted TrainingRun whose declared model, adapter, and complete request config match the original request.",
-    "Exact TrainingRun request/adapter provenance is attached before the first persisted run write, removing the crash window where a completed model artifact existed without recovery identity."
+    "EvaluationWorkspace displays and applies SelectivePredictionPolicy/StabilityGatePolicy only when their run, Evaluation, threshold/calibration and dataset identities match the active validation context; mismatched policies are disclosed and omitted from final-test application."
   ],
   "blockers": [],
-  "next_executable_work": "Continue from the validation evidence route audit; check whether concurrent or stale policy state can enable actions against a different selected TrainingRun, and only change code if identity mismatch is reproducible.",
+  "next_executable_work": "Continue a low-memory pass through Studio validation/final-test handoff for stale asynchronous callbacks when the selected TrainingRun changes mid-request; reproduce before changing code.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -320,6 +321,7 @@
     "alpha_study_terminal_state_guidance": "PASS: Studio explicitly explains that terminal CANCELLED StudyJobs cannot resume and completed seed fits remain persisted, while FAILED jobs did not produce a selected TrainingStudy and require per-seed error review before new fits. ExperimentWorkspace unit tests (14/14) and Vite production build passed.",
     "alpha_prevent_duplicate_active_study_submission": "PASS: A persisted QUEUED/RUNNING StudyJob now disables a second multi-seed submission and the handler independently refuses to create another job; users are directed to resume/inspect the exact active job. ExperimentWorkspace unit tests (15/15), Vite production build and diff check passed.",
     "alpha_study_failure_reason_visibility": "PASS: Studio now shows persisted StudyJob-level failure cause and each failed seed's retained error, alongside terminal recovery guidance. ExperimentWorkspace unit tests (16/16) and TypeScript/Vite production build passed.",
-    "alpha_first_write_training_request_provenance": "PASS: train_model now passes exact declared request/adapter provenance into train_with_adapter, so the first persisted TrainingRun already carries recovery identity; there is no intermediate persisted run lacking exact config. Direct reopen regression, generic adapter persistence, StudyJob recovery tests, 4 Training Studio multi-seed/job route tests, compileall and diff check passed."
+    "alpha_first_write_training_request_provenance": "PASS: train_model now passes exact declared request/adapter provenance into train_with_adapter, so the first persisted TrainingRun already carries recovery identity; there is no intermediate persisted run lacking exact config. Direct reopen regression, generic adapter persistence, StudyJob recovery tests, 4 Training Studio multi-seed/job route tests, compileall and diff check passed.",
+    "alpha_run_bound_evaluation_policy_application": "PASS: EvaluationWorkspace now requires exact active run/evaluation/class threshold/calibration bindings for SelectivePredictionPolicy, and exact selected run/evaluation/threshold/calibration/dataset identities for StabilityGatePolicy. Stale policies are disclosed but neither shown as active nor sent into evaluateFinalTest. Regressions cover mismatched IDs being omitted and current frozen IDs being retained; EvaluationWorkspace tests 12/12, Vite build, and diff check passed."
   }
 }
