@@ -35,8 +35,12 @@ test("PRODUCT-01 persists data, builds an editable FIS, runs it and exposes exac
   await page.route("**/api/projects/fis/save", async (route) => {
     if (route.request().method() !== "POST") return route.continue();
     fisSavePosts += 1;
-    await route.fetch();
-    await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "FIS save response lost after persistence" }) });
+    if (fisSavePosts === 1) {
+      await route.fetch();
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "FIS save response lost after persistence" }) });
+      return;
+    }
+    return route.continue();
   });
   await page.getByRole("button", { name: "Save FIS", exact: true }).click();
   const saveRecovery = page.getByTestId("fis-save-recovery");
