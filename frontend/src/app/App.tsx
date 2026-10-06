@@ -107,6 +107,10 @@ export function App() {
   const [noveltyAxis, setNoveltyAxis] = useState("entity");
   const [generalization, setGeneralization] =
     useState<GeneralizationResponse | null>(null);
+  const [generalizationHydrationStatus, setGeneralizationHydrationStatus] =
+    useState<"idle" | "loading" | "none" | "available" | "error">("idle");
+  const [generalizationHydrationError, setGeneralizationHydrationError] = useState<string | null>(null);
+  const [generalizationHydrationReload, setGeneralizationHydrationReload] = useState(0);
   const [scopeField, setScopeField] = useState("");
   const [scopeCandidateValue, setScopeCandidateValue] = useState("");
   const [supportedScopeValues, setSupportedScopeValues] = useState("");
@@ -270,6 +274,8 @@ export function App() {
       setVerificationBundleRecord(null);
       setExpertCorrection(null);
       setGeneralization(null);
+      setGeneralizationHydrationStatus("idle");
+      setGeneralizationHydrationError(null);
       setScopeCandidateValue("");
       setScopeClassification(null);
       setLineage(null);
@@ -343,9 +349,35 @@ export function App() {
       .catch(() => setAnalysisComparison(null));
     studioApi.getLatestSliceAnalysis(project.session_id).then(setSliceAnalysis).catch(() => setSliceAnalysis(null));
     studioApi.getLatestTreePath(project.session_id).then(setTreeEvidence).catch(() => setTreeEvidence(null));
-    studioApi.getActiveGeneralization(project.session_id).then(setGeneralization).catch(() => setGeneralization(null));
     return () => { active = false; };
   }, [project?.session_id, overviewContextReload]);
+  useEffect(() => {
+    let active = true;
+    if (!project) {
+      setGeneralization(null);
+      setGeneralizationHydrationStatus("idle");
+      setGeneralizationHydrationError(null);
+      return () => { active = false; };
+    }
+    setGeneralization(null);
+    setGeneralizationHydrationError(null);
+    setGeneralizationHydrationStatus("loading");
+    studioApi.getActiveGeneralization(project.session_id).then((value) => {
+      if (!active) return;
+      setGeneralization(value);
+      setGeneralizationHydrationStatus("available");
+    }).catch((reason: unknown) => {
+      if (!active) return;
+      setGeneralization(null);
+      if (reason instanceof ProductApiError && reason.status === 404) {
+        setGeneralizationHydrationStatus("none");
+        return;
+      }
+      setGeneralizationHydrationError(reason instanceof Error ? reason.message : "Saved GeneralizationContract could not be verified.");
+      setGeneralizationHydrationStatus("error");
+    });
+    return () => { active = false; };
+  }, [project?.session_id, generalizationHydrationReload]);
   useEffect(() => {
     let active = true;
     if (!project) return () => { active = false; };
@@ -1030,6 +1062,8 @@ export function App() {
         },
       );
       setGeneralization(created);
+      setGeneralizationHydrationStatus("available");
+      setGeneralizationHydrationError(null);
       setScopeClassification(null);
       setStatus("Generalization contract declared");
     } catch (reason) {
@@ -1049,6 +1083,8 @@ export function App() {
           generalization.contract.contract_id,
         ),
       );
+      setGeneralizationHydrationStatus("available");
+      setGeneralizationHydrationError(null);
       setStatus("Generalization contract frozen");
     } catch (reason) {
       setError(
@@ -1059,7 +1095,7 @@ export function App() {
     }
   }
   async function checkScope(candidateMode: "preview" | "candidate") {
-    if (!project || !generalization || !datasetState?.preview.length) return;
+    if (!project || generalizationHydrationStatus !== "available" || !generalization || !datasetState?.preview.length) return;
     try {
       const metadata = { ...datasetState.preview[0] };
       if (candidateMode === "candidate") {
@@ -1445,6 +1481,9 @@ export function App() {
           {dataset && (
             <>
               <h2>What counts as new?</h2>
+              {generalizationHydrationStatus === "loading" && <p role="status" data-testid="generalization-loading">Checking the saved GeneralizationContract… Scope-dependent review is paused until this read completes.</p>}
+              {generalizationHydrationStatus === "none" && <p className="property-description" data-testid="generalization-empty">No saved GeneralizationContract exists for this project yet.</p>}
+              {generalizationHydrationStatus === "error" && <div className="error" role="alert" data-testid="generalization-hydration-error"><strong>Saved GeneralizationContract could not be verified. Scope-dependent review is paused.</strong><p>{generalizationHydrationError}</p><Button view="outlined" onClick={() => setGeneralizationHydrationReload((current) => current + 1)}>Retry GeneralizationContract</Button></div>}
               <div className="contract-grid">
                 <label className="field-label">
                   Intended use
@@ -1522,7 +1561,7 @@ export function App() {
               <div className="form-actions">
                 <Button
                   view="outlined"
-                  disabled={project.read_only}
+                  disabled={project.read_only || generalizationHydrationStatus === "loading" || generalizationHydrationStatus === "error"}
                   onClick={createGeneralization}
                   data-ruflex-action="generalization.declare"
                 >
@@ -1532,6 +1571,7 @@ export function App() {
                   view="action"
                   disabled={
                     project.read_only ||
+                    generalizationHydrationStatus !== "available" ||
                     !generalization?.lint.can_freeze ||
                     !!generalization.contract.frozen_at
                   }
@@ -1573,8 +1613,8 @@ export function App() {
                     </div>
                   </div>
                   <div className="form-actions">
-                    <Button view="outlined" disabled={!datasetState?.preview.length} onClick={() => checkScope("preview")}>Check first preview row</Button>
-                    <Button view="outlined" disabled={!datasetState?.preview.length || !scopeCandidateValue.trim()} onClick={() => checkScope("candidate")}>Check candidate scope</Button>
+                    <Button view="outlined" disabled={generalizationHydrationStatus !== "available" || !datasetState?.preview.length} onClick={() => checkScope("preview")}>Check first preview row</Button>
+                    <Button view="outlined" disabled={generalizationHydrationStatus !== "available" || !datasetState?.preview.length || !scopeCandidateValue.trim()} onClick={() => checkScope("candidate")}>Check candidate scope</Button>
                     {scopeClassification && <StatusBadge tone={scopeClassification.disposition === "ALLOW" ? "success" : scopeClassification.disposition === "BLOCK" ? "danger" : "warning"}>{scopeClassification.disposition}</StatusBadge>}
                   </div>
                   {scopeClassification && <p className="property-description">{scopeClassification.reasons.join(" ")}</p>}
@@ -1677,6 +1717,9 @@ export function App() {
           onRetryAssurance={() => setAssuranceHydrationReload((current) => current + 1)}
           selectivePolicy={selectivePolicy}
           generalization={generalization}
+          generalizationHydrationStatus={generalizationHydrationStatus}
+          generalizationHydrationError={generalizationHydrationError}
+          onRetryGeneralization={() => setGeneralizationHydrationReload((current) => current + 1)}
           theme={theme}
           onExplanation={(value) => {
             setExplanation(value);

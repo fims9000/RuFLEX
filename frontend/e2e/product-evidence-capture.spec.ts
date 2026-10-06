@@ -206,6 +206,15 @@ test("PRODUCT-EVIDENCE captures the frozen V1 Studio route from persisted object
     }
     await route.continue();
   });
+  let generalizationReadFailed = false;
+  await page.route(`**/api/projects/*/generalization/contracts/active`, async (route) => {
+    if (!generalizationReadFailed) {
+      generalizationReadFailed = true;
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Temporary GeneralizationContract read failure" }) });
+      return;
+    }
+    await route.continue();
+  });
   let latestAssuranceReadFailed = false;
   await page.route(`**/api/projects/*/evidence/assurance-cases/latest`, async (route) => {
     if (!latestAssuranceReadFailed) {
@@ -218,6 +227,11 @@ test("PRODUCT-EVIDENCE captures the frozen V1 Studio route from persisted object
   await page.getByRole("button", { name: "Close", exact: true }).click();
   await page.getByLabel("Project path").fill(path);
   await page.getByRole("button", { name: "Open project", exact: true }).click();
+  await expect(page.getByTestId("evidence-generalization-hydration-error")).toContainText("Temporary GeneralizationContract read failure");
+  await expect(page.getByRole("button", { name: "Run telemetry demonstration", exact: true })).toBeDisabled();
+  await page.getByRole("button", { name: "Retry GeneralizationContract", exact: true }).click();
+  await expect(page.getByTestId("evidence-generalization-hydration-error")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Run telemetry demonstration", exact: true })).toBeEnabled();
   await page.getByRole("button", { name: "M", exact: true }).click();
   await expect(page.getByTestId("expert-correction-load-error")).toContainText("Temporary expert correction read failure");
   await page.getByRole("button", { name: "Retry expert correction", exact: true }).click();
@@ -235,7 +249,10 @@ test("PRODUCT-EVIDENCE captures the frozen V1 Studio route from persisted object
     }
     await route.continue();
   });
-  await page.locator(".lineage-verification_bundle").first().click({ force: true });
+  // ReactFlow's fit-view geometry can place a node beyond the clipped canvas
+  // after the persisted evidence graph grows; dispatch the node's real DOM
+  // click rather than relying on viewport scrolling inside the clipped pane.
+  await page.locator(".lineage-verification_bundle").first().evaluate((node) => node.dispatchEvent(new MouseEvent("click", { bubbles: true })));
   await expect(page.getByTestId("lineage-object-load-error")).toContainText("Temporary VerificationBundle read failure");
   await page.getByRole("button", { name: "Retry selected object", exact: true }).click();
   await expect(page.getByTestId("verification-bundle-record")).toBeVisible();

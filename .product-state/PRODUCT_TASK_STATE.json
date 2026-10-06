@@ -99,7 +99,8 @@
     "alpha_explanation_evidence_hydration_truthfulness",
     "alpha_reproducibility_hydration_truthfulness",
     "alpha_exhaustive_lab_hydration_truthfulness",
-    "alpha_expert_correction_hydration_truthfulness"
+    "alpha_expert_correction_hydration_truthfulness",
+    "alpha_generalization_contract_hydration_truthfulness"
   ],
   "active_capability": "alpha_saved_evidence_hydration_audit",
   "active_acceptance": [
@@ -107,7 +108,7 @@
     "Prioritize evidence that must be identity-linked before presentation; add focused exact-route retry tests as findings justify."
   ],
   "blockers": [],
-  "next_executable_work": "Make active GeneralizationContract hydration distinguish a confirmed missing contract from a transient read error, then surface and retry that state wherever the contract gates scope-dependent review. Verify a real Studio reopen route and continue the alpha audit. Preserve unrelated article changes and do not push.",
+  "next_executable_work": "Audit the next persisted project-reopen evidence read that currently collapses API failure into null, then expose a bounded retry at its consuming Studio surface and verify one real close/reopen route. Preserve unrelated article changes and do not push.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -196,6 +197,7 @@
     "alpha_explanation_evidence_hydration_truthfulness": "PASS: Explanation and ExplanationCheck reopen now expose loading, confirmed 404 absence, available and transient-error states with retries. The UI refuses to present an ExplanationCheck as validation of a different explanation ID. PRODUCT-05 verified injected failures and recovery for both reads; Vite/TypeScript build and diff check passed.",
     "alpha_reproducibility_hydration_truthfulness": "PASS: Saved cross-run explanation reproducibility now distinguishes loading, confirmed absence, available evidence and transient read error with retry. PRODUCT-08 verified 503 on reopen and exact recovery without recalculation; Vite/TypeScript build and git diff --check passed.",
     "alpha_exhaustive_lab_hydration_truthfulness": "PASS: Saved ExhaustiveLabResult reopen distinguishes loading, confirmed 404 absence, available evidence and transient read failure with retry. PRODUCT-09 injected a temporary 503, retried the saved result and verified the exact finite-tree evidence returned; Vite/TypeScript build and git diff --check passed.",
-    "alpha_expert_correction_hydration_truthfulness": "PASS: The Model workbench now distinguishes loading, no saved correction, verified revision, and transient/missing exact-ID errors. The duplicate App-level fetch was removed to prevent competing reads from overwriting valid state; retry re-reads the same selected ID. PRODUCT-EVIDENCE injected a 503 during reopen after a real TRAIN-only refit, verified retry restored the saved correction; Vite/TypeScript build and diff check passed."
+    "alpha_expert_correction_hydration_truthfulness": "PASS: The Model workbench now distinguishes loading, no saved correction, verified revision, and transient/missing exact-ID errors. The duplicate App-level fetch was removed to prevent competing reads from overwriting valid state; retry re-reads the same selected ID. PRODUCT-EVIDENCE injected a 503 during reopen after a real TRAIN-only refit, verified retry restored the saved correction; Vite/TypeScript build and diff check passed.",
+    "alpha_generalization_contract_hydration_truthfulness": "PASS: Active GeneralizationContract reopen distinguishes confirmed 404 absence from transient read failure; scope actions and the scope-aware telemetry demo stay paused until identity resolves, with retry at Project/Data and Evidence surfaces. PRODUCT-EVIDENCE injected a 503 on project reopen, verified the condition demo was blocked, then retried and restored the saved contract. Vite/TypeScript build and focused browser route passed; an unrelated later ReactFlow node viewport assertion was stabilized by dispatching the selected node's click event."
   }
 }
