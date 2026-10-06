@@ -360,6 +360,12 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
           <label className="field-label">Study execution backend<select aria-label="Study execution backend" value={executionBackendKey} disabled={running || project.read_only || !executionBackends.length} onChange={(event) => setExecutionBackendKey(event.target.value)}>{executionBackends.map((backend) => <option key={backend.identity.key} value={backend.identity.key}>{backend.identity.key} · {backend.identity.provider}</option>)}</select></label>
         </div>
         <Button view="outlined" disabled={running || project.read_only || Boolean(splitEvidenceError)} onClick={freezeSplitContract} data-ruflex-action="split.freeze">Freeze {splitFamily} SplitContract</Button>
+        <section className="info-message" aria-label="Training choices">
+          <strong>Choose how to start</strong>
+          <p><strong>Run real training</strong> creates one fitted TrainingRun for the current settings.</p>
+          <p><strong>Run multi-seed study</strong> executes the distinct seeds listed above under the selected randomness protocol and preserves the per-seed results as a TrainingStudy. It requires at least three seeds.</p>
+          <p>Both paths use the declared training/validation workflow; opening this screen or changing settings does not start computation or unlock the test split.</p>
+        </section>
         <Button view="action" disabled={running || project.read_only || Boolean(splitEvidenceError)} onClick={train} data-ruflex-action="training.run">{running ? "Training…" : "Run real training"}</Button>
         <Button view="outlined" disabled={running || project.read_only || Boolean(splitEvidenceError)} onClick={trainStudy} data-ruflex-action="study.start">{running ? "Training…" : "Run multi-seed study"}</Button>
         {studyJob && <div className="info-message"><strong>Study job {studyJob.status}</strong> · {studyJob.execution_backend_key ?? studyJob.execution_backend} · {studyJob.seed_states.map((state) => `seed ${state.seed}: ${state.status}`).join(" · ")} {(["QUEUED", "RUNNING"].includes(studyJob.status)) && <><Button view="flat" size="s" onClick={resumeStudy} data-ruflex-action="study.resume">Resume persisted study</Button><Button view="flat" size="s" onClick={cancelStudy} data-ruflex-action="study.cancel">Cancel study</Button></>} {studyJob.recovery_note && <small>{studyJob.recovery_note}</small>}</div>}

@@ -72,16 +72,17 @@
     "alpha_alpha_workflow_integration_smoke",
     "alpha_readonly_project_guidance_audit",
     "alpha_import_busy_state_feedback",
-    "alpha_post_import_next_step_guidance"
+    "alpha_post_import_next_step_guidance",
+    "alpha_training_choice_guidance"
   ],
-  "active_capability": "alpha_training_workspace_readiness",
+  "active_capability": "alpha_training_capability_availability_feedback",
   "active_acceptance": [
-    "Review the first-use Training workspace after the Project Overview handoff and identify the next smallest user-facing friction point before a fit.",
-    "Preserve explicit user control: no automatic model fit and no implication that the held-out test split is opened during setup.",
+    "When no available compatible model adapter exists, explain why Training cannot start and how to recover; distinguish model-catalog loading failure from an empty compatible catalog.",
+    "Keep the run disabled in both cases and do not silently substitute a model or execution backend.",
     "Keep unrelated article and interrupted S03 work out of the committed product baseline."
   ],
   "blockers": [],
-  "next_executable_work": "Inspect the first-use Training workspace reached from Project Overview; implement one bounded clarity/recovery improvement only if an evidenced friction point is found, then cover it with a focused Studio test.",
+  "next_executable_work": "Add explicit loading/error/empty states for the training model capability catalog; keep Training actions blocked when there is no available compatible fit adapter and verify backend unavailability with a focused Studio test.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -143,6 +144,7 @@
     "alpha_alpha_workflow_integration_smoke": "PASS: Sequential Studio browser smoke across XLSX import/contract reopen, stale CSV inspection rejection, and three-seed Study close/reopen passed 3/3. Focused dataset API suite passed 12/12; diff check and task-state JSON validation passed.",
     "alpha_readonly_project_guidance_audit": "PASS: Read-only Data now states which dataset mutations are disabled and how to reopen writable; Evaluation explains saved evidence remains viewable while new evidence/policies/final-test access cannot be saved. Existing enforcement unchanged. Read-only project lifecycle E2E 1/1, frontend component unit 10/10 and Vite/TypeScript build passed.",
     "alpha_import_busy_state_feedback": "PASS: File inspection/import and CSV confirmation now expose progress labels, disable duplicate submissions, and lock contract fields during persistence; failed inspection/import remains retryable. One-worker E2E delayed inspection/import HTTP routes to verify loading/disabled states and persisted reopen (2/2), frontend unit 10/10 and Vite/TypeScript build passed.",
-    "alpha_post_import_next_step_guidance": "PASS: Project Overview offers an optional route from a confirmed DatasetContract to the actual Training workspace when no run exists. Copy states that no fit starts until explicit user action and that the held-out test remains locked. E2E confirms the card after close/reopen, opens Training, and records no training/Study POST; action inventory, frontend unit tests (10) and TypeScript/Vite production build passed."
+    "alpha_post_import_next_step_guidance": "PASS: Project Overview offers an optional route from a confirmed DatasetContract to the actual Training workspace when no run exists. Copy states that no fit starts until explicit user action and that the held-out test remains locked. E2E confirms the card after close/reopen, opens Training, and records no training/Study POST; action inventory, frontend unit tests (10) and TypeScript/Vite production build passed.",
+    "alpha_training_choice_guidance": "PASS: Training explains the difference between one fitted TrainingRun and a multi-seed TrainingStudy, including its minimum of three distinct seeds and that merely opening/configuring Training does not start compute or unlock test. The reopened-dataset Studio route asserts these explanations before any training request; focused browser 2/2, frontend unit 10/10, TypeScript/Vite build and diff check passed."
   }
 }

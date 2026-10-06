@@ -121,6 +121,9 @@ test("E2E-08 confirms a dataset contract in Data workspace and preserves it acro
   await expect(optionalTraining).toContainText("held-out test split stays locked");
   await optionalTraining.getByRole("button", { name: "Open Training", exact: true }).click();
   await expect(page.locator(".training-workspace")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Training choices" })).toContainText("creates one fitted TrainingRun");
+  await expect(page.getByRole("region", { name: "Training choices" })).toContainText("preserves the per-seed results as a TrainingStudy");
+  await expect(page.getByRole("region", { name: "Training choices" })).toContainText("does not start computation or unlock the test split");
   await expect(page.getByRole("button", { name: "Run real training", exact: true })).toBeVisible();
   expect(trainingRequests).toEqual([]);
   await page.locator(".project-object-tree .object-tree-item").filter({ hasText: "target" }).first().click();
