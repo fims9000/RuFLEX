@@ -153,6 +153,9 @@ export function App() {
   const [verificationBundleRecord, setVerificationBundleRecord] = useState<VerificationBundle | null>(null);
   const [expertCorrection, setExpertCorrection] = useState<ExpertCorrectionRevision | null>(null);
   const [lineage, setLineage] = useState<LineageGraph | null>(null);
+  const [lineageStatus, setLineageStatus] = useState<"idle" | "loading" | "loaded" | "error">("idle");
+  const [lineageError, setLineageError] = useState<string | null>(null);
+  const [lineageReload, setLineageReload] = useState(0);
   const [dataGovernanceObject, setDataGovernanceObject] = useState<DataGovernanceObject | null>(null);
   const [integrity, setIntegrity] = useState<ProjectIntegrityReport | null>(null);
   const [selectedExpertCorrectionId, setSelectedExpertCorrectionId] = useState<string | null>(null);
@@ -220,6 +223,8 @@ export function App() {
       setScopeCandidateValue("");
       setScopeClassification(null);
       setLineage(null);
+      setLineageStatus("idle");
+      setLineageError(null);
       setDataGovernanceObject(null);
       setIntegrity(null);
       setSelectedExpertCorrectionId(null);
@@ -240,6 +245,9 @@ export function App() {
     setSelectivePolicy(null);
     setValidationPolicyEvidenceStatus("loading");
     setValidationPolicyEvidenceError(null);
+    setLineage(null);
+    setLineageStatus("loading");
+    setLineageError(null);
     Promise.all([
       studioApi.getDatasetState(project.session_id).catch(() => null),
       studioApi.getActiveFis(project.session_id).catch(() => null),
@@ -282,7 +290,6 @@ export function App() {
     studioApi.getLatestAssuranceCase(project.session_id).then(setAssurance).catch(() => setAssurance(null));
     studioApi.getLatestExpertCorrection(project.session_id).then(setExpertCorrection).catch(() => setExpertCorrection(null));
     studioApi.getActiveGeneralization(project.session_id).then(setGeneralization).catch(() => setGeneralization(null));
-    studioApi.getProjectLineage(project.session_id).then(setLineage).catch(() => setLineage(null));
     studioApi.getProjectIntegrity(project.session_id).then(setIntegrity).catch(() => setIntegrity(null));
     return () => { active = false; };
   }, [project?.session_id]);
@@ -402,10 +409,23 @@ export function App() {
     return () => { active = false; };
   }, [project?.session_id, trainingRunsReload]);
   useEffect(() => {
-    if (!project) return;
-    studioApi.getProjectLineage(project.session_id).then(setLineage).catch(() => undefined);
+    let active = true;
+    if (!project) return () => { active = false; };
+    setLineageStatus("loading");
+    setLineageError(null);
+    studioApi.getProjectLineage(project.session_id).then((graph) => {
+      if (!active) return;
+      setLineage(graph);
+      setLineageStatus("loaded");
+    }).catch((reason: unknown) => {
+      if (!active) return;
+      setLineageStatus("error");
+      setLineageError(reason instanceof Error ? reason.message : "Persisted project lineage could not be loaded.");
+    });
+    return () => { active = false; };
   }, [
     project?.session_id,
+    lineageReload,
     datasetState?.contract.dataset_fingerprint,
     fis?.semantic_hash,
     trainingRun?.run_id,
@@ -1435,6 +1455,9 @@ export function App() {
             </div>
             <ProjectLineage
               graph={lineage}
+              status={lineageStatus}
+              error={lineageError}
+              onRetry={() => setLineageReload((current) => current + 1)}
               onOpen={openLineageNode}
             />
           </div>

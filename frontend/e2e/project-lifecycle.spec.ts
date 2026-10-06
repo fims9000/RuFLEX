@@ -205,3 +205,20 @@ test("E2E-10 distinguishes unavailable saved training history from an empty proj
   await expect(page.getByText("No trained run", { exact: true })).toBeVisible();
   expect(runListRequests).toBe(2);
 });
+
+test("E2E-11 distinguishes unavailable lineage from a genuinely empty graph and retries", async ({ page }) => {
+  let lineageRequests = 0;
+  await page.route("**/api/projects/*/lineage", async (route) => {
+    lineageRequests += 1;
+    if (lineageRequests === 1) return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "lineage store temporarily unavailable" }) });
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ schema_version: 1, nodes: [], edges: [], scientific_note: "No persisted objects yet." }) });
+  });
+  await createProject(page, projectPath("lineage-retry"), "Lineage recovery project");
+  const panel = page.locator(".project-lineage-panel");
+  await expect(panel.getByRole("alert")).toContainText("Could not load persisted project lineage");
+  await expect(panel.getByRole("alert")).toContainText("lineage store temporarily unavailable");
+  await expect(panel.getByText("Lineage will appear as persisted datasets, runs, analyses and evidence are created.", { exact: true })).toHaveCount(0);
+  await panel.getByRole("button", { name: "Retry lineage" }).click();
+  await expect(panel.getByText("Lineage will appear as persisted datasets, runs, analyses and evidence are created.", { exact: true })).toBeVisible();
+  expect(lineageRequests).toBe(2);
+});

@@ -11,6 +11,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import type { LineageGraph, LineageNode } from "../api";
+import { Button } from "../components/StudioPrimitives";
 
 function LineageCanvasNode({ data, selected }: NodeProps<Node<{ node: LineageNode }>>) {
   const item = data.node;
@@ -42,11 +43,23 @@ const targetColumns: Record<LineageNode["target"], number> = {
 
 export function ProjectLineage({
   graph,
+  status,
+  error,
+  onRetry,
   onOpen,
 }: {
   graph: LineageGraph | null;
+  status: "idle" | "loading" | "loaded" | "error";
+  error: string | null;
+  onRetry: () => void;
   onOpen: (node: LineageNode) => void;
 }) {
+  if (status === "loading" || status === "idle") {
+    return <div className="lineage-empty" role="status">{status === "loading" ? "Loading persisted project lineage…" : "Project lineage has not been checked yet."}</div>;
+  }
+  if (status === "error") {
+    return <div className="error" role="alert"><strong>Could not load persisted project lineage.</strong><p>{error ?? "No empty lineage state is inferred from this failure."}</p><Button view="outlined" onClick={onRetry}>Retry lineage</Button></div>;
+  }
   if (!graph || graph.nodes.length === 0) {
     return (
       <div className="lineage-empty">
