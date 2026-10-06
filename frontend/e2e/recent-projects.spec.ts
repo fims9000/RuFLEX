@@ -31,3 +31,17 @@ test("recent project history reopens local projects after a browser reload and c
   await page.getByRole("region", { name: "Recent projects" }).getByRole("button", { name: "Forget history", exact: true }).click();
   await expect(page.getByRole("region", { name: "Recent projects" })).toHaveCount(0);
 });
+
+test("a missing recent project explains recovery and can be forgotten", async ({ page }) => {
+  const missingPath = join(tmpdir(), `ruflex-missing-recent-project-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  await page.addInitScript((path) => {
+    localStorage.setItem("ruflex.recent-projects.v1", JSON.stringify([{ name: "Moved project", path }]));
+  }, missingPath);
+
+  await page.goto("/");
+  const recent = page.getByRole("region", { name: "Recent projects" });
+  await recent.locator(".recent-project-item").click();
+  await expect(recent.getByRole("alert")).toContainText("choose the folder again");
+  await recent.getByRole("button", { name: "Forget Moved project", exact: true }).click();
+  await expect(recent).toHaveCount(0);
+});

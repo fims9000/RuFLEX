@@ -86,6 +86,7 @@ function loadRecentProjects(): RecentProject[] {
 export function App() {
   const [project, setProject] = useState<ProjectSummary | null>(null);
   const [recentProjects, setRecentProjects] = useState<RecentProject[]>(loadRecentProjects);
+  const [recentProjectError, setRecentProjectError] = useState<string | null>(null);
   const [path, setPath] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -259,6 +260,7 @@ export function App() {
   function forgetRecentProject(pathToForget: string) {
     const next = recentProjects.filter((item) => item.path !== pathToForget);
     setRecentProjects(next);
+    setRecentProjectError(null);
     try { localStorage.setItem(RECENT_PROJECTS_STORAGE_KEY, JSON.stringify(next)); } catch { /* keep the current session usable */ }
   }
   function closeStaleProjectSession(sessionId: string) {
@@ -267,6 +269,7 @@ export function App() {
   async function openRecentProject(recent: RecentProject) {
     const requestId = ++projectLifecycleRequestRef.current;
     setError(null);
+    setRecentProjectError(null);
     try {
       const result = await studioApi.openProject(recent.path, readOnly);
       if (requestId !== projectLifecycleRequestRef.current) {
@@ -279,6 +282,10 @@ export function App() {
       setStatus(`Opened ${result.name}`);
     } catch (reason) {
       if (requestId !== projectLifecycleRequestRef.current) return;
+      if (reason instanceof ProductApiError) {
+        setRecentProjectError(`Could not reopen ${recent.path}: ${reason.message} If this project moved or was deleted, forget this entry or choose the folder again.`);
+        return;
+      }
       setError(reason instanceof Error ? reason.message : "Could not reopen this recent project.");
     }
   }
@@ -1616,6 +1623,7 @@ export function App() {
               </button>
               <Button view="outlined" size="s" type="button" aria-label={`Forget ${recent.name}`} onClick={() => forgetRecentProject(recent.path)}>Forget</Button>
             </div>)}</div>
+            {recentProjectError && <p className="error" role="alert">{recentProjectError}</p>}
             <p className="property-description">Stored only in this browser on this device. Opening uses the current read-only setting.</p>
           </section>}
           {error && (
