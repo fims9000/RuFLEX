@@ -86,7 +86,7 @@
     "Keep unrelated article and interrupted S03 work out of the committed product baseline."
   ],
   "blockers": [],
-  "next_executable_work": "Create and verify the exact-HEAD tracked-source archive, then push only feature/v1.3-data-governance-runtime after ancestry and remote-target checks. Full Python suite has an environment-only SHAP/Numba/NumPy incompatibility recorded in docs/qa/V1_3_ALPHA_CLOSEOUT_QA.md; do not claim it passed.",
+  "next_executable_work": "Regenerate the tracked-source archive for the current HEAD, verify archive integrity, and push only feature/v1.3-data-governance-runtime after ancestry and remote-target checks. Full Python suite has an environment-only SHAP/Numba/NumPy incompatibility recorded in docs/qa/V1_3_ALPHA_CLOSEOUT_QA.md; do not claim it passed.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -153,6 +153,6 @@
     "alpha_training_catalog_failure_states": "PASS: Training now distinguishes model-catalog request failure (visible error with explicit retry) from a loaded catalog with no compatible fit adapter (visible not-applicable explanation). Single-run and Study actions stay disabled in both states; retry does not substitute an adapter. Focused real Studio route verifies 503 → retry → empty compatible catalog, no training/Study POST, inventory, frontend unit tests (10) and TypeScript/Vite production build passed.",
     "alpha_study_seed_input_validation": "PASS: Multi-seed Study input no longer silently drops invalid seed tokens or deduplicates repeated values. It requires 3–32 distinct safe whole-number seeds; the field exposes inline accessible feedback and the Study action is disabled until corrected. Focused ExperimentWorkspace unit tests 5 passed and TypeScript/Vite production build passed.",
     "alpha_training_parameter_constraint_feedback": "PASS: Training numeric controls now combine runtime adapter constraints with API limits and prevent single-run or Study submission for invalid model settings. Exact API caps are reflected in controls (for example random-forest estimators max 5000); regression verifies out-of-range rejection and recovery at the boundary. Focused ExperimentWorkspace unit tests 6 passed and TypeScript/Vite build passed.",
-    "alpha_release_closeout": "PARTIAL: Alpha-focused checks pass (frontend unit 12, Vite, Storybook, focused real Studio E2E 2/2). Full Python suite was attempted and reached 100% but 4 SHAP-dependent tests failed because installed Numba 0.63.1 rejects NumPy 2.5.3 and SHAP routes are unavailable. Exact archive smoke and feature-branch push remain pending. Receipt: docs/qa/V1_3_ALPHA_CLOSEOUT_QA.md."
+    "alpha_release_closeout": "PARTIAL: Alpha-focused checks pass (backend 26, compileall, frontend unit 12, Vite, Storybook, focused real Studio E2E 2/2). Fresh exact-HEAD archive extraction passed unzip integrity, focused backend/compileall, clean npm ci, frontend unit and Vite build. Full Python suite was attempted and reached 100% but 4 SHAP-dependent tests failed because installed Numba 0.63.1 rejects NumPy 2.5.3. Receipt: docs/qa/V1_3_ALPHA_CLOSEOUT_QA.md."
   }
 }
