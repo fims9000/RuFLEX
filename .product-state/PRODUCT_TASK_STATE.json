@@ -153,15 +153,16 @@
     "alpha_orphaned_queued_study_job_cancellation",
     "alpha_study_terminal_state_guidance",
     "alpha_prevent_duplicate_active_study_submission",
-    "alpha_study_failure_reason_visibility"
+    "alpha_study_failure_reason_visibility",
+    "alpha_first_write_training_request_provenance"
   ],
-  "active_capability": "alpha_study_failure_reason_visibility",
+  "active_capability": "alpha_first_write_training_request_provenance",
   "active_acceptance": [
     "When a training response is lost, Studio may recover only the uniquely persisted TrainingRun whose declared model, adapter, and complete request config match the original request.",
-    "StudyJobs preserve accepted cancellation through seed progress writes and finalization; cancelled jobs retain completed runs, orphaned queued jobs terminate immediately, active persisted jobs block duplicate submission, and Studio exposes persisted job/seed failure reasons."
+    "Exact TrainingRun request/adapter provenance is attached before the first persisted run write, removing the crash window where a completed model artifact existed without recovery identity."
   ],
   "blockers": [],
-  "next_executable_work": "Continue a bounded Studio workflow audit after current Study lifecycle work; inspect whether persisted selection/evaluation evidence routes expose actionable load failures without triggering training or policy fitting.",
+  "next_executable_work": "Continue from the validation evidence route audit; check whether concurrent or stale policy state can enable actions against a different selected TrainingRun, and only change code if identity mismatch is reproducible.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -318,6 +319,7 @@
     "alpha_orphaned_queued_study_job_cancellation": "PASS: Cancelling a persisted QUEUED StudyJob with no active worker now marks the job and untouched seeds CANCELLED immediately, preventing an unresumable queued record after worker loss/restart. Focused Python cancellation regressions (3), compileall and git diff --check passed.",
     "alpha_study_terminal_state_guidance": "PASS: Studio explicitly explains that terminal CANCELLED StudyJobs cannot resume and completed seed fits remain persisted, while FAILED jobs did not produce a selected TrainingStudy and require per-seed error review before new fits. ExperimentWorkspace unit tests (14/14) and Vite production build passed.",
     "alpha_prevent_duplicate_active_study_submission": "PASS: A persisted QUEUED/RUNNING StudyJob now disables a second multi-seed submission and the handler independently refuses to create another job; users are directed to resume/inspect the exact active job. ExperimentWorkspace unit tests (15/15), Vite production build and diff check passed.",
-    "alpha_study_failure_reason_visibility": "PASS: Studio now shows persisted StudyJob-level failure cause and each failed seed's retained error, alongside terminal recovery guidance. ExperimentWorkspace unit tests (16/16) and TypeScript/Vite production build passed."
+    "alpha_study_failure_reason_visibility": "PASS: Studio now shows persisted StudyJob-level failure cause and each failed seed's retained error, alongside terminal recovery guidance. ExperimentWorkspace unit tests (16/16) and TypeScript/Vite production build passed.",
+    "alpha_first_write_training_request_provenance": "PASS: train_model now passes exact declared request/adapter provenance into train_with_adapter, so the first persisted TrainingRun already carries recovery identity; there is no intermediate persisted run lacking exact config. Direct reopen regression, generic adapter persistence, StudyJob recovery tests, 4 Training Studio multi-seed/job route tests, compileall and diff check passed."
   }
 }

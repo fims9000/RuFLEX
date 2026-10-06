@@ -31,7 +31,7 @@ def train_with_adapter(
     model_kind: str, seed: int | None = None, split_seed: int | None = None,
     training_seed: int | None = None, validation_fraction: float = .2,
     test_fraction: float = .2, parameters: dict | None = None,
-    split_contract_id: str | None = None,
+    split_contract_id: str | None = None, declared_training_config: dict | None = None,
 ) -> TrainingRun:
     """Execute one trusted adapter while retaining the core data firewall."""
     adapter = registry.resolve_model_adapter(adapter_key, version=adapter_version)
@@ -124,6 +124,7 @@ def train_with_adapter(
         validation_metrics=metrics, prediction_preview=preview, confusion_matrix=confusion, calibration=calibration,
         model_artifact_sha256=artifact.sha256, adapter_key=identity.key, adapter_version=identity.version,
         adapter_provider=identity.provider, adapter_kind=identity.kind, runtime_capability_snapshot_hash=registry.snapshot()["sha256"],
+        declared_training_config=declared_training_config,
     )
     persist_training_run(project_root, run, registry=registry)
     return run

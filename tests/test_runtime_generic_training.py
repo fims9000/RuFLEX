@@ -92,6 +92,22 @@ def test_generic_core_service_persists_external_adapter_without_project_access(t
     assert reopened.split.test_status == "LOCKED_NOT_EVALUATED"
 
 
+def test_runtime_training_persists_declared_request_config_in_first_run_record(tmp_path: Path) -> None:
+    _project(tmp_path)
+    registry = RuntimeRegistry()
+    registry.register_model_adapter(FixtureAdapter())
+    registry.freeze()
+    declared = {"schema_version": 1, "model_kind": "fixture_model", "adapter_key": "fixture_adapter", "adapter_version": "1", "parameters": {"max_depth": 3}}
+
+    run = train_with_adapter(
+        tmp_path, registry=registry, adapter_key="fixture_adapter", model_kind="fixture_model", seed=5,
+        parameters={"max_depth": 3}, declared_training_config=declared,
+    )
+    reopened = load_training_run(tmp_path, run.run_id)
+
+    assert reopened.declared_training_config == declared
+
+
 def test_external_adapter_receives_a_persisted_group_split_without_test_access(tmp_path: Path) -> None:
     frame = pd.DataFrame({"patient_id": [f"p{index // 3}" for index in range(45)], "x": range(45), "target": [index % 2 for index in range(45)]})
     source = persist_dataset_bytes(tmp_path, frame.to_csv(index=False).encode())
