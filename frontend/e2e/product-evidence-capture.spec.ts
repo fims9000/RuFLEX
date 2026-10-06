@@ -195,6 +195,34 @@ test("PRODUCT-EVIDENCE captures the frozen V1 Studio route from persisted object
   const fisResultResponse = await page.request.post("http://127.0.0.1:8010/api/projects/evidence/behavior-specs/run", { data: { session_id: lineageSession.session_id, spec_id: fisSpec.spec_id } });
   expect(fisResultResponse.ok()).toBeTruthy();
   await fisResultResponse.json() as { result_id: string };
+  // Persist a real same-requirement comparison across two model artifacts so
+  // the reopen check below verifies a saved object, not just an empty list.
+  const runBoundSpecsResponse = await page.request.get(`http://127.0.0.1:8010/api/projects/${lineageSession.session_id}/evidence/behavior-specs`);
+  expect(runBoundSpecsResponse.ok()).toBeTruthy();
+  const runBoundSpecs = await runBoundSpecsResponse.json() as Array<Record<string, unknown>>;
+  const runBoundSpec = runBoundSpecs.find((item) => typeof item.run_id === "string");
+  expect(runBoundSpec).toBeTruthy();
+  const trainingRunsResponse = await page.request.get(`http://127.0.0.1:8010/api/projects/${lineageSession.session_id}/training/runs`);
+  expect(trainingRunsResponse.ok()).toBeTruthy();
+  const trainingRuns = await trainingRunsResponse.json() as Array<{ run_id: string; feature_columns: string[] }>;
+  const alternateRun = trainingRuns.find((item) => item.run_id !== runBoundSpec?.run_id && JSON.stringify(item.feature_columns) === JSON.stringify((runBoundSpec?.sample as Record<string, unknown> | undefined) ? Object.keys(runBoundSpec.sample as Record<string, unknown>) : []));
+  expect(alternateRun, "a second persisted run with the same feature order is required for revision comparison").toBeTruthy();
+  const { schema_version: _schemaVersion, spec_id: _specId, created_at: _createdAt, run_id: _runId, model_artifact_sha256: _artifactSha, fis_id: _fisId, fis_semantic_hash: _fisHash, ...requirement } = runBoundSpec!;
+  const alternateSpecResponse = await page.request.post("http://127.0.0.1:8010/api/projects/evidence/behavior-specs", { data: { session_id: lineageSession.session_id, run_id: alternateRun!.run_id, ...requirement } });
+  expect(alternateSpecResponse.ok()).toBeTruthy();
+  const alternateSpec = await alternateSpecResponse.json() as { spec_id: string };
+  const alternateResultResponse = await page.request.post("http://127.0.0.1:8010/api/projects/evidence/behavior-specs/run", { data: { session_id: lineageSession.session_id, spec_id: alternateSpec.spec_id } });
+  expect(alternateResultResponse.ok()).toBeTruthy();
+  const alternateResult = await alternateResultResponse.json() as { result_id: string };
+  const originalResultsResponse = await page.request.get(`http://127.0.0.1:8010/api/projects/${lineageSession.session_id}/evidence/behavior-specs/results`);
+  expect(originalResultsResponse.ok()).toBeTruthy();
+  const originalResults = await originalResultsResponse.json() as Array<{ spec_id: string; result_id: string }>;
+  const originalResult = originalResults.find((item) => item.spec_id === runBoundSpec!.spec_id);
+  expect(originalResult).toBeTruthy();
+  const behaviorComparisonResponse = await page.request.post("http://127.0.0.1:8010/api/projects/evidence/behavior-specs/compare", { data: { session_id: lineageSession.session_id, baseline_result_id: originalResult!.result_id, candidate_result_id: alternateResult.result_id } });
+  expect(behaviorComparisonResponse.ok()).toBeTruthy();
+  const persistedBehaviorComparison = await behaviorComparisonResponse.json() as { transition: string };
+  ids.behavior_revision_comparison = "runtime-generated persisted comparison across model artifacts";
   // Runtime IDs are visible in the screenshots as evidence of a real route,
   // but must not make the tracked documentation change on every normal QA run.
   ids.fis_revision = "runtime-generated persisted FIS revision";
@@ -224,6 +252,24 @@ test("PRODUCT-EVIDENCE captures the frozen V1 Studio route from persisted object
     if (!conditionDemoReadFailed) {
       conditionDemoReadFailed = true;
       await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Temporary condition-monitoring evidence read failure" }) });
+      return;
+    }
+    await route.continue();
+  });
+  let behaviorComparisonReadFailed = false;
+  await page.route(`**/api/projects/*/evidence/behavior-specs/comparisons`, async (route) => {
+    if (!behaviorComparisonReadFailed) {
+      behaviorComparisonReadFailed = true;
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Temporary BehaviorRevisionComparison read failure" }) });
+      return;
+    }
+    await route.continue();
+  });
+  let explanationJobsReadFailed = false;
+  await page.route(`**/api/projects/*/evidence/explanation-jobs`, async (route) => {
+    if (!explanationJobsReadFailed) {
+      explanationJobsReadFailed = true;
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Temporary ExplanationJob read failure" }) });
       return;
     }
     await route.continue();
@@ -267,6 +313,16 @@ test("PRODUCT-EVIDENCE captures the frozen V1 Studio route from persisted object
   await expect(page.getByTestId("condition-demo-hydration-error")).toHaveCount(0);
   await expect(page.getByTestId("condition-monitoring-demo")).toBeVisible();
   await expect(page.getByRole("button", { name: "Run telemetry demonstration", exact: true })).toBeEnabled();
+  await page.getByRole("button", { name: "E", exact: true }).click();
+  await expect(page.getByTestId("behavior-comparison-hydration-error")).toContainText("Temporary BehaviorRevisionComparison read failure");
+  await expect(page.getByTestId("explanation-job-hydration-error")).toContainText("Temporary ExplanationJob read failure");
+  await expect(page.getByRole("button", { name: "Generate explanation", exact: true })).toBeDisabled();
+  await page.getByRole("button", { name: "Retry saved revision comparison", exact: true }).click();
+  await expect(page.getByTestId("behavior-revision-comparison")).toContainText(persistedBehaviorComparison.transition.replaceAll("_", " "));
+  await page.getByRole("button", { name: "Retry saved explanation job", exact: true }).click();
+  await expect(page.getByTestId("explanation-job-hydration-error")).toHaveCount(0);
+  await expect(page.getByTestId("explanation-job")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Generate explanation", exact: true })).toBeEnabled();
   await page.getByRole("button", { name: "A", exact: true }).click();
   await expect(page.getByTestId("comparison-hydration-error")).toContainText("Temporary validation comparison read failure");
   await expect(page.getByRole("button", { name: "Compare study seeds", exact: true })).toBeDisabled();

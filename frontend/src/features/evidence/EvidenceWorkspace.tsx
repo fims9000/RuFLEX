@@ -157,6 +157,9 @@ export function EvidenceWorkspace({
   const [behaviorResult, setBehaviorResult] = useState<BehaviorSpecResult | null>(restoredBehaviorResult);
   const [behaviorResults, setBehaviorResults] = useState<BehaviorSpecResult[]>([]);
   const [behaviorComparison, setBehaviorComparison] = useState<BehaviorRevisionComparison | null>(null);
+  const [behaviorComparisonHydrationStatus, setBehaviorComparisonHydrationStatus] = useState<"loading" | "none" | "available" | "error">("loading");
+  const [behaviorComparisonHydrationError, setBehaviorComparisonHydrationError] = useState<string | null>(null);
+  const [behaviorComparisonHydrationReload, setBehaviorComparisonHydrationReload] = useState(0);
   const [baselineBehaviorResultId, setBaselineBehaviorResultId] = useState("");
   const [candidateBehaviorResultId, setCandidateBehaviorResultId] = useState("");
   const [reproducibility, setReproducibility] = useState<ExplanationReproducibilityAnalysis | null>(restoredReproducibility);
@@ -173,6 +176,9 @@ export function EvidenceWorkspace({
   const [demoHydrationError, setDemoHydrationError] = useState<string | null>(null);
   const [demoHydrationReload, setDemoHydrationReload] = useState(0);
   const [explanationJob, setExplanationJob] = useState<ProductJob | null>(null);
+  const [explanationJobHydrationStatus, setExplanationJobHydrationStatus] = useState<"loading" | "none" | "available" | "error">("loading");
+  const [explanationJobHydrationError, setExplanationJobHydrationError] = useState<string | null>(null);
+  const [explanationJobHydrationReload, setExplanationJobHydrationReload] = useState(0);
   const [capabilityNegotiation, setCapabilityNegotiation] = useState<RunCapabilityNegotiation | null>(null);
   const [validatorPlugins, setValidatorPlugins] = useState<PluginDescriptor[]>([]);
   const [runtimeExplainers, setRuntimeExplainers] = useState<RuntimeExplainerDescriptor[]>([]);
@@ -190,8 +196,23 @@ export function EvidenceWorkspace({
       setBaselineBehaviorResultId(results[1]?.result_id || "");
       setCandidateBehaviorResultId(results[0]?.result_id || "");
     }).catch(() => setBehaviorResults([]));
-    studioApi.listBehaviorRevisionComparisons(project.session_id).then((comparisons) => setBehaviorComparison(comparisons[0] ?? null)).catch(() => setBehaviorComparison(null));
   }, [project.session_id, behaviorResult?.result_id]);
+  useEffect(() => {
+    let active = true;
+    setBehaviorComparisonHydrationStatus("loading");
+    setBehaviorComparisonHydrationError(null);
+    studioApi.listBehaviorRevisionComparisons(project.session_id).then((comparisons) => {
+      if (!active) return;
+      const comparison = comparisons[0] ?? null;
+      setBehaviorComparison(comparison);
+      setBehaviorComparisonHydrationStatus(comparison ? "available" : "none");
+    }).catch((reason: unknown) => {
+      if (!active) return;
+      setBehaviorComparisonHydrationError(reason instanceof Error ? reason.message : "Saved behavior comparison could not be verified.");
+      setBehaviorComparisonHydrationStatus("error");
+    });
+    return () => { active = false; };
+  }, [project.session_id, behaviorComparisonHydrationReload]);
   useEffect(() => setReproducibility(restoredReproducibility), [restoredReproducibility?.analysis_id]);
   useEffect(() => setExhaustive(restoredExhaustive), [restoredExhaustive?.result_id]);
   useEffect(() => setAssurance(restoredAssurance), [restoredAssurance?.assurance_id]);
@@ -217,7 +238,22 @@ export function EvidenceWorkspace({
     });
     return () => { active = false; };
   }, [project.session_id, demoHydrationReload]);
-  useEffect(() => { studioApi.listPosthocExplanationJobs(project.session_id).then((jobs) => setExplanationJob(jobs[0] ?? null)).catch(() => setExplanationJob(null)); }, [project.session_id]);
+  useEffect(() => {
+    let active = true;
+    setExplanationJobHydrationStatus("loading");
+    setExplanationJobHydrationError(null);
+    studioApi.listPosthocExplanationJobs(project.session_id).then((jobs) => {
+      if (!active) return;
+      const job = jobs[0] ?? null;
+      setExplanationJob(job);
+      setExplanationJobHydrationStatus(job ? "available" : "none");
+    }).catch((reason: unknown) => {
+      if (!active) return;
+      setExplanationJobHydrationError(reason instanceof Error ? reason.message : "Saved explanation job could not be verified.");
+      setExplanationJobHydrationStatus("error");
+    });
+    return () => { active = false; };
+  }, [project.session_id, explanationJobHydrationReload]);
   useEffect(() => { if (project) studioApi.listExplanations(project.session_id).then(setPersistedExplanations).catch(() => setPersistedExplanations([])); }, [project.session_id, explanation?.explanation_id]);
   useEffect(() => {
     studioApi.getModelCatalog().then(setCatalog).catch(() => setCatalog([]));
@@ -310,6 +346,8 @@ export function EvidenceWorkspace({
     try {
       let job = await studioApi.startPosthocExplanationJob(project.session_id, run.run_id, numericSample(), method, executionBackendKey);
       setExplanationJob(job);
+      setExplanationJobHydrationStatus("available");
+      setExplanationJobHydrationError(null);
       for (let attempt = 0; attempt < 120 && ["queued", "running"].includes(job.status); attempt += 1) {
         await new Promise((resolve) => window.setTimeout(resolve, 100));
         job = await studioApi.getPosthocExplanationJob(project.session_id, job.job_id);
@@ -332,6 +370,8 @@ export function EvidenceWorkspace({
     try {
       let job = await studioApi.startExplanationCheckJob(project.session_id, explanation.explanation_id, validatorKey, executionBackendKey);
       setExplanationJob(job);
+      setExplanationJobHydrationStatus("available");
+      setExplanationJobHydrationError(null);
       for (let attempt = 0; attempt < 120 && ["queued", "running"].includes(job.status); attempt += 1) {
         await new Promise((resolve) => window.setTimeout(resolve, 100));
         job = await studioApi.getPosthocExplanationJob(project.session_id, job.job_id);
@@ -379,6 +419,8 @@ export function EvidenceWorkspace({
     setBusy(true); setError(null);
     try {
       setBehaviorComparison(await studioApi.compareBehaviorResults(project.session_id, baselineBehaviorResultId, candidateBehaviorResultId));
+      setBehaviorComparisonHydrationStatus("available");
+      setBehaviorComparisonHydrationError(null);
     } catch (reason) { setError(reason instanceof Error ? reason.message : "Could not compare BehaviorSpec revisions"); }
     finally { setBusy(false); }
   }
@@ -468,10 +510,13 @@ export function EvidenceWorkspace({
               ))}
             </div>
             <div className="evidence-actions">
-              <Button view="action" disabled={busy || project.read_only || selectableMethods.length === 0} onClick={generate} data-ruflex-action="explanation.generate">{busy ? "Generating…" : "Generate explanation"}</Button>
+              <Button view="action" disabled={busy || project.read_only || selectableMethods.length === 0 || explanationJobHydrationStatus === "loading" || explanationJobHydrationStatus === "error"} onClick={generate} data-ruflex-action="explanation.generate">{busy ? "Generating…" : "Generate explanation"}</Button>
               <span className="property-description">{run.model_kind} · run {run.run_id.slice(0, 8)}</span>
             </div>
             {capabilityNegotiation && <div className="trace-card" data-testid="run-capability-negotiation"><strong>Run capability contract</strong><div className="property-list">{capabilityNegotiation.decisions.map((decision) => <div key={decision.capability}><span>{decision.capability.replaceAll("_", " ")}</span><span><StatusBadge tone={decision.status === "AVAILABLE" ? "success" : "info"}>{decision.status}</StatusBadge> {decision.detail}</span></div>)}</div></div>}
+            {explanationJobHydrationStatus === "loading" && <p role="status" data-testid="explanation-job-loading">Loading saved explanation job…</p>}
+            {explanationJobHydrationStatus === "none" && <p className="property-description" data-testid="explanation-job-empty">No saved explanation job is available.</p>}
+            {explanationJobHydrationStatus === "error" && <div className="error" role="alert" data-testid="explanation-job-hydration-error"><strong>Saved explanation job could not be verified; starting another operation is paused.</strong><p>{explanationJobHydrationError}</p><Button view="outlined" onClick={() => setExplanationJobHydrationReload((current) => current + 1)}>Retry saved explanation job</Button></div>}
             {explanationJob && <div className="property-description" data-testid="explanation-job"><StatusBadge tone={explanationJob.status === "succeeded" ? "success" : explanationJob.status === "failed" ? "danger" : "warning"}>{explanationJob.status.toUpperCase()}</StatusBadge> {explanationJob.execution_backend_key ?? "frozen execution backend"} · {explanationJob.message ?? "Persisted operation"}{explanationJob.error && ` · ${explanationJob.error}`}{explanationJob.status === "queued" && <Button view="flat" size="s" onClick={cancelQueuedJob} data-ruflex-action="explanation.cancel">Cancel queued job</Button>}</div>}
           </>
         )}
@@ -513,7 +558,7 @@ export function EvidenceWorkspace({
           <div className="feature-toolbar compact-toolbar">
             <div><span className="eyebrow">CHECK EXPLANATION</span><h3>Available technical checks</h3></div>
             <label className="field-label">Validator<select aria-label="Explanation validator" value={validatorKey} disabled={busy || project.read_only || !runtimeValidators.length} onChange={(event) => setValidatorKey(event.target.value)}>{runtimeValidators.map((validator) => <option key={validator.identity.key} value={validator.identity.key}>{validator.identity.key} · {validator.identity.provider}</option>)}</select></label>
-            <Button view="outlined" disabled={busy || project.read_only} onClick={check} data-ruflex-action="explanation.check">Run explanation checks</Button>
+            <Button view="outlined" disabled={busy || project.read_only || explanationJobHydrationStatus === "loading" || explanationJobHydrationStatus === "error"} onClick={check} data-ruflex-action="explanation.check">Run explanation checks</Button>
           </div>
           {explanationCheck && explanationCheck.explanation_id !== explanation.explanation_id ? <div className="error" role="alert" data-testid="explanation-check-mismatch"><strong>Saved check belongs to a different explanation.</strong><p>The persisted ExplanationCheck is not displayed as validation of the currently selected explanation.</p></div> : explanationCheck ? (
             <div className="trace-card">
@@ -542,7 +587,7 @@ export function EvidenceWorkspace({
           {behaviorSpec && <div className="trace-card" data-testid="behavior-spec"><div className="evidence-check-header"><strong>{behaviorSpec.name}</strong><StatusBadge tone="info">{behaviorSpec.kind.replaceAll("_", " ")}</StatusBadge></div><p>{behaviorSpec.rationale}</p><small>{behaviorSpec.run_id ? `Run-bound requirement · ${behaviorSpec.run_id.slice(0, 12)}` : `FIS-bound requirement · ${behaviorSpec.fis_semantic_hash?.slice(0, 12)}`}</small></div>}
           {behaviorResult && <div className="trace-card" data-testid="behavior-result"><div className="evidence-check-header"><strong>{behaviorSpec?.name ?? "Persisted BehaviorSpec"}</strong><StatusBadge tone={behaviorResult.status === "PASS" ? "success" : "danger"}>{behaviorResult.status}</StatusBadge></div><p>{behaviorResult.detail}</p><small>{behaviorResult.run_id ? `Run ${behaviorResult.run_id.slice(0, 12)} · artifact ${behaviorResult.model_artifact_sha256?.slice(0, 12)}` : `FIS revision ${behaviorResult.fis_semantic_hash?.slice(0, 12)}`}</small></div>}
           {lineageBehaviorComparison && <div className="trace-card" data-testid="behavior-revision-comparison"><div className="evidence-check-header"><strong>Persisted revision comparison</strong><StatusBadge tone={lineageBehaviorComparison.regression_detected ? "danger" : "info"}>{lineageBehaviorComparison.transition.replaceAll("_", " ")}</StatusBadge></div><p>{lineageBehaviorComparison.regression_detected ? "A PASS-to-FAIL transition was retained as regression evidence." : "No PASS-to-FAIL regression was observed in this transition."}</p><small>Baseline {lineageBehaviorComparison.baseline_result_id.slice(0, 12)} · candidate {lineageBehaviorComparison.candidate_result_id.slice(0, 12)} · {lineageBehaviorComparison.requirement_identity.slice(0, 16)}</small><p>{lineageBehaviorComparison.scientific_note}</p></div>}
-          <section className="trace-card"><strong>Revision transition</strong><p>Compare two executions of the exact same persisted behavior requirement across model or FIS revisions. A PASS → FAIL transition is retained as regression evidence.</p><div className="training-config-grid"><label className="field-label">Baseline result<select aria-label="Behavior baseline result" value={baselineBehaviorResultId} onChange={(event) => setBaselineBehaviorResultId(event.target.value)}><option value="">Choose result</option>{behaviorResults.map((item) => <option key={item.result_id} value={item.result_id}>{item.result_id.slice(0, 8)} · {item.status}</option>)}</select></label><label className="field-label">Candidate result<select aria-label="Behavior candidate result" value={candidateBehaviorResultId} onChange={(event) => setCandidateBehaviorResultId(event.target.value)}><option value="">Choose result</option>{behaviorResults.map((item) => <option key={item.result_id} value={item.result_id}>{item.result_id.slice(0, 8)} · {item.status}</option>)}</select></label></div><Button view="outlined" disabled={busy || project.read_only || !baselineBehaviorResultId || !candidateBehaviorResultId || baselineBehaviorResultId === candidateBehaviorResultId} onClick={compareBehaviorRevisions} data-ruflex-action="behavior.revision.compare">Compare revisions</Button>{behaviorComparison && <p><strong>{behaviorComparison.transition.replaceAll("_", " ")}</strong> · {behaviorComparison.regression_detected ? "regression retained as evidence" : "no PASS-to-FAIL regression in this transition"}</p>}</section>
+          <section className="trace-card"><strong>Revision transition</strong><p>Compare two executions of the exact same persisted behavior requirement across model or FIS revisions. A PASS → FAIL transition is retained as regression evidence.</p><div className="training-config-grid"><label className="field-label">Baseline result<select aria-label="Behavior baseline result" value={baselineBehaviorResultId} onChange={(event) => setBaselineBehaviorResultId(event.target.value)}><option value="">Choose result</option>{behaviorResults.map((item) => <option key={item.result_id} value={item.result_id}>{item.result_id.slice(0, 8)} · {item.status}</option>)}</select></label><label className="field-label">Candidate result<select aria-label="Behavior candidate result" value={candidateBehaviorResultId} onChange={(event) => setCandidateBehaviorResultId(event.target.value)}><option value="">Choose result</option>{behaviorResults.map((item) => <option key={item.result_id} value={item.result_id}>{item.result_id.slice(0, 8)} · {item.status}</option>)}</select></label></div><Button view="outlined" disabled={busy || project.read_only || behaviorComparisonHydrationStatus === "loading" || behaviorComparisonHydrationStatus === "error" || !baselineBehaviorResultId || !candidateBehaviorResultId || baselineBehaviorResultId === candidateBehaviorResultId} onClick={compareBehaviorRevisions} data-ruflex-action="behavior.revision.compare">Compare revisions</Button>{behaviorComparisonHydrationStatus === "loading" && <p role="status" data-testid="behavior-comparison-loading">Loading saved revision comparison…</p>}{behaviorComparisonHydrationStatus === "none" && <p className="property-description" data-testid="behavior-comparison-empty">No saved revision comparison is available.</p>}{behaviorComparisonHydrationStatus === "error" && <div className="error" role="alert" data-testid="behavior-comparison-hydration-error"><strong>Saved revision comparison could not be verified; creating another comparison is paused.</strong><p>{behaviorComparisonHydrationError}</p><Button view="outlined" onClick={() => setBehaviorComparisonHydrationReload((current) => current + 1)}>Retry saved revision comparison</Button></div>}{behaviorComparison && <p data-testid="behavior-revision-comparison"><strong>{behaviorComparison.transition.replaceAll("_", " ")}</strong> · {behaviorComparison.regression_detected ? "regression retained as evidence" : "no PASS-to-FAIL regression in this transition"}</p>}</section>
         </>}
       </section>
       <section className="evidence-section"><div className="feature-toolbar compact-toolbar"><div><span className="eyebrow">CONDITION MONITORING DEMO</span><h3>Telemetry decision support with review and scope safeguards</h3><p>Telemetry → frozen class/selective policy → scope → explanation check → AssuranceCase → VerificationBundle → ACCEPT / REVIEW / OUT-OF-SCOPE. This is not targeting or actuator control.</p></div><Button view="action" disabled={busy || project.read_only || !run || !selectivePolicy || !["none", "available"].includes(demoHydrationStatus) || generalizationHydrationStatus === "loading" || generalizationHydrationStatus === "error" || generalizationHydrationStatus === "idle"} onClick={runConditionDemo} data-ruflex-action="condition_demo.run">Run telemetry demonstration</Button></div>{demoHydrationStatus === "loading" && <p role="status" data-testid="condition-demo-loading">Loading saved condition-monitoring evidence…</p>}{demoHydrationStatus === "none" && <p className="property-description" data-testid="condition-demo-empty">No saved condition-monitoring result is available.</p>}{demoHydrationStatus === "error" && <div className="error" role="alert" data-testid="condition-demo-hydration-error"><strong>Saved condition-monitoring evidence could not be verified; another demonstration is paused.</strong><p>{demoHydrationError}</p><Button view="outlined" onClick={() => setDemoHydrationReload((current) => current + 1)}>Retry condition-monitoring evidence</Button></div>}{generalizationHydrationStatus === "loading" && <p role="status">Resolving the saved GeneralizationContract before scope-aware review…</p>}{generalizationHydrationStatus === "none" && <p className="property-description">No GeneralizationContract is saved; this demonstration will report scope as undeclared.</p>}{generalizationHydrationStatus === "error" && <div className="error" role="alert" data-testid="evidence-generalization-hydration-error"><strong>Saved GeneralizationContract could not be verified; the scope-aware demonstration is paused.</strong><p>{generalizationHydrationError}</p>{onRetryGeneralization && <Button view="outlined" onClick={onRetryGeneralization}>Retry GeneralizationContract</Button>}</div>}{!selectivePolicy && <p className="property-description">A validation-derived selective policy is required before this demonstration can make an ACCEPT/REVIEW decision.</p>}{demo && <div className="trace-card" data-testid="condition-monitoring-demo"><StatusBadge tone={demo.decision === "ACCEPT" ? "success" : demo.decision === "OUT_OF_SCOPE" ? "danger" : "warning"}>{demo.decision}</StatusBadge><p>Class {demo.predicted_class} · probability {demo.probability.toFixed(4)} · confidence {demo.confidence.toFixed(4)} · scope {demo.scope_disposition}</p><small className="mono">Explanation {demo.explanation_id?.slice(0, 12)} · check {demo.explanation_check_id?.slice(0, 12)} · AssuranceCase {demo.assurance_id?.slice(0, 12)} · VerificationBundle {demo.verification_bundle_sha256?.slice(0, 12)}</small><p>{demo.explanation_note}</p><small>{demo.safety_note}</small></div>}</section>

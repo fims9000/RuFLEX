@@ -104,15 +104,16 @@
     "alpha_analysis_comparison_hydration_truthfulness",
     "alpha_slice_analysis_hydration_truthfulness",
     "alpha_stability_evidence_hydration_truthfulness",
-    "alpha_condition_demo_hydration_truthfulness"
+    "alpha_condition_demo_hydration_truthfulness",
+    "alpha_behavior_comparison_and_explanation_job_hydration"
   ],
   "active_capability": "alpha_saved_evidence_hydration_audit",
   "active_acceptance": [
-    "Continue auditing project reopen reads for persisted evidence that silently becomes null on transient failure.",
-    "Prioritize evidence that must be identity-linked before presentation; add focused exact-route retry tests as findings justify."
+    "Continue auditing project reopen reads for persisted evidence that silently becomes null or empty on transient failure.",
+    "Prioritize identity-linked EvidenceWorkspace reads and guard any action that could duplicate persisted work until its inventory resolves."
   ],
   "blockers": [],
-  "next_executable_work": "Audit the saved BehaviorRevisionComparison and post-hoc ExplanationJob reopen reads; prioritize the persisted object/job identity and make failures visible without treating them as no result or starting duplicate work. Preserve unrelated article changes and do not push.",
+  "next_executable_work": "Audit remaining evidence lists in EvidenceWorkspace for transient-read-as-empty behavior, prioritizing behavior result lists and persisted explanations; preserve unrelated article changes and do not push.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -206,6 +207,7 @@
     "alpha_analysis_comparison_hydration_truthfulness": "PASS: Persisted validation AnalysisComparison reopen distinguishes confirmed 404 absence from transient errors, shows retry in Analyses, and prevents duplicate comparison creation until saved state resolves. PRODUCT-EVIDENCE creates a real study comparison, injects 503 after close/reopen, verifies creation is paused, then retries and restores the exact saved comparison. TypeScript/Vite production build and focused Playwright route passed.",
     "alpha_slice_analysis_hydration_truthfulness": "PASS: Latest SliceAnalysis reopen distinguishes confirmed 404 absence from transient failure, visibly reports and retries failed reads, and prevents a duplicate analysis until saved state resolves. PRODUCT-EVIDENCE injects a 503 after close/reopen, confirms the new slice action is blocked, retries, and restores the persisted Validation slice. TypeScript/Vite build, frontend unit suite (23), focused Playwright route, JSON state validation and diff check passed.",
     "alpha_stability_evidence_hydration_truthfulness": "PASS: Stability Lab reopens analysis and gate inventories as explicit pending/loaded/error states, with retry and duplicate-creation controls disabled until saved identities resolve. Read failures are independently surfaced for StudyStabilityAnalysis and StabilityGatePolicy; successful retry restores both to the Lab and parent Project Explorer. Stability Lab close/reopen E2E injected two 503 reads per inventory then verified retry restored the analysis/map and gate/risk view; Vite build and git diff check passed.",
-    "alpha_condition_demo_hydration_truthfulness": "PASS: Persisted ConditionMonitoringDemo distinguishes loading, confirmed 404 absence, available result and transient read error. Retry reloads the exact latest demo; starting another demo remains blocked until status resolves. PRODUCT-EVIDENCE injected 503 after project reopen, confirmed both GeneralizationContract and demo error gates, retried each, and restored the persisted condition demo. Vite/TypeScript build and focused Playwright route passed."
+    "alpha_condition_demo_hydration_truthfulness": "PASS: Persisted ConditionMonitoringDemo distinguishes loading, confirmed 404 absence, available result and transient read error. Retry reloads the exact latest demo; starting another demo remains blocked until status resolves. PRODUCT-EVIDENCE injected 503 after project reopen, confirmed both GeneralizationContract and demo error gates, retried each, and restored the persisted condition demo. Vite/TypeScript build and focused Playwright route passed.",
+    "alpha_behavior_comparison_and_explanation_job_hydration": "PASS: Saved BehaviorRevisionComparison and post-hoc ExplanationJob inventories now distinguish loading, confirmed empty, available and transient failure; failed reads retain prior identity, show retry, and block duplicate compare/explanation work until resolved. PRODUCT-EVIDENCE persisted a real cross-model same-requirement comparison and explanation job, injected 503 on reopen, retried both reads, and verified restoration. Frontend unit 23/23, TypeScript/Vite build, focused Playwright and git diff --check passed."
   }
 }
