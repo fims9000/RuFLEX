@@ -427,22 +427,34 @@ export function EvidenceWorkspace({
       return;
     }
     if (job.status !== "succeeded") throw new Error(job.error ?? job.message ?? "Explanation evidence job did not complete successfully.");
-    setExplanationJobPollError(null);
     if (job.kind === "explanation_generation" && job.output.explanation_id) {
-      onExplanation(await studioApi.getExplanation(project.session_id, job.output.explanation_id));
+      try {
+        onExplanation(await studioApi.getExplanation(project.session_id, job.output.explanation_id));
+      } catch (reason) {
+        setExplanationJobPollError(reason instanceof Error ? reason.message : "The saved explanation output could not be loaded.");
+        throw reason;
+      }
+      setExplanationJobPollError(null);
       setPersistedExplanationsHydrationReload((current) => current + 1);
       onExplanationCheck(null);
       return;
     }
     if (job.kind === "explanation_check" && job.output.check_id) {
-      onExplanationCheck(await studioApi.getExplanationCheck(project.session_id, job.output.check_id));
+      try {
+        onExplanationCheck(await studioApi.getExplanationCheck(project.session_id, job.output.check_id));
+      } catch (reason) {
+        setExplanationJobPollError(reason instanceof Error ? reason.message : "The saved ExplanationCheck output could not be loaded.");
+        throw reason;
+      }
+      setExplanationJobPollError(null);
       return;
     }
+    setExplanationJobPollError("The completed job has no resolvable output identity; do not create another job from this uncertain result.");
     throw new Error(`Saved job ${job.job_id} succeeded without the expected explanation evidence identity.`);
   }
 
   async function resumeExplanationJob() {
-    if (!explanationJob || !["queued", "running"].includes(explanationJob.status)) return;
+    if (!explanationJob || (!["queued", "running"].includes(explanationJob.status) && !explanationJobPollError)) return;
     setBusy(true);
     setError(null);
     setExplanationJobPollError(null);
@@ -675,7 +687,7 @@ export function EvidenceWorkspace({
               ))}
             </div>
             <div className="evidence-actions">
-              <Button view="action" disabled={busy || project.read_only || runtimeCatalogHydrationStatus !== "available" || !executionBackends.length || capabilityHydrationStatus !== "available" || selectableMethods.length === 0 || explanationJobHydrationStatus === "loading" || explanationJobHydrationStatus === "error" || !!explanationJob && ["queued", "running"].includes(explanationJob.status)} onClick={generate} data-ruflex-action="explanation.generate">{busy ? "Generating…" : "Generate explanation"}</Button>
+              <Button view="action" disabled={busy || project.read_only || runtimeCatalogHydrationStatus !== "available" || !executionBackends.length || capabilityHydrationStatus !== "available" || selectableMethods.length === 0 || explanationJobHydrationStatus === "loading" || explanationJobHydrationStatus === "error" || !!explanationJobPollError || !!explanationJob && ["queued", "running"].includes(explanationJob.status)} onClick={generate} data-ruflex-action="explanation.generate">{busy ? "Generating…" : "Generate explanation"}</Button>
               <span className="property-description">{run.model_kind} · run {run.run_id.slice(0, 8)}</span>
             </div>
             {capabilityNegotiation && <div className="trace-card" data-testid="run-capability-negotiation"><strong>Run capability contract</strong><div className="property-list">{capabilityNegotiation.decisions.map((decision) => <div key={decision.capability}><span>{decision.capability.replaceAll("_", " ")}</span><span><StatusBadge tone={decision.status === "AVAILABLE" ? "success" : "info"}>{decision.status}</StatusBadge> {decision.detail}</span></div>)}</div></div>}
@@ -688,7 +700,7 @@ export function EvidenceWorkspace({
             {explanationJobHydrationStatus === "none" && <p className="property-description" data-testid="explanation-job-empty">No saved explanation job is available.</p>}
             {explanationJobHydrationStatus === "error" && <div className="error" role="alert" data-testid="explanation-job-hydration-error"><strong>Saved explanation job could not be verified; starting another operation is paused.</strong><p>{explanationJobHydrationError}</p><Button view="outlined" onClick={() => setExplanationJobHydrationReload((current) => current + 1)}>Retry saved explanation job</Button></div>}
             {explanationJob && <div className="property-description" data-testid="explanation-job"><StatusBadge tone={explanationJob.status === "succeeded" ? "success" : explanationJob.status === "failed" ? "danger" : "warning"}>{explanationJob.status.toUpperCase()}</StatusBadge> {explanationJob.execution_backend_key ?? "frozen execution backend"} · {explanationJob.message ?? "Persisted operation"} · job {explanationJob.job_id.slice(0, 12)}{explanationJob.error && ` · ${explanationJob.error}`}{explanationJob.status === "queued" && <Button view="flat" size="s" onClick={cancelQueuedJob} data-ruflex-action="explanation.cancel">Cancel queued job</Button>}</div>}
-            {explanationJob && ["queued", "running"].includes(explanationJob.status) && <div className={explanationJobPollError ? "error" : "property-description"} role={explanationJobPollError ? "alert" : "status"} data-testid="explanation-job-resume">{explanationJobPollError ? <><strong>Saved job status needs recovery.</strong><p>{explanationJobPollError}</p></> : <span>This saved job is still active. New explanation/check jobs are paused to prevent duplicate work.</span>}<Button view="outlined" disabled={busy} onClick={resumeExplanationJob}>Resume saved job</Button></div>}
+            {explanationJob && (["queued", "running"].includes(explanationJob.status) || !!explanationJobPollError) && <div className={explanationJobPollError ? "error" : "property-description"} role={explanationJobPollError ? "alert" : "status"} data-testid="explanation-job-resume">{explanationJobPollError ? <><strong>{explanationJob.status === "succeeded" ? "Saved job output needs recovery." : "Saved job status needs recovery."}</strong><p>{explanationJobPollError}</p></> : <span>This saved job is still active. New explanation/check jobs are paused to prevent duplicate work.</span>}<Button view="outlined" disabled={busy} onClick={resumeExplanationJob}>{explanationJob.status === "succeeded" ? "Recover saved job result" : "Resume saved job"}</Button></div>}
           </>
         )}
         {error && <div className="error" role="alert">{error}</div>}
@@ -729,7 +741,7 @@ export function EvidenceWorkspace({
           <div className="feature-toolbar compact-toolbar">
             <div><span className="eyebrow">CHECK EXPLANATION</span><h3>Available technical checks</h3></div>
             <label className="field-label">Validator<select aria-label="Explanation validator" value={validatorKey} disabled={busy || project.read_only || runtimeCatalogHydrationStatus !== "available" || !runtimeValidators.length} onChange={(event) => setValidatorKey(event.target.value)}>{runtimeValidators.map((validator) => <option key={validator.identity.key} value={validator.identity.key}>{validator.identity.key} · {validator.identity.provider}</option>)}</select></label>
-            <Button view="outlined" disabled={busy || project.read_only || runtimeCatalogHydrationStatus !== "available" || !runtimeValidators.length || !executionBackends.length || explanationJobHydrationStatus === "loading" || explanationJobHydrationStatus === "error" || !!explanationJob && ["queued", "running"].includes(explanationJob.status)} onClick={check} data-ruflex-action="explanation.check">Run explanation checks</Button>
+            <Button view="outlined" disabled={busy || project.read_only || runtimeCatalogHydrationStatus !== "available" || !runtimeValidators.length || !executionBackends.length || explanationJobHydrationStatus === "loading" || explanationJobHydrationStatus === "error" || !!explanationJobPollError || !!explanationJob && ["queued", "running"].includes(explanationJob.status)} onClick={check} data-ruflex-action="explanation.check">Run explanation checks</Button>
           </div>
           {explanationCheck && explanationCheck.explanation_id !== explanation.explanation_id ? <div className="error" role="alert" data-testid="explanation-check-mismatch"><strong>Saved check belongs to a different explanation.</strong><p>The persisted ExplanationCheck is not displayed as validation of the currently selected explanation.</p></div> : explanationCheck ? (
             <div className="trace-card">

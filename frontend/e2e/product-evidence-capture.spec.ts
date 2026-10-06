@@ -124,8 +124,28 @@ test("PRODUCT-EVIDENCE captures the frozen V1 Studio route from persisted object
 
   await page.getByRole("button", { name: "E", exact: true }).click();
   await page.getByRole("button", { name: "Generate explanation", exact: true }).click();
+  let explanationCheckJobPostCount = 0;
+  let loseExplanationCheckOutputRead = true;
+  await page.route("**/api/projects/evidence/explanation-check-jobs", async (route) => {
+    if (route.request().method() === "POST") explanationCheckJobPostCount += 1;
+    await route.continue();
+  });
+  await page.route("**/api/projects/*/evidence/explanation-checks/*", async (route) => {
+    if (route.request().method() === "GET" && loseExplanationCheckOutputRead) {
+      loseExplanationCheckOutputRead = false;
+      await route.fetch();
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Saved ExplanationCheck response lost after persistence" }) });
+      return;
+    }
+    await route.continue();
+  });
   await page.getByRole("button", { name: "Run explanation checks", exact: true }).click();
+  await expect(page.getByTestId("explanation-job-resume")).toContainText("Saved ExplanationCheck response lost after persistence");
+  await expect(page.getByRole("button", { name: "Run explanation checks", exact: true })).toBeDisabled();
+  await page.getByRole("button", { name: "Recover saved job result", exact: true }).click();
   await expect(page.getByText("PASSED_AVAILABLE_CHECKS", { exact: true })).toBeVisible();
+  await expect(page.getByTestId("explanation-job-resume")).toHaveCount(0);
+  expect(explanationCheckJobPostCount).toBe(1);
   await capture(page, screenshots, "09_xai_and_explanation_check.png", page.getByText("PASSED_AVAILABLE_CHECKS", { exact: true }));
   // Two equivalent declared cases for the first independently trained run.
   await page.getByLabel("temperature").fill("30");
