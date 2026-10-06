@@ -41,6 +41,15 @@ function sameNumericRecord(left: Record<string, number>, right: Record<string, n
   return JSON.stringify(Object.entries(left).sort(([a], [b]) => a.localeCompare(b))) === JSON.stringify(Object.entries(right).sort(([a], [b]) => a.localeCompare(b)));
 }
 
+function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    const entries = Object.entries(value).sort(([left], [right]) => left.localeCompare(right));
+    return `{${entries.map(([key, item]) => `${JSON.stringify(key)}:${canonicalJson(item)}`).join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "undefined";
+}
+
 export function EvidenceWorkspace({
   project,
   dataset,
@@ -158,6 +167,9 @@ export function EvidenceWorkspace({
   const [behaviorSpec, setBehaviorSpec] = useState<BehaviorSpec | null>(restoredBehaviorSpec);
   const [behaviorResult, setBehaviorResult] = useState<BehaviorSpecResult | null>(restoredBehaviorResult);
   const [behaviorExecutionRecoveryError, setBehaviorExecutionRecoveryError] = useState<string | null>(null);
+  const [behaviorSpecCreationRecoveryRequest, setBehaviorSpecCreationRecoveryRequest] = useState<{ runId: string; payload: Parameters<typeof studioApi.createBehaviorSpec>[1] } | null>(null);
+  const [behaviorSpecCreationRecoveryError, setBehaviorSpecCreationRecoveryError] = useState<string | null>(null);
+  const [behaviorSpecCreationNotFound, setBehaviorSpecCreationNotFound] = useState(false);
   const [behaviorResults, setBehaviorResults] = useState<BehaviorSpecResult[]>([]);
   const [behaviorResultsHydrationStatus, setBehaviorResultsHydrationStatus] = useState<"loading" | "available" | "error">("loading");
   const [behaviorResultsHydrationError, setBehaviorResultsHydrationError] = useState<string | null>(null);
@@ -563,12 +575,13 @@ export function EvidenceWorkspace({
     if (!run) return;
     setBusy(true); setError(null);
     let createdSpec: BehaviorSpec | null = null;
+    let request: { runId: string; payload: Parameters<typeof studioApi.createBehaviorSpec>[1] } | null = null;
     try {
       const numeric = numericSample();
       const pairKinds = ["monotonic_pair", "invariance_pair", "symmetry_pair", "bounded_perturbation", "categorical_invariance", "required_order", "batch_regression_suite"];
       const rangeKinds = ["output_range", "regression_case", "domain_constraint", "forbidden_region", "batch_regression_suite"];
       const pair = pairKinds.includes(behaviorKind) ? numericComparisonSample() : null;
-      const created = await studioApi.createBehaviorSpec(project.session_id, {
+      request = { runId: run.run_id, payload: {
         run_id: run.run_id, name: behaviorName, kind: behaviorKind, sample: numeric, comparison_sample: pair,
         minimum: rangeKinds.includes(behaviorKind) ? Number(minimum) : null,
         maximum: rangeKinds.includes(behaviorKind) ? Number(maximum) : null,
@@ -576,17 +589,70 @@ export function EvidenceWorkspace({
         maximum_delta: behaviorKind === "bounded_perturbation" ? Number(maximumDelta) : null,
         cases: behaviorKind === "batch_regression_suite" ? [{ name: "primary", sample: numeric, minimum: Number(minimum), maximum: Number(maximum) }, { name: "comparison", sample: pair ?? numeric, minimum: Number(minimum), maximum: Number(maximum) }] : [],
         tolerance: 1e-9, rationale: "Persisted engineering behavior requirement.",
-      });
+      } };
+      const created = await studioApi.createBehaviorSpec(project.session_id, request.payload);
       createdSpec = created;
       setBehaviorSpec(created);
+      setBehaviorSpecCreationRecoveryRequest(null); setBehaviorSpecCreationRecoveryError(null); setBehaviorSpecCreationNotFound(false);
       setBehaviorExecutionRecoveryError(null);
       const result = await studioApi.runBehaviorSpec(project.session_id, created.spec_id);
       setBehaviorResult(result); onBehaviorResult(result); setBehaviorResultsHydrationReload((current) => current + 1);
     } catch (reason) {
       if (createdSpec) setBehaviorExecutionRecoveryError(reason instanceof Error ? reason.message : "The saved BehaviorSpec result could not be confirmed.");
+      else if (request) {
+        setBehaviorSpecCreationRecoveryRequest(request);
+        setBehaviorSpecCreationRecoveryError(reason instanceof Error ? reason.message : "The saved BehaviorSpec could not be confirmed.");
+        setBehaviorSpecCreationNotFound(false);
+      }
       setError(reason instanceof Error ? reason.message : String(reason));
     }
     finally { setBusy(false); }
+  }
+
+  async function recoverBehaviorSpecCreation() {
+    const request = behaviorSpecCreationRecoveryRequest;
+    if (!request) return;
+    let matchedSpec = false;
+    setBusy(true); setError(null);
+    try {
+      const specs = await studioApi.listBehaviorSpecs(project.session_id);
+      const fields = ["name", "kind", "sample", "comparison_sample", "minimum", "maximum", "expected_direction", "maximum_delta", "cases", "tolerance", "rationale"] as const;
+      const created = specs.find((item) => item.run_id === request.runId && fields.every((field) => canonicalJson(item[field]) === canonicalJson(request.payload[field])));
+      if (!created) {
+        setBehaviorSpecCreationNotFound(true);
+        setBehaviorSpecCreationRecoveryError("No saved requirement with this exact run and definition is visible yet. Retry lookup later, or explicitly repeat creation if the original request did not finish.");
+        return;
+      }
+      matchedSpec = true;
+      setBehaviorSpec(created); setBehaviorSpecCreationRecoveryRequest(null); setBehaviorSpecCreationRecoveryError(null); setBehaviorSpecCreationNotFound(false);
+      const results = await studioApi.listBehaviorResults(project.session_id);
+      const result = results.find((item) => item.spec_id === created.spec_id) ?? await studioApi.runBehaviorSpec(project.session_id, created.spec_id);
+      setBehaviorResult(result); onBehaviorResult(result); setBehaviorResultsHydrationReload((current) => current + 1);
+      setBehaviorExecutionRecoveryError(null);
+    } catch (reason) {
+      if (!matchedSpec) setBehaviorSpecCreationRecoveryError(reason instanceof Error ? reason.message : "Could not recover the saved BehaviorSpec.");
+      else setBehaviorExecutionRecoveryError(reason instanceof Error ? reason.message : "The saved BehaviorSpec was found, but its result could not be confirmed.");
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally { setBusy(false); }
+  }
+
+  async function explicitlyRestartBehaviorSpecCreation() {
+    const request = behaviorSpecCreationRecoveryRequest;
+    if (!request || !behaviorSpecCreationNotFound) return;
+    let createdSpec = false;
+    setBusy(true); setError(null);
+    try {
+      const created = await studioApi.createBehaviorSpec(project.session_id, request.payload);
+      createdSpec = true;
+      setBehaviorSpec(created); setBehaviorSpecCreationRecoveryRequest(null); setBehaviorSpecCreationRecoveryError(null); setBehaviorSpecCreationNotFound(false);
+      setBehaviorExecutionRecoveryError(null);
+      const result = await studioApi.runBehaviorSpec(project.session_id, created.spec_id);
+      setBehaviorResult(result); onBehaviorResult(result); setBehaviorResultsHydrationReload((current) => current + 1);
+    } catch (reason) {
+      if (createdSpec) setBehaviorExecutionRecoveryError(reason instanceof Error ? reason.message : "The newly saved BehaviorSpec result could not be confirmed.");
+      else { setBehaviorSpecCreationRecoveryError(reason instanceof Error ? reason.message : "The repeated BehaviorSpec creation could not be confirmed."); setBehaviorSpecCreationNotFound(false); }
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally { setBusy(false); }
   }
 
   async function resumeBehaviorSpecExecution() {
@@ -980,7 +1046,8 @@ export function EvidenceWorkspace({
         {!run ? <EmptyState title="No trained model selected">Select a persisted training run before defining behavior evidence.</EmptyState> : <>
           <div className="contract-grid"><label className="field-label">Name<TextInput aria-label="Behavior spec name" value={behaviorName} onUpdate={setBehaviorName} /></label><label className="field-label">Type<select aria-label="Behavior spec type" value={behaviorKind} onChange={(event) => setBehaviorKind(event.target.value as BehaviorSpec["kind"])}><option value="output_range">Output range</option><option value="monotonic_pair">Monotonic pair</option><option value="invariance_pair">Invariance pair</option><option value="symmetry_pair">Symmetry pair</option><option value="bounded_perturbation">Bounded perturbation</option><option value="categorical_invariance">Categorical invariance</option><option value="forbidden_region">Forbidden output region</option><option value="required_order">Required order</option><option value="domain_constraint">Domain constraint</option><option value="regression_case">Expert regression case</option><option value="batch_regression_suite">Two-case regression suite</option></select></label>{(["monotonic_pair", "required_order"] as string[]).includes(behaviorKind) && <label className="field-label">Direction<select aria-label="Monotonic direction" value={direction} onChange={(event) => setDirection(event.target.value as typeof direction)}><option value="nondecreasing">Nondecreasing</option><option value="nonincreasing">Nonincreasing</option></select></label>}{behaviorKind === "bounded_perturbation" && <label className="field-label">Maximum delta<input aria-label="Behavior maximum delta" type="number" value={maximumDelta} onChange={(event) => setMaximumDelta(event.target.value)} /></label>}{!(["monotonic_pair", "invariance_pair", "symmetry_pair", "bounded_perturbation", "categorical_invariance", "required_order"] as string[]).includes(behaviorKind) && <><label className="field-label">Minimum<input aria-label="Behavior minimum" type="number" value={minimum} onChange={(event) => setMinimum(event.target.value)} /></label><label className="field-label">Maximum<input aria-label="Behavior maximum" type="number" value={maximum} onChange={(event) => setMaximum(event.target.value)} /></label></>}</div>
           {(["monotonic_pair", "invariance_pair", "symmetry_pair", "bounded_perturbation", "categorical_invariance", "required_order", "batch_regression_suite"] as string[]).includes(behaviorKind) && <><p className="field-help">Define both cases explicitly. RuFLEX does not infer a pairwise requirement from a single sample.</p><div className="evidence-sample-grid">{run.feature_columns.map((feature) => <label className="field-label" key={`comparison-${feature}`}>Comparison {feature}<input aria-label={`Behavior comparison ${feature}`} type="number" value={comparisonSample[feature] ?? ""} onChange={(event) => setComparisonSample((current) => ({ ...current, [feature]: event.target.value }))} /></label>)}</div></>}
-          <Button view="action" disabled={busy || project.read_only || !!behaviorExecutionRecoveryError} onClick={createAndRunBehavior} data-ruflex-action="behavior.run">{busy ? "Running…" : "Create and run BehaviorSpec"}</Button>
+          {behaviorSpecCreationRecoveryRequest && <div className="error" role="alert" data-testid="behavior-spec-create-recovery"><strong>BehaviorSpec creation outcome is uncertain; resolve the exact run-bound definition before changing it.</strong><p>{behaviorSpecCreationRecoveryError}</p><Button view="outlined" disabled={busy} onClick={recoverBehaviorSpecCreation}>Retry saved requirement lookup</Button>{behaviorSpecCreationNotFound && <Button view="outlined" disabled={busy} onClick={explicitlyRestartBehaviorSpecCreation}>Create this requirement explicitly</Button>}</div>}
+          <Button view="action" disabled={busy || project.read_only || !!behaviorExecutionRecoveryError || !!behaviorSpecCreationRecoveryRequest} onClick={createAndRunBehavior} data-ruflex-action="behavior.run">{busy ? "Running…" : "Create and run BehaviorSpec"}</Button>
           {behaviorExecutionRecoveryError && <div className="error" role="alert" data-testid="behavior-run-recovery"><strong>The BehaviorSpec is already saved; retry its result by the same identity.</strong><p>{behaviorExecutionRecoveryError}</p><Button view="outlined" disabled={busy} onClick={resumeBehaviorSpecExecution}>Retry saved BehaviorSpec</Button></div>}
           {behaviorSpec && <div className="trace-card" data-testid="behavior-spec"><div className="evidence-check-header"><strong>{behaviorSpec.name}</strong><StatusBadge tone="info">{behaviorSpec.kind.replaceAll("_", " ")}</StatusBadge></div><p>{behaviorSpec.rationale}</p><small>{behaviorSpec.run_id ? `Run-bound requirement · ${behaviorSpec.run_id.slice(0, 12)}` : `FIS-bound requirement · ${behaviorSpec.fis_semantic_hash?.slice(0, 12)}`}</small></div>}
           {behaviorResult && <div className="trace-card" data-testid="behavior-result"><div className="evidence-check-header"><strong>{behaviorSpec?.name ?? "Persisted BehaviorSpec"}</strong><StatusBadge tone={behaviorResult.status === "PASS" ? "success" : "danger"}>{behaviorResult.status}</StatusBadge></div><p>{behaviorResult.detail}</p><small>{behaviorResult.run_id ? `Run ${behaviorResult.run_id.slice(0, 12)} · artifact ${behaviorResult.model_artifact_sha256?.slice(0, 12)}` : `FIS revision ${behaviorResult.fis_semantic_hash?.slice(0, 12)}`}</small></div>}

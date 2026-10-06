@@ -184,6 +184,13 @@ test("PRODUCT-EVIDENCE captures the frozen V1 Studio route from persisted object
   expect(reproducibilityPostCount).toBe(1);
   await capture(page, screenshots, "10_cross_run_reproducibility.png", page.getByTestId("reproducibility-result"));
 
+  let behaviorSpecPostCount = 0;
+  await page.route("**/api/projects/evidence/behavior-specs", async (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    behaviorSpecPostCount += 1;
+    await route.fetch();
+    await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "BehaviorSpec creation response lost after persistence" }) });
+  });
   let behaviorRunPostCount = 0;
   let loseFirstBehaviorResultResponse = true;
   await page.route("**/api/projects/evidence/behavior-specs/run", async (route) => {
@@ -198,11 +205,16 @@ test("PRODUCT-EVIDENCE captures the frozen V1 Studio route from persisted object
     await route.continue();
   });
   await page.getByRole("button", { name: "Create and run BehaviorSpec", exact: true }).click();
+  await expect(page.getByTestId("behavior-spec-create-recovery")).toContainText("BehaviorSpec creation response lost after persistence");
+  await expect(page.getByRole("button", { name: "Create and run BehaviorSpec", exact: true })).toBeDisabled();
+  await page.getByRole("button", { name: "Retry saved requirement lookup", exact: true }).click();
   await expect(page.getByTestId("behavior-run-recovery")).toContainText("BehaviorSpec result response lost after persistence");
   await expect(page.getByRole("button", { name: "Create and run BehaviorSpec", exact: true })).toBeDisabled();
   await page.getByRole("button", { name: "Retry saved BehaviorSpec", exact: true }).click();
   await expect(page.getByTestId("behavior-result")).toBeVisible();
   await expect(page.getByTestId("behavior-run-recovery")).toHaveCount(0);
+  await expect(page.getByTestId("behavior-spec-create-recovery")).toHaveCount(0);
+  expect(behaviorSpecPostCount).toBe(1);
   expect(behaviorRunPostCount).toBe(1);
   await capture(page, screenshots, "11_behavior_specs.png", page.getByTestId("behavior-result"));
   let exhaustivePostCount = 0;
