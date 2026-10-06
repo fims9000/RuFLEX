@@ -126,6 +126,9 @@ export function App() {
   const [analysisEvaluationStatus, setAnalysisEvaluationStatus] = useState<"idle" | "loading" | "none" | "available" | "error">("idle");
   const [analysisEvaluationError, setAnalysisEvaluationError] = useState<string | null>(null);
   const [analysisEvaluationReload, setAnalysisEvaluationReload] = useState(0);
+  const [validationPolicyEvidenceStatus, setValidationPolicyEvidenceStatus] = useState<"idle" | "loading" | "available" | "error">("idle");
+  const [validationPolicyEvidenceError, setValidationPolicyEvidenceError] = useState<string | null>(null);
+  const [validationPolicyEvidenceReload, setValidationPolicyEvidenceReload] = useState(0);
   const [analysisComparison, setAnalysisComparison] = useState<AnalysisComparison | null>(null);
   const [calibrationTransform, setCalibrationTransform] = useState<CalibrationTransform | null>(null);
   const [decisionThreshold, setDecisionThreshold] = useState<DecisionThresholdPolicy | null>(null);
@@ -182,9 +185,15 @@ export function App() {
       setTrainingRunsStatus("idle");
       setTrainingRunsError(null);
       setTrainingStudy(null);
+      setStabilityAnalysis(null);
+      setStabilityGatePolicy(null);
       setAnalysisEvaluation(null);
       setAnalysisEvaluationStatus("idle");
       setAnalysisEvaluationError(null);
+      setValidationPolicyEvidenceStatus("idle");
+      setValidationPolicyEvidenceError(null);
+      setValidationPolicyEvidenceStatus("idle");
+      setValidationPolicyEvidenceError(null);
       setAnalysisComparison(null);
       setCalibrationTransform(null);
       setDecisionThreshold(null);
@@ -218,6 +227,13 @@ export function App() {
     setTrainingRuns([]);
     setTrainingRunsStatus("loading");
     setTrainingRunsError(null);
+    setStabilityAnalysis(null);
+    setStabilityGatePolicy(null);
+    setCalibrationTransform(null);
+    setDecisionThreshold(null);
+    setSelectivePolicy(null);
+    setValidationPolicyEvidenceStatus("loading");
+    setValidationPolicyEvidenceError(null);
     Promise.all([
       studioApi.getDatasetState(project.session_id).catch(() => null),
       studioApi.getActiveFis(project.session_id).catch(() => null),
@@ -246,7 +262,6 @@ export function App() {
       setBehaviorSpec(specs.find((candidate) => candidate.spec_id === result.spec_id) ?? null);
     }).catch(() => { setBehaviorResult(null); setBehaviorSpec(null); });
     studioApi.listStudyStabilityAnalyses(project.session_id).then((items) => setStabilityAnalysis(items.at(-1) ?? null)).catch(() => setStabilityAnalysis(null));
-    studioApi.listStabilityGatePolicies(project.session_id).then((items) => setStabilityGatePolicy(items.at(-1) ?? null)).catch(() => setStabilityGatePolicy(null));
     studioApi
       .getLatestTrainingStudy(project.session_id)
       .then(setTrainingStudy)
@@ -255,20 +270,11 @@ export function App() {
       .getLatestAnalysisComparison(project.session_id)
       .then(setAnalysisComparison)
       .catch(() => setAnalysisComparison(null));
-    studioApi
-      .getLatestAnalysisCalibration(project.session_id)
-      .then(setCalibrationTransform)
-      .catch(() => setCalibrationTransform(null));
-    studioApi
-      .getLatestAnalysisThreshold(project.session_id)
-      .then(setDecisionThreshold)
-      .catch(() => setDecisionThreshold(null));
     studioApi.getLatestSliceAnalysis(project.session_id).then(setSliceAnalysis).catch(() => setSliceAnalysis(null));
     studioApi.getLatestTreePath(project.session_id).then(setTreeEvidence).catch(() => setTreeEvidence(null));
     studioApi.getLatestExplanation(project.session_id).then(setExplanation).catch(() => setExplanation(null));
     studioApi.getLatestExplanationCheck(project.session_id).then(setExplanationCheck).catch(() => setExplanationCheck(null));
     studioApi.getLatestBehaviorResult(project.session_id).then(setBehaviorResult).catch(() => setBehaviorResult(null));
-    studioApi.getLatestSelectivePolicy(project.session_id).then(setSelectivePolicy).catch(() => setSelectivePolicy(null));
     studioApi.getLatestExplanationReproducibility(project.session_id).then(setReproducibility).catch(() => setReproducibility(null));
     studioApi.getLatestExhaustiveLab(project.session_id).then(setExhaustive).catch(() => setExhaustive(null));
     studioApi.getLatestAssuranceCase(project.session_id).then(setAssurance).catch(() => setAssurance(null));
@@ -278,6 +284,40 @@ export function App() {
     studioApi.getProjectIntegrity(project.session_id).then(setIntegrity).catch(() => setIntegrity(null));
     return () => { active = false; };
   }, [project?.session_id]);
+  useEffect(() => {
+    let active = true;
+    if (!project) return () => { active = false; };
+    setValidationPolicyEvidenceStatus("loading");
+    setValidationPolicyEvidenceError(null);
+    const optional = async <T,>(load: () => Promise<T>): Promise<{ value: T | null; error: string | null }> => {
+      try {
+        return { value: await load(), error: null };
+      } catch (reason) {
+        if (reason instanceof ProductApiError && reason.status === 404) return { value: null, error: null };
+        return { value: null, error: reason instanceof Error ? reason.message : "Persisted policy evidence could not be loaded." };
+      }
+    };
+    Promise.all([
+      optional(() => studioApi.getLatestAnalysisCalibration(project.session_id)),
+      optional(() => studioApi.getLatestAnalysisThreshold(project.session_id)),
+      optional(() => studioApi.getLatestSelectivePolicy(project.session_id)),
+      optional(() => studioApi.listStabilityGatePolicies(project.session_id)),
+    ]).then(([calibration, threshold, selective, stabilityPolicies]) => {
+      if (!active) return;
+      setCalibrationTransform(calibration.value);
+      setDecisionThreshold(threshold.value);
+      setSelectivePolicy(selective.value);
+      if (stabilityPolicies.value) setStabilityGatePolicy(stabilityPolicies.value.at(-1) ?? null);
+      const errors = [calibration.error, threshold.error, selective.error, stabilityPolicies.error].filter((message): message is string => Boolean(message));
+      if (errors.length) {
+        setValidationPolicyEvidenceStatus("error");
+        setValidationPolicyEvidenceError(errors.join(" · "));
+      } else {
+        setValidationPolicyEvidenceStatus("available");
+      }
+    });
+    return () => { active = false; };
+  }, [project?.session_id, validationPolicyEvidenceReload]);
   useEffect(() => {
     let active = true;
     if (!project) return () => { active = false; };
@@ -361,10 +401,6 @@ export function App() {
     generalization?.contract.contract_id,
     generalization?.contract.frozen_at,
   ]);
-  useEffect(() => {
-    if (!project || active !== "ANALYSES") return;
-    studioApi.listStabilityGatePolicies(project.session_id).then((items) => setStabilityGatePolicy(items.at(-1) ?? null)).catch(() => undefined);
-  }, [active, project?.session_id]);
   async function openLineageNode(node: LineageNode) {
     if (!project) return;
     const objectId = node.object_id;
@@ -1266,7 +1302,7 @@ export function App() {
           onStudy={setTrainingStudy}
         />
       ) : active === "ANALYSES" ? (
-        <EvaluationWorkspace project={project} dataset={datasetState} fis={fis} run={trainingRun} runs={trainingRuns} runListStatus={trainingRunsStatus} runListError={trainingRunsError} onRetryRunList={() => setTrainingRunsReload((current) => current + 1)} study={trainingStudy} evaluation={analysisEvaluation} evaluationStatus={analysisEvaluationStatus} evaluationError={analysisEvaluationError} onRetryEvaluation={() => setAnalysisEvaluationReload((current) => current + 1)} calibrationTransform={calibrationTransform} decisionThreshold={decisionThreshold} finalTestEvaluation={finalTestEvaluation} finalTestEvidenceStatus={finalTestEvidenceStatus} finalTestEvidenceError={finalTestEvidenceError} onRetryFinalTestEvidence={() => setFinalTestEvidenceReload((current) => current + 1)} comparison={analysisComparison} sliceAnalysis={sliceAnalysis} selectivePolicy={selectivePolicy} stabilityGatePolicy={stabilityGatePolicy} theme={theme} onEvaluation={(evaluation) => { setAnalysisEvaluation(evaluation); setAnalysisEvaluationStatus("available"); }} onCalibration={setCalibrationTransform} onThreshold={setDecisionThreshold} onSelectivePolicy={setSelectivePolicy} onFinalTest={(evaluation) => { setFinalTestEvaluation(evaluation); if (evaluation) setFinalTestEvidenceStatus("available"); }} onComparison={setAnalysisComparison} onSliceAnalysis={setSliceAnalysis} />
+        <EvaluationWorkspace project={project} dataset={datasetState} fis={fis} run={trainingRun} runs={trainingRuns} runListStatus={trainingRunsStatus} runListError={trainingRunsError} onRetryRunList={() => setTrainingRunsReload((current) => current + 1)} study={trainingStudy} evaluation={analysisEvaluation} evaluationStatus={analysisEvaluationStatus} evaluationError={analysisEvaluationError} onRetryEvaluation={() => setAnalysisEvaluationReload((current) => current + 1)} validationPolicyEvidenceStatus={validationPolicyEvidenceStatus} validationPolicyEvidenceError={validationPolicyEvidenceError} onRetryValidationPolicyEvidence={() => setValidationPolicyEvidenceReload((current) => current + 1)} calibrationTransform={calibrationTransform} decisionThreshold={decisionThreshold} finalTestEvaluation={finalTestEvaluation} finalTestEvidenceStatus={finalTestEvidenceStatus} finalTestEvidenceError={finalTestEvidenceError} onRetryFinalTestEvidence={() => setFinalTestEvidenceReload((current) => current + 1)} comparison={analysisComparison} sliceAnalysis={sliceAnalysis} selectivePolicy={selectivePolicy} stabilityGatePolicy={stabilityGatePolicy} theme={theme} onEvaluation={(evaluation) => { setAnalysisEvaluation(evaluation); setAnalysisEvaluationStatus("available"); }} onCalibration={setCalibrationTransform} onThreshold={setDecisionThreshold} onSelectivePolicy={setSelectivePolicy} onFinalTest={(evaluation) => { setFinalTestEvaluation(evaluation); if (evaluation) setFinalTestEvidenceStatus("available"); }} onComparison={setAnalysisComparison} onSliceAnalysis={setSliceAnalysis} />
       ) : active === "EVIDENCE" ? (
         <EvidenceWorkspace
           project={project}

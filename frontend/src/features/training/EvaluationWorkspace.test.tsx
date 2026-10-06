@@ -53,10 +53,13 @@ function renderWorkspace(readOnly = false, overrides: {
   evaluationStatus?: "idle" | "loading" | "none" | "available" | "error";
   evaluationError?: string | null;
   onRetryEvaluation?: () => void;
+  validationPolicyEvidenceStatus?: "idle" | "loading" | "available" | "error";
+  validationPolicyEvidenceError?: string | null;
+  onRetryValidationPolicyEvidence?: () => void;
 } = {}) {
   return render(<EvaluationWorkspace
     project={{ ...project, read_only: readOnly } as never} dataset={(overrides.dataset ?? null) as never} fis={null} run={(overrides.run === undefined ? run : overrides.run) as never} runs={(overrides.runs ?? [run]) as never} runListStatus={overrides.runListStatus ?? "loaded"} runListError={overrides.runListError ?? null} onRetryRunList={overrides.onRetryRunList ?? vi.fn()} study={null}
-    evaluation={(overrides.evaluationStatus === "error" ? null : evaluation) as never} evaluationStatus={overrides.evaluationStatus ?? "available"} evaluationError={overrides.evaluationError ?? null} onRetryEvaluation={overrides.onRetryEvaluation ?? vi.fn()} calibrationTransform={null} decisionThreshold={threshold as never} finalTestEvaluation={(overrides.finalTestEvaluation ?? null) as never}
+    evaluation={(overrides.evaluationStatus === "error" ? null : evaluation) as never} evaluationStatus={overrides.evaluationStatus ?? "available"} evaluationError={overrides.evaluationError ?? null} onRetryEvaluation={overrides.onRetryEvaluation ?? vi.fn()} validationPolicyEvidenceStatus={overrides.validationPolicyEvidenceStatus ?? "available"} validationPolicyEvidenceError={overrides.validationPolicyEvidenceError ?? null} onRetryValidationPolicyEvidence={overrides.onRetryValidationPolicyEvidence ?? vi.fn()} calibrationTransform={null} decisionThreshold={threshold as never} finalTestEvaluation={(overrides.finalTestEvaluation ?? null) as never}
     finalTestEvidenceStatus={overrides.finalTestEvidenceStatus ?? "none"} finalTestEvidenceError={overrides.finalTestEvidenceError ?? null} onRetryFinalTestEvidence={overrides.onRetryFinalTestEvidence ?? vi.fn()}
     comparison={null} sliceAnalysis={null} selectivePolicy={null} stabilityGatePolicy={null} theme={"light" as never}
     onEvaluation={vi.fn()} onCalibration={vi.fn()} onThreshold={vi.fn()} onFinalTest={vi.fn()} onComparison={vi.fn()} onSliceAnalysis={vi.fn()} onSelectivePolicy={vi.fn()}
@@ -64,6 +67,20 @@ function renderWorkspace(readOnly = false, overrides: {
 }
 
 describe("EvaluationWorkspace final-test boundary", () => {
+  it("does not infer missing frozen policies when policy hydration fails", () => {
+    const retry = vi.fn();
+    renderWorkspace(false, { validationPolicyEvidenceStatus: "error", validationPolicyEvidenceError: "threshold store unavailable", onRetryValidationPolicyEvidence: retry });
+    expect(screen.getByRole("alert")).toHaveTextContent("Could not verify saved validation policies");
+    expect(screen.getByRole("alert")).toHaveTextContent("threshold store unavailable");
+    expect(screen.getByRole("button", { name: "Save evaluation revision" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Reselect threshold" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save ACCEPT / REVIEW policy" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("checkbox", { name: /I confirm this policy was frozen/ }));
+    expect(screen.getByRole("button", { name: "Evaluate frozen final test" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Retry saved policy check" }));
+    expect(retry).toHaveBeenCalledOnce();
+  });
+
   it("preserves run metrics but pauses new Evaluation and policy writes while saved Evaluation lookup fails", () => {
     const retry = vi.fn();
     renderWorkspace(false, { evaluationStatus: "error", evaluationError: "evaluation store unavailable", onRetryEvaluation: retry });

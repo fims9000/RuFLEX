@@ -106,6 +106,7 @@ test("PRODUCT-02 blocks validation policy changes when final-test access status 
   test.setTimeout(45_000);
   let boundaryRequests = 0;
   let evaluationRequests = 0;
+  let selectivePolicyRequests = 0;
   await page.route("**/api/projects/*/analyses/final-test/latest", async (route) => {
     boundaryRequests += 1;
     if (boundaryRequests === 1) {
@@ -119,6 +120,13 @@ test("PRODUCT-02 blocks validation policy changes when final-test access status 
       return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "saved evaluation store unavailable" }) });
     }
     return route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ detail: "No saved evaluation exists in this project." }) });
+  });
+  await page.route("**/api/projects/*/analyses/selective-policies/latest", async (route) => {
+    selectivePolicyRequests += 1;
+    if (selectivePolicyRequests === 1) {
+      return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "saved policy store unavailable" }) });
+    }
+    return route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ detail: "No selective policy exists in this project." }) });
   });
   const path = projectPath();
   await page.goto("/");
@@ -144,6 +152,10 @@ test("PRODUCT-02 blocks validation policy changes when final-test access status 
   await expect(page.getByRole("heading", { name: "Final-test state unavailable" })).toBeVisible();
   await expect(page.getByRole("alert").filter({ hasText: "final-test boundary store unavailable" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Select F1 threshold (raw)" })).toBeDisabled();
+  await expect(page.getByRole("alert").filter({ hasText: "saved policy store unavailable" })).toBeVisible();
+  await page.getByRole("button", { name: "Retry saved policy check" }).click();
+  await expect(page.getByRole("button", { name: "Select F1 threshold (raw)" })).toBeDisabled();
+  expect(selectivePolicyRequests).toBe(2);
   await page.getByRole("button", { name: "Retry final-test status check" }).click();
   await expect(page.getByRole("heading", { name: "Final test remains closed" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Select F1 threshold (raw)" })).toBeEnabled();
