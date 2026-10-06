@@ -71,6 +71,27 @@ describe("ExperimentWorkspace dynamic model controls", () => {
     expect(screen.queryByLabelText("Max rules / layer")).not.toBeInTheDocument();
   });
 
+  it("rejects ambiguous Study seed lists before submission and recovers when corrected", async () => {
+    render(<ExperimentWorkspace project={project} dataset={dataset as never} run={null} study={null} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);
+
+    const seeds = screen.getByLabelText("Study seeds");
+    const startStudy = screen.getByRole("button", { name: "Run multi-seed study" });
+    await waitFor(() => expect(startStudy).toBeEnabled());
+    fireEvent.change(seeds, { target: { value: "42, nope, 44, 45" } });
+    expect(await screen.findByRole("alert")).toHaveTextContent("invalid entries are not ignored");
+    expect(seeds).toHaveAttribute("aria-invalid", "true");
+    expect(startStudy).toBeDisabled();
+
+    fireEvent.change(seeds, { target: { value: "42, 43, 44" } });
+    await waitFor(() => expect(startStudy).toBeEnabled());
+    expect(seeds).toHaveAttribute("aria-invalid", "false");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+
+    fireEvent.change(seeds, { target: { value: "42, 43, 43" } });
+    expect(await screen.findByRole("alert")).toHaveTextContent("Each Study seed must be distinct");
+    expect(startStudy).toBeDisabled();
+  });
+
   it("reopens and presents persisted split, train-only transform and leakage-audit evidence", async () => {
     const split = {
       split_id: "split-12345678", family: "GROUP", split_seed: 7, group_column: "patient_id", time_column: null,

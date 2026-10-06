@@ -92,6 +92,18 @@ function NumberField({ label, value, min, max, step = 1, disabled, onChange }: {
   }} /></label>;
 }
 
+function parseStudySeeds(value: string): { seeds: number[]; error: string | null } {
+  const tokens = value.split(",").map((token) => token.trim());
+  if (tokens.some((token) => !/^-?\d+$/.test(token) || !Number.isSafeInteger(Number(token)))) {
+    return { seeds: [], error: "Use comma-separated whole-number seeds; invalid entries are not ignored." };
+  }
+  const seeds = tokens.map(Number);
+  if (new Set(seeds).size !== seeds.length) return { seeds: [], error: "Each Study seed must be distinct." };
+  if (seeds.length < 3) return { seeds: [], error: "Enter at least three distinct seeds to start a multi-seed Study." };
+  if (seeds.length > 32) return { seeds: [], error: "A multi-seed Study accepts at most 32 seeds." };
+  return { seeds, error: null };
+}
+
 export function ExperimentWorkspace({ project, dataset, run, study: restoredStudy, theme, onRun, onStudy }: {
   project: ProjectSummary;
   dataset: DatasetState | null;
@@ -137,6 +149,7 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
   const [runCapabilities, setRunCapabilities] = useState<RunCapabilityNegotiation | null>(null);
   const option = useMemo(() => run ? trajectoryOption(run) : null, [run]);
   const statistics = useMemo(() => study ? studyStatistics(study) : null, [study]);
+  const studySeedValidation = useMemo(() => parseStudySeeds(seedList), [seedList]);
   useEffect(() => {
     setStudy(restoredStudy);
   }, [restoredStudy?.study_id]);
@@ -297,11 +310,11 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
     finally { setRunning(false); }
   }
   async function trainStudy() {
-    const seeds = [...new Set(seedList.split(",").map((value) => Number(value.trim())).filter(Number.isInteger))];
-    if (seeds.length < 3) {
-      setError("Enter at least three distinct integer seeds.");
+    if (studySeedValidation.error) {
+      setError(studySeedValidation.error);
       return;
     }
+    const seeds = studySeedValidation.seeds;
     setRunning(true);
     setError(null);
     try {
@@ -373,7 +386,7 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
           {supportsParameter("max_rules") && <NumberField label="Max rules / layer" value={maxRules} min={1} max={128} step={1} disabled={running || project.read_only} onChange={setMaxRules} />}
           {supportsParameter("n_estimators") && <NumberField label="Trees / estimators" value={nEstimators} min={1} step={1} disabled={running || project.read_only} onChange={setNEstimators} />}
           {supportsParameter("max_depth") && <label className="field-label">Maximum depth<input aria-label="Maximum depth" type="number" min={1} value={maxDepth ?? ""} placeholder="unlimited" disabled={running || project.read_only} onChange={(event) => setMaxDepth(event.target.value === "" ? null : Number(event.target.value))} /></label>}
-          <label className="field-label">Study seeds<input aria-label="Study seeds" value={seedList} disabled={running || project.read_only} onChange={(event) => setSeedList(event.target.value)} /></label>
+          <label className="field-label">Study seeds<input aria-label="Study seeds" aria-invalid={Boolean(studySeedValidation.error)} aria-describedby="study-seeds-help" value={seedList} disabled={running || project.read_only} onChange={(event) => setSeedList(event.target.value)} /></label>
           <label className="field-label">Study randomness protocol<select aria-label="Study randomness protocol" value={studyMode} disabled={running || project.read_only} onChange={(event) => setStudyMode(event.target.value as typeof studyMode)}><option value="TRAINING_VARIABILITY">Training variability (fixed split)</option><option value="SPLIT_VARIABILITY">Split variability (fixed training seed)</option><option value="COMBINED_VARIABILITY">Combined variability</option></select></label>
           <label className="field-label">Study execution backend<select aria-label="Study execution backend" value={executionBackendKey} disabled={running || project.read_only || !executionBackends.length} onChange={(event) => setExecutionBackendKey(event.target.value)}>{executionBackends.map((backend) => <option key={backend.identity.key} value={backend.identity.key}>{backend.identity.key} · {backend.identity.provider}</option>)}</select></label>
         </div>
@@ -388,7 +401,8 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
           <p>Both paths use the declared training/validation workflow; opening this screen or changing settings does not start computation or unlock the test split.</p>
         </section>
         <Button view="action" disabled={running || project.read_only || Boolean(splitEvidenceError) || catalogStatus !== "loaded" || !selectedModel} onClick={train} data-ruflex-action="training.run">{running ? "Training…" : "Run real training"}</Button>
-        <Button view="outlined" disabled={running || project.read_only || Boolean(splitEvidenceError) || catalogStatus !== "loaded" || !selectedModel} onClick={trainStudy} data-ruflex-action="study.start">{running ? "Training…" : "Run multi-seed study"}</Button>
+        <p id="study-seeds-help" className={studySeedValidation.error ? "error" : "property-description"} role={studySeedValidation.error ? "alert" : undefined}>{studySeedValidation.error ?? "Enter 3–32 distinct whole-number seeds, separated by commas."}</p>
+        <Button view="outlined" disabled={running || project.read_only || Boolean(splitEvidenceError) || catalogStatus !== "loaded" || !selectedModel || Boolean(studySeedValidation.error)} onClick={trainStudy} data-ruflex-action="study.start">{running ? "Training…" : "Run multi-seed study"}</Button>
         {studyJob && <div className="info-message"><strong>Study job {studyJob.status}</strong> · {studyJob.execution_backend_key ?? studyJob.execution_backend} · {studyJob.seed_states.map((state) => `seed ${state.seed}: ${state.status}`).join(" · ")} {(["QUEUED", "RUNNING"].includes(studyJob.status)) && <><Button view="flat" size="s" onClick={resumeStudy} data-ruflex-action="study.resume">Resume persisted study</Button><Button view="flat" size="s" onClick={cancelStudy} data-ruflex-action="study.cancel">Cancel study</Button></>} {studyJob.recovery_note && <small>{studyJob.recovery_note}</small>}</div>}
         <div className="info-message">A frozen SplitContract assigns exact source rows before fitting. GROUP keeps each declared identity in one role. It makes split membership auditable; it does not by itself establish generalization validity.</div>
         {splitEvidenceError && <div className="error" role="alert">Saved split provenance is invalid or unavailable. Training is blocked rather than falling back to an unverified split. {splitEvidenceError}</div>}
