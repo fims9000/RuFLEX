@@ -56,6 +56,23 @@ beforeEach(() => {
 });
 
 describe("ExperimentWorkspace dynamic model controls", () => {
+  it("keeps Study creation paused while saved Study and job lookups are unresolved, then retries", async () => {
+    studioApi.listStudyJobs.mockRejectedValueOnce(new Error("job store unavailable"));
+    const retryStudy = vi.fn();
+    const view = render(<ExperimentWorkspace project={project} dataset={dataset as never} run={null} study={null} studyHydrationStatus="error" studyHydrationError="study store unavailable" onRetryStudyHydration={retryStudy} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Could not restore saved TrainingStudy");
+    expect(screen.getByRole("alert")).toHaveTextContent("study store unavailable");
+    const startStudy = screen.getByRole("button", { name: "Run multi-seed study" });
+    expect(startStudy).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Retry Study check" }));
+    expect(retryStudy).toHaveBeenCalledOnce();
+    view.rerender(<ExperimentWorkspace project={project} dataset={dataset as never} run={null} study={null} studyHydrationStatus="none" onRetryStudyHydration={retryStudy} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);
+    await waitFor(() => expect(screen.getByText("Could not restore saved Study jobs.", { exact: true })).toBeVisible());
+    fireEvent.click(screen.getByRole("button", { name: "Retry Study jobs" }));
+    await waitFor(() => expect(startStudy).toBeEnabled());
+  });
+
   it("shows only the selected adapter's declared parameters", async () => {
     render(<ExperimentWorkspace project={project} dataset={dataset as never} run={null} study={null} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);
 

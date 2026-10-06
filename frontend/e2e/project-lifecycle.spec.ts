@@ -160,6 +160,19 @@ test("E2E-09 declares and freezes the new-entity generalization contract", async
 
 test("E2E-10 distinguishes unavailable saved training history from an empty project and retries", async ({ page }) => {
   let runListRequests = 0;
+  let studyRequests = 0;
+  let studyJobRequests = 0;
+  await page.route("**/api/projects/*/training/studies/latest", async (route) => {
+    studyRequests += 1;
+    if (studyRequests === 1) return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "saved Study temporarily unavailable" }) });
+    return route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ detail: "No saved TrainingStudy exists." }) });
+  });
+  await page.route("**/api/projects/*/training/study-jobs", async (route) => {
+    if (route.request().method() !== "GET") return route.continue();
+    studyJobRequests += 1;
+    if (studyJobRequests === 1) return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "saved Study jobs temporarily unavailable" }) });
+    return route.fulfill({ status: 200, contentType: "application/json", body: "[]" });
+  });
   await page.route("**/api/projects/*/training/runs", async (route) => {
     if (route.request().method() !== "GET") return route.continue();
     runListRequests += 1;
@@ -169,6 +182,20 @@ test("E2E-10 distinguishes unavailable saved training history from an empty proj
     return route.fulfill({ status: 200, contentType: "application/json", body: "[]" });
   });
   await createProject(page, projectPath("run-history"), "Run history project");
+  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
+  await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
+  await page.getByRole("button", { name: "S", exact: true }).click();
+  const studyError = page.getByRole("alert").filter({ hasText: "Could not restore saved TrainingStudy" });
+  await expect(studyError).toContainText("saved Study temporarily unavailable");
+  await expect(page.getByRole("button", { name: "Run multi-seed study", exact: true })).toBeDisabled();
+  await page.getByRole("button", { name: "Retry Study check", exact: true }).click();
+  await expect(page.getByText("No saved TrainingStudy exists for this project yet", { exact: false })).toBeVisible();
+  await expect(page.getByRole("alert").filter({ hasText: "Could not restore saved Study jobs" })).toBeVisible();
+  await page.getByRole("button", { name: "Retry Study jobs", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Run multi-seed study", exact: true })).toBeEnabled();
+  expect(studyRequests).toBe(2);
+  expect(studyJobRequests).toBe(2);
   await page.getByRole("button", { name: "A", exact: true }).click();
   const error = page.getByRole("alert");
   await expect(error).toContainText("Could not restore saved training runs");

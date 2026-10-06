@@ -120,6 +120,9 @@ export function App() {
   const [trainingRunsError, setTrainingRunsError] = useState<string | null>(null);
   const [trainingRunsReload, setTrainingRunsReload] = useState(0);
   const [trainingStudy, setTrainingStudy] = useState<TrainingStudy | null>(null);
+  const [trainingStudyStatus, setTrainingStudyStatus] = useState<"idle" | "loading" | "none" | "available" | "error">("idle");
+  const [trainingStudyError, setTrainingStudyError] = useState<string | null>(null);
+  const [trainingStudyReload, setTrainingStudyReload] = useState(0);
   const [stabilityAnalysis, setStabilityAnalysis] = useState<StudyStabilityAnalysis | null>(null);
   const [stabilityGatePolicy, setStabilityGatePolicy] = useState<StabilityGatePolicy | null>(null);
   const [analysisEvaluation, setAnalysisEvaluation] = useState<AnalysisEvaluation | null>(null);
@@ -185,13 +188,13 @@ export function App() {
       setTrainingRunsStatus("idle");
       setTrainingRunsError(null);
       setTrainingStudy(null);
+      setTrainingStudyStatus("idle");
+      setTrainingStudyError(null);
       setStabilityAnalysis(null);
       setStabilityGatePolicy(null);
       setAnalysisEvaluation(null);
       setAnalysisEvaluationStatus("idle");
       setAnalysisEvaluationError(null);
-      setValidationPolicyEvidenceStatus("idle");
-      setValidationPolicyEvidenceError(null);
       setValidationPolicyEvidenceStatus("idle");
       setValidationPolicyEvidenceError(null);
       setAnalysisComparison(null);
@@ -227,6 +230,9 @@ export function App() {
     setTrainingRuns([]);
     setTrainingRunsStatus("loading");
     setTrainingRunsError(null);
+    setTrainingStudy(null);
+    setTrainingStudyStatus("loading");
+    setTrainingStudyError(null);
     setStabilityAnalysis(null);
     setStabilityGatePolicy(null);
     setCalibrationTransform(null);
@@ -263,10 +269,6 @@ export function App() {
     }).catch(() => { setBehaviorResult(null); setBehaviorSpec(null); });
     studioApi.listStudyStabilityAnalyses(project.session_id).then((items) => setStabilityAnalysis(items.at(-1) ?? null)).catch(() => setStabilityAnalysis(null));
     studioApi
-      .getLatestTrainingStudy(project.session_id)
-      .then(setTrainingStudy)
-      .catch(() => setTrainingStudy(null));
-    studioApi
       .getLatestAnalysisComparison(project.session_id)
       .then(setAnalysisComparison)
       .catch(() => setAnalysisComparison(null));
@@ -284,6 +286,27 @@ export function App() {
     studioApi.getProjectIntegrity(project.session_id).then(setIntegrity).catch(() => setIntegrity(null));
     return () => { active = false; };
   }, [project?.session_id]);
+  useEffect(() => {
+    let active = true;
+    if (!project) return () => { active = false; };
+    setTrainingStudyStatus("loading");
+    setTrainingStudyError(null);
+    studioApi.getLatestTrainingStudy(project.session_id).then((study) => {
+      if (!active) return;
+      setTrainingStudy(study);
+      setTrainingStudyStatus("available");
+    }).catch((reason: unknown) => {
+      if (!active) return;
+      if (reason instanceof ProductApiError && reason.status === 404) {
+        setTrainingStudy(null);
+        setTrainingStudyStatus("none");
+        return;
+      }
+      setTrainingStudyStatus("error");
+      setTrainingStudyError(reason instanceof Error ? reason.message : "Saved TrainingStudy could not be restored.");
+    });
+    return () => { active = false; };
+  }, [project?.session_id, trainingStudyReload]);
   useEffect(() => {
     let active = true;
     if (!project) return () => { active = false; };
@@ -420,6 +443,7 @@ export function App() {
         setFis(revision);
       } else if (node.kind === "study" && objectId) {
         setTrainingStudy(await studioApi.getTrainingStudy(project.session_id, objectId));
+        setTrainingStudyStatus("available");
       } else if (node.kind === "study_stability" && objectId) {
         setStabilityAnalysis(await studioApi.getStudyStabilityAnalysis(project.session_id, objectId));
       } else if (node.kind === "evaluation" && objectId) {
@@ -1289,6 +1313,9 @@ export function App() {
           dataset={datasetState}
           run={trainingRun}
           study={trainingStudy}
+          studyHydrationStatus={trainingStudyStatus}
+          studyHydrationError={trainingStudyError}
+          onRetryStudyHydration={() => setTrainingStudyReload((current) => current + 1)}
           theme={theme}
           onRun={(run) => {
             setTrainingRun(run);
@@ -1299,7 +1326,7 @@ export function App() {
               .then(setArtifacts)
               .catch(() => undefined);
           }}
-          onStudy={setTrainingStudy}
+          onStudy={(study) => { setTrainingStudy(study); setTrainingStudyStatus("available"); setTrainingStudyError(null); }}
         />
       ) : active === "ANALYSES" ? (
         <EvaluationWorkspace project={project} dataset={datasetState} fis={fis} run={trainingRun} runs={trainingRuns} runListStatus={trainingRunsStatus} runListError={trainingRunsError} onRetryRunList={() => setTrainingRunsReload((current) => current + 1)} study={trainingStudy} evaluation={analysisEvaluation} evaluationStatus={analysisEvaluationStatus} evaluationError={analysisEvaluationError} onRetryEvaluation={() => setAnalysisEvaluationReload((current) => current + 1)} validationPolicyEvidenceStatus={validationPolicyEvidenceStatus} validationPolicyEvidenceError={validationPolicyEvidenceError} onRetryValidationPolicyEvidence={() => setValidationPolicyEvidenceReload((current) => current + 1)} calibrationTransform={calibrationTransform} decisionThreshold={decisionThreshold} finalTestEvaluation={finalTestEvaluation} finalTestEvidenceStatus={finalTestEvidenceStatus} finalTestEvidenceError={finalTestEvidenceError} onRetryFinalTestEvidence={() => setFinalTestEvidenceReload((current) => current + 1)} comparison={analysisComparison} sliceAnalysis={sliceAnalysis} selectivePolicy={selectivePolicy} stabilityGatePolicy={stabilityGatePolicy} theme={theme} onEvaluation={(evaluation) => { setAnalysisEvaluation(evaluation); setAnalysisEvaluationStatus("available"); }} onCalibration={setCalibrationTransform} onThreshold={setDecisionThreshold} onSelectivePolicy={setSelectivePolicy} onFinalTest={(evaluation) => { setFinalTestEvaluation(evaluation); if (evaluation) setFinalTestEvidenceStatus("available"); }} onComparison={setAnalysisComparison} onSliceAnalysis={setSliceAnalysis} />

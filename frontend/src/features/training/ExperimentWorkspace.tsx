@@ -172,11 +172,14 @@ function validateTrainingParameters(model: ModelCapabilityContract | null, value
   return errors;
 }
 
-export function ExperimentWorkspace({ project, dataset, run, study: restoredStudy, theme, onRun, onStudy }: {
+export function ExperimentWorkspace({ project, dataset, run, study: restoredStudy, studyHydrationStatus = "available", studyHydrationError = null, onRetryStudyHydration = () => undefined, theme, onRun, onStudy }: {
   project: ProjectSummary;
   dataset: DatasetState | null;
   run: TrainingRun | null;
   study: TrainingStudy | null;
+  studyHydrationStatus?: "idle" | "loading" | "none" | "available" | "error";
+  studyHydrationError?: string | null;
+  onRetryStudyHydration?: () => void;
   theme: StudioTheme;
   onRun: (run: TrainingRun) => void;
   onStudy: (study: TrainingStudy) => void;
@@ -200,6 +203,9 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
   const [splitEvidenceError, setSplitEvidenceError] = useState<string | null>(null);
   const [study, setStudy] = useState<TrainingStudy | null>(restoredStudy);
   const [studyJob, setStudyJob] = useState<StudyJob | null>(null);
+  const [studyJobsStatus, setStudyJobsStatus] = useState<"idle" | "loading" | "loaded" | "error">("idle");
+  const [studyJobsError, setStudyJobsError] = useState<string | null>(null);
+  const [studyJobsReload, setStudyJobsReload] = useState(0);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [treeSample, setTreeSample] = useState<Record<string, string>>({});
@@ -317,6 +323,8 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
   const trainingModelKind = modelKind;
   useEffect(() => {
     let active = true;
+    setStudyJobsStatus("loading");
+    setStudyJobsError(null);
     studioApi.listStudyJobs(project.session_id).then((jobs) => {
       if (!active) return;
       const latest = [...jobs].reverse();
@@ -325,9 +333,14 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
         ? latest.find((job) => job.study_id === restoredStudy.study_id)
         : undefined;
       setStudyJob(resumable ?? restoredStudyJob ?? latest[0] ?? null);
-    }).catch(() => { if (active) setStudyJob(null); });
+      setStudyJobsStatus("loaded");
+    }).catch((reason) => {
+      if (!active) return;
+      setStudyJobsError(reason instanceof Error ? reason.message : "Saved Study jobs could not be restored.");
+      setStudyJobsStatus("error");
+    });
     return () => { active = false; };
-  }, [project.session_id, restoredStudy?.study_id]);
+  }, [project.session_id, restoredStudy?.study_id, studyJobsReload]);
 
   async function observeStudy(initial: StudyJob) {
     let job = initial;
@@ -340,6 +353,7 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
     if (job.status !== "SUCCEEDED") throw new Error(job.error ?? `Study ${job.status.toLowerCase()}`);
     const result = await studioApi.getLatestTrainingStudy(project.session_id);
     setStudy(result); onStudy(result);
+    setStudyJobsStatus("loaded");
     const selected = result.seed_runs.find((item) => item.run_id === result.selected_run_id);
     if (selected) onRun(selected);
   }
@@ -382,6 +396,14 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
   async function trainStudy() {
     if (studySeedValidation.error) {
       setError(studySeedValidation.error);
+      return;
+    }
+    if (studyHydrationStatus !== "none" && studyHydrationStatus !== "available") {
+      setError("Resolve saved TrainingStudy status before starting another multi-seed Study.");
+      return;
+    }
+    if (studyJobsStatus !== "loaded") {
+      setError("Resolve saved Study job status before starting another multi-seed Study.");
       return;
     }
     const seeds = studySeedValidation.seeds;
@@ -434,6 +456,12 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
     <div className="training-grid">
       <section className="training-config-panel">
         <h3>Protocol</h3>
+        {studyHydrationStatus === "loading" && <p role="status">Checking for a saved TrainingStudy…</p>}
+        {studyHydrationStatus === "idle" && <p role="status">Saved TrainingStudy status has not been checked.</p>}
+        {studyHydrationStatus === "none" && <p className="info-message" role="status">No saved TrainingStudy exists for this project yet; completed individual runs remain available.</p>}
+        {studyHydrationStatus === "error" && <div className="error" role="alert"><strong>Could not restore saved TrainingStudy.</strong> {studyHydrationError ?? "No empty Study state is inferred from this failure."} <Button view="outlined" size="s" onClick={onRetryStudyHydration}>Retry Study check</Button></div>}
+        {studyJobsStatus === "loading" && <p role="status">Checking saved Study jobs…</p>}
+        {studyJobsStatus === "error" && <div className="error" role="alert"><strong>Could not restore saved Study jobs.</strong> {studyJobsError ?? "No empty job state is inferred from this failure."} <Button view="outlined" size="s" onClick={() => setStudyJobsReload((current) => current + 1)}>Retry Study jobs</Button></div>}
         <dl className="compact-definition">
           <dt>Target</dt><dd>{dataset.contract.target}</dd>
           <dt>Task</dt><dd>{dataset.contract.task}</dd>
@@ -473,7 +501,7 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
         <Button view="action" disabled={running || project.read_only || Boolean(splitEvidenceError) || catalogStatus !== "loaded" || !selectedModel || parameterErrors.length > 0} onClick={train} data-ruflex-action="training.run">{running ? "Training…" : "Run real training"}</Button>
         <p id="study-seeds-help" className={studySeedValidation.error ? "error" : "property-description"} role={studySeedValidation.error ? "alert" : undefined}>{studySeedValidation.error ?? "Enter 3–32 distinct whole-number seeds, separated by commas."}</p>
         {parameterErrors.length > 0 && <div className="error" role="alert">Review model settings before training: {parameterErrors.join(" ")}</div>}
-        <Button view="outlined" disabled={running || project.read_only || Boolean(splitEvidenceError) || catalogStatus !== "loaded" || !selectedModel || Boolean(studySeedValidation.error) || parameterErrors.length > 0} onClick={trainStudy} data-ruflex-action="study.start">{running ? "Training…" : "Run multi-seed study"}</Button>
+        <Button view="outlined" disabled={running || project.read_only || Boolean(splitEvidenceError) || catalogStatus !== "loaded" || !selectedModel || Boolean(studySeedValidation.error) || parameterErrors.length > 0 || (studyHydrationStatus !== "none" && studyHydrationStatus !== "available") || studyJobsStatus !== "loaded"} onClick={trainStudy} data-ruflex-action="study.start">{running ? "Training…" : "Run multi-seed study"}</Button>
         {studyJob && <div className="info-message"><strong>Study job {studyJob.status}</strong> · {studyJob.execution_backend_key ?? studyJob.execution_backend} · {studyJob.seed_states.map((state) => `seed ${state.seed}: ${state.status}`).join(" · ")} {(["QUEUED", "RUNNING"].includes(studyJob.status)) && <><Button view="flat" size="s" onClick={resumeStudy} data-ruflex-action="study.resume">Resume persisted study</Button><Button view="flat" size="s" onClick={cancelStudy} data-ruflex-action="study.cancel">Cancel study</Button></>} {studyJob.recovery_note && <small>{studyJob.recovery_note}</small>}</div>}
         <div className="info-message">A frozen SplitContract assigns exact source rows before fitting. GROUP keeps each declared identity in one role. It makes split membership auditable; it does not by itself establish generalization validity.</div>
         {splitEvidenceError && <div className="error" role="alert">Saved split provenance is invalid or unavailable. Training is blocked rather than falling back to an unverified split. {splitEvidenceError}</div>}

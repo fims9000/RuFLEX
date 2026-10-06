@@ -81,15 +81,16 @@
     "alpha_training_run_history_recovery",
     "alpha_final_test_boundary_load_truthfulness",
     "alpha_validation_evaluation_load_truthfulness",
-    "alpha_frozen_validation_policy_hydration"
+    "alpha_frozen_validation_policy_hydration",
+    "alpha_saved_study_and_job_hydration_truthfulness"
   ],
-  "active_capability": "alpha_saved_study_hydration_truthfulness",
+  "active_capability": "alpha_training_study_polling_recovery",
   "active_acceptance": [
-    "Distinguish a missing saved TrainingStudy from an unavailable TrainingStudy lookup.",
-    "Preserve loaded run evidence and provide a retry path when saved study/job context cannot be restored."
+    "A transient StudyJob status-poll failure does not discard persisted job identity or leave the user without a recovery action.",
+    "The user can explicitly retry observing or resume the same persisted job without submitting a replacement Study."
   ],
   "blockers": [],
-  "next_executable_work": "Implement explicit TrainingStudy/StudyJob hydration states and retry for transient lookup failures, then inspect the next dependency-ready Studio recovery gap. Keep changes local until separately authorized to push.",
+  "next_executable_work": "Inspect observeStudy polling and resume behavior; add retry for transient getStudyJob errors while retaining the exact job ID and preventing duplicate Study submission. Keep changes local until separately authorized to push.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -160,6 +161,7 @@
     "alpha_training_run_history_recovery": "PASS: Evaluation distinguishes saved-run list loading failure from an empty project and exposes retry. When latest-run pointer is absent, restored run history falls back deterministically to newest saved run. Frontend unit suite 13 passed, Vite build passed, focused E2E E2E-10 passed, diff check passed. Commit 843401b.",
     "alpha_final_test_boundary_load_truthfulness": "PASS: Evaluation no longer reports the final test as closed when persisted access lookup fails; calibration, threshold and selective-policy mutations and final-test evaluation remain disabled until resolved, with explicit retry. Unit suite 14 passed, Vite build passed, two focused E2Es passed (saved-run history retry and trained-model boundary recovery). Commit 75626b5.",
     "alpha_validation_evaluation_load_truthfulness": "PASS: Evaluation distinguishes a missing saved validation Evaluation (404) from an unavailable lookup, preserves TrainingRun validation metrics and pauses duplicate Evaluation/policy writes until explicit retry. Frontend unit suite 15 passed, Vite build passed, focused trained-model error/recovery E2E passed.",
-    "alpha_frozen_validation_policy_hydration": "PASS: Calibration, threshold, selective-policy, and Stability Gate lookups are hydrated as one explicit persisted-policy state; 404 is a legitimate absence while other failures remain visible with retry. Validation policy mutation and final-test evaluation stay disabled until all identities resolve. Frontend unit suite 8 passed, Vite/TypeScript production build passed, focused real Studio policy-error/recovery E2E passed. Local commit pending."
+    "alpha_frozen_validation_policy_hydration": "PASS: Calibration, threshold, selective-policy, and Stability Gate lookups are hydrated as one explicit persisted-policy state; 404 is a legitimate absence while other failures remain visible with retry. Validation policy mutation and final-test evaluation stay disabled until all identities resolve. Frontend unit suite 8 passed, Vite/TypeScript production build passed, focused real Studio policy-error/recovery E2E passed. Commit 56c2703.",
+    "alpha_saved_study_and_job_hydration_truthfulness": "PASS: Missing latest TrainingStudy (404) is distinguished from unavailable lookup; StudyJob list failures have visible retry and retain existing job identity. Multi-seed submission stays disabled until saved Study and job status resolves, avoiding duplicate jobs after a transient read failure. Focused frontend unit suite 15 passed, TypeScript/Vite build passed, E2E-10 real Studio recovery route passed. Local commit pending."
   }
 }
