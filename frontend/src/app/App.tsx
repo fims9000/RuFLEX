@@ -219,6 +219,7 @@ export function App() {
   const datasetFileSelectionId = useRef(0);
   const projectSessionRef = useRef<string | null>(null);
   const projectLifecycleRequestRef = useRef(0);
+  const csvInspectionRequestRef = useRef(0);
   const artifactInventoryRequestRef = useRef(0);
   projectSessionRef.current = project?.session_id ?? null;
   const refreshArtifactInventory = useCallback(async (sessionId: string) => {
@@ -1105,6 +1106,7 @@ export function App() {
   async function close() {
     const requestId = ++projectLifecycleRequestRef.current;
     datasetFileSelectionId.current += 1;
+    csvInspectionRequestRef.current += 1;
     if (project) {
       try {
         await studioApi.closeProject(project.session_id);
@@ -1135,18 +1137,24 @@ export function App() {
   }
   async function inspectCsv() {
     if (!project || (datasetStateStatus !== "none" && datasetStateStatus !== "available")) return;
+    const requestId = ++csvInspectionRequestRef.current;
+    const sessionId = project.session_id;
+    const isCurrent = () => requestId === csvInspectionRequestRef.current && projectSessionRef.current === sessionId;
     try {
-      const inspected = (await studioApi.inspectCsv(project.session_id, csvText)).profile;
+      const inspected = (await studioApi.inspectCsv(sessionId, csvText)).profile;
+      if (!isCurrent()) return;
       setProfile(inspected);
       setIdColumns((current) => current || inspected.id_candidates.join(", "));
       setStatus("Dataset schema inspected");
     } catch (reason) {
+      if (!isCurrent()) return;
       setError(
         reason instanceof Error ? reason.message : "Dataset inspection failed",
       );
     }
   }
   function updateCsvText(value: string) {
+    csvInspectionRequestRef.current += 1;
     setCsvText(value);
     if (profile) {
       setProfile(null);
