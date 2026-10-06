@@ -95,6 +95,7 @@ export function App() {
   const [backendStatus, setBackendStatus] = useState<"checking" | "available" | "unavailable">("checking");
   const [backendHealthError, setBackendHealthError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [projectFormError, setProjectFormError] = useState<string | null>(null);
   const [theme, setTheme] = useState<StudioTheme>(initialTheme);
   const [active, setActive] = useState("PROJECT");
   const [collapsed, setCollapsed] = useState<Record<Panels, boolean>>({
@@ -1131,6 +1132,15 @@ export function App() {
     setCollapsed((current) => ({ ...current, [panel]: !current[panel] }));
   async function submit(event: FormEvent, operation: "create" | "open") {
     event.preventDefault();
+    setProjectFormError(null);
+    if (!path.trim()) {
+      setProjectFormError("Enter a project folder path before creating or opening a project.");
+      return;
+    }
+    if (operation === "create" && !name.trim()) {
+      setProjectFormError("Enter a project name before creating a project.");
+      return;
+    }
     const requestId = ++projectLifecycleRequestRef.current;
     setError(null);
     try {
@@ -1150,9 +1160,10 @@ export function App() {
       );
     } catch (reason) {
       if (requestId !== projectLifecycleRequestRef.current) return;
-      setError(
-        reason instanceof Error ? reason.message : "Unknown request failure",
-      );
+      const message = reason instanceof Error ? reason.message : "Unknown request failure";
+      setProjectFormError(operation === "create" && message.includes("Refusing to create a project over an existing path:")
+        ? `A project already exists at this path. Choose Open project to reopen it, or enter a different path.`
+        : message);
     }
   }
   async function save() {
@@ -1592,7 +1603,7 @@ export function App() {
               <TextInput
                 aria-label="Project path"
                 value={path}
-                onUpdate={setPath}
+                onUpdate={(value) => { setPath(value); setProjectFormError(null); }}
                 placeholder="/path/to/Pump-01"
               />
             </label>
@@ -1601,7 +1612,7 @@ export function App() {
               <TextInput
                 aria-label="Project name"
                 value={name}
-                onUpdate={setName}
+                onUpdate={(value) => { setName(value); setProjectFormError(null); }}
                 placeholder="Pump-01"
               />
             </label>
@@ -1631,6 +1642,7 @@ export function App() {
               </Button>
             </div>
           </form>
+          {projectFormError && <div className="error" role="alert" data-testid="project-form-error">{projectFormError}</div>}
           {recentProjects.length > 0 && <section className="recent-projects" aria-label="Recent projects">
             <div className="recent-projects-heading"><strong>Recent projects</strong><Button view="outlined" size="s" type="button" onClick={forgetRecentProjects}>Forget history</Button></div>
             <div className="recent-project-list">{recentProjects.map((recent) => <div key={recent.path} className="recent-project-row">
