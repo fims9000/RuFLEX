@@ -156,6 +156,21 @@ test("PRODUCT-02b retries a persisted decision-tree capability check without cla
   await treeError.getByRole("button", { name: "Retry tree-path check", exact: true }).click();
   await expect(page.getByText("No saved tree-path evidence exists yet for this project.", { exact: true })).toBeVisible();
   expect(treePathReads).toBe(2);
+  let treePathPosts = 0;
+  await page.route("**/api/projects/training/tree-path", async (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    treePathPosts += 1;
+    await route.fetch();
+    await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "TreePathEvidence response lost after persistence" }) });
+  });
+  const treeInputs = page.locator('input[aria-label^="Tree input "]');
+  for (let index = 0; index < await treeInputs.count(); index += 1) await treeInputs.nth(index).fill("12");
+  await page.getByRole("button", { name: "Trace exact tree path", exact: true }).click();
+  await expect(page.getByTestId("tree-path-recovery")).toContainText("TreePathEvidence response lost after persistence");
+  await page.getByRole("button", { name: "Retry exact tree-path lookup", exact: true }).click();
+  await expect(page.getByTestId("tree-path-recovery")).toHaveCount(0);
+  expect(treePathPosts).toBe(1);
+  await expect(page.locator(".tree-path-panel .info-message strong")).toContainText("EXACT TREE EXECUTION PATH");
 });
 
 test("PRODUCT-02 blocks validation policy changes when final-test access status is unavailable", async ({ page }) => {

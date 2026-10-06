@@ -119,6 +119,12 @@ const PARAMETER_LABELS: Record<string, string> = {
   max_rules: "Max rules / layer", n_estimators: "Trees / estimators", max_depth: "Maximum depth",
 };
 
+function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  if (value && typeof value === "object") return `{${Object.entries(value as Record<string, unknown>).sort(([left], [right]) => left.localeCompare(right)).map(([key, item]) => `${JSON.stringify(key)}:${canonicalJson(item)}`).join(",")}}`;
+  return JSON.stringify(value) ?? "undefined";
+}
+
 function numericConstraint(value: unknown): NumericConstraint {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   const record = value as Record<string, unknown>;
@@ -221,6 +227,8 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
   const [treeEvidenceStatus, setTreeEvidenceStatus] = useState<"idle" | "loading" | "none" | "available" | "other_run" | "error">("idle");
   const [treeEvidenceError, setTreeEvidenceError] = useState<string | null>(null);
   const [treeEvidenceReload, setTreeEvidenceReload] = useState(0);
+  const [treePathRecovery, setTreePathRecovery] = useState<{ runId: string; sample: Record<string, number>; error: string; notFound: boolean } | null>(null);
+  const [treePathRecovering, setTreePathRecovering] = useState(false);
   const [transformPipeline, setTransformPipeline] = useState<TransformPipelineContract | null>(null);
   const [leakageAudit, setLeakageAudit] = useState<LeakageAuditReport | null>(null);
   const [runSplitContract, setRunSplitContract] = useState<SplitContract | null>(null);
@@ -495,7 +503,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
     }
   }
   async function traceTree() {
-    if (!run) return;
+    if (!run || treePathRecovery) return;
     const sample = Object.fromEntries(run.feature_columns.map((column) => [column, Number(treeSample[column])])) as Record<string, number>;
     if (Object.values(sample).some((value) => !Number.isFinite(value))) {
       setError("Enter a finite value for every tree feature.");
@@ -503,13 +511,51 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
     }
     setRunning(true); setError(null);
     try {
-      const evidence = await studioApi.createTreePath(project.session_id, run.run_id, sample);
+      let evidence: TreePathEvidence;
+      try { evidence = await studioApi.createTreePath(project.session_id, run.run_id, sample); }
+      catch (reason) {
+        setTreePathRecovery({ runId: run.run_id, sample, error: reason instanceof Error ? reason.message : "Tree-path trace response was uncertain.", notFound: false });
+        throw reason;
+      }
       setTreeEvidence(evidence);
       setTreeEvidenceStatus("available");
       setTreeEvidenceError(null);
+      setTreePathRecovery(null);
     }
     catch (reason) { setError(reason instanceof Error ? reason.message : "Tree path trace failed"); }
     finally { setRunning(false); }
+  }
+  async function recoverTreePath() {
+    const pending = treePathRecovery;
+    if (!pending) return;
+    setTreePathRecovering(true); setError(null);
+    try {
+      const latest = await studioApi.getLatestTreePath(project.session_id);
+      if (latest.run_id !== pending.runId || canonicalJson(latest.input_sample) !== canonicalJson(pending.sample)) {
+        setTreePathRecovery({ ...pending, notFound: true, error: "The latest tree trace has different run/sample identity; no replacement was created." });
+        return;
+      }
+      setTreeEvidence(latest); setTreeEvidenceStatus("available"); setTreeEvidenceError(null); setTreePathRecovery(null);
+    } catch (reason) {
+      if (reason instanceof ProductApiError && reason.status === 404) {
+        setTreePathRecovery({ ...pending, notFound: true, error: "No matching tree trace is visible yet. Retry lookup later, or explicitly repeat this exact trace if the original did not finish." });
+      } else {
+        const message = reason instanceof Error ? reason.message : "Could not recover the exact tree trace.";
+        setTreePathRecovery({ ...pending, notFound: false, error: message }); setError(message);
+      }
+    } finally { setTreePathRecovering(false); }
+  }
+  async function explicitlyRepeatTreePath() {
+    const pending = treePathRecovery;
+    if (!pending?.notFound || run?.run_id !== pending.runId) return;
+    setRunning(true); setError(null);
+    try {
+      const evidence = await studioApi.createTreePath(project.session_id, pending.runId, pending.sample);
+      setTreeEvidence(evidence); setTreeEvidenceStatus("available"); setTreeEvidenceError(null); setTreePathRecovery(null);
+    } catch (reason) {
+      const message = reason instanceof Error ? reason.message : "The explicitly repeated tree trace could not be confirmed.";
+      setTreePathRecovery({ ...pending, notFound: false, error: message }); setError(message);
+    } finally { setRunning(false); }
   }
   async function cancelStudy() {
     if (!studyJob || !["QUEUED", "RUNNING"].includes(studyJob.status)) return;
@@ -657,7 +703,8 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
             {treeEvidenceStatus === "other_run" && <p>The latest saved tree path belongs to another run; it is not shown as evidence for this run.</p>}
             {treeEvidenceStatus === "error" && <div className="error" role="alert"><strong>Could not load saved tree-path evidence.</strong> {treeEvidenceError} <Button view="outlined" size="s" onClick={() => setTreeEvidenceReload((current) => current + 1)}>Retry tree-path check</Button></div>}
             <div className="training-config-grid">{run.feature_columns.map((column) => <label className="field-label" key={column}>{column}<input aria-label={`Tree input ${column}`} type="number" value={treeSample[column] ?? "0"} onChange={(event) => setTreeSample((current) => ({ ...current, [column]: event.target.value }))} /></label>)}</div>
-            <Button view="outlined" disabled={running || project.read_only} onClick={traceTree} data-ruflex-action="tree_path.trace">Trace exact tree path</Button>
+            {treePathRecovery && <div className="error" role="alert" data-testid="tree-path-recovery"><strong>Tree-path save is uncertain; no duplicate was submitted.</strong><p>{treePathRecovery.error}</p><Button view="outlined" disabled={treePathRecovering} onClick={recoverTreePath}>Retry exact tree-path lookup</Button>{treePathRecovery.notFound && <Button view="outlined" disabled={treePathRecovering || running || project.read_only || run.run_id !== treePathRecovery.runId} onClick={explicitlyRepeatTreePath}>Explicitly repeat this exact trace</Button>}</div>}
+            <Button view="outlined" disabled={running || !!treePathRecovery || project.read_only} onClick={traceTree} data-ruflex-action="tree_path.trace">Trace exact tree path</Button>
             {treeEvidence && <div className="info-message"><strong>{treeEvidence.label}</strong><br />{treeEvidence.steps.map((step) => `Node ${step.node_id}: ${step.feature_name} ≤ ${step.threshold.toFixed(4)} → ${step.decision.toUpperCase()}`).join(" · ")}<br />Leaf {treeEvidence.leaf_id} → prediction {treeEvidence.prediction.toFixed(5)}</div>}
           </section>}
           {run.model_kind === "random_forest" && <section className="tree-path-panel"><span className="eyebrow">ENSEMBLE STRUCTURAL EVIDENCE</span><h3>{String(run.model_spec.tree_count ?? "—")} persisted constituent trees</h3><p>The final forest prediction is an aggregation of all trees. RuFLEX deliberately does not present one tree path as an exact explanation of the ensemble.</p><dl className="compact-definition"><dt>Total nodes</dt><dd>{String(run.model_spec.node_count ?? "—")}</dd><dt>Maximum depth</dt><dd>{String(run.model_spec.max_depth ?? "—")}</dd><dt>Leaves</dt><dd>{String(run.model_spec.leaf_count ?? "—")}</dd><dt>Exact ensemble path</dt><dd>Not available</dd></dl></section>}

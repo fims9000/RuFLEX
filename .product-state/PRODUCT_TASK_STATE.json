@@ -124,7 +124,8 @@
     "alpha_slice_analysis_lost_response_recovery",
     "alpha_validation_policy_lost_response_recovery",
     "alpha_validation_comparison_lost_response_recovery",
-    "alpha_final_test_lost_response_recovery"
+    "alpha_final_test_lost_response_recovery",
+    "alpha_tree_path_lost_response_recovery"
   ],
   "active_capability": "alpha_saved_evidence_hydration_audit",
   "active_acceptance": [
@@ -132,7 +133,7 @@
     "Prioritize identity-linked EvidenceWorkspace reads and guard any action that could duplicate persisted work until its inventory resolves."
   ],
   "blockers": [],
-  "next_executable_work": "Review remaining frontend synchronous evidence mutations and exact-identity recovery coverage; preserve article changes and keep verification resource-light. Do not push.",
+  "next_executable_work": "Review synchronous training, split-contract and FIS writes for persistence uncertainty/duplicate risk; preserve article changes and keep verification resource-light. Do not push.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -246,6 +247,7 @@
     "alpha_slice_analysis_lost_response_recovery": "PASS: Slice Lab retains the exact validation Evaluation, metric and normalized SliceDefinition after an uncertain save; it restores only a matching persisted analysis and requires explicit confirmation before any rerun. PRODUCT-EVIDENCE simulated a lost POST response after persistence and verified exact recovery with one POST. Frontend unit 23/23, TypeScript/Vite build, focused E2E and git diff --check passed.",
     "alpha_validation_policy_lost_response_recovery": "PASS: Calibration, decision-threshold and selective-policy saves retain exact validation input identity after uncertain responses, recover only matching persisted objects, and require explicit repeat after confirmed absence. Pending policy saves disable dependent policy/final-test actions. PRODUCT-EVIDENCE simulated lost responses after persistence for all three APIs and verified exact recovery with one POST each. Frontend unit 23/23, TypeScript/Vite build, focused PRODUCT-EVIDENCE E2E and diff check passed.",
     "alpha_validation_comparison_lost_response_recovery": "PASS: Saved validation comparisons retain the exact ordered run IDs and optional active FIS identity after an uncertain response; retry restores only that exact persisted comparison, and any repeat is explicit. Inputs stay locked and an FIS revision change prevents unsafe replay. PRODUCT-EVIDENCE simulated response loss after persistence and verified one comparison POST plus exact recovery. Frontend unit 23/23, TypeScript/Vite build, focused E2E and diff check passed.",
-    "alpha_final_test_lost_response_recovery": "PASS: FinalTestEvaluation now snapshots exact evaluation/calibration/threshold/selective/stability policy identities. After an uncertain first test-access response, Studio permits only exact latest-evaluation lookup, never a second POST; related validation policy actions remain disabled until recovery. PRODUCT-EVIDENCE simulated response loss after first access and verified exact recovery with exactly one final-test POST. Frontend unit 23/23, TypeScript/Vite build, focused E2E and diff check passed."
+    "alpha_final_test_lost_response_recovery": "PASS: FinalTestEvaluation now snapshots exact evaluation/calibration/threshold/selective/stability policy identities. After an uncertain first test-access response, Studio permits only exact latest-evaluation lookup, never a second POST; related validation policy actions remain disabled until recovery. PRODUCT-EVIDENCE simulated response loss after first access and verified exact recovery with exactly one final-test POST. Frontend unit 23/23, TypeScript/Vite build, focused E2E and diff check passed.",
+    "alpha_tree_path_lost_response_recovery": "PASS: Exact decision-tree traces retain run ID and full numeric input identity on uncertain POST; latest trace recovery accepts only the exact match, and repeat requires explicit action. PRODUCT-02b simulated a lost response after persistence, recovered the trace and verified one POST; the three-test training/evaluation route and TypeScript/Vite production build passed."
   }
 }
