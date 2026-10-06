@@ -146,8 +146,26 @@ test("PRODUCT-EVIDENCE captures the frozen V1 Studio route from persisted object
   await expect(page.getByTestId("reproducibility-result")).toContainText("EXPLANATION AGREEMENT");
   await capture(page, screenshots, "10_cross_run_reproducibility.png", page.getByTestId("reproducibility-result"));
 
+  let behaviorRunPostCount = 0;
+  let loseFirstBehaviorResultResponse = true;
+  await page.route("**/api/projects/evidence/behavior-specs/run", async (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    behaviorRunPostCount += 1;
+    if (loseFirstBehaviorResultResponse) {
+      loseFirstBehaviorResultResponse = false;
+      await route.fetch();
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "BehaviorSpec result response lost after persistence" }) });
+      return;
+    }
+    await route.continue();
+  });
   await page.getByRole("button", { name: "Create and run BehaviorSpec", exact: true }).click();
+  await expect(page.getByTestId("behavior-run-recovery")).toContainText("BehaviorSpec result response lost after persistence");
+  await expect(page.getByRole("button", { name: "Create and run BehaviorSpec", exact: true })).toBeDisabled();
+  await page.getByRole("button", { name: "Retry saved BehaviorSpec", exact: true }).click();
   await expect(page.getByTestId("behavior-result")).toBeVisible();
+  await expect(page.getByTestId("behavior-run-recovery")).toHaveCount(0);
+  expect(behaviorRunPostCount).toBe(1);
   await capture(page, screenshots, "11_behavior_specs.png", page.getByTestId("behavior-result"));
   await page.getByRole("button", { name: "Enumerate exact Decision Tree paths", exact: true }).click();
   await expect(page.getByTestId("exhaustive-result")).toContainText("EXACT_FINITE_STRUCTURE");

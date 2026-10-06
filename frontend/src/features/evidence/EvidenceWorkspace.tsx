@@ -153,6 +153,7 @@ export function EvidenceWorkspace({
   const [direction, setDirection] = useState<"nondecreasing" | "nonincreasing">("nondecreasing");
   const [behaviorSpec, setBehaviorSpec] = useState<BehaviorSpec | null>(restoredBehaviorSpec);
   const [behaviorResult, setBehaviorResult] = useState<BehaviorSpecResult | null>(restoredBehaviorResult);
+  const [behaviorExecutionRecoveryError, setBehaviorExecutionRecoveryError] = useState<string | null>(null);
   const [behaviorResults, setBehaviorResults] = useState<BehaviorSpecResult[]>([]);
   const [behaviorResultsHydrationStatus, setBehaviorResultsHydrationStatus] = useState<"loading" | "available" | "error">("loading");
   const [behaviorResultsHydrationError, setBehaviorResultsHydrationError] = useState<string | null>(null);
@@ -482,6 +483,7 @@ export function EvidenceWorkspace({
   async function createAndRunBehavior() {
     if (!run) return;
     setBusy(true); setError(null);
+    let createdSpec: BehaviorSpec | null = null;
     try {
       const numeric = numericSample();
       const pairKinds = ["monotonic_pair", "invariance_pair", "symmetry_pair", "bounded_perturbation", "categorical_invariance", "required_order", "batch_regression_suite"];
@@ -496,9 +498,33 @@ export function EvidenceWorkspace({
         cases: behaviorKind === "batch_regression_suite" ? [{ name: "primary", sample: numeric, minimum: Number(minimum), maximum: Number(maximum) }, { name: "comparison", sample: pair ?? numeric, minimum: Number(minimum), maximum: Number(maximum) }] : [],
         tolerance: 1e-9, rationale: "Persisted engineering behavior requirement.",
       });
-      setBehaviorSpec(created); const result = await studioApi.runBehaviorSpec(project.session_id, created.spec_id); setBehaviorResult(result); onBehaviorResult(result); setBehaviorResultsHydrationReload((current) => current + 1);
-    } catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
+      createdSpec = created;
+      setBehaviorSpec(created);
+      setBehaviorExecutionRecoveryError(null);
+      const result = await studioApi.runBehaviorSpec(project.session_id, created.spec_id);
+      setBehaviorResult(result); onBehaviorResult(result); setBehaviorResultsHydrationReload((current) => current + 1);
+    } catch (reason) {
+      if (createdSpec) setBehaviorExecutionRecoveryError(reason instanceof Error ? reason.message : "The saved BehaviorSpec result could not be confirmed.");
+      setError(reason instanceof Error ? reason.message : String(reason));
+    }
     finally { setBusy(false); }
+  }
+
+  async function resumeBehaviorSpecExecution() {
+    if (!behaviorSpec) return;
+    setBusy(true); setError(null);
+    try {
+      const results = await studioApi.listBehaviorResults(project.session_id);
+      const existing = results.find((item) => item.spec_id === behaviorSpec.spec_id);
+      const result = existing ?? await studioApi.runBehaviorSpec(project.session_id, behaviorSpec.spec_id);
+      setBehaviorResult(result);
+      onBehaviorResult(result);
+      setBehaviorExecutionRecoveryError(null);
+      setBehaviorResultsHydrationReload((current) => current + 1);
+    } catch (reason) {
+      setBehaviorExecutionRecoveryError(reason instanceof Error ? reason.message : "Could not recover the result for this saved BehaviorSpec.");
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally { setBusy(false); }
   }
 
   async function compareBehaviorRevisions() {
@@ -728,7 +754,8 @@ export function EvidenceWorkspace({
         {!run ? <EmptyState title="No trained model selected">Select a persisted training run before defining behavior evidence.</EmptyState> : <>
           <div className="contract-grid"><label className="field-label">Name<TextInput aria-label="Behavior spec name" value={behaviorName} onUpdate={setBehaviorName} /></label><label className="field-label">Type<select aria-label="Behavior spec type" value={behaviorKind} onChange={(event) => setBehaviorKind(event.target.value as BehaviorSpec["kind"])}><option value="output_range">Output range</option><option value="monotonic_pair">Monotonic pair</option><option value="invariance_pair">Invariance pair</option><option value="symmetry_pair">Symmetry pair</option><option value="bounded_perturbation">Bounded perturbation</option><option value="categorical_invariance">Categorical invariance</option><option value="forbidden_region">Forbidden output region</option><option value="required_order">Required order</option><option value="domain_constraint">Domain constraint</option><option value="regression_case">Expert regression case</option><option value="batch_regression_suite">Two-case regression suite</option></select></label>{(["monotonic_pair", "required_order"] as string[]).includes(behaviorKind) && <label className="field-label">Direction<select aria-label="Monotonic direction" value={direction} onChange={(event) => setDirection(event.target.value as typeof direction)}><option value="nondecreasing">Nondecreasing</option><option value="nonincreasing">Nonincreasing</option></select></label>}{behaviorKind === "bounded_perturbation" && <label className="field-label">Maximum delta<input aria-label="Behavior maximum delta" type="number" value={maximumDelta} onChange={(event) => setMaximumDelta(event.target.value)} /></label>}{!(["monotonic_pair", "invariance_pair", "symmetry_pair", "bounded_perturbation", "categorical_invariance", "required_order"] as string[]).includes(behaviorKind) && <><label className="field-label">Minimum<input aria-label="Behavior minimum" type="number" value={minimum} onChange={(event) => setMinimum(event.target.value)} /></label><label className="field-label">Maximum<input aria-label="Behavior maximum" type="number" value={maximum} onChange={(event) => setMaximum(event.target.value)} /></label></>}</div>
           {(["monotonic_pair", "invariance_pair", "symmetry_pair", "bounded_perturbation", "categorical_invariance", "required_order", "batch_regression_suite"] as string[]).includes(behaviorKind) && <><p className="field-help">Define both cases explicitly. RuFLEX does not infer a pairwise requirement from a single sample.</p><div className="evidence-sample-grid">{run.feature_columns.map((feature) => <label className="field-label" key={`comparison-${feature}`}>Comparison {feature}<input aria-label={`Behavior comparison ${feature}`} type="number" value={comparisonSample[feature] ?? ""} onChange={(event) => setComparisonSample((current) => ({ ...current, [feature]: event.target.value }))} /></label>)}</div></>}
-          <Button view="action" disabled={busy || project.read_only} onClick={createAndRunBehavior} data-ruflex-action="behavior.run">{busy ? "Running…" : "Create and run BehaviorSpec"}</Button>
+          <Button view="action" disabled={busy || project.read_only || !!behaviorExecutionRecoveryError} onClick={createAndRunBehavior} data-ruflex-action="behavior.run">{busy ? "Running…" : "Create and run BehaviorSpec"}</Button>
+          {behaviorExecutionRecoveryError && <div className="error" role="alert" data-testid="behavior-run-recovery"><strong>The BehaviorSpec is already saved; retry its result by the same identity.</strong><p>{behaviorExecutionRecoveryError}</p><Button view="outlined" disabled={busy} onClick={resumeBehaviorSpecExecution}>Retry saved BehaviorSpec</Button></div>}
           {behaviorSpec && <div className="trace-card" data-testid="behavior-spec"><div className="evidence-check-header"><strong>{behaviorSpec.name}</strong><StatusBadge tone="info">{behaviorSpec.kind.replaceAll("_", " ")}</StatusBadge></div><p>{behaviorSpec.rationale}</p><small>{behaviorSpec.run_id ? `Run-bound requirement · ${behaviorSpec.run_id.slice(0, 12)}` : `FIS-bound requirement · ${behaviorSpec.fis_semantic_hash?.slice(0, 12)}`}</small></div>}
           {behaviorResult && <div className="trace-card" data-testid="behavior-result"><div className="evidence-check-header"><strong>{behaviorSpec?.name ?? "Persisted BehaviorSpec"}</strong><StatusBadge tone={behaviorResult.status === "PASS" ? "success" : "danger"}>{behaviorResult.status}</StatusBadge></div><p>{behaviorResult.detail}</p><small>{behaviorResult.run_id ? `Run ${behaviorResult.run_id.slice(0, 12)} · artifact ${behaviorResult.model_artifact_sha256?.slice(0, 12)}` : `FIS revision ${behaviorResult.fis_semantic_hash?.slice(0, 12)}`}</small></div>}
           {lineageBehaviorComparison && <div className="trace-card" data-testid="behavior-revision-comparison"><div className="evidence-check-header"><strong>Persisted revision comparison</strong><StatusBadge tone={lineageBehaviorComparison.regression_detected ? "danger" : "info"}>{lineageBehaviorComparison.transition.replaceAll("_", " ")}</StatusBadge></div><p>{lineageBehaviorComparison.regression_detected ? "A PASS-to-FAIL transition was retained as regression evidence." : "No PASS-to-FAIL regression was observed in this transition."}</p><small>Baseline {lineageBehaviorComparison.baseline_result_id.slice(0, 12)} · candidate {lineageBehaviorComparison.candidate_result_id.slice(0, 12)} · {lineageBehaviorComparison.requirement_identity.slice(0, 16)}</small><p>{lineageBehaviorComparison.scientific_note}</p></div>}
