@@ -85,15 +85,16 @@
     "alpha_saved_study_and_job_hydration_truthfulness",
     "alpha_training_study_polling_recovery",
     "alpha_lineage_hydration_truthfulness",
-    "alpha_dataset_contract_hydration_truthfulness"
+    "alpha_dataset_contract_hydration_truthfulness",
+    "alpha_split_provenance_hydration_retry"
   ],
-  "active_capability": "alpha_dataset_dependent_context_hydration_review",
+  "active_capability": "alpha_run_data_governance_evidence_retry",
   "active_acceptance": [
-    "Audit remaining dataset-dependent persisted-context reads for swallowed failures or stale identities.",
-    "Expose retry and keep dependent operations paused when a required persisted identity cannot be verified."
+    "A saved run's linked SplitContract, TransformPipelineContract and LeakageAuditReport load failures must remain distinguishable from absent evidence.",
+    "Expose retry for transient failures and never present unresolved run provenance as verified."
   ],
   "blockers": [],
-  "next_executable_work": "Audit remaining dataset-dependent context hydration and operation gates; implement only a bounded verified recovery slice. Preserve unrelated article working-tree changes and keep changes local; no push authorized.",
+  "next_executable_work": "Add retryable hydration state for saved run data-governance evidence; keep failed provenance visibly unverified. Preserve unrelated article changes and keep changes local; no push authorized.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -168,6 +169,7 @@
     "alpha_saved_study_and_job_hydration_truthfulness": "PASS: Missing latest TrainingStudy (404) is distinguished from unavailable lookup; StudyJob list failures have visible retry and retain existing job identity. Multi-seed submission stays disabled until saved Study and job status resolves, avoiding duplicate jobs after a transient read failure. Focused frontend unit suite 15 passed, TypeScript/Vite build passed, E2E-10 real Studio recovery route passed. Commit 733d137.",
     "alpha_training_study_polling_recovery": "PASS: A transient StudyJob status-poll error retains the same persisted job and offers Retry Study status; recovery reloads that exact job ID and does not create another Study. Focused Experiment/Evaluation component tests 16 passed, TypeScript/Vite build passed, E2E-10 saved-Study/jobs retry route passed, git diff --check passed. Commit 59afece.",
     "alpha_lineage_hydration_truthfulness": "PASS: Project lineage loading now distinguishes pending, loaded-empty, loaded-graph and unavailable states; failed refresh hides unresolved navigation without erasing the last in-memory graph and exposes retry. Studio lineage-recovery E2E-11 passed, existing AssuranceCase/VerificationBundle exact-ID Lineage reopen E2E passed, frontend unit 16 passed, Vite/TypeScript build and diff check passed. Commit 995b6c4.",
-    "alpha_dataset_contract_hydration_truthfulness": "PASS: Dataset bootstrap distinguishes loading, confirmed absence (404), available contract and transient failure. Data import/confirmation and Training/policy/final-test actions remain blocked until identity is known; retry recovers without treating errors as an empty project. Evaluation/Experiment component tests 18 passed, focused Studio 503-to-retry-to-404 browser E2E passed, TypeScript/Vite build and git diff --check passed."
+    "alpha_dataset_contract_hydration_truthfulness": "PASS: Dataset bootstrap distinguishes loading, confirmed absence (404), available contract and transient failure. Data import/confirmation and Training/policy/final-test actions remain blocked until identity is known; retry recovers without treating errors as an empty project. Evaluation/Experiment component tests 18 passed, focused Studio 503-to-retry-to-404 browser E2E passed, TypeScript/Vite build and git diff --check passed. Commit 464ec8d.",
+    "alpha_split_provenance_hydration_retry": "PASS: SplitContract inventory is an explicit loading/loaded/error state; training and new split freezing are paused until the read succeeds. Transient failures show retry, and retry restores controls without starting a fit. Experiment/Evaluation component tests 18 passed, focused Studio 503-to-retry E2E passed, TypeScript/Vite build and git diff --check passed."
   }
 }

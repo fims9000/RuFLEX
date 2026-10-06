@@ -203,7 +203,9 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
   const [groupColumn, setGroupColumn] = useState("");
   const [rigorProfile, setRigorProfile] = useState<"EXPLORATORY" | "CONFIRMATORY" | "HIGH_ASSURANCE_LIKE">("CONFIRMATORY");
   const [splitContract, setSplitContract] = useState<SplitContract | null>(null);
+  const [splitEvidenceStatus, setSplitEvidenceStatus] = useState<"loading" | "loaded" | "error">("loading");
   const [splitEvidenceError, setSplitEvidenceError] = useState<string | null>(null);
+  const [splitEvidenceReload, setSplitEvidenceReload] = useState(0);
   const [study, setStudy] = useState<TrainingStudy | null>(restoredStudy);
   const [studyJob, setStudyJob] = useState<StudyJob | null>(null);
   const [studyJobsStatus, setStudyJobsStatus] = useState<"idle" | "loading" | "loaded" | "error">("idle");
@@ -265,19 +267,22 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
   }, [project.session_id, dataset?.contract.dataset_fingerprint, run?.run_id, run?.transform_pipeline_id, run?.leakage_audit_id, run?.split.split_contract_id]);
   useEffect(() => {
     let active = true;
+    setSplitEvidenceStatus("loading");
     setSplitEvidenceError(null);
     studioApi.listSplitContracts(project.session_id).then((contracts) => {
       if (!active) return;
       const current = contracts.at(-1) ?? null;
       setSplitContract(current);
       if (current) { setSplitFamily(current.family); setGroupColumn(current.group_column ?? current.time_column ?? current.site_column ?? current.device_column ?? current.spatial_column ?? current.regime_column ?? ""); setSplitSeed(current.split_seed); }
+      setSplitEvidenceStatus("loaded");
     }).catch((reason) => {
       if (!active) return;
       setSplitContract(null);
+      setSplitEvidenceStatus("error");
       setSplitEvidenceError(reason instanceof Error ? reason.message : "Saved split provenance could not be verified.");
     });
     return () => { active = false; };
-  }, [project.session_id]);
+  }, [project.session_id, splitEvidenceReload]);
   useEffect(() => {
     if (!run) { setRunCapabilities(null); return; }
     studioApi.getTrainingRunCapabilities(project.session_id, run.run_id).then(setRunCapabilities).catch(() => setRunCapabilities(null));
@@ -514,20 +519,21 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
         {catalogStatus === "loading" && <p role="status">Checking available model adapters for this task…</p>}
         {catalogStatus === "error" && <div className="error" role="alert"><strong>Could not check available models.</strong> {catalogError} <Button view="outlined" size="s" onClick={() => setCatalogReload((current) => current + 1)} data-ruflex-action="training.catalog.retry">Retry model check</Button></div>}
         {catalogStatus === "loaded" && compatibleModels.length === 0 && <div className="info-message" role="status"><strong>No compatible model is available.</strong> The catalog loaded, but no available adapter declares fit support for {datasetTask}. Training remains disabled; install/register a compatible adapter or choose a dataset for a supported task.</div>}
-        <Button view="outlined" disabled={running || project.read_only || Boolean(splitEvidenceError)} onClick={freezeSplitContract} data-ruflex-action="split.freeze">Freeze {splitFamily} SplitContract</Button>
+        <Button view="outlined" disabled={running || project.read_only || splitEvidenceStatus !== "loaded"} onClick={freezeSplitContract} data-ruflex-action="split.freeze">Freeze {splitFamily} SplitContract</Button>
         <section className="info-message" aria-label="Training choices">
           <strong>Choose how to start</strong>
           <p><strong>Run real training</strong> creates one fitted TrainingRun for the current settings.</p>
           <p><strong>Run multi-seed study</strong> executes the distinct seeds listed above under the selected randomness protocol and preserves the per-seed results as a TrainingStudy. It requires at least three seeds.</p>
           <p>Both paths use the declared training/validation workflow; opening this screen or changing settings does not start computation or unlock the test split.</p>
         </section>
-        <Button view="action" disabled={running || project.read_only || Boolean(splitEvidenceError) || catalogStatus !== "loaded" || !selectedModel || parameterErrors.length > 0} onClick={train} data-ruflex-action="training.run">{running ? "Training…" : "Run real training"}</Button>
+        <Button view="action" disabled={running || project.read_only || splitEvidenceStatus !== "loaded" || catalogStatus !== "loaded" || !selectedModel || parameterErrors.length > 0} onClick={train} data-ruflex-action="training.run">{running ? "Training…" : "Run real training"}</Button>
         <p id="study-seeds-help" className={studySeedValidation.error ? "error" : "property-description"} role={studySeedValidation.error ? "alert" : undefined}>{studySeedValidation.error ?? "Enter 3–32 distinct whole-number seeds, separated by commas."}</p>
         {parameterErrors.length > 0 && <div className="error" role="alert">Review model settings before training: {parameterErrors.join(" ")}</div>}
-        <Button view="outlined" disabled={running || project.read_only || Boolean(splitEvidenceError) || catalogStatus !== "loaded" || !selectedModel || Boolean(studySeedValidation.error) || parameterErrors.length > 0 || (studyHydrationStatus !== "none" && studyHydrationStatus !== "available") || studyJobsStatus !== "loaded"} onClick={trainStudy} data-ruflex-action="study.start">{running ? "Training…" : "Run multi-seed study"}</Button>
+        <Button view="outlined" disabled={running || project.read_only || splitEvidenceStatus !== "loaded" || catalogStatus !== "loaded" || !selectedModel || Boolean(studySeedValidation.error) || parameterErrors.length > 0 || (studyHydrationStatus !== "none" && studyHydrationStatus !== "available") || studyJobsStatus !== "loaded"} onClick={trainStudy} data-ruflex-action="study.start">{running ? "Training…" : "Run multi-seed study"}</Button>
         {studyJob && <div className="info-message"><strong>Study job {studyJob.status}</strong> · {studyJob.execution_backend_key ?? studyJob.execution_backend} · {studyJob.seed_states.map((state) => `seed ${state.seed}: ${state.status}`).join(" · ")} {(["QUEUED", "RUNNING"].includes(studyJob.status)) && <><Button view="flat" size="s" disabled={running} onClick={resumeStudy} data-ruflex-action="study.resume">Resume persisted study</Button><Button view="flat" size="s" disabled={running} onClick={cancelStudy} data-ruflex-action="study.cancel">Cancel study</Button></>} {studyJob.recovery_note && <small>{studyJob.recovery_note}</small>}{studyJobPollError && <div className="error" role="alert"><strong>Study status could not be refreshed.</strong> {studyJobPollError} <Button view="outlined" size="s" disabled={running} onClick={retryStudyStatus}>Retry Study status</Button></div>}</div>}
         <div className="info-message">A frozen SplitContract assigns exact source rows before fitting. GROUP keeps each declared identity in one role. It makes split membership auditable; it does not by itself establish generalization validity.</div>
-        {splitEvidenceError && <div className="error" role="alert">Saved split provenance is invalid or unavailable. Training is blocked rather than falling back to an unverified split. {splitEvidenceError}</div>}
+        {splitEvidenceStatus === "loading" && <div role="status">Checking saved split provenance before enabling training…</div>}
+        {splitEvidenceStatus === "error" && <div className="error" role="alert"><strong>Saved split provenance is unavailable.</strong> Training is blocked rather than falling back to an unverified split. {splitEvidenceError} <Button view="outlined" size="s" onClick={() => setSplitEvidenceReload((current) => current + 1)}>Retry saved split check</Button></div>}
         {project.read_only && <div className="info-message">Read-only projects cannot start training runs.</div>}
       </section>
 

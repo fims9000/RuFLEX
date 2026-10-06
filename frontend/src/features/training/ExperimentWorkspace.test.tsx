@@ -216,11 +216,14 @@ describe("ExperimentWorkspace dynamic model controls", () => {
   });
 
   it("blocks new fitting when saved split provenance cannot be verified", async () => {
-    studioApi.listSplitContracts.mockRejectedValue(new Error("Persisted SplitContract is malformed"));
+    studioApi.listSplitContracts.mockRejectedValueOnce(new Error("Persisted SplitContract is malformed")).mockResolvedValueOnce([]);
     render(<ExperimentWorkspace project={project} dataset={dataset as never} run={null} study={null} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Training is blocked rather than falling back to an unverified split");
     expect(screen.getByRole("button", { name: "Run real training" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Run multi-seed study" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Retry saved split check" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Run real training" })).toBeEnabled());
+    expect(studioApi.listSplitContracts).toHaveBeenCalledTimes(2);
   });
 });

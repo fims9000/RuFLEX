@@ -66,6 +66,30 @@ test("E2E-02b keeps dataset import paused on a state-read failure and enables it
   expect(datasetReads).toBe(2);
 });
 
+test("E2E-02c pauses training while saved split provenance is unavailable and recovers on retry", async ({ page }) => {
+  let splitReads = 0;
+  await page.route("**/api/projects/*/dataset/splits", async (route) => {
+    splitReads += 1;
+    if (splitReads === 1) {
+      return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "saved split state temporarily unavailable" }) });
+    }
+    return route.continue();
+  });
+  await createProject(page, projectPath("split-state-retry"), "Split state recovery");
+  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
+  await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
+  await page.getByRole("button", { name: "S", exact: true }).click();
+  const error = page.getByRole("alert").filter({ hasText: "Saved split provenance is unavailable" });
+  await expect(error).toContainText("saved split state temporarily unavailable");
+  await expect(page.getByRole("button", { name: "Run real training", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: /Freeze .* SplitContract/ })).toBeDisabled();
+  await error.getByRole("button", { name: "Retry saved split check", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Run real training", exact: true })).toBeEnabled();
+  await expect(page.getByRole("button", { name: /Freeze .* SplitContract/ })).toBeEnabled();
+  expect(splitReads).toBe(2);
+});
+
 test("E2E-03 read-only opening disables mutating Studio controls", async ({ page }) => {
   const path = projectPath("readonly");
   await createProject(page, path, "Read only");
