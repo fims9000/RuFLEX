@@ -15,7 +15,6 @@ import {
   ExplanationContract,
   VerificationBundleValidation,
   FISEvaluation,
-  ModelCatalogEntry,
   PluginDescriptor,
   RunCapabilityNegotiation,
   RuntimeExplainerDescriptor,
@@ -144,7 +143,6 @@ export function EvidenceWorkspace({
   const [sample, setSample] = useState<Record<string, string>>(initialSample);
   const [comparisonSample, setComparisonSample] = useState<Record<string, string>>(initialSample);
   const [method, setMethod] = useState("occlusion");
-  const [catalog, setCatalog] = useState<ModelCatalogEntry[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [behaviorKind, setBehaviorKind] = useState<BehaviorSpec["kind"]>("output_range");
@@ -186,6 +184,9 @@ export function EvidenceWorkspace({
   const [explanationJobHydrationError, setExplanationJobHydrationError] = useState<string | null>(null);
   const [explanationJobHydrationReload, setExplanationJobHydrationReload] = useState(0);
   const [capabilityNegotiation, setCapabilityNegotiation] = useState<RunCapabilityNegotiation | null>(null);
+  const [capabilityHydrationStatus, setCapabilityHydrationStatus] = useState<"loading" | "available" | "error">("loading");
+  const [capabilityHydrationError, setCapabilityHydrationError] = useState<string | null>(null);
+  const [capabilityHydrationReload, setCapabilityHydrationReload] = useState(0);
   const [validatorPlugins, setValidatorPlugins] = useState<PluginDescriptor[]>([]);
   const [runtimeExplainers, setRuntimeExplainers] = useState<RuntimeExplainerDescriptor[]>([]);
   const [runtimeValidators, setRuntimeValidators] = useState<RuntimeValidatorDescriptor[]>([]);
@@ -286,7 +287,6 @@ export function EvidenceWorkspace({
     return () => { active = false; };
   }, [project.session_id, persistedExplanationsHydrationReload]);
   useEffect(() => {
-    studioApi.getModelCatalog().then(setCatalog).catch(() => setCatalog([]));
     studioApi.getPluginCatalog().then(setValidatorPlugins).catch(() => setValidatorPlugins([]));
     studioApi.getRuntimeExplainers().then(setRuntimeExplainers).catch(() => setRuntimeExplainers([]));
     studioApi.getRuntimeValidators().then((validators) => {
@@ -299,30 +299,34 @@ export function EvidenceWorkspace({
     }).catch(() => setExecutionBackends([]));
   }, []);
   useEffect(() => {
-    if (!run) { setCapabilityNegotiation(null); return; }
-    studioApi.getTrainingRunCapabilities(project.session_id, run.run_id)
-      .then(setCapabilityNegotiation)
-      .catch(() => setCapabilityNegotiation(null));
-  }, [project.session_id, run?.run_id]);
-  const modelCapabilities = useMemo(() => {
-    if (!run) return {} as Record<string, boolean>;
-    const key = run.model_kind === "logistic_regression" || run.model_kind === "linear_regression" ? "linear" : run.model_kind;
-    return catalog.find((entry) => entry.key === key)?.capabilities ?? {};
-  }, [catalog, run?.model_kind]);
-  const availableMethods = useMemo(() => {
-    if (capabilityNegotiation) {
-      return capabilityNegotiation.decisions
-        .filter((decision) => decision.status === "AVAILABLE" && decision.capability !== "exact_tree_path")
-        .map((decision) => decision.capability);
+    let active = true;
+    if (!run) {
+      setCapabilityNegotiation(null);
+      setCapabilityHydrationStatus("error");
+      setCapabilityHydrationError("Select a persisted TrainingRun before resolving explanation capabilities.");
+      return () => { active = false; };
     }
-    const methods: string[] = [];
-    if (modelCapabilities.occlusion) methods.push("occlusion");
-    if (modelCapabilities.shap) methods.push("shap");
-    if (modelCapabilities.tree_shap) methods.push("tree_shap");
-    if (modelCapabilities.integrated_gradients) methods.push("integrated_gradients");
-    if (modelCapabilities.gradient_shap) methods.push("gradient_shap");
-    return methods;
-  }, [capabilityNegotiation, modelCapabilities]);
+    setCapabilityNegotiation(null);
+    setCapabilityHydrationStatus("loading");
+    setCapabilityHydrationError(null);
+    studioApi.getTrainingRunCapabilities(project.session_id, run.run_id)
+      .then((value) => {
+        if (!active) return;
+        setCapabilityNegotiation(value);
+        setCapabilityHydrationStatus("available");
+      })
+      .catch((reason: unknown) => {
+        if (!active) return;
+        setCapabilityHydrationError(reason instanceof Error ? reason.message : "The selected run's explainer capabilities could not be verified.");
+        setCapabilityHydrationStatus("error");
+      });
+    return () => { active = false; };
+  }, [project.session_id, run?.run_id, capabilityHydrationReload]);
+  const availableMethods = useMemo(() => {
+    return capabilityNegotiation?.decisions
+      .filter((decision) => decision.status === "AVAILABLE" && decision.capability !== "exact_tree_path")
+      .map((decision) => decision.capability) ?? [];
+  }, [capabilityNegotiation]);
   const selectableMethods = useMemo(() => {
     const external = runtimeExplainers
       .filter((explainer) => explainer.identity.provider !== "ruflex.builtin" && !!run && explainer.supported_tasks.includes(run.task))
@@ -523,7 +527,7 @@ export function EvidenceWorkspace({
         ) : (
           <>
             <label className="field-label evidence-method-select">Method
-              <select aria-label="Explanation method" value={method} onChange={(event) => setMethod(event.target.value)}>
+              <select aria-label="Explanation method" value={method} disabled={capabilityHydrationStatus !== "available"} onChange={(event) => setMethod(event.target.value)}>
                 {selectableMethods.map((candidate) => <option value={candidate} key={candidate}>{candidate === "occlusion" ? "Occlusion" : candidate === "shap" ? "SHAP · permutation" : candidate === "tree_shap" ? "TreeSHAP" : candidate === "integrated_gradients" ? "Integrated Gradients" : candidate === "gradient_shap" ? "GradientSHAP" : `${candidate} · runtime explainer`}</option>)}
               </select>
             </label>
@@ -541,10 +545,12 @@ export function EvidenceWorkspace({
               ))}
             </div>
             <div className="evidence-actions">
-              <Button view="action" disabled={busy || project.read_only || selectableMethods.length === 0 || explanationJobHydrationStatus === "loading" || explanationJobHydrationStatus === "error"} onClick={generate} data-ruflex-action="explanation.generate">{busy ? "Generating…" : "Generate explanation"}</Button>
+              <Button view="action" disabled={busy || project.read_only || capabilityHydrationStatus !== "available" || selectableMethods.length === 0 || explanationJobHydrationStatus === "loading" || explanationJobHydrationStatus === "error"} onClick={generate} data-ruflex-action="explanation.generate">{busy ? "Generating…" : "Generate explanation"}</Button>
               <span className="property-description">{run.model_kind} · run {run.run_id.slice(0, 8)}</span>
             </div>
             {capabilityNegotiation && <div className="trace-card" data-testid="run-capability-negotiation"><strong>Run capability contract</strong><div className="property-list">{capabilityNegotiation.decisions.map((decision) => <div key={decision.capability}><span>{decision.capability.replaceAll("_", " ")}</span><span><StatusBadge tone={decision.status === "AVAILABLE" ? "success" : "info"}>{decision.status}</StatusBadge> {decision.detail}</span></div>)}</div></div>}
+            {capabilityHydrationStatus === "loading" && <p role="status" data-testid="run-capability-loading">Checking explainer support for this exact run…</p>}
+            {capabilityHydrationStatus === "error" && <div className="error" role="alert" data-testid="run-capability-error"><strong>Explainer support for this run could not be verified; generation is paused.</strong><p>{capabilityHydrationError}</p><Button view="outlined" onClick={() => setCapabilityHydrationReload((current) => current + 1)}>Retry run capabilities</Button></div>}
             {explanationJobHydrationStatus === "loading" && <p role="status" data-testid="explanation-job-loading">Loading saved explanation job…</p>}
             {explanationJobHydrationStatus === "none" && <p className="property-description" data-testid="explanation-job-empty">No saved explanation job is available.</p>}
             {explanationJobHydrationStatus === "error" && <div className="error" role="alert" data-testid="explanation-job-hydration-error"><strong>Saved explanation job could not be verified; starting another operation is paused.</strong><p>{explanationJobHydrationError}</p><Button view="outlined" onClick={() => setExplanationJobHydrationReload((current) => current + 1)}>Retry saved explanation job</Button></div>}

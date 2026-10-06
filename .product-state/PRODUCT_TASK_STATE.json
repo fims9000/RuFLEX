@@ -106,7 +106,8 @@
     "alpha_stability_evidence_hydration_truthfulness",
     "alpha_condition_demo_hydration_truthfulness",
     "alpha_behavior_comparison_and_explanation_job_hydration",
-    "alpha_behavior_results_and_explanation_inventory_hydration"
+    "alpha_behavior_results_and_explanation_inventory_hydration",
+    "alpha_run_capability_hydration_evidence_workspace"
   ],
   "active_capability": "alpha_saved_evidence_hydration_audit",
   "active_acceptance": [
@@ -114,7 +115,7 @@
     "Prioritize identity-linked EvidenceWorkspace reads and guard any action that could duplicate persisted work until its inventory resolves."
   ],
   "blockers": [],
-  "next_executable_work": "Audit remaining EvidenceWorkspace persisted inventories and exact-ID reads for transient failures hidden as empty or stale state; add a focused close/reopen retry test for the highest-impact remaining route. Preserve unrelated article changes and do not push.",
+  "next_executable_work": "Audit the remaining EvidenceWorkspace saved AssuranceCase/VerificationBundle reload paths and runtime catalogs for transient errors hidden as missing capability or missing evidence; prioritize actions that could mislead users or duplicate persisted work. Preserve unrelated article changes and do not push.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -210,6 +211,7 @@
     "alpha_stability_evidence_hydration_truthfulness": "PASS: Stability Lab reopens analysis and gate inventories as explicit pending/loaded/error states, with retry and duplicate-creation controls disabled until saved identities resolve. Read failures are independently surfaced for StudyStabilityAnalysis and StabilityGatePolicy; successful retry restores both to the Lab and parent Project Explorer. Stability Lab close/reopen E2E injected two 503 reads per inventory then verified retry restored the analysis/map and gate/risk view; Vite build and git diff check passed.",
     "alpha_condition_demo_hydration_truthfulness": "PASS: Persisted ConditionMonitoringDemo distinguishes loading, confirmed 404 absence, available result and transient read error. Retry reloads the exact latest demo; starting another demo remains blocked until status resolves. PRODUCT-EVIDENCE injected 503 after project reopen, confirmed both GeneralizationContract and demo error gates, retried each, and restored the persisted condition demo. Vite/TypeScript build and focused Playwright route passed.",
     "alpha_behavior_comparison_and_explanation_job_hydration": "PASS: Saved BehaviorRevisionComparison and post-hoc ExplanationJob inventories now distinguish loading, confirmed empty, available and transient failure; failed reads retain prior identity, show retry, and block duplicate compare/explanation work until resolved. PRODUCT-EVIDENCE persisted a real cross-model same-requirement comparison and explanation job, injected 503 on reopen, retried both reads, and verified restoration. Frontend unit 23/23, TypeScript/Vite build, focused Playwright and git diff --check passed.",
-    "alpha_behavior_results_and_explanation_inventory_hydration": "PASS: BehaviorSpecResult and ExplanationContract inventories now preserve prior state on transient failures, show explicit retry, and pause revision/reproducibility comparisons until the saved inventory resolves. The PRODUCT-EVIDENCE close/reopen route injects 503 for both inventories, confirms actions are paused, retries, then verifies persisted records return. Frontend unit 23/23, TypeScript/Vite build, focused Playwright and git diff --check passed."
+    "alpha_behavior_results_and_explanation_inventory_hydration": "PASS: BehaviorSpecResult and ExplanationContract inventories now preserve prior state on transient failures, show explicit retry, and pause revision/reproducibility comparisons until the saved inventory resolves. The PRODUCT-EVIDENCE close/reopen route injects 503 for both inventories, confirms actions are paused, retries, then verifies persisted records return. Frontend unit 23/23, TypeScript/Vite build, focused Playwright and git diff --check passed.",
+    "alpha_run_capability_hydration_evidence_workspace": "PASS: Explanation generation no longer falls back to broad model-catalog capabilities when exact-run negotiation fails. The method picker and generate action remain paused while resolving or on error, with explicit retry. PRODUCT-EVIDENCE injects a run-capability 503 on project reopen and verifies fail-closed behavior followed by exact retry recovery. TypeScript/Vite build and focused Playwright passed."
   }
 }
