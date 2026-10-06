@@ -109,6 +109,20 @@ test("E2E-08 confirms a dataset contract in Data workspace and preserves it acro
   const persistedDatasetTile = page.locator(".project-overview-grid button").filter({ hasText: "3 rows" });
   await expect(persistedDatasetTile).toContainText("Data");
   await expect(page.getByRole("region", { name: "Optional quick start" })).toHaveCount(0);
+  const trainingRequests: string[] = [];
+  page.on("request", (request) => {
+    if (request.method() === "POST" && /\/api\/projects\/training(?:\/|$)|\/api\/projects\/studies(?:\/|$)/.test(request.url())) {
+      trainingRequests.push(request.url());
+    }
+  });
+  const optionalTraining = page.getByRole("region", { name: "Optional next step" });
+  await expect(optionalTraining).toContainText("Your dataset is ready for a model fit");
+  await expect(optionalTraining).toContainText("Nothing runs until you choose “Run real training”");
+  await expect(optionalTraining).toContainText("held-out test split stays locked");
+  await optionalTraining.getByRole("button", { name: "Open Training", exact: true }).click();
+  await expect(page.locator(".training-workspace")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Run real training", exact: true })).toBeVisible();
+  expect(trainingRequests).toEqual([]);
   await page.locator(".project-object-tree .object-tree-item").filter({ hasText: "target" }).first().click();
   await expect(page.locator(".data-workspace")).toBeVisible();
   await page.getByRole("button", { name: "Close", exact: true }).click();

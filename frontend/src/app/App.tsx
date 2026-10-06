@@ -1244,6 +1244,16 @@ export function App() {
               <Button view="action" onClick={() => setActive("DATA")} data-ruflex-action="project.quickstart.data">Review or import data</Button>
             </section>
           )}
+          {overviewContextReady && datasetState && !trainingRun && (
+            <section className="quick-start-card" aria-label="Optional next step">
+              <div>
+                <span className="eyebrow">OPTIONAL NEXT STEP</span>
+                <h2>Your dataset is ready for a model fit</h2>
+                <p>Open Training to review the model and split settings. Nothing runs until you choose “Run real training”; the held-out test split stays locked.</p>
+              </div>
+              <Button view="action" onClick={() => setActive("STUDIES")} data-ruflex-action="project.quickstart.training">Open Training</Button>
+            </section>
+          )}
           <div className="project-overview-grid">
             <button onClick={() => setActive("DATA")}>
               Data
