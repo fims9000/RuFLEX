@@ -163,6 +163,9 @@ export function App() {
   const [lineageReload, setLineageReload] = useState(0);
   const [dataGovernanceObject, setDataGovernanceObject] = useState<DataGovernanceObject | null>(null);
   const [integrity, setIntegrity] = useState<ProjectIntegrityReport | null>(null);
+  const [integrityStatus, setIntegrityStatus] = useState<"idle" | "loading" | "available" | "error">("idle");
+  const [integrityError, setIntegrityError] = useState<string | null>(null);
+  const [integrityReload, setIntegrityReload] = useState(0);
   const [selectedExpertCorrectionId, setSelectedExpertCorrectionId] = useState<string | null>(null);
   const datasetFileInputRef = useRef<HTMLInputElement>(null);
   const datasetFileSelectionId = useRef(0);
@@ -237,6 +240,8 @@ export function App() {
       setLineageError(null);
       setDataGovernanceObject(null);
       setIntegrity(null);
+      setIntegrityStatus("idle");
+      setIntegrityError(null);
       setSelectedExpertCorrectionId(null);
       return;
     }
@@ -264,6 +269,9 @@ export function App() {
     setLineage(null);
     setLineageStatus("loading");
     setLineageError(null);
+    setIntegrity(null);
+    setIntegrityStatus("loading");
+    setIntegrityError(null);
     const resolveOptional = <T,>(request: Promise<T>) => request.then(
       (value) => ({ kind: "value" as const, value }),
       (reason: unknown) => reason instanceof ProductApiError && reason.status === 404
@@ -310,9 +318,24 @@ export function App() {
     studioApi.getLatestAssuranceCase(project.session_id).then(setAssurance).catch(() => setAssurance(null));
     studioApi.getLatestExpertCorrection(project.session_id).then(setExpertCorrection).catch(() => setExpertCorrection(null));
     studioApi.getActiveGeneralization(project.session_id).then(setGeneralization).catch(() => setGeneralization(null));
-    studioApi.getProjectIntegrity(project.session_id).then(setIntegrity).catch(() => setIntegrity(null));
     return () => { active = false; };
   }, [project?.session_id, overviewContextReload]);
+  useEffect(() => {
+    let active = true;
+    if (!project) return () => { active = false; };
+    setIntegrityStatus("loading");
+    setIntegrityError(null);
+    studioApi.getProjectIntegrity(project.session_id).then((report) => {
+      if (!active) return;
+      setIntegrity(report);
+      setIntegrityStatus("available");
+    }).catch((reason: unknown) => {
+      if (!active) return;
+      setIntegrityStatus("error");
+      setIntegrityError(reason instanceof Error ? reason.message : "Project integrity could not be checked.");
+    });
+    return () => { active = false; };
+  }, [project?.session_id, integrityReload]);
   useEffect(() => {
     let active = true;
     if (!project) return () => { active = false; };
@@ -1454,7 +1477,9 @@ export function App() {
             </div>
           {overviewContextStatus === "loading" && <div role="status">Checking saved model and training context before showing project next steps…</div>}
           {overviewContextStatus === "error" && <div className="error" role="alert"><strong>Could not verify saved model or training context.</strong><p>{overviewContextError ?? "The project is not assumed to be empty after a failed read."}</p><Button view="outlined" onClick={() => setOverviewContextReload((current) => current + 1)}>Retry project context check</Button></div>}
-          {integrity && <div className="trace-card" data-testid="project-integrity"><div className="evidence-check-header"><strong>Reopen integrity</strong><StatusBadge tone={integrity.status === "PASS" ? "success" : integrity.status === "FAIL" ? "danger" : "warning"}>{integrity.status}</StatusBadge></div><p>{integrity.checked_objects} persisted objects checked. {integrity.scientific_note}</p>{integrity.issues.map((issue) => <p className="property-description" key={`${issue.code}-${issue.path}`}>{issue.code} · {issue.path} · {issue.detail}</p>)}</div>}
+          {integrityStatus === "loading" && <div role="status">Checking persisted project integrity…</div>}
+          {integrityStatus === "error" && <div className="error" role="alert"><strong>Project integrity is unavailable.</strong><p>{integrityError ?? "Persisted project evidence has not been verified."}</p><Button view="outlined" onClick={() => setIntegrityReload((current) => current + 1)}>Retry integrity check</Button></div>}
+          {integrityStatus === "available" && integrity && <div className="trace-card" data-testid="project-integrity"><div className="evidence-check-header"><strong>Reopen integrity</strong><StatusBadge tone={integrity.status === "PASS" ? "success" : integrity.status === "FAIL" ? "danger" : "warning"}>{integrity.status}</StatusBadge></div><p>{integrity.checked_objects} persisted objects checked. {integrity.scientific_note}</p>{integrity.issues.map((issue) => <p className="property-description" key={`${issue.code}-${issue.path}`}>{issue.code} · {issue.path} · {issue.detail}</p>)}</div>}
           {overviewContextStatus === "loaded" && datasetStateStatus === "none" && !fis && !trainingRun && (
             <section className="quick-start-card" aria-label="Optional quick start">
               <div>

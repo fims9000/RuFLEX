@@ -90,15 +90,16 @@
     "alpha_run_data_governance_evidence_retry",
     "alpha_run_capability_hydration_truthfulness",
     "alpha_tree_path_evidence_hydration_retry",
-    "alpha_project_overview_context_truthfulness"
+    "alpha_project_overview_context_truthfulness",
+    "alpha_project_integrity_read_truthfulness"
   ],
-  "active_capability": "alpha_optional_persisted_evidence_hydration_audit",
+  "active_capability": "alpha_fis_evaluation_hydration_truthfulness",
   "active_acceptance": [
-    "Audit optional project-level saved evidence reads that currently map failures to null.",
-    "Prioritize evidence whose absence changes what the user believes is persisted; expose retry without weakening integrity validation."
+    "Distinguish no saved FIS trace from a failed latest-trace read.",
+    "Keep FIS evaluation evidence unresolved on request failure and provide a retry for the exact project context."
   ],
   "blockers": [],
-  "next_executable_work": "Audit project-level optional saved evidence hydration for false-empty UI states; implement one bounded retryable evidence slice and test through reopen where practical. Preserve unrelated article changes; no push authorized.",
+  "next_executable_work": "Give the latest persisted FIS evaluation an explicit loading/absent/available/error state with retry; preserve historical/current FIS context and avoid silent null fallback. Keep unrelated article changes untouched; no push authorized.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -178,6 +179,7 @@
     "alpha_run_data_governance_evidence_retry": "PASS: Saved run governance evidence distinguishes legacy absence from partial/malformed references; transient Split/Transform/Leakage reads retain an explicit unverified state and offer retry. Recovery reloads the exact run evidence identities. ExperimentWorkspace unit tests 11 passed, PRODUCT-02 real Studio training route with injected 503/retry passed, Vite/TypeScript build and git diff --check passed. Commit a91fd60.",
     "alpha_run_capability_hydration_truthfulness": "PASS: Exact tree-path capability lookup now distinguishes pending, available and failed states; a temporary read failure no longer silently removes a supported action, and retry rechecks the same run ID. ExperimentWorkspace tests passed (11), focused decision-tree Studio 503-to-retry E2E passed, Vite/TypeScript build and git diff --check passed. Commit dd4249a.",
     "alpha_tree_path_evidence_hydration_retry": "PASS: Latest tree-path evidence now distinguishes pending, confirmed absence, evidence for another run and transient read failure. Error state provides retry and only exact-run evidence is displayed; a fresh Decision Tree browser route verified capability error/retry and evidence 503/retry/404. ExperimentWorkspace tests 12 passed, Vite/TypeScript build and git diff --check passed. Commit 675ed9f.",
-    "alpha_project_overview_context_truthfulness": "PASS: Project Overview now distinguishes loading, resolved absence/presence and FIS/latest-run read failure. Empty-project and next-step quick-start claims are withheld until both reads resolve; retry rechecks context. Focused E2E verified two 503s then successful recovery to the genuine empty-project prompt; Vite/TypeScript build and git diff --check passed."
+    "alpha_project_overview_context_truthfulness": "PASS: Project Overview now distinguishes loading, resolved absence/presence and FIS/latest-run read failure. Empty-project and next-step quick-start claims are withheld until both reads resolve; retry rechecks context. Focused E2E verified two 503s then successful recovery to the genuine empty-project prompt; Vite/TypeScript build and git diff --check passed. Commit 8d6525b.",
+    "alpha_project_integrity_read_truthfulness": "PASS: Project integrity now has explicit loading/available/error states; a failed integrity read cannot silently remove the reopen-integrity card and can be retried. Focused Studio 503-to-retry E2E and Vite/TypeScript build passed; git diff --check passed."
   }
 }

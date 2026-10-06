@@ -114,6 +114,22 @@ test("E2E-02d does not show an empty-project quick start when saved model contex
   expect(trainingReads).toBe(2);
 });
 
+test("E2E-02e shows and retries an unavailable project integrity check", async ({ page }) => {
+  let integrityReads = 0;
+  await page.route("**/api/projects/*/integrity", async (route) => {
+    integrityReads += 1;
+    if (integrityReads === 1) return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "integrity index temporarily unavailable" }) });
+    return route.continue();
+  });
+  await createProject(page, projectPath("integrity-retry"), "Integrity recovery");
+  const error = page.getByRole("alert").filter({ hasText: "Project integrity is unavailable" });
+  await expect(error).toContainText("integrity index temporarily unavailable");
+  await expect(page.getByTestId("project-integrity")).toHaveCount(0);
+  await error.getByRole("button", { name: "Retry integrity check", exact: true }).click();
+  await expect(page.getByTestId("project-integrity")).toBeVisible();
+  expect(integrityReads).toBe(2);
+});
+
 test("E2E-03 read-only opening disables mutating Studio controls", async ({ page }) => {
   const path = projectPath("readonly");
   await createProject(page, path, "Read only");
