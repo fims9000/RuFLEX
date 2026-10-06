@@ -52,3 +52,34 @@ test("project evidence indexes distinguish unavailable from absent and can be re
   await expect(stabilityError).toHaveCount(0);
   expect(stabilityReads).toBe(2);
 });
+
+test("late artifact inventory from a closed project is ignored after switching projects", async ({ page }) => {
+  const firstPath = join(tmpdir(), `ruflex-artifact-switch-a-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  const secondPath = join(tmpdir(), `ruflex-artifact-switch-b-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  const oldArtifactSha = "a".repeat(64);
+  let releaseFirstRead!: () => void;
+  const firstReadGate = new Promise<void>((resolve) => { releaseFirstRead = resolve; });
+  let artifactReads = 0;
+  await page.route("**/api/projects/*/artifacts", async (route) => {
+    artifactReads += 1;
+    if (artifactReads === 1) {
+      await firstReadGate;
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([{ sha256: oldArtifactSha, size_bytes: 123, source_kind: "dataset", media_type: "text/csv" }]) });
+    }
+    return route.continue();
+  });
+
+  await page.goto("/");
+  await page.getByLabel("Project path").fill(firstPath);
+  await page.getByLabel("Project name").fill("Artifact Project A");
+  await page.getByRole("button", { name: "Create project", exact: true }).click();
+  await expect.poll(() => artifactReads).toBe(1);
+  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await page.getByLabel("Project path").fill(secondPath);
+  await page.getByLabel("Project name").fill("Artifact Project B");
+  await page.getByRole("button", { name: "Create project", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Artifact Project B", exact: true })).toBeVisible();
+  releaseFirstRead();
+  await expect(page.getByText(oldArtifactSha.slice(0, 12), { exact: false })).toHaveCount(0);
+  await expect(page.getByText("No immutable artifacts yet.", { exact: true })).toBeVisible();
+});
