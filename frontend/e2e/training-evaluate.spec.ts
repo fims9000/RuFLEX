@@ -154,7 +154,20 @@ test("PRODUCT-02b retries a persisted decision-tree capability check without cla
   await page.getByLabel("CSV data").fill(trainingCsv());
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
+  let backendCatalogReads = 0;
+  await page.route("**/api/runtime/backends", async (route) => {
+    backendCatalogReads += 1;
+    if (backendCatalogReads === 1) {
+      return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "execution backend catalog temporarily unavailable" }) });
+    }
+    return route.continue();
+  });
   await page.getByRole("button", { name: "S", exact: true }).click();
+  const backendCatalogError = page.getByTestId("execution-backend-catalog-error");
+  await expect(backendCatalogError).toContainText("execution backend catalog temporarily unavailable");
+  await backendCatalogError.getByRole("button", { name: "Retry backend check" }).click();
+  await expect(backendCatalogError).toHaveCount(0);
+  expect(backendCatalogReads).toBe(2);
   await page.getByLabel("Training model").selectOption("decision_tree");
   let capabilityReads = 0;
   let treePathReads = 0;

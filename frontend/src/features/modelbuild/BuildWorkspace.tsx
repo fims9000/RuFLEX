@@ -390,6 +390,9 @@ export function BuildWorkspace({
   const [linkSourceExplanation, setLinkSourceExplanation] = useState(false);
   const [canonicalYaml, setCanonicalYaml] = useState<string | null>(null);
   const [historyBaseHash, setHistoryBaseHash] = useState<string | null>(null);
+  const [revisionHistoryStatus, setRevisionHistoryStatus] = useState<"idle" | "loading" | "empty" | "available" | "error">("idle");
+  const [revisionHistoryError, setRevisionHistoryError] = useState<string | null>(null);
+  const [revisionHistoryReload, setRevisionHistoryReload] = useState(0);
   const importInputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     setLinkSourceExplanation(false);
@@ -400,10 +403,19 @@ export function BuildWorkspace({
     setEditorHistory(fis ? [cloneFis(fis)] : []);
     setHistoryIndex(0);
     if (fis) {
-      studioApi
-        .getFisRevisions(project.session_id)
-        .then(setRevisions)
-        .catch(() => setRevisions([]));
+      setRevisions([]);
+      setRevisionHistoryError(null);
+      setRevisionHistoryStatus("loading");
+      studioApi.getFisRevisions(project.session_id).then((items) => {
+        if (!active) return;
+        setRevisions(items);
+        setRevisionHistoryStatus(items.length ? "available" : "empty");
+      }).catch((reason: unknown) => {
+        if (!active) return;
+        setRevisions([]);
+        setRevisionHistoryError(reason instanceof Error ? reason.message : "Saved FIS revisions could not be verified.");
+        setRevisionHistoryStatus("error");
+      });
       if (fis.system_type === "sugeno") {
         setExpertCorrection(null);
         setExpertCorrectionLoadError(null);
@@ -437,6 +449,8 @@ export function BuildWorkspace({
       setExpertLockedRules((current) => current.filter((id) => fis.rules.some((rule) => rule.rule_id === id)));
     } else {
       setRevisions([]);
+      setRevisionHistoryError(null);
+      setRevisionHistoryStatus("idle");
       setExpertCorrection(null);
       setExpertCorrectionLoadError(null);
       setExpertCorrectionLoadStatus("idle");
@@ -444,7 +458,7 @@ export function BuildWorkspace({
       setExpertLockedRules([]);
     }
     return () => { active = false; };
-  }, [fis, selectedExpertCorrectionId, expertCorrectionReload]);
+  }, [project.session_id, fis, selectedExpertCorrectionId, expertCorrectionReload, revisionHistoryReload]);
   useEffect(() => {
     if (!fis) {
       setRunInputs({});
@@ -2336,7 +2350,9 @@ export function BuildWorkspace({
           <span className="eyebrow">MODEL REVISION HISTORY</span>
           <h3>Saved canonical revisions</h3>
         </div>
-        {revisions.length ? (
+        {revisionHistoryStatus === "loading" && <p role="status">Loading saved FIS revisions…</p>}
+        {revisionHistoryStatus === "error" && <div className="error" role="alert" data-testid="fis-revision-history-error"><p>Saved FIS revision history could not be verified. {revisionHistoryError}</p><Button view="outlined" onClick={() => setRevisionHistoryReload((current) => current + 1)}>Retry revision history</Button></div>}
+        {revisionHistoryStatus === "available" && revisions.length ? (
           <>
             <ol>
               {revisions.map((revision, index) => (
@@ -2375,9 +2391,9 @@ export function BuildWorkspace({
               </section>
             )}
           </>
-        ) : (
+        ) : revisionHistoryStatus === "empty" ? (
           <p>Save this model to create an immutable semantic revision.</p>
-        )}
+        ) : null}
       </section>
       <section className="canonical-source-panel">
         <div>

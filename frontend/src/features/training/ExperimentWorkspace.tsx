@@ -244,6 +244,9 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const [catalogReload, setCatalogReload] = useState(0);
   const [executionBackends, setExecutionBackends] = useState<ExecutionBackendDescriptor[]>([]);
+  const [executionBackendStatus, setExecutionBackendStatus] = useState<"loading" | "loaded" | "error">("loading");
+  const [executionBackendError, setExecutionBackendError] = useState<string | null>(null);
+  const [executionBackendReload, setExecutionBackendReload] = useState(0);
   const [executionBackendKey, setExecutionBackendKey] = useState("local_executor");
   const [runCapabilities, setRunCapabilities] = useState<RunCapabilityNegotiation | null>(null);
   const [runCapabilitiesStatus, setRunCapabilitiesStatus] = useState<"idle" | "loading" | "loaded" | "error">("idle");
@@ -373,10 +376,23 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
     });
     return () => { active = false; };
   }, [catalogReload]);
-  useEffect(() => { studioApi.getRuntimeBackends().then((backends) => {
-    setExecutionBackends(backends);
-    if (!backends.some((backend) => backend.identity.key === executionBackendKey)) setExecutionBackendKey(backends[0]?.identity.key ?? "local_executor");
-  }).catch(() => setExecutionBackends([])); }, []);
+  useEffect(() => {
+    let active = true;
+    setExecutionBackendStatus("loading");
+    setExecutionBackendError(null);
+    studioApi.getRuntimeBackends().then((backends) => {
+      if (!active) return;
+      setExecutionBackends(backends);
+      if (!backends.some((backend) => backend.identity.key === executionBackendKey)) setExecutionBackendKey(backends[0]?.identity.key ?? "local_executor");
+      setExecutionBackendStatus("loaded");
+    }).catch((reason: unknown) => {
+      if (!active) return;
+      setExecutionBackends([]);
+      setExecutionBackendError(reason instanceof Error ? reason.message : "Execution backend catalog could not be verified.");
+      setExecutionBackendStatus("error");
+    });
+    return () => { active = false; };
+  }, [executionBackendReload]);
   const datasetTask = dataset?.contract.task;
   const compatibleModels = useMemo(() => catalog.filter((entry) => entry.available && entry.capabilities.fit && !!datasetTask && entry.supported_tasks.includes(datasetTask)), [catalog, datasetTask]);
   const selectedModel = compatibleModels.find((entry) => entry.training_model_kinds.includes(modelKind)) ?? null;
@@ -730,8 +746,11 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
           {supportsParameter("max_depth") && <label className="field-label">Maximum depth<input aria-label="Maximum depth" type="number" min={parameterBounds("max_depth", selectedModel?.parameter_constraints.max_depth).min} max={parameterBounds("max_depth", selectedModel?.parameter_constraints.max_depth).max} value={maxDepth ?? ""} placeholder="unlimited" disabled={running || project.read_only} onChange={(event) => setMaxDepth(event.target.value === "" ? null : Number(event.target.value))} /></label>}
           <label className="field-label">Study seeds<input aria-label="Study seeds" aria-invalid={Boolean(studySeedValidation.error)} aria-describedby="study-seeds-help" value={seedList} disabled={running || project.read_only} onChange={(event) => setSeedList(event.target.value)} /></label>
           <label className="field-label">Study randomness protocol<select aria-label="Study randomness protocol" value={studyMode} disabled={running || project.read_only} onChange={(event) => setStudyMode(event.target.value as typeof studyMode)}><option value="TRAINING_VARIABILITY">Training variability (fixed split)</option><option value="SPLIT_VARIABILITY">Split variability (fixed training seed)</option><option value="COMBINED_VARIABILITY">Combined variability</option></select></label>
-          <label className="field-label">Study execution backend<select aria-label="Study execution backend" value={executionBackendKey} disabled={running || project.read_only || !executionBackends.length} onChange={(event) => setExecutionBackendKey(event.target.value)}>{executionBackends.map((backend) => <option key={backend.identity.key} value={backend.identity.key}>{backend.identity.key} · {backend.identity.provider}</option>)}</select></label>
+          <label className="field-label">Study execution backend<select aria-label="Study execution backend" value={executionBackendKey} disabled={running || project.read_only || executionBackendStatus !== "loaded" || !executionBackends.length} onChange={(event) => setExecutionBackendKey(event.target.value)}>{executionBackends.map((backend) => <option key={backend.identity.key} value={backend.identity.key}>{backend.identity.key} · {backend.identity.provider}</option>)}</select></label>
         </div>
+        {executionBackendStatus === "loading" && <p role="status">Checking available Study execution backends…</p>}
+        {executionBackendStatus === "error" && <div className="error" role="alert" data-testid="execution-backend-catalog-error"><strong>Could not verify Study execution backends.</strong> {executionBackendError} <Button view="outlined" size="s" onClick={() => setExecutionBackendReload((current) => current + 1)}>Retry backend check</Button></div>}
+        {executionBackendStatus === "loaded" && executionBackends.length === 0 && <p role="status">No Study execution backend is currently available.</p>}
         {catalogStatus === "loading" && <p role="status">Checking available model adapters for this task…</p>}
         {catalogStatus === "error" && <div className="error" role="alert"><strong>Could not check available models.</strong> {catalogError} <Button view="outlined" size="s" onClick={() => setCatalogReload((current) => current + 1)} data-ruflex-action="training.catalog.retry">Retry model check</Button></div>}
         {catalogStatus === "loaded" && compatibleModels.length === 0 && <div className="info-message" role="status"><strong>No compatible model is available.</strong> The catalog loaded, but no available adapter declares fit support for {datasetTask}. Training remains disabled; install/register a compatible adapter or choose a dataset for a supported task.</div>}
