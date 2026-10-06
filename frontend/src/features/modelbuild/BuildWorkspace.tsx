@@ -394,6 +394,14 @@ export function BuildWorkspace({
   const [revisionHistoryError, setRevisionHistoryError] = useState<string | null>(null);
   const [revisionHistoryReload, setRevisionHistoryReload] = useState(0);
   const importInputRef = useRef<HTMLInputElement>(null);
+  const mountedRef = useRef(false);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+  const publishFisChange = (value: FISSpec) => { if (mountedRef.current) onFisChange(value); };
+  const publishEvaluation = (value: FISEvaluation) => { if (mountedRef.current) onEvaluation(value); };
+  const publishExpertCorrection = (value: ExpertCorrectionRevision | null) => { if (mountedRef.current) onExpertCorrection?.(value); };
   useEffect(() => {
     setLinkSourceExplanation(false);
   }, [sourceExplanationId]);
@@ -428,11 +436,11 @@ export function BuildWorkspace({
             if (!active) return;
             setExpertCorrection(correction);
             setExpertCorrectionLoadStatus("available");
-            onExpertCorrection?.(correction);
+            publishExpertCorrection(correction);
           }).catch((reason: unknown) => {
             if (!active) return;
             setExpertCorrection(null);
-            onExpertCorrection?.(null);
+            publishExpertCorrection(null);
             if (reason instanceof ProductApiError && reason.status === 404 && !selectedExpertCorrectionId) {
               setExpertCorrectionLoadStatus("none");
               return;
@@ -444,7 +452,7 @@ export function BuildWorkspace({
         setExpertCorrection(null);
         setExpertCorrectionLoadError(null);
         setExpertCorrectionLoadStatus("none");
-        onExpertCorrection?.(null);
+        publishExpertCorrection(null);
       }
       setExpertLockedRules((current) => current.filter((id) => fis.rules.some((rule) => rule.rule_id === id)));
     } else {
@@ -454,7 +462,7 @@ export function BuildWorkspace({
       setExpertCorrection(null);
       setExpertCorrectionLoadError(null);
       setExpertCorrectionLoadStatus("idle");
-      onExpertCorrection?.(null);
+      publishExpertCorrection(null);
       setExpertLockedRules([]);
     }
     return () => { active = false; };
@@ -539,7 +547,7 @@ export function BuildWorkspace({
     try {
       const created = await studioApi.createDefaultFis(project.session_id);
       setWorking(created);
-      onFisChange(created);
+      publishFisChange(created);
       setMessage("Canonical FIS created from the confirmed dataset.");
     } catch (reason) {
       setError(
@@ -564,7 +572,7 @@ export function BuildWorkspace({
         return;
       }
       setWorking(result.spec);
-      onFisChange(result.spec);
+      publishFisChange(result.spec);
       setMessage(`MATLAB FIS imported as a canonical executable model${result.source_artifact_sha256 ? ` · source artifact ${result.source_artifact_sha256.slice(0, 12)}` : ""}.`);
       setFisImportRecovery(null);
     } catch (reason) {
@@ -918,7 +926,7 @@ export function BuildWorkspace({
       ]);
       setHistoryIndex((index) => index + 1);
       setRevisions(await studioApi.getFisRevisions(project.session_id));
-      onFisChange(saved);
+      publishFisChange(saved);
       setMessage("Canonical executable FIS saved with a semantic hash.");
       setFisSaveRecovery(null);
     } catch (reason) {
@@ -935,7 +943,7 @@ export function BuildWorkspace({
       if (active.fis_id === pending.spec.fis_id && canonicalJson(fisSemanticPayload(active)) === canonicalJson(fisSemanticPayload(pending.spec))) {
         setRevisions(await studioApi.getFisRevisions(project.session_id));
         if (working && canonicalJson(fisSemanticPayload(working)) === canonicalJson(fisSemanticPayload(pending.spec))) setWorking(active);
-        onFisChange(active); setMessage("Recovered the exact saved FIS revision after the response was lost."); setFisSaveRecovery(null);
+        publishFisChange(active); setMessage("Recovered the exact saved FIS revision after the response was lost."); setFisSaveRecovery(null);
       } else {
         setFisSaveRecovery({ ...pending, notFound: true, error: "The active FIS is not the exact saved revision. You may retry only if the working copy is still unchanged." });
       }
@@ -949,7 +957,7 @@ export function BuildWorkspace({
     setRecoveringFisSave(true); setError(null);
     try {
       const saved = await studioApi.saveFis(project.session_id, pending.spec);
-      setWorking(saved); setRevisions(await studioApi.getFisRevisions(project.session_id)); onFisChange(saved);
+      setWorking(saved); setRevisions(await studioApi.getFisRevisions(project.session_id)); publishFisChange(saved);
       setMessage("The exact FIS save was safely repeated and resolved to its persisted semantic revision."); setFisSaveRecovery(null);
     } catch (reason) {
       setFisSaveRecovery({ ...pending, notFound: false, error: reason instanceof Error ? reason.message : "The explicitly repeated FIS save response was uncertain." });
@@ -991,9 +999,9 @@ export function BuildWorkspace({
       setExpertCorrection(result.correction);
       setExpertCorrectionLoadStatus("available");
       setExpertCorrectionLoadError(null);
-      onExpertCorrection?.(result.correction);
+      publishExpertCorrection(result.correction);
       setRevisions(await studioApi.getFisRevisions(project.session_id));
-      onFisChange(result.fis);
+      publishFisChange(result.fis);
       setExpertRefitRecovery(null);
       setMessage(
         `TRAIN-only expert correction fitted ${result.correction.fitted_rule_ids.length} rule consequent(s): RMSE ${result.correction.train_rmse_before.toFixed(4)} → ${result.correction.train_rmse_after.toFixed(4)}. Final test stayed locked.`,
@@ -1014,8 +1022,8 @@ export function BuildWorkspace({
       const exact = correction.fis_id === pending.fisId && correction.source_semantic_hash === pending.sourceHash && correction.source_explanation_id === pending.sourceExplanationId && canonicalJson(locked) === canonicalJson(pending.lockedRuleIds) && Number.isFinite(createdAt) && createdAt >= pending.requestedAt - 10_000 && active.fis_id === pending.fisId && active.semantic_hash === correction.result_semantic_hash;
       if (exact) {
         setWorking(active); setEditorHistory((history) => [...history.slice(0, historyIndex + 1), cloneFis(active)]); setHistoryIndex((index) => index + 1);
-        setExpertCorrection(correction); setExpertCorrectionLoadStatus("available"); setExpertCorrectionLoadError(null); onExpertCorrection?.(correction);
-        setRevisions(await studioApi.getFisRevisions(project.session_id)); onFisChange(active); setMessage("Recovered the exact TRAIN-only expert correction after the response was lost."); setExpertRefitRecovery(null);
+        setExpertCorrection(correction); setExpertCorrectionLoadStatus("available"); setExpertCorrectionLoadError(null); publishExpertCorrection(correction);
+        setRevisions(await studioApi.getFisRevisions(project.session_id)); publishFisChange(active); setMessage("Recovered the exact TRAIN-only expert correction after the response was lost."); setExpertRefitRecovery(null);
       } else {
         const safeToRetry = active.fis_id === pending.fisId && active.semantic_hash === pending.sourceHash;
         setExpertRefitRecovery({ ...pending, notFound: safeToRetry, error: safeToRetry ? "No matching correction is persisted and the original FIS is still active; an explicit exact retry is safe." : "Persisted FIS state changed, but no matching correction receipt was found. Refusing to fit again." });
@@ -1043,8 +1051,8 @@ export function BuildWorkspace({
       }
       const result = await studioApi.refitSugenoConsequents(project.session_id, pending.lockedRuleIds, pending.sourceExplanationId);
       setWorking(result.fis); setEditorHistory((history) => [...history.slice(0, historyIndex + 1), cloneFis(result.fis)]); setHistoryIndex((index) => index + 1);
-      setExpertCorrection(result.correction); setExpertCorrectionLoadStatus("available"); setExpertCorrectionLoadError(null); onExpertCorrection?.(result.correction);
-      setRevisions(await studioApi.getFisRevisions(project.session_id)); onFisChange(result.fis); setMessage("The exact TRAIN-only expert correction retry completed."); setExpertRefitRecovery(null);
+      setExpertCorrection(result.correction); setExpertCorrectionLoadStatus("available"); setExpertCorrectionLoadError(null); publishExpertCorrection(result.correction);
+      setRevisions(await studioApi.getFisRevisions(project.session_id)); publishFisChange(result.fis); setMessage("The exact TRAIN-only expert correction retry completed."); setExpertRefitRecovery(null);
     } catch (reason) {
       setExpertRefitRecovery({ ...pending, notFound: false, error: reason instanceof Error ? reason.message : "The explicit exact correction retry was uncertain." });
     } finally { setRecoveringExpertRefit(false); }
@@ -1057,7 +1065,7 @@ export function BuildWorkspace({
     try {
       const evaluation = await studioApi.evaluateFis(project.session_id, inputs, !project.read_only);
       setLastOutput(evaluation);
-      onEvaluation(evaluation);
+      publishEvaluation(evaluation);
       setMessage("Exact fuzzy computation trace generated.");
       setFisEvaluationRecovery(null);
     } catch (reason) {
@@ -1078,7 +1086,7 @@ export function BuildWorkspace({
         setFisEvaluationRecovery({ ...pending, notFound: true, error: "The latest persisted FIS trace belongs to another model revision or input sample; no replacement was created." });
         return;
       }
-      setLastOutput(latest); onEvaluation(latest); setFisEvaluationRecovery(null); setMessage("Exact fuzzy computation trace restored from persisted evidence.");
+      setLastOutput(latest); publishEvaluation(latest); setFisEvaluationRecovery(null); setMessage("Exact fuzzy computation trace restored from persisted evidence.");
     } catch (reason) {
       if (reason instanceof ProductApiError && reason.status === 404) {
         setFisEvaluationRecovery({ ...pending, notFound: true, error: "No matching persisted FIS trace is visible yet. Retry lookup later, or explicitly repeat this exact inference if the original did not finish." });
@@ -1094,7 +1102,7 @@ export function BuildWorkspace({
     setRecoveringFisEvaluation(true); setError(null);
     try {
       const evaluation = await studioApi.evaluateFis(project.session_id, pending.inputs, true);
-      setLastOutput(evaluation); onEvaluation(evaluation); setFisEvaluationRecovery(null); setMessage("Exact fuzzy computation trace generated.");
+      setLastOutput(evaluation); publishEvaluation(evaluation); setFisEvaluationRecovery(null); setMessage("Exact fuzzy computation trace generated.");
     } catch (reason) {
       const message = reason instanceof Error ? reason.message : "The explicitly repeated FIS inference could not be confirmed.";
       setFisEvaluationRecovery({ ...pending, notFound: false, error: message }); setError(message);
