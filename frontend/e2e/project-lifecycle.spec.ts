@@ -245,6 +245,39 @@ test("E2E-09 declares and freezes the new-entity generalization contract", async
   await expect(page.getByText("Split recommendation: group · Ready to freeze", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Freeze evaluation contract", exact: true }).click();
   await expect(page.getByText("Split recommendation: group · Frozen", { exact: true })).toBeVisible();
+
+  let releasePreview!: () => void;
+  let markPreviewStarted!: () => void;
+  let markPreviewCompleted!: () => void;
+  const previewGate = new Promise<void>((resolve) => { releasePreview = resolve; });
+  const previewStarted = new Promise<void>((resolve) => { markPreviewStarted = resolve; });
+  const previewCompleted = new Promise<void>((resolve) => { markPreviewCompleted = resolve; });
+  let classificationRequests = 0;
+  await page.route("**/api/projects/generalization/contracts/*/classify", async (route) => {
+    classificationRequests += 1;
+    if (classificationRequests === 1) {
+      markPreviewStarted();
+      await previewGate;
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ disposition: "ALLOW", reasons: ["older preview result"] }) });
+      markPreviewCompleted();
+      return;
+    }
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ disposition: "BLOCK", reasons: ["newer candidate result"] }) });
+  });
+  await page.getByRole("button", { name: "Check first preview row", exact: true }).click();
+  await previewStarted;
+  await page.getByPlaceholder("north or external-lab").fill("unseen-site");
+  await page.getByRole("button", { name: "Check candidate scope", exact: true }).click();
+  await expect(page.getByText("newer candidate result", { exact: true })).toBeVisible();
+  try {
+    releasePreview();
+    await previewCompleted;
+    await expect(page.getByText("older preview result", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("newer candidate result", { exact: true })).toBeVisible();
+  } finally {
+    releasePreview();
+  }
+  expect(classificationRequests).toBe(2);
 });
 
 test("E2E-10 distinguishes unavailable saved training history from an empty project and retries", async ({ page }) => {

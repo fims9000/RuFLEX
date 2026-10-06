@@ -221,6 +221,8 @@ export function App() {
   const projectLifecycleRequestRef = useRef(0);
   const csvInspectionRequestRef = useRef(0);
   const datasetMutationRequestRef = useRef(0);
+  const generalizationMutationRequestRef = useRef(0);
+  const scopeClassificationRequestRef = useRef(0);
   const artifactInventoryRequestRef = useRef(0);
   projectSessionRef.current = project?.session_id ?? null;
   const refreshArtifactInventory = useCallback(async (sessionId: string) => {
@@ -1109,6 +1111,8 @@ export function App() {
     datasetFileSelectionId.current += 1;
     csvInspectionRequestRef.current += 1;
     datasetMutationRequestRef.current += 1;
+    generalizationMutationRequestRef.current += 1;
+    scopeClassificationRequestRef.current += 1;
     if (project) {
       try {
         await studioApi.closeProject(project.session_id);
@@ -1284,13 +1288,16 @@ export function App() {
   }
   async function createGeneralization() {
     if (!project) return;
+    const requestId = ++generalizationMutationRequestRef.current;
+    const sessionId = project.session_id;
+    const isCurrent = () => requestId === generalizationMutationRequestRef.current && projectSessionRef.current === sessionId;
     try {
       const field = scopeField || datasetState?.contract.id_columns[0] || datasetState?.contract.feature_columns[0] || "";
       const parseValues = (value: string) => value.split(",").map((item) => item.trim()).filter(Boolean);
       const supported = parseValues(supportedScopeValues);
       const forbidden = parseValues(forbiddenScopeValues);
       const created = await studioApi.createGeneralization(
-        project.session_id,
+        sessionId,
         intendedUse,
         noveltyAxis,
         {
@@ -1299,12 +1306,14 @@ export function App() {
           unsupportedAction,
         },
       );
+      if (!isCurrent()) return;
       setGeneralization(created);
       setGeneralizationHydrationStatus("available");
       setGeneralizationHydrationError(null);
       setScopeClassification(null);
       setStatus("Generalization contract declared");
     } catch (reason) {
+      if (!isCurrent()) return;
       setError(
         reason instanceof Error
           ? reason.message
@@ -1314,17 +1323,19 @@ export function App() {
   }
   async function freezeGeneralization() {
     if (!project || !generalization) return;
+    const requestId = ++generalizationMutationRequestRef.current;
+    const sessionId = project.session_id;
+    const contractId = generalization.contract.contract_id;
+    const isCurrent = () => requestId === generalizationMutationRequestRef.current && projectSessionRef.current === sessionId;
     try {
-      setGeneralization(
-        await studioApi.freezeGeneralization(
-          project.session_id,
-          generalization.contract.contract_id,
-        ),
-      );
+      const frozen = await studioApi.freezeGeneralization(sessionId, contractId);
+      if (!isCurrent()) return;
+      setGeneralization(frozen);
       setGeneralizationHydrationStatus("available");
       setGeneralizationHydrationError(null);
       setStatus("Generalization contract frozen");
     } catch (reason) {
+      if (!isCurrent()) return;
       setError(
         reason instanceof Error
           ? reason.message
@@ -1334,6 +1345,10 @@ export function App() {
   }
   async function checkScope(candidateMode: "preview" | "candidate") {
     if (!project || generalizationHydrationStatus !== "available" || !generalization || !datasetState?.preview.length) return;
+    const requestId = ++scopeClassificationRequestRef.current;
+    const sessionId = project.session_id;
+    const contractId = generalization.contract.contract_id;
+    const isCurrent = () => requestId === scopeClassificationRequestRef.current && projectSessionRef.current === sessionId;
     try {
       const metadata = { ...datasetState.preview[0] };
       if (candidateMode === "candidate") {
@@ -1346,15 +1361,12 @@ export function App() {
           ? numericCandidate
           : scopeCandidateValue.trim();
       }
-      setScopeClassification(
-        await studioApi.classifyGeneralizationScope(
-          project.session_id,
-          generalization.contract.contract_id,
-          metadata,
-        ),
-      );
+      const result = await studioApi.classifyGeneralizationScope(sessionId, contractId, metadata);
+      if (!isCurrent()) return;
+      setScopeClassification(result);
       setStatus(candidateMode === "candidate" ? "Candidate classified against declared generalization scope" : "Preview row classified against declared generalization scope");
     } catch (reason) {
+      if (!isCurrent()) return;
       setError(reason instanceof Error ? reason.message : "Scope classification failed");
     }
   }
