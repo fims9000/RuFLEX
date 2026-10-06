@@ -126,7 +126,8 @@
     "alpha_validation_comparison_lost_response_recovery",
     "alpha_final_test_lost_response_recovery",
     "alpha_tree_path_lost_response_recovery",
-    "alpha_fis_inference_lost_response_recovery"
+    "alpha_fis_inference_lost_response_recovery",
+    "alpha_split_contract_lost_response_recovery"
   ],
   "active_capability": "alpha_saved_evidence_hydration_audit",
   "active_acceptance": [
@@ -134,7 +135,7 @@
     "Prioritize identity-linked EvidenceWorkspace reads and guard any action that could duplicate persisted work until its inventory resolves."
   ],
   "blockers": [],
-  "next_executable_work": "Review FIS revision save/import and single-run training/split-contract writes for uncertain persistence; preserve article changes and keep verification resource-light. Do not push.",
+  "next_executable_work": "Review single-run training and FIS revision/import writes for uncertain persistence; preserve article changes and keep verification resource-light. Do not push.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -250,6 +251,7 @@
     "alpha_validation_comparison_lost_response_recovery": "PASS: Saved validation comparisons retain the exact ordered run IDs and optional active FIS identity after an uncertain response; retry restores only that exact persisted comparison, and any repeat is explicit. Inputs stay locked and an FIS revision change prevents unsafe replay. PRODUCT-EVIDENCE simulated response loss after persistence and verified one comparison POST plus exact recovery. Frontend unit 23/23, TypeScript/Vite build, focused E2E and diff check passed.",
     "alpha_final_test_lost_response_recovery": "PASS: FinalTestEvaluation now snapshots exact evaluation/calibration/threshold/selective/stability policy identities. After an uncertain first test-access response, Studio permits only exact latest-evaluation lookup, never a second POST; related validation policy actions remain disabled until recovery. PRODUCT-EVIDENCE simulated response loss after first access and verified exact recovery with exactly one final-test POST. Frontend unit 23/23, TypeScript/Vite build, focused E2E and diff check passed.",
     "alpha_tree_path_lost_response_recovery": "PASS: Exact decision-tree traces retain run ID and full numeric input identity on uncertain POST; latest trace recovery accepts only the exact match, and repeat requires explicit action. PRODUCT-02b simulated a lost response after persistence, recovered the trace and verified one POST; the three-test training/evaluation route and TypeScript/Vite production build passed.",
-    "alpha_fis_inference_lost_response_recovery": "PASS: Persisted FIS inference now recovers by exact FIS revision semantic hash and complete input mapping. It blocks duplicate inference until lookup resolves; explicit repetition is permitted only for the same still-active revision. PRODUCT-EVIDENCE simulated response loss after persisted trace creation, recovered the trace, and verified exactly one POST. Frontend unit 23/23, TypeScript/Vite build and focused browser route passed."
+    "alpha_fis_inference_lost_response_recovery": "PASS: Persisted FIS inference now recovers by exact FIS revision semantic hash and complete input mapping. It blocks duplicate inference until lookup resolves; explicit repetition is permitted only for the same still-active revision. PRODUCT-EVIDENCE simulated response loss after persisted trace creation, recovered the trace, and verified exactly one POST. Frontend unit 23/23, TypeScript/Vite build and focused browser route passed.",
+    "alpha_split_contract_lost_response_recovery": "PASS: SplitContract creation retains its exact dataset fingerprint/source SHA and split configuration after an uncertain response. Studio recovers only a matching saved contract and pauses both single-run and Study training until resolved; repetition requires explicit action. PRODUCT-02 simulated response loss after persistence, recovered the contract, and verified one POST. Frontend unit 23/23, TypeScript/Vite build and the focused three-test training/evaluation E2E passed."
   }
 }

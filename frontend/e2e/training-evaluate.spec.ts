@@ -35,7 +35,19 @@ test("PRODUCT-02 performs real neuro-fuzzy training, validation evaluation and r
 
   await page.getByRole("button", { name: "S", exact: true }).click();
   await expect(page.getByText("REAL TRAINING ENGINE", { exact: true })).toBeVisible();
+  let splitContractPostCount = 0;
+  await page.route("**/api/projects/dataset/splits", async (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    splitContractPostCount += 1;
+    await route.fetch();
+    await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "SplitContract response lost after persistence" }) });
+  });
   await page.getByRole("button", { name: "Freeze RANDOM SplitContract", exact: true }).click();
+  await expect(page.getByTestId("split-contract-recovery")).toContainText("SplitContract response lost after persistence");
+  await expect(page.getByRole("button", { name: "Run real training", exact: true })).toBeDisabled();
+  await page.getByRole("button", { name: "Retry exact SplitContract lookup", exact: true }).click();
+  await expect(page.getByTestId("split-contract-recovery")).toHaveCount(0);
+  expect(splitContractPostCount).toBe(1);
   await expect(page.getByLabel("Training model").locator("option")).toHaveCount(5);
   await page.getByLabel("Training model").selectOption("decision_tree");
   await expect(page.getByLabel("Maximum depth")).toBeVisible();
