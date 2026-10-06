@@ -46,6 +46,9 @@ export function ProjectExplorer({
   sliceAnalysis,
   generalization,
   treeEvidence,
+  treeEvidenceHydrationStatus = "available",
+  treeEvidenceHydrationError,
+  onRetryTreeEvidence,
   explanation,
   explanationCheck,
   behaviorResult,
@@ -76,6 +79,9 @@ export function ProjectExplorer({
   sliceAnalysis: SliceAnalysis | null;
   generalization: GeneralizationResponse | null;
   treeEvidence: TreePathEvidence | null;
+  treeEvidenceHydrationStatus?: "idle" | "loading" | "none" | "available" | "error";
+  treeEvidenceHydrationError?: string | null;
+  onRetryTreeEvidence?: () => void;
   explanation: ExplanationContract | null;
   explanationCheck: ExplanationCheck | null;
   behaviorResult: BehaviorSpecResult | null;
@@ -211,6 +217,8 @@ export function ProjectExplorer({
           <span className="tree-empty">No exact trace evidence yet</span>
         )}
         {treeEvidence && item("EVIDENCE", "Exact tree path", `leaf ${treeEvidence.leaf_id}`)}
+        {!treeEvidence && (treeEvidenceHydrationStatus === "idle" || treeEvidenceHydrationStatus === "loading") && <span className="tree-empty">Checking saved tree paths…</span>}
+        {!treeEvidence && treeEvidenceHydrationStatus === "error" && <div className="tree-empty" role="alert"><span>Saved tree-path lookup unavailable. {treeEvidenceHydrationError}</span><button onClick={onRetryTreeEvidence}>Retry tree-path check</button></div>}
         {explanation && item("EVIDENCE", `Post-hoc ${explanation.family.replaceAll("_", " ")}`, explanation.epistemic_category)}
         {explanationCheck && item("EVIDENCE", "Explanation check", explanationCheck.status)}
         {behaviorResult && item("EVIDENCE", "BehaviorSpec run", `${behaviorResult.status} · revision bound`)}

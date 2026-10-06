@@ -159,6 +159,9 @@ export function App() {
   const [sliceAnalysisHydrationError, setSliceAnalysisHydrationError] = useState<string | null>(null);
   const [sliceAnalysisHydrationReload, setSliceAnalysisHydrationReload] = useState(0);
   const [treeEvidence, setTreeEvidence] = useState<TreePathEvidence | null>(null);
+  const [treeEvidenceHydrationStatus, setTreeEvidenceHydrationStatus] = useState<"idle" | "loading" | "none" | "available" | "error">("idle");
+  const [treeEvidenceHydrationError, setTreeEvidenceHydrationError] = useState<string | null>(null);
+  const [treeEvidenceHydrationReload, setTreeEvidenceHydrationReload] = useState(0);
   const [explanation, setExplanation] = useState<ExplanationContract | null>(null);
   const [explanationHydrationStatus, setExplanationHydrationStatus] = useState<"idle" | "loading" | "none" | "available" | "error">("idle");
   const [explanationHydrationError, setExplanationHydrationError] = useState<string | null>(null);
@@ -260,6 +263,8 @@ export function App() {
       setSliceAnalysisHydrationStatus("idle");
       setSliceAnalysisHydrationError(null);
       setTreeEvidence(null);
+      setTreeEvidenceHydrationStatus("idle");
+      setTreeEvidenceHydrationError(null);
       setExplanation(null);
       setExplanationHydrationStatus("idle");
       setExplanationHydrationError(null);
@@ -353,9 +358,25 @@ export function App() {
       }
     });
     studioApi.listStudyStabilityAnalyses(project.session_id).then((items) => setStabilityAnalysis(items.at(-1) ?? null)).catch(() => setStabilityAnalysis(null));
-    studioApi.getLatestTreePath(project.session_id).then(setTreeEvidence).catch(() => setTreeEvidence(null));
+    setTreeEvidence(null);
+    setTreeEvidenceHydrationStatus("loading");
+    setTreeEvidenceHydrationError(null);
+    studioApi.getLatestTreePath(project.session_id).then((evidence) => {
+      if (!active) return;
+      setTreeEvidence(evidence);
+      setTreeEvidenceHydrationStatus("available");
+    }).catch((reason: unknown) => {
+      if (!active) return;
+      setTreeEvidence(null);
+      if (reason instanceof ProductApiError && reason.status === 404) {
+        setTreeEvidenceHydrationStatus("none");
+        return;
+      }
+      setTreeEvidenceHydrationError(reason instanceof Error ? reason.message : "Saved TreePathEvidence could not be verified.");
+      setTreeEvidenceHydrationStatus("error");
+    });
     return () => { active = false; };
-  }, [project?.session_id, overviewContextReload]);
+  }, [project?.session_id, overviewContextReload, treeEvidenceHydrationReload]);
   useEffect(() => {
     let active = true;
     if (!project) {
@@ -1251,6 +1272,9 @@ export function App() {
       sliceAnalysis={sliceAnalysis}
       generalization={generalization}
       treeEvidence={treeEvidence}
+      treeEvidenceHydrationStatus={treeEvidenceHydrationStatus}
+      treeEvidenceHydrationError={treeEvidenceHydrationError}
+      onRetryTreeEvidence={() => setTreeEvidenceHydrationReload((current) => current + 1)}
       explanation={explanation}
       explanationCheck={explanationCheck}
       behaviorResult={behaviorResult}
@@ -1749,6 +1773,9 @@ export function App() {
           evaluation={fisEvaluation}
           previousEvaluation={previousFisEvaluation}
           treeEvidence={treeEvidence}
+          treeEvidenceHydrationStatus={treeEvidenceHydrationStatus}
+          treeEvidenceHydrationError={treeEvidenceHydrationError}
+          onRetryTreeEvidence={() => setTreeEvidenceHydrationReload((current) => current + 1)}
           explanation={explanation}
           explanationHydrationStatus={explanationHydrationStatus}
           explanationHydrationError={explanationHydrationError}

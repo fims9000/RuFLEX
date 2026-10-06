@@ -57,6 +57,9 @@ export function EvidenceWorkspace({
   evaluation,
   previousEvaluation,
   treeEvidence,
+  treeEvidenceHydrationStatus = "available",
+  treeEvidenceHydrationError = null,
+  onRetryTreeEvidence,
   explanation,
   explanationHydrationStatus = "available",
   explanationHydrationError = null,
@@ -103,6 +106,9 @@ export function EvidenceWorkspace({
   evaluation: FISEvaluation | null;
   previousEvaluation: FISEvaluation | null;
   treeEvidence: TreePathEvidence | null;
+  treeEvidenceHydrationStatus?: "idle" | "loading" | "none" | "available" | "error";
+  treeEvidenceHydrationError?: string | null;
+  onRetryTreeEvidence?: () => void;
   explanation: ExplanationContract | null;
   explanationHydrationStatus?: "idle" | "loading" | "none" | "available" | "error";
   explanationHydrationError?: string | null;
@@ -925,6 +931,10 @@ export function EvidenceWorkspace({
           {explanation && <StatusBadge tone="warning">POST-HOC ATTRIBUTION</StatusBadge>}
         </div>
       </div>
+
+      {treeEvidenceHydrationStatus === "loading" && <p role="status">Checking saved structural trace…</p>}
+      {treeEvidenceHydrationStatus === "none" && <p className="property-description" data-testid="tree-evidence-empty">No saved structural tree trace is available for this project.</p>}
+      {treeEvidenceHydrationStatus === "error" && <div className="error" role="alert" data-testid="tree-evidence-hydration-error"><strong>Saved structural trace could not be verified.</strong><p>{treeEvidenceHydrationError}</p>{onRetryTreeEvidence && <Button view="outlined" onClick={onRetryTreeEvidence}>Retry structural trace</Button>}</div>}
 
       {hasExact && (
         <section className="evidence-section">
