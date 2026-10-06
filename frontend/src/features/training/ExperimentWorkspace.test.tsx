@@ -62,6 +62,17 @@ beforeEach(() => {
 });
 
 describe("ExperimentWorkspace dynamic model controls", () => {
+  it("does not report an empty dataset when persisted dataset hydration failed", () => {
+    const retry = vi.fn();
+    render(<ExperimentWorkspace project={project} dataset={null} datasetHydrationStatus="error" datasetHydrationError="dataset store unavailable" onRetryDatasetHydration={retry} run={null} study={null} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Could not restore the persisted DatasetContract");
+    expect(screen.getByRole("alert")).toHaveTextContent("dataset store unavailable");
+    expect(screen.queryByText("No confirmed dataset")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Retry dataset check" }));
+    expect(retry).toHaveBeenCalledOnce();
+  });
+
   it("retries the same persisted StudyJob after a transient status-poll failure", async () => {
     const job = { job_id: "job-123", name: "Study", model_kind: "flat_neuro_fuzzy", selection_metric: "f1", status: "RUNNING", cancel_requested: false, seed_states: [], study_id: null, error: null, execution_backend: "LOCAL", execution_backend_key: "local_executor", recovery_note: null };
     studioApi.listStudyJobs.mockResolvedValueOnce([job]);

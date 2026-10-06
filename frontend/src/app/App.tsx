@@ -89,6 +89,9 @@ export function App() {
   const [profile, setProfile] = useState<DatasetProfile | null>(null);
   const [dataset, setDataset] = useState<DatasetConfirmation | null>(null);
   const [datasetState, setDatasetState] = useState<DatasetState | null>(null);
+  const [datasetStateStatus, setDatasetStateStatus] = useState<"idle" | "loading" | "none" | "available" | "error">("idle");
+  const [datasetStateError, setDatasetStateError] = useState<string | null>(null);
+  const [datasetStateReload, setDatasetStateReload] = useState(0);
   const [overviewContextReady, setOverviewContextReady] = useState(false);
   const [pendingDatasetFile, setPendingDatasetFile] = useState<File | null>(null);
   const [pendingDatasetProfile, setPendingDatasetProfile] = useState<DatasetProfile | null>(null);
@@ -182,6 +185,10 @@ export function App() {
     let active = true;
     if (!project) {
       setDatasetState(null);
+      setDataset(null);
+      setProfile(null);
+      setDatasetStateStatus("idle");
+      setDatasetStateError(null);
       setOverviewContextReady(false);
       setFis(null);
       setFisEvaluation(null);
@@ -231,6 +238,11 @@ export function App() {
       return;
     }
     setOverviewContextReady(false);
+    setDatasetState(null);
+    setDataset(null);
+    setProfile(null);
+    setDatasetStateStatus("loading");
+    setDatasetStateError(null);
     setTrainingRun(null);
     setTrainingRuns([]);
     setTrainingRunsStatus("loading");
@@ -249,19 +261,10 @@ export function App() {
     setLineageStatus("loading");
     setLineageError(null);
     Promise.all([
-      studioApi.getDatasetState(project.session_id).catch(() => null),
       studioApi.getActiveFis(project.session_id).catch(() => null),
       studioApi.getLatestTraining(project.session_id).catch(() => null),
-    ]).then(([state, activeFis, latestTraining]) => {
+    ]).then(([activeFis, latestTraining]) => {
       if (!active) return;
-      setDatasetState(state);
-      setProfile(state?.profile ?? null);
-      setDataset(state ? { contract: state.contract, audit: state.audit } : null);
-      if (state) {
-        setTarget(state.contract.target);
-        setTask(state.contract.task);
-        setIdColumns(state.contract.id_columns.join(", "));
-      }
       setFis(activeFis);
       setTrainingRun((current) => latestTraining ?? current);
       setOverviewContextReady(true);
@@ -293,6 +296,34 @@ export function App() {
     studioApi.getProjectIntegrity(project.session_id).then(setIntegrity).catch(() => setIntegrity(null));
     return () => { active = false; };
   }, [project?.session_id]);
+  useEffect(() => {
+    let active = true;
+    if (!project) return () => { active = false; };
+    setDatasetStateStatus("loading");
+    setDatasetStateError(null);
+    studioApi.getDatasetState(project.session_id).then((state) => {
+      if (!active) return;
+      setDatasetState(state);
+      setProfile(state.profile);
+      setDataset({ contract: state.contract, audit: state.audit });
+      setTarget(state.contract.target);
+      setTask(state.contract.task);
+      setIdColumns(state.contract.id_columns.join(", "));
+      setDatasetStateStatus("available");
+    }).catch((reason: unknown) => {
+      if (!active) return;
+      if (reason instanceof ProductApiError && reason.status === 404) {
+        setDatasetState(null);
+        setDataset(null);
+        setProfile(null);
+        setDatasetStateStatus("none");
+        return;
+      }
+      setDatasetStateStatus("error");
+      setDatasetStateError(reason instanceof Error ? reason.message : "Persisted DatasetContract could not be loaded.");
+    });
+    return () => { active = false; };
+  }, [project?.session_id, datasetStateReload]);
   useEffect(() => {
     let active = true;
     if (!project) return () => { active = false; };
@@ -622,7 +653,7 @@ export function App() {
     setStatus("Project closed");
   }
   async function inspectCsv() {
-    if (!project) return;
+    if (!project || (datasetStateStatus !== "none" && datasetStateStatus !== "available")) return;
     try {
       const inspected = (await studioApi.inspectCsv(project.session_id, csvText)).profile;
       setProfile(inspected);
@@ -643,8 +674,9 @@ export function App() {
     }
   }
   async function confirmCsv() {
-    if (!project || confirmingCsvDataset || importingDatasetFile) return;
+    if (!project || confirmingCsvDataset || importingDatasetFile || (datasetStateStatus !== "none" && datasetStateStatus !== "available")) return;
     setConfirmingCsvDataset(true);
+    setDatasetStateStatus("loading");
     setError(null);
     setStatus("Saving dataset contract");
     try {
@@ -658,9 +690,13 @@ export function App() {
       setDataset(confirmed);
       const persisted = await studioApi.getDatasetState(project.session_id);
       setDatasetState(persisted);
+      setProfile(persisted.profile);
+      setDatasetStateStatus("available");
       setArtifacts(await studioApi.listArtifacts(project.session_id));
       setStatus("Dataset bytes, profile, contract and audit saved");
     } catch (reason) {
+      setDatasetStateStatus("error");
+      setDatasetStateError(reason instanceof Error ? reason.message : "Dataset state could not be confirmed.");
       setError(
         reason instanceof Error
           ? reason.message
@@ -685,7 +721,7 @@ export function App() {
     setPendingDatasetProfile(null);
     setInspectingDatasetFile(false);
     setError(null);
-    if (!project || !file) return;
+    if (!project || !file || (datasetStateStatus !== "none" && datasetStateStatus !== "available")) return;
     setTarget("");
     setInspectingDatasetFile(true);
     setStatus(`Inspecting ${file.name} without saving it`);
@@ -706,8 +742,9 @@ export function App() {
     }
   }
   async function importDatasetFile() {
-    if (importingDatasetFile || confirmingCsvDataset || inspectingDatasetFile || !project || !pendingDatasetFile || !pendingDatasetProfile || !target.trim()) return;
+    if (importingDatasetFile || confirmingCsvDataset || inspectingDatasetFile || !project || !pendingDatasetFile || !pendingDatasetProfile || !target.trim() || (datasetStateStatus !== "none" && datasetStateStatus !== "available")) return;
     setImportingDatasetFile(true);
+    setDatasetStateStatus("loading");
     setError(null);
     setStatus(`Importing ${pendingDatasetFile.name}`);
     try {
@@ -725,6 +762,7 @@ export function App() {
       setDataset(confirmed);
       const persisted = await studioApi.getDatasetState(project.session_id);
       setDatasetState(persisted);
+      setDatasetStateStatus("available");
       setProfile(persisted.profile);
       setArtifacts(await studioApi.listArtifacts(project.session_id));
       setStatus(`${pendingDatasetFile.name} saved as a verified dataset artifact`);
@@ -732,6 +770,8 @@ export function App() {
       setPendingDatasetProfile(null);
       setError(null);
     } catch (reason) {
+      setDatasetStateStatus("error");
+      setDatasetStateError(reason instanceof Error ? reason.message : "Imported dataset state could not be restored.");
       setError(reason instanceof Error ? reason.message : "Dataset file import failed");
     } finally {
       setImportingDatasetFile(false);
@@ -890,6 +930,7 @@ export function App() {
       onSelect={setActive}
     />
   );
+  const datasetStateResolved = datasetStateStatus === "none" || datasetStateStatus === "available";
   return (
     <AppShell
       theme={theme}
@@ -983,6 +1024,8 @@ export function App() {
       ) : active === "DATA" ? (
         <section className="feature-workspace data-workspace">
           {project.read_only && <div className="info-message" role="status">Read-only project: saved data and evidence can be inspected, but dataset imports and contract changes are disabled. Close and reopen the project writable to make changes.</div>}
+          {datasetStateStatus === "loading" && <div role="status">Checking for a persisted DatasetContract before enabling import or confirmation…</div>}
+          {datasetStateStatus === "error" && <div className="error" role="alert"><strong>Could not verify persisted dataset state.</strong><p>{datasetStateError ?? "No empty-dataset state is inferred from this failure."}</p><Button view="outlined" onClick={() => setDatasetStateReload((current) => current + 1)}>Retry dataset check</Button></div>}
           {dataGovernanceObject && <section className="data-governance-inspector" aria-label="Selected data provenance object">
             <div className="evidence-check-header"><div><span className="eyebrow">OPENED FROM PROJECT LINEAGE</span><h3>{dataGovernanceObject.kind === "split_contract" ? "Frozen split membership" : dataGovernanceObject.kind === "transform_pipeline" ? "Train-only transform pipeline" : "Data leakage audit"}</h3></div>
               {dataGovernanceObject.kind === "leakage_audit" && <StatusBadge tone={dataGovernanceObject.value.status === "FAIL" ? "danger" : dataGovernanceObject.value.status === "WARN" ? "warning" : "success"}>{dataGovernanceObject.value.status}</StatusBadge>}
@@ -1007,13 +1050,13 @@ export function App() {
           </section>}
           <div className="data-layout">
             <div>
-              {!dataset && !pendingDatasetFile && <div className="info-message" role="status">This CSV is an editable draft only; inspect it and confirm the dataset contract to save it.</div>}
+              {!dataset && datasetStateStatus === "none" && !pendingDatasetFile && <div className="info-message" role="status">This CSV is an editable draft only; inspect it and confirm the dataset contract to save it.</div>}
               <label className="field-label">
                 CSV data
                 <textarea
                   aria-label="CSV data"
                   value={csvText}
-                  disabled={importingDatasetFile || confirmingCsvDataset}
+                  disabled={!datasetStateResolved || importingDatasetFile || confirmingCsvDataset}
                   onChange={(event) => updateCsvText(event.target.value)}
                   rows={8}
                 />
@@ -1022,19 +1065,19 @@ export function App() {
                 <label className="field-label">
                   Target
                   {pendingDatasetProfile ? (
-                    <select aria-label="Target" disabled={importingDatasetFile || confirmingCsvDataset} value={target} onChange={(event) => setTarget(event.target.value)}>
+                    <select aria-label="Target" disabled={!datasetStateResolved || importingDatasetFile || confirmingCsvDataset} value={target} onChange={(event) => setTarget(event.target.value)}>
                       <option value="">Select target column</option>
                       {pendingDatasetProfile.columns.map((column) => <option key={column.name} value={column.name}>{column.name}</option>)}
                     </select>
                   ) : (
-                    <TextInput aria-label="Target" value={target} onUpdate={setTarget} disabled={importingDatasetFile || confirmingCsvDataset} />
+                    <TextInput aria-label="Target" value={target} onUpdate={setTarget} disabled={!datasetStateResolved || importingDatasetFile || confirmingCsvDataset} />
                   )}
                 </label>
                 <label className="field-label">
                   Task
                   <select
                     aria-label="Task"
-                    disabled={importingDatasetFile || confirmingCsvDataset}
+                    disabled={!datasetStateResolved || importingDatasetFile || confirmingCsvDataset}
                     value={task}
                     onChange={(event) => setTask(event.target.value)}
                   >
@@ -1046,16 +1089,16 @@ export function App() {
                 </label>
                 <label className="field-label">
                   ID columns
-                  <TextInput aria-label="ID columns" value={idColumns} onUpdate={setIdColumns} placeholder={profile?.id_candidates.join(", ") || "comma-separated, optional"} disabled={importingDatasetFile || confirmingCsvDataset} />
+                  <TextInput aria-label="ID columns" value={idColumns} onUpdate={setIdColumns} placeholder={profile?.id_candidates.join(", ") || "comma-separated, optional"} disabled={!datasetStateResolved || importingDatasetFile || confirmingCsvDataset} />
                 </label>
               </div>
               <div className="form-actions">
-                <Button view="outlined" disabled={importingDatasetFile || confirmingCsvDataset} onClick={inspectCsv} data-ruflex-action="dataset.inspect">
+                <Button view="outlined" disabled={!datasetStateResolved || importingDatasetFile || confirmingCsvDataset} onClick={inspectCsv} data-ruflex-action="dataset.inspect">
                   Inspect dataset
                 </Button>
                 <Button
                   view="action"
-                  disabled={!profile || project.read_only || confirmingCsvDataset || importingDatasetFile}
+                  disabled={!datasetStateResolved || !profile || project.read_only || confirmingCsvDataset || importingDatasetFile}
                   onClick={confirmCsv}
                   data-ruflex-action="dataset.confirm"
                 >
@@ -1071,7 +1114,7 @@ export function App() {
                 />
                 <Button
                   view="outlined"
-                  disabled={project.read_only || inspectingDatasetFile || importingDatasetFile || confirmingCsvDataset}
+                  disabled={!datasetStateResolved || project.read_only || inspectingDatasetFile || importingDatasetFile || confirmingCsvDataset}
                   onClick={() => datasetFileInputRef.current?.click()}
                   data-ruflex-action="dataset.import"
                 >
@@ -1331,6 +1374,9 @@ export function App() {
         <ExperimentWorkspace
           project={project}
           dataset={datasetState}
+          datasetHydrationStatus={datasetStateStatus}
+          datasetHydrationError={datasetStateError}
+          onRetryDatasetHydration={() => setDatasetStateReload((current) => current + 1)}
           run={trainingRun}
           study={trainingStudy}
           studyHydrationStatus={trainingStudyStatus}
@@ -1349,7 +1395,7 @@ export function App() {
           onStudy={(study) => { setTrainingStudy(study); setTrainingStudyStatus("available"); setTrainingStudyError(null); }}
         />
       ) : active === "ANALYSES" ? (
-        <EvaluationWorkspace project={project} dataset={datasetState} fis={fis} run={trainingRun} runs={trainingRuns} runListStatus={trainingRunsStatus} runListError={trainingRunsError} onRetryRunList={() => setTrainingRunsReload((current) => current + 1)} study={trainingStudy} evaluation={analysisEvaluation} evaluationStatus={analysisEvaluationStatus} evaluationError={analysisEvaluationError} onRetryEvaluation={() => setAnalysisEvaluationReload((current) => current + 1)} validationPolicyEvidenceStatus={validationPolicyEvidenceStatus} validationPolicyEvidenceError={validationPolicyEvidenceError} onRetryValidationPolicyEvidence={() => setValidationPolicyEvidenceReload((current) => current + 1)} calibrationTransform={calibrationTransform} decisionThreshold={decisionThreshold} finalTestEvaluation={finalTestEvaluation} finalTestEvidenceStatus={finalTestEvidenceStatus} finalTestEvidenceError={finalTestEvidenceError} onRetryFinalTestEvidence={() => setFinalTestEvidenceReload((current) => current + 1)} comparison={analysisComparison} sliceAnalysis={sliceAnalysis} selectivePolicy={selectivePolicy} stabilityGatePolicy={stabilityGatePolicy} theme={theme} onEvaluation={(evaluation) => { setAnalysisEvaluation(evaluation); setAnalysisEvaluationStatus("available"); }} onCalibration={setCalibrationTransform} onThreshold={setDecisionThreshold} onSelectivePolicy={setSelectivePolicy} onFinalTest={(evaluation) => { setFinalTestEvaluation(evaluation); if (evaluation) setFinalTestEvidenceStatus("available"); }} onComparison={setAnalysisComparison} onSliceAnalysis={setSliceAnalysis} />
+        <EvaluationWorkspace project={project} dataset={datasetState} datasetHydrationStatus={datasetStateStatus} datasetHydrationError={datasetStateError} onRetryDatasetHydration={() => setDatasetStateReload((current) => current + 1)} fis={fis} run={trainingRun} runs={trainingRuns} runListStatus={trainingRunsStatus} runListError={trainingRunsError} onRetryRunList={() => setTrainingRunsReload((current) => current + 1)} study={trainingStudy} evaluation={analysisEvaluation} evaluationStatus={analysisEvaluationStatus} evaluationError={analysisEvaluationError} onRetryEvaluation={() => setAnalysisEvaluationReload((current) => current + 1)} validationPolicyEvidenceStatus={validationPolicyEvidenceStatus} validationPolicyEvidenceError={validationPolicyEvidenceError} onRetryValidationPolicyEvidence={() => setValidationPolicyEvidenceReload((current) => current + 1)} calibrationTransform={calibrationTransform} decisionThreshold={decisionThreshold} finalTestEvaluation={finalTestEvaluation} finalTestEvidenceStatus={finalTestEvidenceStatus} finalTestEvidenceError={finalTestEvidenceError} onRetryFinalTestEvidence={() => setFinalTestEvidenceReload((current) => current + 1)} comparison={analysisComparison} sliceAnalysis={sliceAnalysis} selectivePolicy={selectivePolicy} stabilityGatePolicy={stabilityGatePolicy} theme={theme} onEvaluation={(evaluation) => { setAnalysisEvaluation(evaluation); setAnalysisEvaluationStatus("available"); }} onCalibration={setCalibrationTransform} onThreshold={setDecisionThreshold} onSelectivePolicy={setSelectivePolicy} onFinalTest={(evaluation) => { setFinalTestEvaluation(evaluation); if (evaluation) setFinalTestEvidenceStatus("available"); }} onComparison={setAnalysisComparison} onSliceAnalysis={setSliceAnalysis} />
       ) : active === "EVIDENCE" ? (
         <EvidenceWorkspace
           project={project}
@@ -1390,7 +1436,7 @@ export function App() {
             </div>
             </div>
           {integrity && <div className="trace-card" data-testid="project-integrity"><div className="evidence-check-header"><strong>Reopen integrity</strong><StatusBadge tone={integrity.status === "PASS" ? "success" : integrity.status === "FAIL" ? "danger" : "warning"}>{integrity.status}</StatusBadge></div><p>{integrity.checked_objects} persisted objects checked. {integrity.scientific_note}</p>{integrity.issues.map((issue) => <p className="property-description" key={`${issue.code}-${issue.path}`}>{issue.code} · {issue.path} · {issue.detail}</p>)}</div>}
-          {overviewContextReady && !datasetState && !fis && !trainingRun && (
+          {overviewContextReady && datasetStateStatus === "none" && !fis && !trainingRun && (
             <section className="quick-start-card" aria-label="Optional quick start">
               <div>
                 <span className="eyebrow">OPTIONAL QUICK START</span>
@@ -1400,7 +1446,7 @@ export function App() {
               <Button view="action" onClick={() => setActive("DATA")} data-ruflex-action="project.quickstart.data">Review or import data</Button>
             </section>
           )}
-          {overviewContextReady && datasetState && !trainingRun && (
+          {overviewContextReady && datasetStateStatus === "available" && datasetState && !trainingRun && (
             <section className="quick-start-card" aria-label="Optional next step">
               <div>
                 <span className="eyebrow">OPTIONAL NEXT STEP</span>
@@ -1417,7 +1463,7 @@ export function App() {
               <small>
                 {datasetState
                   ? `${datasetState.profile.row_count} rows`
-                  : "No dataset"}
+                  : datasetStateStatus === "loading" || datasetStateStatus === "idle" ? "Checking dataset…" : datasetStateStatus === "error" ? "Dataset state unavailable" : "No dataset"}
               </small>
             </button>
             <button onClick={() => setActive("MODELS")}>

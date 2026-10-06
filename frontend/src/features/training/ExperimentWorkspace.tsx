@@ -172,9 +172,12 @@ function validateTrainingParameters(model: ModelCapabilityContract | null, value
   return errors;
 }
 
-export function ExperimentWorkspace({ project, dataset, run, study: restoredStudy, studyHydrationStatus = "available", studyHydrationError = null, onRetryStudyHydration = () => undefined, theme, onRun, onStudy }: {
+export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus = "available", datasetHydrationError = null, onRetryDatasetHydration = () => undefined, run, study: restoredStudy, studyHydrationStatus = "available", studyHydrationError = null, onRetryStudyHydration = () => undefined, theme, onRun, onStudy }: {
   project: ProjectSummary;
   dataset: DatasetState | null;
+  datasetHydrationStatus?: "idle" | "loading" | "none" | "available" | "error";
+  datasetHydrationError?: string | null;
+  onRetryDatasetHydration?: () => void;
   run: TrainingRun | null;
   study: TrainingStudy | null;
   studyHydrationStatus?: "idle" | "loading" | "none" | "available" | "error";
@@ -463,7 +466,9 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
     finally { setRunning(false); }
   }
 
-  if (!dataset) return <section className="feature-workspace"><EmptyState title="No confirmed dataset">Confirm a DatasetContract in Data before training a model.</EmptyState></section>;
+  if (datasetHydrationStatus !== "available" || !dataset) return <section className="feature-workspace">
+    {datasetHydrationStatus === "loading" || datasetHydrationStatus === "idle" ? <div role="status">{datasetHydrationStatus === "loading" ? "Loading the persisted DatasetContract before enabling training…" : "Dataset state has not been checked."}</div> : datasetHydrationStatus === "error" ? <div className="error" role="alert"><strong>Could not restore the persisted DatasetContract.</strong><p>{datasetHydrationError ?? "No empty-dataset state is inferred from this failure. Training is paused."}</p><Button view="outlined" onClick={onRetryDatasetHydration}>Retry dataset check</Button>{run && <p>Saved run {run.run_id.slice(0, 12)} remains loaded; its validation metrics are retained while dataset-dependent actions are paused.</p>}</div> : <EmptyState title="No confirmed dataset">Confirm a DatasetContract in Data before training a model.</EmptyState>}
+  </section>;
 
   return <section className="feature-workspace training-workspace">
     <div className="feature-toolbar">

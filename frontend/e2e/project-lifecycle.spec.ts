@@ -41,6 +41,31 @@ test("E2E-02 saves metadata, closes, and reopens it", async ({ page }) => {
   await expect(page.getByTestId("project-integrity")).toContainText("PASS");
 });
 
+test("E2E-02b keeps dataset import paused on a state-read failure and enables it after retry confirms absence", async ({ page }) => {
+  let datasetReads = 0;
+  await page.route("**/api/projects/*/dataset", async (route) => {
+    datasetReads += 1;
+    if (datasetReads === 1) {
+      return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "dataset state temporarily unavailable" }) });
+    }
+    return route.continue();
+  });
+  await createProject(page, projectPath("dataset-state-retry"), "Dataset state recovery");
+  await page.locator(".project-overview-grid button").filter({ hasText: "Data" }).click();
+  const error = page.getByRole("alert");
+  await expect(error).toContainText("Could not verify persisted dataset state");
+  await expect(error).toContainText("dataset state temporarily unavailable");
+  await expect(page.getByLabel("CSV data")).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Inspect dataset", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Confirm dataset contract", exact: true })).toBeDisabled();
+  await expect(page.getByText(/This CSV is an editable draft only/)).toHaveCount(0);
+  await error.getByRole("button", { name: "Retry dataset check", exact: true }).click();
+  await expect(page.getByText(/This CSV is an editable draft only/)).toBeVisible();
+  await expect(page.getByLabel("CSV data")).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Inspect dataset", exact: true })).toBeEnabled();
+  expect(datasetReads).toBe(2);
+});
+
 test("E2E-03 read-only opening disables mutating Studio controls", async ({ page }) => {
   const path = projectPath("readonly");
   await createProject(page, path, "Read only");

@@ -38,9 +38,16 @@ const threshold = {
   threshold_id: "threshold-123456789", evaluation_id: evaluation.evaluation_id, selected_threshold: .6, selection_result: .8,
   probability_source: "raw", source_split: "validation", objective: "f1", decisions: [], confusion_matrix: run.confusion_matrix,
 };
+const dataset = {
+  contract: { dataset_fingerprint: "dataset-fingerprint", feature_columns: ["feature"] },
+  profile: { columns: [{ name: "feature" }] },
+};
 
 function renderWorkspace(readOnly = false, overrides: {
   dataset?: unknown;
+  datasetHydrationStatus?: "idle" | "loading" | "none" | "available" | "error";
+  datasetHydrationError?: string | null;
+  onRetryDatasetHydration?: () => void;
   finalTestEvaluation?: unknown;
   run?: unknown;
   runs?: unknown[];
@@ -58,7 +65,7 @@ function renderWorkspace(readOnly = false, overrides: {
   onRetryValidationPolicyEvidence?: () => void;
 } = {}) {
   return render(<EvaluationWorkspace
-    project={{ ...project, read_only: readOnly } as never} dataset={(overrides.dataset ?? null) as never} fis={null} run={(overrides.run === undefined ? run : overrides.run) as never} runs={(overrides.runs ?? [run]) as never} runListStatus={overrides.runListStatus ?? "loaded"} runListError={overrides.runListError ?? null} onRetryRunList={overrides.onRetryRunList ?? vi.fn()} study={null}
+    project={{ ...project, read_only: readOnly } as never} dataset={(overrides.dataset === undefined ? dataset : overrides.dataset) as never} datasetHydrationStatus={overrides.datasetHydrationStatus ?? "available"} datasetHydrationError={overrides.datasetHydrationError ?? null} onRetryDatasetHydration={overrides.onRetryDatasetHydration ?? vi.fn()} fis={null} run={(overrides.run === undefined ? run : overrides.run) as never} runs={(overrides.runs ?? [run]) as never} runListStatus={overrides.runListStatus ?? "loaded"} runListError={overrides.runListError ?? null} onRetryRunList={overrides.onRetryRunList ?? vi.fn()} study={null}
     evaluation={(overrides.evaluationStatus === "error" ? null : evaluation) as never} evaluationStatus={overrides.evaluationStatus ?? "available"} evaluationError={overrides.evaluationError ?? null} onRetryEvaluation={overrides.onRetryEvaluation ?? vi.fn()} validationPolicyEvidenceStatus={overrides.validationPolicyEvidenceStatus ?? "available"} validationPolicyEvidenceError={overrides.validationPolicyEvidenceError ?? null} onRetryValidationPolicyEvidence={overrides.onRetryValidationPolicyEvidence ?? vi.fn()} calibrationTransform={null} decisionThreshold={threshold as never} finalTestEvaluation={(overrides.finalTestEvaluation ?? null) as never}
     finalTestEvidenceStatus={overrides.finalTestEvidenceStatus ?? "none"} finalTestEvidenceError={overrides.finalTestEvidenceError ?? null} onRetryFinalTestEvidence={overrides.onRetryFinalTestEvidence ?? vi.fn()}
     comparison={null} sliceAnalysis={null} selectivePolicy={null} stabilityGatePolicy={null} theme={"light" as never}
@@ -67,6 +74,19 @@ function renderWorkspace(readOnly = false, overrides: {
 }
 
 describe("EvaluationWorkspace final-test boundary", () => {
+  it("keeps dataset-dependent policy and final-test actions paused until dataset identity is restored", () => {
+    const retry = vi.fn();
+    renderWorkspace(false, { datasetHydrationStatus: "error", datasetHydrationError: "dataset store unavailable", onRetryDatasetHydration: retry });
+    expect(screen.getByRole("alert")).toHaveTextContent("Could not verify the persisted DatasetContract");
+    expect(screen.getByRole("alert")).toHaveTextContent("dataset store unavailable");
+    expect(screen.getByText("0.8000")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Reselect threshold" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save ACCEPT / REVIEW policy" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Evaluate frozen final test" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Retry dataset check" }));
+    expect(retry).toHaveBeenCalledOnce();
+  });
+
   it("does not infer missing frozen policies when policy hydration fails", () => {
     const retry = vi.fn();
     renderWorkspace(false, { validationPolicyEvidenceStatus: "error", validationPolicyEvidenceError: "threshold store unavailable", onRetryValidationPolicyEvidence: retry });

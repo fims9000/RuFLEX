@@ -84,15 +84,16 @@
     "alpha_frozen_validation_policy_hydration",
     "alpha_saved_study_and_job_hydration_truthfulness",
     "alpha_training_study_polling_recovery",
-    "alpha_lineage_hydration_truthfulness"
+    "alpha_lineage_hydration_truthfulness",
+    "alpha_dataset_contract_hydration_truthfulness"
   ],
-  "active_capability": "alpha_dataset_contract_hydration_truthfulness",
+  "active_capability": "alpha_dataset_dependent_context_hydration_review",
   "active_acceptance": [
-    "Distinguish no confirmed DatasetContract from a transient dataset-state lookup failure.",
-    "Do not expose import/confirm or training actions as if the project were empty while persisted dataset state is unresolved; provide explicit retry."
+    "Audit remaining dataset-dependent persisted-context reads for swallowed failures or stale identities.",
+    "Expose retry and keep dependent operations paused when a required persisted identity cannot be verified."
   ],
   "blockers": [],
-  "next_executable_work": "Inspect project dataset-state bootstrap; add explicit loading/empty/error/retry state and gate Data/Training actions while DatasetContract resolution is unavailable. Keep changes local until separately authorized to push.",
+  "next_executable_work": "Audit remaining dataset-dependent context hydration and operation gates; implement only a bounded verified recovery slice. Preserve unrelated article working-tree changes and keep changes local; no push authorized.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -166,6 +167,7 @@
     "alpha_frozen_validation_policy_hydration": "PASS: Calibration, threshold, selective-policy, and Stability Gate lookups are hydrated as one explicit persisted-policy state; 404 is a legitimate absence while other failures remain visible with retry. Validation policy mutation and final-test evaluation stay disabled until all identities resolve. Frontend unit suite 8 passed, Vite/TypeScript production build passed, focused real Studio policy-error/recovery E2E passed. Commit 56c2703.",
     "alpha_saved_study_and_job_hydration_truthfulness": "PASS: Missing latest TrainingStudy (404) is distinguished from unavailable lookup; StudyJob list failures have visible retry and retain existing job identity. Multi-seed submission stays disabled until saved Study and job status resolves, avoiding duplicate jobs after a transient read failure. Focused frontend unit suite 15 passed, TypeScript/Vite build passed, E2E-10 real Studio recovery route passed. Commit 733d137.",
     "alpha_training_study_polling_recovery": "PASS: A transient StudyJob status-poll error retains the same persisted job and offers Retry Study status; recovery reloads that exact job ID and does not create another Study. Focused Experiment/Evaluation component tests 16 passed, TypeScript/Vite build passed, E2E-10 saved-Study/jobs retry route passed, git diff --check passed. Commit 59afece.",
-    "alpha_lineage_hydration_truthfulness": "PASS: Project lineage loading now distinguishes pending, loaded-empty, loaded-graph and unavailable states; failed refresh hides unresolved navigation without erasing the last in-memory graph and exposes retry. Studio lineage-recovery E2E-11 passed, existing AssuranceCase/VerificationBundle exact-ID Lineage reopen E2E passed, frontend unit 16 passed, Vite/TypeScript build and diff check passed. Local commit pending."
+    "alpha_lineage_hydration_truthfulness": "PASS: Project lineage loading now distinguishes pending, loaded-empty, loaded-graph and unavailable states; failed refresh hides unresolved navigation without erasing the last in-memory graph and exposes retry. Studio lineage-recovery E2E-11 passed, existing AssuranceCase/VerificationBundle exact-ID Lineage reopen E2E passed, frontend unit 16 passed, Vite/TypeScript build and diff check passed. Commit 995b6c4.",
+    "alpha_dataset_contract_hydration_truthfulness": "PASS: Dataset bootstrap distinguishes loading, confirmed absence (404), available contract and transient failure. Data import/confirmation and Training/policy/final-test actions remain blocked until identity is known; retry recovers without treating errors as an empty project. Evaluation/Experiment component tests 18 passed, focused Studio 503-to-retry-to-404 browser E2E passed, TypeScript/Vite build and git diff --check passed."
   }
 }
