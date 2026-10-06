@@ -169,6 +169,8 @@ export function App() {
   const [lineage, setLineage] = useState<LineageGraph | null>(null);
   const [lineageStatus, setLineageStatus] = useState<"idle" | "loading" | "loaded" | "error">("idle");
   const [lineageError, setLineageError] = useState<string | null>(null);
+  const [lineageObjectError, setLineageObjectError] = useState<string | null>(null);
+  const [lineageRetryNode, setLineageRetryNode] = useState<LineageNode | null>(null);
   const [lineageReload, setLineageReload] = useState(0);
   const [dataGovernanceObject, setDataGovernanceObject] = useState<DataGovernanceObject | null>(null);
   const [integrity, setIntegrity] = useState<ProjectIntegrityReport | null>(null);
@@ -253,6 +255,8 @@ export function App() {
       setLineage(null);
       setLineageStatus("idle");
       setLineageError(null);
+      setLineageObjectError(null);
+      setLineageRetryNode(null);
       setDataGovernanceObject(null);
       setIntegrity(null);
       setIntegrityStatus("idle");
@@ -599,6 +603,8 @@ export function App() {
   async function openLineageNode(node: LineageNode) {
     if (!project) return;
     const objectId = node.object_id;
+    setLineageObjectError(null);
+    setLineageRetryNode(null);
     try {
       if (node.kind === "training_run" && objectId) {
         setTrainingRun(await studioApi.getTrainingRun(project.session_id, objectId));
@@ -694,6 +700,8 @@ export function App() {
       setActive(node.target);
       setStatus(`Opened lineage object: ${node.label}`);
     } catch (reason) {
+      setLineageRetryNode(node);
+      setLineageObjectError(reason instanceof Error ? reason.message : "Could not open the selected persisted object.");
       setError(reason instanceof Error ? reason.message : "Could not open lineage object");
     }
   }
@@ -1653,6 +1661,8 @@ export function App() {
               graph={lineage}
               status={lineageStatus}
               error={lineageError}
+              objectError={lineageObjectError}
+              onRetryObject={() => { if (lineageRetryNode) void openLineageNode(lineageRetryNode); }}
               onRetry={() => setLineageReload((current) => current + 1)}
               onOpen={openLineageNode}
             />

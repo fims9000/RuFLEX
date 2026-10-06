@@ -213,6 +213,19 @@ test("PRODUCT-EVIDENCE captures the frozen V1 Studio route from persisted object
   await page.getByRole("button", { name: "P", exact: true }).click();
   await expect(page.getByText("PROJECT LINEAGE", { exact: true })).toBeVisible();
   await capture(page, screenshots, "15_lineage.png", page.getByText("PROJECT LINEAGE", { exact: true }));
+  let bundleReadFailed = false;
+  await page.route(`**/api/projects/*/evidence/verification-bundles/*`, async (route) => {
+    if (!bundleReadFailed) {
+      bundleReadFailed = true;
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Temporary VerificationBundle read failure" }) });
+      return;
+    }
+    await route.continue();
+  });
+  await page.locator(".lineage-verification_bundle").first().click({ force: true });
+  await expect(page.getByTestId("lineage-object-load-error")).toContainText("Temporary VerificationBundle read failure");
+  await page.getByRole("button", { name: "Retry selected object", exact: true }).click();
+  await expect(page.getByTestId("verification-bundle-record")).toBeVisible();
   await page.getByRole("button", { name: "E", exact: true }).click();
   await expect(page.getByText("Temporary AssuranceCase read failure", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Retry AssuranceCase", exact: true }).click();

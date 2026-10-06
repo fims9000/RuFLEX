@@ -45,12 +45,16 @@ export function ProjectLineage({
   graph,
   status,
   error,
+  objectError = null,
+  onRetryObject,
   onRetry,
   onOpen,
 }: {
   graph: LineageGraph | null;
   status: "idle" | "loading" | "loaded" | "error";
   error: string | null;
+  objectError?: string | null;
+  onRetryObject?: () => void;
   onRetry: () => void;
   onOpen: (node: LineageNode) => void;
 }) {
@@ -91,6 +95,7 @@ export function ProjectLineage({
 
   return (
     <div className="project-lineage" aria-label="Project lineage graph">
+      {objectError && <div className="error" role="alert" data-testid="lineage-object-load-error"><strong>Could not reopen the selected saved object.</strong><p>{objectError}</p>{onRetryObject && <Button view="outlined" onClick={onRetryObject}>Retry selected object</Button>}</div>}
       <ReactFlowProvider>
         <ReactFlow
           nodes={nodes}
