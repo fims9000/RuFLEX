@@ -111,7 +111,7 @@
     "Prioritize evidence that must be identity-linked before presentation; add focused exact-route retry tests as findings justify."
   ],
   "blockers": [],
-  "next_executable_work": "Continue the reopen audit across remaining saved evidence reads and their consuming surfaces; verify each candidate is not already protected by an exact identity-bound retry path before editing. Preserve unrelated article changes and do not push.",
+  "next_executable_work": "Make the latest persisted ConditionMonitoringDemo distinguish confirmed absence from transient read failure; expose retry and block repeat demo creation until the saved result is resolved. Verify close/reopen through the real PRODUCT-EVIDENCE route. Preserve unrelated article changes and do not push.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
