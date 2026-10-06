@@ -256,6 +256,11 @@ export function App() {
     setRecentProjects([]);
     try { localStorage.removeItem(RECENT_PROJECTS_STORAGE_KEY); } catch { /* keep the current session usable */ }
   }
+  function forgetRecentProject(pathToForget: string) {
+    const next = recentProjects.filter((item) => item.path !== pathToForget);
+    setRecentProjects(next);
+    try { localStorage.setItem(RECENT_PROJECTS_STORAGE_KEY, JSON.stringify(next)); } catch { /* keep the current session usable */ }
+  }
   async function openRecentProject(recent: RecentProject) {
     const requestId = ++projectLifecycleRequestRef.current;
     setError(null);
@@ -1596,9 +1601,12 @@ export function App() {
           </form>
           {recentProjects.length > 0 && <section className="recent-projects" aria-label="Recent projects">
             <div className="recent-projects-heading"><strong>Recent projects</strong><Button view="outlined" size="s" type="button" onClick={forgetRecentProjects}>Forget history</Button></div>
-            <div className="recent-project-list">{recentProjects.map((recent) => <button key={recent.path} type="button" className="recent-project-item" onClick={() => void openRecentProject(recent)}>
-              <span>{recent.name}</span><small>{recent.path}</small>
-            </button>)}</div>
+            <div className="recent-project-list">{recentProjects.map((recent) => <div key={recent.path} className="recent-project-row">
+              <button type="button" className="recent-project-item" onClick={() => void openRecentProject(recent)}>
+                <span>{recent.name}</span><small>{recent.path}</small>
+              </button>
+              <Button view="outlined" size="s" type="button" aria-label={`Forget ${recent.name}`} onClick={() => forgetRecentProject(recent.path)}>Forget</Button>
+            </div>)}</div>
             <p className="property-description">Stored only in this browser on this device. Opening uses the current read-only setting.</p>
           </section>}
           {error && (
