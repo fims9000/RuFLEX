@@ -9,7 +9,7 @@ import tempfile
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from threading import Event, Lock
+from threading import Event, Lock, RLock
 from uuid import UUID, uuid4
 
 import numpy as np
@@ -125,6 +125,7 @@ def _study_job_path(project_root: Path, job_id: UUID) -> Path:
 
 _study_job_cancellations: dict[UUID, Event] = {}
 _study_job_creation_lock = Lock()
+_study_job_state_lock = RLock()
 
 
 def _evaluations_root(project_root: Path) -> Path:
@@ -1058,7 +1059,15 @@ def run_multi_seed_study(project_root: Path, *, name: str, model_kind: str = "fl
 
 
 def _persist_study_job(project_root: Path, job: StudyJob) -> None:
-    _atomic_write_text(_study_job_path(project_root, job.job_id), job.model_dump_json(indent=2))
+    with _study_job_state_lock:
+        path = _study_job_path(project_root, job.job_id)
+        if path.exists():
+            # A worker may hold an older in-memory snapshot while a cancel
+            # request arrives. Never let its next progress write erase that
+            # durable user request.
+            persisted = StudyJob.model_validate_json(path.read_text(encoding="utf-8"))
+            job.cancel_requested = job.cancel_requested or persisted.cancel_requested
+        _atomic_write_text(path, job.model_dump_json(indent=2))
 
 
 def load_study_job(project_root: Path, job_id: UUID) -> StudyJob:
@@ -1086,14 +1095,15 @@ def list_study_jobs(project_root: Path) -> list[StudyJob]:
 
 
 def cancel_study_job(project_root: Path, job_id: UUID) -> StudyJob:
-    job = load_study_job(project_root, job_id)
-    if job.status in {"SUCCEEDED", "FAILED", "CANCELLED"}:
-        return job
-    job.cancel_requested = True
+    with _study_job_state_lock:
+        job = load_study_job(project_root, job_id)
+        if job.status in {"SUCCEEDED", "FAILED", "CANCELLED"}:
+            return job
+        job.cancel_requested = True
+        _persist_study_job(project_root, job)
     _, backend = _study_execution_backend(job)
     backend.cancel(project_root=project_root, job_id=job_id)
     _study_job_cancellations.setdefault(job_id, Event()).set()
-    _persist_study_job(project_root, job)
     return job
 
 
@@ -1127,6 +1137,7 @@ def _execute_study_job(project_root: Path, job_id: UUID) -> None:
     _persist_study_job(project_root, job)
     successful_runs: list[TrainingRun] = []
     for state in job.seed_states:
+        job.cancel_requested = job.cancel_requested or load_study_job(project_root, job_id).cancel_requested
         if state.status == "SUCCEEDED":
             if state.run_id is None:
                 state.status = "FAILED"; state.error = "Persisted successful seed has no TrainingRun identity."
@@ -1168,23 +1179,33 @@ def _execute_study_job(project_root: Path, job_id: UUID) -> None:
             state.status = "FAILED"
             state.error = str(error)
         _persist_study_job(project_root, job)
-    if len(successful_runs) < 3:
-        job.status = "FAILED"
-        job.error = "Fewer than three seed runs succeeded; no scientific selection was produced."
-    else:
-        try:
-            selection_metric = job.selection_metric
-            selected, value, rule = _select_study_run([(run, run.validation_metrics.get(selection_metric)) for run in successful_runs], selection_metric)
-            created = TrainingStudy(name=job.name, model_kind=job.model_kind, task=successful_runs[0].task, selection_metric=selection_metric, selection_rule=rule, seed_runs=successful_runs, selected_run_id=selected.run_id, selection_reason=f"Selected {job.model_kind} run by declared validation {selection_metric} ({rule}) = {value:.6g}; exact ties select lowest training_seed; locked test was not used.", randomness_protocol=job.randomness_protocol, split_seed=job.split_seed, training_seeds=[run.training_seed or run.seed for run in successful_runs], adapter_key=selected.adapter_key, adapter_version=selected.adapter_version, adapter_provider=selected.adapter_provider, runtime_capability_snapshot_hash=selected.runtime_capability_snapshot_hash)
-            _atomic_write_text(_studies_root(project_root) / f"{created.study_id}.json", created.model_dump_json(indent=2))
-            _atomic_write_text(_studies_root(project_root) / "active-study.json", json.dumps({"study_id": str(created.study_id)}, indent=2))
-            job.study_id = created.study_id
-            job.status = "SUCCEEDED"
-        except Exception as error:
+    with _study_job_state_lock:
+        job.cancel_requested = job.cancel_requested or load_study_job(project_root, job_id).cancel_requested
+        if cancellation.is_set() or job.cancel_requested:
+            for pending in job.seed_states:
+                if pending.status == "QUEUED":
+                    pending.status = "CANCELLED"
+            job.status = "CANCELLED"
+            job.finished_at = datetime.now(timezone.utc)
+            _persist_study_job(project_root, job)
+            return
+        if len(successful_runs) < 3:
             job.status = "FAILED"
-            job.error = str(error)
-    job.finished_at = datetime.now(timezone.utc)
-    _persist_study_job(project_root, job)
+            job.error = "Fewer than three seed runs succeeded; no scientific selection was produced."
+        else:
+            try:
+                selection_metric = job.selection_metric
+                selected, value, rule = _select_study_run([(run, run.validation_metrics.get(selection_metric)) for run in successful_runs], selection_metric)
+                created = TrainingStudy(name=job.name, model_kind=job.model_kind, task=successful_runs[0].task, selection_metric=selection_metric, selection_rule=rule, seed_runs=successful_runs, selected_run_id=selected.run_id, selection_reason=f"Selected {job.model_kind} run by declared validation {selection_metric} ({rule}) = {value:.6g}; exact ties select lowest training_seed; locked test was not used.", randomness_protocol=job.randomness_protocol, split_seed=job.split_seed, training_seeds=[run.training_seed or run.seed for run in successful_runs], adapter_key=selected.adapter_key, adapter_version=selected.adapter_version, adapter_provider=selected.adapter_provider, runtime_capability_snapshot_hash=selected.runtime_capability_snapshot_hash)
+                _atomic_write_text(_studies_root(project_root) / f"{created.study_id}.json", created.model_dump_json(indent=2))
+                _atomic_write_text(_studies_root(project_root) / "active-study.json", json.dumps({"study_id": str(created.study_id)}, indent=2))
+                job.study_id = created.study_id
+                job.status = "SUCCEEDED"
+            except Exception as error:
+                job.status = "FAILED"
+                job.error = str(error)
+        job.finished_at = datetime.now(timezone.utc)
+        _persist_study_job(project_root, job)
 
 
 def _study_execution_backend(job: StudyJob):

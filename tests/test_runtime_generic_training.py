@@ -376,6 +376,46 @@ def test_study_job_request_id_recovers_existing_job_and_rejects_config_mismatch(
         training_app.start_study_job(tmp_path, **{**request, "max_epochs": 3})
 
 
+def test_cancel_requested_during_last_seed_is_not_overwritten_by_success_finalization(tmp_path: Path, monkeypatch) -> None:
+    _project(tmp_path)
+    from ruflex.application import training as training_app
+
+    original_train_model = training_app.train_model
+    seed_values = [3, 5, 7]
+
+    def cancel_after_last_fit(*args, **kwargs):
+        run = original_train_model(*args, **kwargs)
+        if kwargs.get("training_seed") == seed_values[-1]:
+            job = training_app.list_study_jobs(tmp_path)[-1]
+            training_app.cancel_study_job(tmp_path, job.job_id)
+        return run
+
+    def execute_synchronously(root: Path, job_id: UUID):
+        training_app._execute_study_job(root, job_id)
+        return training_app.load_study_job(root, job_id)
+
+    monkeypatch.setattr(training_app, "train_model", cancel_after_last_fit)
+    monkeypatch.setattr(training_app, "_submit_study_job", execute_synchronously)
+    job = training_app.start_study_job(
+        tmp_path,
+        name="cancel at final fit",
+        model_kind="logistic_regression",
+        seeds=seed_values,
+        selection_metric="f1",
+        randomness_protocol="TRAINING_VARIABILITY",
+        split_seed=42,
+        max_epochs=1,
+        validation_fraction=.2,
+        test_fraction=.2,
+    )
+
+    assert job.cancel_requested is True
+    assert job.status == "CANCELLED"
+    assert [state.status for state in job.seed_states] == ["SUCCEEDED", "SUCCEEDED", "SUCCEEDED"]
+    assert job.study_id is None
+    assert not (tmp_path / "studies" / "active-study.json").exists()
+
+
 @pytest.mark.parametrize("adapter_key,model_kind,parameters", [
     ("native_flat_neuro_fuzzy", "flat_neuro_fuzzy", {"max_epochs": 2, "batch_size": 16, "patience": 2, "max_rules": 3, "learning_rate": .01}),
     ("native_linear", "logistic_regression", {}),
