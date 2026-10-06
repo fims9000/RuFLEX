@@ -21,10 +21,34 @@ test("Stability Lab persists fixed-split multi-run evidence and its validation-o
   await page.getByRole("button", { name: "Run multi-seed study", exact: true }).click();
   await expect(page.getByText("Validation f1 across seeds", { exact: true })).toBeVisible({ timeout: 60_000 });
   await expect(page.getByText(/Training variability fixes split membership/)).toBeVisible();
+  let evaluationCreateCount = 0;
+  await page.route("**/api/projects/analyses/evaluations", async (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    evaluationCreateCount += 1;
+    await route.fetch();
+    await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Stability Evaluation response lost after persistence" }) });
+  });
   await page.getByRole("button", { name: "Create Study Stability Analysis", exact: true }).click();
+  await expect(page.getByTestId("stability-analysis-recovery")).toContainText("Stability Evaluation response lost after persistence");
+  await page.getByRole("button", { name: "Retry saved chain lookup", exact: true }).click();
+  await expect(page.getByTestId("stability-analysis-recovery")).toContainText("no threshold is visible yet");
+  await page.getByRole("button", { name: "Continue this chain explicitly", exact: true }).click();
   await expect(page.getByText("Case Stability Map · selected-run agreement; red = high-confidence unstable", { exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId("stability-analysis-recovery")).toHaveCount(0);
+  expect(evaluationCreateCount).toBe(1);
+  let stabilityGateCreateCount = 0;
+  await page.route("**/api/projects/analyses/stability-policies", async (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    stabilityGateCreateCount += 1;
+    await route.fetch();
+    await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Stability Gate response lost after persistence" }) });
+  });
   await page.getByRole("button", { name: "Freeze Stability Gate", exact: true }).click();
+  await expect(page.getByTestId("stability-gate-recovery")).toContainText("Stability Gate response lost after persistence");
+  await page.getByRole("button", { name: "Retry saved gate lookup", exact: true }).click();
   await expect(page.getByText("Risk–coverage comparison (same coverage)", { exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId("stability-gate-recovery")).toHaveCount(0);
+  expect(stabilityGateCreateCount).toBe(1);
   await page.getByLabel("Collapse explorer").click();
   await page.getByLabel("Collapse properties").click();
   await page.getByLabel("Collapse jobs panel").click();

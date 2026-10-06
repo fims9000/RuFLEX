@@ -119,7 +119,8 @@
     "alpha_condition_demo_lost_response_recovery",
     "alpha_behavior_revision_comparison_lost_response_recovery",
     "alpha_behavior_spec_creation_lost_response_recovery",
-    "alpha_validation_evaluation_lost_response_recovery"
+    "alpha_validation_evaluation_lost_response_recovery",
+    "alpha_stability_chain_lost_response_recovery"
   ],
   "active_capability": "alpha_saved_evidence_hydration_audit",
   "active_acceptance": [
@@ -127,7 +128,7 @@
     "Prioritize identity-linked EvidenceWorkspace reads and guard any action that could duplicate persisted work until its inventory resolves."
   ],
   "blockers": [],
-  "next_executable_work": "Apply exact Evaluation identity recovery to Stability Lab's Evaluation → threshold → analysis creation chain, then cover lost-response threshold and frozen gate writes. Preserve article changes; do not push.",
+  "next_executable_work": "Audit remaining validation-evidence writes (threshold selection, calibration, selective policy, comparisons and Slice Lab) for response-loss duplicates; preserve article changes and keep verification resource-light. Do not push.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -236,6 +237,7 @@
     "alpha_condition_demo_lost_response_recovery": "PASS: ConditionMonitoringDemo now persists policy, telemetry, metadata, and GeneralizationContract input provenance. Studio recovers only a result with the exact policy/telemetry/scope identity, blocks duplicate requests while unresolved, and requires explicit confirmation before rerun after confirmed absence. PRODUCT-EVIDENCE lost-response-after-persist plus existing close/reopen retry flow passed; frontend 23/23, Vite build and changed Python compileall passed.",
     "alpha_behavior_revision_comparison_lost_response_recovery": "PASS: If synchronous BehaviorRevisionComparison creation returns an uncertain response, Evidence retains the exact ordered result pair and recovers only that persisted comparison; it blocks selector changes and requires an explicit repeat after confirmed absence. PRODUCT-06 simulated response loss after persistence, recovered exact pair, and verified exactly one POST. Frontend unit 23/23, Vite build, focused Playwright, JSON validation and diff check passed.",
     "alpha_behavior_spec_creation_lost_response_recovery": "PASS: If BehaviorSpec creation persists but its POST response is lost, Studio retains the exact run-bound spec payload, looks up an exact matching persisted BehaviorSpec before any create retry, then resumes its result by exact spec ID. If lookup confirms absence, repeat creation is an explicit user action. PRODUCT-EVIDENCE simulated lost create response followed by lost result response, recovered both stages and verified one create POST and one run POST. Frontend unit 23/23, Vite build, focused Playwright and diff/JSON checks passed.",
-    "alpha_validation_evaluation_lost_response_recovery": "PASS: EvaluationWorkspace now retains the exact TrainingRun identity when synchronous validation Evaluation creation has an uncertain outcome, retries latest-object lookup and restores only a matching run-bound Evaluation. Dependent calibration/threshold/selective/slice/final-test actions remain blocked until resolution; creating another Evaluation after confirmed absence is explicit. PRODUCT-EVIDENCE simulated response loss after persistence and verified one Evaluation POST plus exact recovery. Frontend unit 23/23, Vite build, focused Playwright, JSON and diff checks passed."
+    "alpha_validation_evaluation_lost_response_recovery": "PASS: EvaluationWorkspace now retains the exact TrainingRun identity when synchronous validation Evaluation creation has an uncertain outcome, retries latest-object lookup and restores only a matching run-bound Evaluation. Dependent calibration/threshold/selective/slice/final-test actions remain blocked until resolution; creating another Evaluation after confirmed absence is explicit. PRODUCT-EVIDENCE simulated response loss after persistence and verified one Evaluation POST plus exact recovery. Frontend unit 23/23, Vite build, focused Playwright, JSON and diff checks passed.",
+    "alpha_stability_chain_lost_response_recovery": "PASS: Stability Lab's multi-object build now recovers an exact Evaluation by selected run, a raw uncalibrated threshold by Evaluation ID, and a Stability Analysis by study/evaluation/threshold identity. Missing later stages require an explicit continue action; gate policy creation similarly recovers by exact analysis/evaluation and frozen 0.90/0.80/0.15 criteria. Stability Lab E2E simulated lost Evaluation and gate POST responses after persistence, verified one POST each, and completed close/reopen path; frontend unit 23/23, TypeScript/Vite build passed."
   }
 }
