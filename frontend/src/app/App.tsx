@@ -217,18 +217,20 @@ export function App() {
   const datasetFileInputRef = useRef<HTMLInputElement>(null);
   const datasetFileSelectionId = useRef(0);
   const projectSessionRef = useRef<string | null>(null);
+  const artifactInventoryRequestRef = useRef(0);
   projectSessionRef.current = project?.session_id ?? null;
   const refreshArtifactInventory = useCallback(async (sessionId: string) => {
     if (projectSessionRef.current !== sessionId) return;
+    const requestId = ++artifactInventoryRequestRef.current;
     setArtifactsHydrationStatus("loading");
     setArtifactsHydrationError(null);
     try {
       const items = await studioApi.listArtifacts(sessionId);
-      if (projectSessionRef.current !== sessionId) return;
+      if (projectSessionRef.current !== sessionId || artifactInventoryRequestRef.current !== requestId) return;
       setArtifacts(items);
       setArtifactsHydrationStatus("loaded");
     } catch (reason) {
-      if (projectSessionRef.current !== sessionId) return;
+      if (projectSessionRef.current !== sessionId || artifactInventoryRequestRef.current !== requestId) return;
       setArtifacts([]);
       setArtifactsHydrationError(reason instanceof Error ? reason.message : "Project artifacts could not be verified.");
       setArtifactsHydrationStatus("error");
@@ -246,20 +248,22 @@ export function App() {
   useEffect(() => {
     let active = true;
     if (!project) {
+      artifactInventoryRequestRef.current += 1;
       setArtifacts([]);
       setArtifactsHydrationError(null);
       setArtifactsHydrationStatus("idle");
       return () => { active = false; };
     }
+    const requestId = ++artifactInventoryRequestRef.current;
     setArtifacts([]);
     setArtifactsHydrationError(null);
     setArtifactsHydrationStatus("loading");
     studioApi.listArtifacts(project.session_id).then((items) => {
-      if (!active) return;
+      if (!active || artifactInventoryRequestRef.current !== requestId) return;
       setArtifacts(items);
       setArtifactsHydrationStatus("loaded");
     }).catch((reason: unknown) => {
-      if (!active) return;
+      if (!active || artifactInventoryRequestRef.current !== requestId) return;
       setArtifacts([]);
       setArtifactsHydrationError(reason instanceof Error ? reason.message : "Project artifacts could not be verified.");
       setArtifactsHydrationStatus("error");

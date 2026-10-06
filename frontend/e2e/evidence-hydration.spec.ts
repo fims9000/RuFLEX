@@ -83,3 +83,34 @@ test("late artifact inventory from a closed project is ignored after switching p
   await expect(page.getByText(oldArtifactSha.slice(0, 12), { exact: false })).toHaveCount(0);
   await expect(page.getByText("No immutable artifacts yet.", { exact: true })).toBeVisible();
 });
+
+test("older artifact inventory cannot overwrite a newer post-save refresh", async ({ page }) => {
+  const projectPath = join(tmpdir(), `ruflex-artifact-order-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  const newerArtifactSha = "b".repeat(64);
+  let releaseInitialRead!: () => void;
+  const initialReadGate = new Promise<void>((resolve) => { releaseInitialRead = resolve; });
+  let artifactReads = 0;
+  await page.route("**/api/projects/*/artifacts", async (route) => {
+    artifactReads += 1;
+    if (artifactReads === 1) {
+      await initialReadGate;
+      return route.fulfill({ status: 200, contentType: "application/json", body: "[]" });
+    }
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([{ sha256: newerArtifactSha, size_bytes: 456, source_kind: "dataset", media_type: "text/csv" }]) });
+  });
+
+  await page.goto("/");
+  await page.getByLabel("Project path").fill(projectPath);
+  await page.getByLabel("Project name").fill("Artifact order");
+  await page.getByRole("button", { name: "Create project", exact: true }).click();
+  await expect.poll(() => artifactReads).toBe(1);
+  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByLabel("CSV data").fill("x,target\n1,0\n2,1\n");
+  await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
+  await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
+  await expect(page.getByText(newerArtifactSha.slice(0, 12), { exact: false })).toBeVisible();
+  expect(artifactReads).toBe(2);
+  releaseInitialRead();
+  await expect(page.getByText(newerArtifactSha.slice(0, 12), { exact: false })).toBeVisible();
+  await expect(page.getByText("No immutable artifacts yet.", { exact: true })).toHaveCount(0);
+});
