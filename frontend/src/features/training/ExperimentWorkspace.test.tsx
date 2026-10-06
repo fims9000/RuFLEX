@@ -82,6 +82,19 @@ describe("ExperimentWorkspace dynamic model controls", () => {
     expect(studioApi.startStudyJob.mock.calls[0][1].client_request_id).toMatch(/^[0-9a-f-]{36}$/i);
   });
 
+  it("explains that a cancelled StudyJob is terminal and its completed fits are retained", async () => {
+    studioApi.listStudyJobs.mockResolvedValueOnce([{
+      job_id: "job-cancelled", name: "Interrupted Study", model_kind: "logistic_regression", selection_metric: "f1",
+      status: "CANCELLED", cancel_requested: true, seed_states: [{ seed: 3, status: "SUCCEEDED", run_id: "run-3", runtime_seconds: 1, error: null }],
+      study_id: null, error: null, execution_backend: "LOCAL", execution_backend_key: "local_executor", execution_config: {}, recovery_count: 0, recovery_note: null,
+    }]);
+    render(<ExperimentWorkspace project={project} dataset={dataset as never} run={null} study={null} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);
+
+    expect(await screen.findByText(/This StudyJob is terminal and cannot be resumed/)).toBeVisible();
+    expect(screen.getByText(/Seed fits completed before cancellation remain persisted/)).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Resume persisted study" })).not.toBeInTheDocument();
+  });
+
   it("does not hide exact tree-path support when the saved capability check fails and retries the same run", async () => {
     studioApi.getTrainingRunCapabilities
       .mockRejectedValueOnce(new Error("run capability store unavailable"))

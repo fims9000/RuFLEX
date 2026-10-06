@@ -150,15 +150,16 @@
     "alpha_exact_training_run_recovery_identity",
     "alpha_study_job_idempotent_submission_recovery",
     "alpha_study_job_cancel_finalization_race",
-    "alpha_orphaned_queued_study_job_cancellation"
+    "alpha_orphaned_queued_study_job_cancellation",
+    "alpha_study_terminal_state_guidance"
   ],
-  "active_capability": "alpha_orphaned_queued_study_job_cancellation",
+  "active_capability": "alpha_study_terminal_state_guidance",
   "active_acceptance": [
     "When a training response is lost, Studio may recover only the uniquely persisted TrainingRun whose declared model, adapter, and complete request config match the original request.",
-    "StudyJobs preserve accepted cancellation through seed progress writes and finalization; cancellation received during the final fit yields a durable CANCELLED job without a TrainingStudy aggregate, and orphaned queued jobs become terminally cancelled immediately."
+    "StudyJobs preserve accepted cancellation through seed progress writes and finalization; cancelled jobs retain completed runs, orphaned queued jobs terminate immediately, and Studio explains terminal CANCELLED/FAILED recovery semantics."
   ],
   "blockers": [],
-  "next_executable_work": "Audit the multi-seed Study page's terminal failed/cancelled state guidance and recovery affordances; make a focused usability fix only if users could mistakenly infer resumability or duplicate work.",
+  "next_executable_work": "Continue a resource-light pass over the Studio training path for silent fallback or retry behavior that could launch duplicate fits; add one narrow test/fix only when a concrete case is demonstrated.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -312,6 +313,7 @@
     "alpha_exact_training_run_recovery_identity": "PASS: New TrainingRuns persist versioned request-level model/adapter/config provenance, and lost-response recovery now accepts only exact canonical config matches; same-seed but different max_depth and legacy records without config fail closed. Unit matcher tests (2), full real Studio lost-response/recovery E2E, TypeScript/Vite build and Python TrainingRun persistence tests (6) passed.",
     "alpha_study_job_idempotent_submission_recovery": "PASS: Multi-seed Study submissions accept a client idempotency UUID bound to the durable StudyJob ID. Retries recover only that same job and exact frozen config; request-ID reuse with changed config fails closed. Frontend unit verifies lost-response retry resends the identical payload; backend idempotency regression passes; ExperimentWorkspace unit 13/13, Python focused tests 2 passed, compileall, diff check and Vite build passed.",
     "alpha_study_job_cancel_finalization_race": "PASS: A cancellation arriving during the last seed can no longer be overwritten by worker success finalization. In-flight fit remains persisted as SUCCEEDED, job is CANCELLED, and no TrainingStudy aggregate is created; durable cancellation survives progress writes under a short state lock. Regression uses a small local Logistic Regression fixture; focused Python tests (2) and compileall/diff check passed.",
-    "alpha_orphaned_queued_study_job_cancellation": "PASS: Cancelling a persisted QUEUED StudyJob with no active worker now marks the job and untouched seeds CANCELLED immediately, preventing an unresumable queued record after worker loss/restart. Focused Python cancellation regressions (3), compileall and git diff --check passed."
+    "alpha_orphaned_queued_study_job_cancellation": "PASS: Cancelling a persisted QUEUED StudyJob with no active worker now marks the job and untouched seeds CANCELLED immediately, preventing an unresumable queued record after worker loss/restart. Focused Python cancellation regressions (3), compileall and git diff --check passed.",
+    "alpha_study_terminal_state_guidance": "PASS: Studio explicitly explains that terminal CANCELLED StudyJobs cannot resume and completed seed fits remain persisted, while FAILED jobs did not produce a selected TrainingStudy and require per-seed error review before new fits. ExperimentWorkspace unit tests (14/14) and Vite production build passed."
   }
 }
