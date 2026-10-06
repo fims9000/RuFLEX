@@ -1265,9 +1265,10 @@ def start_study_job(project_root: Path, *, client_request_id: UUID | None = None
                 raise TrainingError("Study request ID was already used for a different frozen configuration.")
             if existing.status in {"SUCCEEDED", "FAILED", "CANCELLED"}:
                 return existing
-            return _submit_study_job(project_root, existing.job_id)
-        job = StudyJob(job_id=request_id, client_request_id=request_id, name=name, model_kind=model_kind, selection_metric=selection_metric, seed_states=seed_states, randomness_protocol=randomness_protocol, split_seed=(pairs[0][0] if len({pair[0] for pair in pairs}) == 1 else None), execution_config=config, adapter_key=identity.key, adapter_version=identity.version, adapter_provider=identity.provider, execution_backend_key=descriptor.identity.key, execution_backend_version=descriptor.identity.version, execution_backend_provider=descriptor.identity.provider)
-        _persist_study_job(project_root, job)
+            job = existing
+        else:
+            job = StudyJob(job_id=request_id, client_request_id=request_id, name=name, model_kind=model_kind, selection_metric=selection_metric, seed_states=seed_states, randomness_protocol=randomness_protocol, split_seed=(pairs[0][0] if len({pair[0] for pair in pairs}) == 1 else None), execution_config=config, adapter_key=identity.key, adapter_version=identity.version, adapter_provider=identity.provider, execution_backend_key=descriptor.identity.key, execution_backend_version=descriptor.identity.version, execution_backend_provider=descriptor.identity.provider)
+            _persist_study_job(project_root, job)
     return _submit_study_job(project_root, job.job_id)
 
 
