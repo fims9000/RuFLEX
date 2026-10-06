@@ -22,6 +22,14 @@ import { ChartSurface } from "../../charts/ChartSurface";
 import { Button, EmptyState, StatusBadge } from "../../components/StudioPrimitives";
 import { StudioTheme } from "../../design/tokens";
 
+function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.entries(value as Record<string, unknown>).sort(([left], [right]) => left.localeCompare(right)).map(([key, item]) => `${JSON.stringify(key)}:${canonicalJson(item)}`).join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "undefined";
+}
+
 function calibrationOption(
   run: TrainingRun,
   evaluation: AnalysisEvaluation | null,
@@ -195,6 +203,9 @@ export function EvaluationWorkspace({
   const [selectedRunIds, setSelectedRunIds] = useState<string[]>([]);
   const [includeManualFis, setIncludeManualFis] = useState(false);
   const [sliceRunning, setSliceRunning] = useState(false);
+  const [sliceRecoveryRequest, setSliceRecoveryRequest] = useState<{ evaluationId: string; metric: string; definitions: SliceDefinition[] } | null>(null);
+  const [sliceRecoveryError, setSliceRecoveryError] = useState<string | null>(null);
+  const [sliceRecoveryNotFound, setSliceRecoveryNotFound] = useState(false);
   const [sliceName, setSliceName] = useState("Validation slice");
   const [sliceKind, setSliceKind] = useState<SliceDefinition["kind"]>("numeric_range");
   const [sliceField, setSliceField] = useState("");
@@ -449,12 +460,65 @@ export function EvaluationWorkspace({
         definition.end = sliceEnd.trim() || null;
       }
       const metric = sliceMetric || (run!.task === "binary_classification" ? "f1" : "rmse");
-      onSliceAnalysis(await studioApi.createSliceAnalysis(project.session_id, current.evaluation_id, metric, [definition]));
+      const persistedDefinition: SliceDefinition = {
+        ...definition,
+        field: definition.field ?? null,
+        values: definition.values ?? [],
+        minimum: definition.minimum ?? null,
+        maximum: definition.maximum ?? null,
+        start: definition.start ?? null,
+        end: definition.end ?? null,
+        source_rows: definition.source_rows ?? [],
+      };
+      const request = { evaluationId: current.evaluation_id, metric, definitions: [persistedDefinition] };
+      try {
+        const result = await studioApi.createSliceAnalysis(project.session_id, request.evaluationId, request.metric, request.definitions);
+        onSliceAnalysis(result); setSliceRecoveryRequest(null); setSliceRecoveryError(null); setSliceRecoveryNotFound(false);
+      } catch (reason) {
+        setSliceRecoveryRequest(request); setSliceRecoveryError(reason instanceof Error ? reason.message : "The saved SliceAnalysis could not be confirmed."); setSliceRecoveryNotFound(false);
+        throw reason;
+      }
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Could not create Slice Analysis");
     } finally {
       setSliceRunning(false);
     }
+  }
+
+  async function recoverSliceAnalysis() {
+    const request = sliceRecoveryRequest;
+    if (!request) return;
+    setSliceRunning(true); setError(null);
+    try {
+      let latest: SliceAnalysis;
+      try { latest = await studioApi.getLatestSliceAnalysis(project.session_id); }
+      catch (reason) {
+        if (reason instanceof ProductApiError && reason.status === 404) {
+          setSliceRecoveryNotFound(true); setSliceRecoveryError("No saved SliceAnalysis is visible yet. Retry lookup later, or explicitly rerun this exact validation slice if the original request did not finish."); return;
+        }
+        throw reason;
+      }
+      if (latest.evaluation_id !== request.evaluationId || latest.metric !== request.metric || canonicalJson(latest.definitions) !== canonicalJson(request.definitions)) {
+        setSliceRecoveryNotFound(true); setSliceRecoveryError("The latest saved SliceAnalysis belongs to another definition; no replacement was created."); return;
+      }
+      onSliceAnalysis(latest); setSliceRecoveryRequest(null); setSliceRecoveryError(null); setSliceRecoveryNotFound(false);
+    } catch (reason) {
+      setSliceRecoveryError(reason instanceof Error ? reason.message : "Could not recover the exact SliceAnalysis."); setSliceRecoveryNotFound(false);
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally { setSliceRunning(false); }
+  }
+
+  async function explicitlyRerunSliceAnalysis() {
+    if (!sliceRecoveryRequest || !sliceRecoveryNotFound) return;
+    setSliceRunning(true); setError(null);
+    try {
+      const request = sliceRecoveryRequest;
+      onSliceAnalysis(await studioApi.createSliceAnalysis(project.session_id, request.evaluationId, request.metric, request.definitions));
+      setSliceRecoveryRequest(null); setSliceRecoveryError(null); setSliceRecoveryNotFound(false);
+    } catch (reason) {
+      setSliceRecoveryError(reason instanceof Error ? reason.message : "The explicitly repeated SliceAnalysis could not be confirmed."); setSliceRecoveryNotFound(false);
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally { setSliceRunning(false); }
   }
 
   const metrics = Object.entries(activeEvaluation?.metrics ?? run.validation_metrics);
@@ -597,7 +661,8 @@ export function EvaluationWorkspace({
       {sliceAnalysisHydrationStatus === "loading" && <p role="status" data-testid="slice-hydration-loading">Loading saved slice evidence…</p>}
       {sliceAnalysisHydrationStatus === "none" && <p className="property-description" data-testid="slice-hydration-empty">No saved SliceAnalysis is available for this project.</p>}
       {sliceAnalysisHydrationStatus === "error" && <div className="error" role="alert" data-testid="slice-hydration-error"><strong>Saved SliceAnalysis could not be verified.</strong><p>{sliceAnalysisHydrationError}</p>{onRetrySliceAnalysis && <Button view="outlined" onClick={onRetrySliceAnalysis}>Retry slice evidence</Button>}</div>}
-      <Button view="outlined" disabled={sliceRunning || !!evaluationRecoveryRunId || project.read_only || !dataset || !evaluationStateKnown || !["none", "available"].includes(sliceAnalysisHydrationStatus)} onClick={runSliceAnalysis} data-ruflex-action="slice.create">{sliceRunning ? "Calculating…" : "Run and persist slice"}</Button>
+      {sliceRecoveryRequest && <div className="error" role="alert" data-testid="slice-analysis-recovery"><strong>Slice analysis save is uncertain; no duplicate was submitted.</strong><p>{sliceRecoveryError}</p><Button view="outlined" disabled={sliceRunning} onClick={recoverSliceAnalysis}>Retry saved SliceAnalysis lookup</Button>{sliceRecoveryNotFound && <Button view="outlined" disabled={sliceRunning || project.read_only} onClick={explicitlyRerunSliceAnalysis}>Explicitly rerun this exact slice</Button>}</div>}
+      <Button view="outlined" disabled={sliceRunning || !!sliceRecoveryRequest || !!evaluationRecoveryRunId || project.read_only || !dataset || !evaluationStateKnown || !["none", "available"].includes(sliceAnalysisHydrationStatus)} onClick={runSliceAnalysis} data-ruflex-action="slice.create">{sliceRunning ? "Calculating…" : "Run and persist slice"}</Button>
       {sliceAnalysis && <div className="data-table-wrap"><table className="data-table"><thead><tr><th>slice</th><th>kind</th><th>N</th><th>metric</th><th>value</th><th>overall</th><th>delta</th><th>metric status</th><th>declared scope</th></tr></thead><tbody>{sliceAnalysis.results.map((result) => <tr key={`${sliceAnalysis.analysis_id}-${result.name}`}><td>{result.name}</td><td>{result.kind}</td><td>{result.n}</td><td>{result.metric}</td><td>{result.value === null ? "—" : result.value.toFixed(4)}</td><td>{result.overall_value.toFixed(4)}</td><td>{result.delta_vs_overall === null ? "—" : result.delta_vs_overall.toFixed(4)}</td><td>{result.status}{result.warning ? ` · ${result.warning}` : ""}</td><td><StatusBadge tone={result.scope_disposition === "ALLOW" ? "success" : result.scope_disposition === "BLOCK" ? "danger" : "warning"}>{result.scope_disposition}</StatusBadge>{result.scope_reasons.length > 0 && <small className="slice-scope-reason">{result.scope_reasons.join(" ")}</small>}</td></tr>)}</tbody></table><p>{sliceAnalysis.generalization_contract_id ? `Scope classifications use GeneralizationContract ${sliceAnalysis.generalization_contract_id.slice(0, 12)}. ` : "No GeneralizationContract was linked; scope remains undeclared. "}{sliceAnalysis.scientific_note}</p></div>}
     </section>
     {error && <div className="error" role="alert">{error}</div>}

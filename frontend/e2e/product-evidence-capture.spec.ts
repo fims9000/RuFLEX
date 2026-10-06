@@ -129,7 +129,18 @@ test("PRODUCT-EVIDENCE captures the frozen V1 Studio route from persisted object
   await expect(page.getByRole("heading", { name: "Final-test evidence persisted separately", exact: true })).toBeVisible();
   await page.getByLabel("Slice minimum").fill("10");
   await page.getByLabel("Slice maximum").fill("30");
+  let slicePostCount = 0;
+  await page.route("**/api/projects/analyses/slices", async (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    slicePostCount += 1;
+    await route.fetch();
+    await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "SliceAnalysis response lost after persistence" }) });
+  });
   await page.getByRole("button", { name: "Run and persist slice", exact: true }).click();
+  await expect(page.getByTestId("slice-analysis-recovery")).toContainText("SliceAnalysis response lost after persistence");
+  await page.getByRole("button", { name: "Retry saved SliceAnalysis lookup", exact: true }).click();
+  await expect(page.getByTestId("slice-analysis-recovery")).toHaveCount(0);
+  expect(slicePostCount).toBe(1);
   await expect(page.getByText(/Scope classifications use GeneralizationContract/)).toBeVisible();
   await capture(page, screenshots, "08_generalization_and_slices.png", page.getByText(/Scope classifications use GeneralizationContract/));
 
