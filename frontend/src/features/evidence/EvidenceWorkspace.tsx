@@ -172,6 +172,8 @@ export function EvidenceWorkspace({
   const [exhaustive, setExhaustive] = useState<ExhaustiveLabResult | null>(restoredExhaustive);
   const [gridPoints, setGridPoints] = useState("3");
   const [assurance, setAssurance] = useState<AssuranceCase | null>(restoredAssurance);
+  const [evidenceOperationJob, setEvidenceOperationJob] = useState<ProductJob | null>(null);
+  const [evidenceOperationPollError, setEvidenceOperationPollError] = useState<string | null>(null);
   const [bundle, setBundle] = useState<{ path: string; sha256: string; entry_count: number } | null>(null);
   const [bundleValidation, setBundleValidation] = useState<VerificationBundleValidation | null>(null);
   const [verificationBundleRecord, setVerificationBundleRecord] = useState<VerificationBundle | null>(restoredVerificationBundleRecord);
@@ -525,19 +527,71 @@ export function EvidenceWorkspace({
     catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
     finally { setBusy(false); }
   }
-  async function waitForJob(job: ProductJob) {
+  async function waitForEvidenceOperation(job: ProductJob) {
+    setEvidenceOperationJob(job);
     for (let attempt = 0; attempt < 120 && ["queued", "running"].includes(job.status); attempt += 1) {
       await new Promise((resolve) => window.setTimeout(resolve, 100));
-      job = await studioApi.getPosthocExplanationJob(project.session_id, job.job_id);
-      setExplanationJob(job);
+      try {
+        job = await studioApi.getPosthocExplanationJob(project.session_id, job.job_id);
+      } catch (reason) {
+        setEvidenceOperationPollError(reason instanceof Error ? reason.message : "Could not read the persisted evidence operation status.");
+        throw reason;
+      }
+      setEvidenceOperationJob(job);
     }
-    if (job.status !== "succeeded") throw new Error(job.error ?? job.message ?? "Evidence job did not complete.");
+    if (["queued", "running"].includes(job.status)) {
+      setEvidenceOperationPollError("This evidence operation is still active. Resume this exact saved job instead of starting another one.");
+      return job;
+    }
+    if (job.status !== "succeeded") throw new Error(job.error ?? job.message ?? "Evidence operation did not complete successfully.");
+    setEvidenceOperationPollError(null);
     return job;
   }
-  async function buildAssurance() { setBusy(true); setError(null); try { const job = await waitForJob(await studioApi.startAssuranceCaseJob(project.session_id, executionBackendKey)); const result=await studioApi.getLatestAssuranceCase(project.session_id); if (!job.output.assurance_id || result.assurance_id !== job.output.assurance_id) throw new Error("Assurance job output identity did not match its persisted AssuranceCase."); setAssurance(result); onAssurance(result); } catch(reason) { setError(reason instanceof Error ? reason.message : String(reason)); } finally { setBusy(false); } }
-  async function exportBundle() { setBusy(true); setError(null); try { const job = await waitForJob(await studioApi.startVerificationBundleJob(project.session_id, executionBackendKey)); const exported={ path: job.output.path, sha256: job.output.sha256, entry_count: Number(job.output.entry_count) }; if (!exported.path || !exported.sha256 || !Number.isFinite(exported.entry_count)) throw new Error("VerificationBundle job did not persist a complete export receipt."); setBundle(exported); setBundleValidation(await studioApi.validateVerificationBundle(exported.path)); } catch(reason) { setError(reason instanceof Error ? reason.message : String(reason)); } finally { setBusy(false); } }
+  async function applyEvidenceOperationResult(job: ProductJob) {
+    if (job.kind === "assurance_case") {
+      if (!job.output.assurance_id) throw new Error("Assurance job did not return its persisted AssuranceCase identity.");
+      const result = await studioApi.getAssuranceCase(project.session_id, job.output.assurance_id);
+      setAssurance(result);
+      onAssurance(result);
+      return;
+    }
+    if (job.kind === "verification_bundle_export") {
+      const exported = { path: job.output.path, sha256: job.output.sha256, entry_count: Number(job.output.entry_count) };
+      if (!exported.path || !exported.sha256 || !Number.isFinite(exported.entry_count)) throw new Error("VerificationBundle job did not persist a complete export receipt.");
+      setBundle(exported);
+      setBundleValidation(await studioApi.validateVerificationBundle(exported.path));
+      return;
+    }
+    throw new Error(`Unsupported persisted evidence operation kind: ${job.kind}`);
+  }
+  async function resumeEvidenceOperation() {
+    if (!evidenceOperationJob || !["queued", "running"].includes(evidenceOperationJob.status)) return;
+    setBusy(true); setError(null); setEvidenceOperationPollError(null);
+    try {
+      const job = await waitForEvidenceOperation(evidenceOperationJob);
+      if (job.status === "succeeded") await applyEvidenceOperationResult(job);
+    } catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
+    finally { setBusy(false); }
+  }
+  async function buildAssurance() {
+    setBusy(true); setError(null); setEvidenceOperationPollError(null);
+    try {
+      const job = await waitForEvidenceOperation(await studioApi.startAssuranceCaseJob(project.session_id, executionBackendKey));
+      if (job.status === "succeeded") await applyEvidenceOperationResult(job);
+    } catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
+    finally { setBusy(false); }
+  }
+  async function exportBundle() {
+    setBusy(true); setError(null); setEvidenceOperationPollError(null);
+    try {
+      const job = await waitForEvidenceOperation(await studioApi.startVerificationBundleJob(project.session_id, executionBackendKey));
+      if (job.status === "succeeded") await applyEvidenceOperationResult(job);
+    } catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
+    finally { setBusy(false); }
+  }
 
   const hasExact = Boolean(evaluation || treeEvidence);
+  const evidenceOperationPending = Boolean(evidenceOperationJob && ["queued", "running"].includes(evidenceOperationJob.status));
 
   return (
     <section className="evidence-workbench">
@@ -682,8 +736,8 @@ export function EvidenceWorkspace({
         </>}
       </section>
       <section className="evidence-section"><div className="feature-toolbar compact-toolbar"><div><span className="eyebrow">CONDITION MONITORING DEMO</span><h3>Telemetry decision support with review and scope safeguards</h3><p>Telemetry → frozen class/selective policy → scope → explanation check → AssuranceCase → VerificationBundle → ACCEPT / REVIEW / OUT-OF-SCOPE. This is not targeting or actuator control.</p></div><Button view="action" disabled={busy || project.read_only || !run || !selectivePolicy || !["none", "available"].includes(demoHydrationStatus) || generalizationHydrationStatus === "loading" || generalizationHydrationStatus === "error" || generalizationHydrationStatus === "idle"} onClick={runConditionDemo} data-ruflex-action="condition_demo.run">Run telemetry demonstration</Button></div>{demoHydrationStatus === "loading" && <p role="status" data-testid="condition-demo-loading">Loading saved condition-monitoring evidence…</p>}{demoHydrationStatus === "none" && <p className="property-description" data-testid="condition-demo-empty">No saved condition-monitoring result is available.</p>}{demoHydrationStatus === "error" && <div className="error" role="alert" data-testid="condition-demo-hydration-error"><strong>Saved condition-monitoring evidence could not be verified; another demonstration is paused.</strong><p>{demoHydrationError}</p><Button view="outlined" onClick={() => setDemoHydrationReload((current) => current + 1)}>Retry condition-monitoring evidence</Button></div>}{generalizationHydrationStatus === "loading" && <p role="status">Resolving the saved GeneralizationContract before scope-aware review…</p>}{generalizationHydrationStatus === "none" && <p className="property-description">No GeneralizationContract is saved; this demonstration will report scope as undeclared.</p>}{generalizationHydrationStatus === "error" && <div className="error" role="alert" data-testid="evidence-generalization-hydration-error"><strong>Saved GeneralizationContract could not be verified; the scope-aware demonstration is paused.</strong><p>{generalizationHydrationError}</p>{onRetryGeneralization && <Button view="outlined" onClick={onRetryGeneralization}>Retry GeneralizationContract</Button>}</div>}{!selectivePolicy && <p className="property-description">A validation-derived selective policy is required before this demonstration can make an ACCEPT/REVIEW decision.</p>}{demo && <div className="trace-card" data-testid="condition-monitoring-demo"><StatusBadge tone={demo.decision === "ACCEPT" ? "success" : demo.decision === "OUT_OF_SCOPE" ? "danger" : "warning"}>{demo.decision}</StatusBadge><p>Class {demo.predicted_class} · probability {demo.probability.toFixed(4)} · confidence {demo.confidence.toFixed(4)} · scope {demo.scope_disposition}</p><small className="mono">Explanation {demo.explanation_id?.slice(0, 12)} · check {demo.explanation_check_id?.slice(0, 12)} · AssuranceCase {demo.assurance_id?.slice(0, 12)} · VerificationBundle {demo.verification_bundle_sha256?.slice(0, 12)}</small><p>{demo.explanation_note}</p><small>{demo.safety_note}</small></div>}</section>
-      <section className="evidence-section"><div className="feature-toolbar compact-toolbar"><div><span className="eyebrow">ASSURANCE CASE</span><h3>Independent evidence gates and qualified claims</h3><p>No universal trust score is produced.</p></div><Button view="action" disabled={busy || project.read_only} onClick={buildAssurance} data-ruflex-action="assurance.create">{busy ? "Building…" : "Build AssuranceCase"}</Button></div>{assuranceHydrationStatus === "loading" && <p role="status">Loading saved AssuranceCase…</p>}{assuranceHydrationStatus === "none" && !assurance && <p className="property-description" data-testid="assurance-empty">No saved AssuranceCase is available for this project.</p>}{assuranceHydrationStatus === "error" && <div className="error" role="alert"><strong>Saved AssuranceCase could not be verified.</strong><p>{assuranceHydrationError}</p>{onRetryAssurance && <Button view="outlined" onClick={onRetryAssurance}>Retry AssuranceCase</Button>}</div>}{assurance && <div className="trace-card" data-testid="assurance-case"><p>{assurance.scientific_note}</p><div className="data-table-wrap"><table className="data-table"><thead><tr><th>gate</th><th>status</th><th>evidence / risk</th></tr></thead><tbody>{assurance.gates.map((gate) => <tr key={gate.key}><td>{gate.key.replaceAll("_", " ")}</td><td><StatusBadge tone={gate.status === "PASS" ? "success" : gate.status === "FAIL" ? "danger" : "warning"}>{gate.status}</StatusBadge></td><td>{gate.evidence.join(", ") || gate.risk || "—"}</td></tr>)}</tbody></table></div>{assurance.claims.length > 0 && <div className="assurance-claims"><strong>Claim graph</strong>{assurance.claims.map((claim) => <div className="property-description" key={claim.claim_id}><StatusBadge tone={claim.status === "SUPPORTED" ? "success" : claim.status === "UNSUPPORTED" ? "danger" : "warning"}>{claim.status}</StatusBadge><p>{claim.statement}</p><small>Evidence: {claim.evidence_ids.join(", ")}</small>{claim.limitations.map((limitation) => <small key={limitation}>Limitation: {limitation}</small>)}</div>)}</div>}{assurance.unresolved_risks.map((risk) => <p className="property-description" key={risk}>Unresolved risk · {risk}</p>)}</div>}</section>
-      <section className="evidence-section"><div className="feature-toolbar compact-toolbar"><div><span className="eyebrow">VERIFICATION BUNDLE</span><h3>Inspection-first evidence export</h3><p>Exports declarative evidence and checksums; it excludes executable code, pickle/joblib, raw datasets, credentials, caches and node_modules.</p></div><Button view="outlined" disabled={busy || project.read_only || !assurance} onClick={exportBundle} data-ruflex-action="bundle.export">Export and validate bundle</Button></div>{verificationBundleRecord && <div className="trace-card" data-testid="verification-bundle-record"><div className="evidence-check-header"><strong>Persisted VerificationBundle</strong><StatusBadge tone="info">inspection first</StatusBadge></div><p>{verificationBundleRecord.entry_count} declarative entries · SHA-256 {verificationBundleRecord.sha256}</p><small>Manifest {verificationBundleRecord.manifest_sha256} · linked AssuranceCase {verificationBundleRecord.assurance_id}</small></div>}{bundle && <div className="trace-card" data-testid="verification-bundle"><p>{bundle.entry_count} inspection entries · SHA-256 {bundle.sha256}</p><small>{bundle.path}</small>{bundleValidation && <><div className="evidence-check-header"><strong>Portable validation</strong><StatusBadge tone={bundleValidation.status === "PASS" ? "success" : "danger"}>{bundleValidation.status}</StatusBadge></div><p>{bundleValidation.status === "PASS" ? `${bundleValidation.checked_entries} checksummed entries validated after export.` : bundleValidation.errors.join(" ")}</p>{bundleValidation.warnings.map((warning) => <p className="property-description" key={warning}>{warning}</p>)}</>}</div>}</section>
+      <section className="evidence-section"><div className="feature-toolbar compact-toolbar"><div><span className="eyebrow">ASSURANCE CASE</span><h3>Independent evidence gates and qualified claims</h3><p>No universal trust score is produced.</p></div><Button view="action" disabled={busy || project.read_only || evidenceOperationPending} onClick={buildAssurance} data-ruflex-action="assurance.create">{busy ? "Building…" : "Build AssuranceCase"}</Button></div>{evidenceOperationPending && <div className={evidenceOperationPollError ? "error" : "property-description"} role={evidenceOperationPollError ? "alert" : "status"} data-testid="evidence-operation-resume"><strong>{evidenceOperationJob?.kind.replaceAll("_", " ")} · job {evidenceOperationJob?.job_id.slice(0, 12)}</strong>{evidenceOperationPollError ? <p>{evidenceOperationPollError}</p> : <p>This persisted evidence operation is still active; duplicate evidence jobs are paused.</p>}<Button view="outlined" disabled={busy} onClick={resumeEvidenceOperation}>Resume saved evidence job</Button></div>}{assuranceHydrationStatus === "loading" && <p role="status">Loading saved AssuranceCase…</p>}{assuranceHydrationStatus === "none" && !assurance && <p className="property-description" data-testid="assurance-empty">No saved AssuranceCase is available for this project.</p>}{assuranceHydrationStatus === "error" && <div className="error" role="alert"><strong>Saved AssuranceCase could not be verified.</strong><p>{assuranceHydrationError}</p>{onRetryAssurance && <Button view="outlined" onClick={onRetryAssurance}>Retry AssuranceCase</Button>}</div>}{assurance && <div className="trace-card" data-testid="assurance-case"><p>{assurance.scientific_note}</p><div className="data-table-wrap"><table className="data-table"><thead><tr><th>gate</th><th>status</th><th>evidence / risk</th></tr></thead><tbody>{assurance.gates.map((gate) => <tr key={gate.key}><td>{gate.key.replaceAll("_", " ")}</td><td><StatusBadge tone={gate.status === "PASS" ? "success" : gate.status === "FAIL" ? "danger" : "warning"}>{gate.status}</StatusBadge></td><td>{gate.evidence.join(", ") || gate.risk || "—"}</td></tr>)}</tbody></table></div>{assurance.claims.length > 0 && <div className="assurance-claims"><strong>Claim graph</strong>{assurance.claims.map((claim) => <div className="property-description" key={claim.claim_id}><StatusBadge tone={claim.status === "SUPPORTED" ? "success" : claim.status === "UNSUPPORTED" ? "danger" : "warning"}>{claim.status}</StatusBadge><p>{claim.statement}</p><small>Evidence: {claim.evidence_ids.join(", ")}</small>{claim.limitations.map((limitation) => <small key={limitation}>Limitation: {limitation}</small>)}</div>)}</div>}{assurance.unresolved_risks.map((risk) => <p className="property-description" key={risk}>Unresolved risk · {risk}</p>)}</div>}</section>
+      <section className="evidence-section"><div className="feature-toolbar compact-toolbar"><div><span className="eyebrow">VERIFICATION BUNDLE</span><h3>Inspection-first evidence export</h3><p>Exports declarative evidence and checksums; it excludes executable code, pickle/joblib, raw datasets, credentials, caches and node_modules.</p></div><Button view="outlined" disabled={busy || project.read_only || !assurance || evidenceOperationPending} onClick={exportBundle} data-ruflex-action="bundle.export">Export and validate bundle</Button></div>{verificationBundleRecord && <div className="trace-card" data-testid="verification-bundle-record"><div className="evidence-check-header"><strong>Persisted VerificationBundle</strong><StatusBadge tone="info">inspection first</StatusBadge></div><p>{verificationBundleRecord.entry_count} declarative entries · SHA-256 {verificationBundleRecord.sha256}</p><small>Manifest {verificationBundleRecord.manifest_sha256} · linked AssuranceCase {verificationBundleRecord.assurance_id}</small></div>}{bundle && <div className="trace-card" data-testid="verification-bundle"><p>{bundle.entry_count} inspection entries · SHA-256 {bundle.sha256}</p><small>{bundle.path}</small>{bundleValidation && <><div className="evidence-check-header"><strong>Portable validation</strong><StatusBadge tone={bundleValidation.status === "PASS" ? "success" : "danger"}>{bundleValidation.status}</StatusBadge></div><p>{bundleValidation.status === "PASS" ? `${bundleValidation.checked_entries} checksummed entries validated after export.` : bundleValidation.errors.join(" ")}</p>{bundleValidation.warnings.map((warning) => <p className="property-description" key={warning}>{warning}</p>)}</>}</div>}</section>
       <section className="evidence-section">
         <div className="feature-toolbar compact-toolbar"><div><span className="eyebrow">EXHAUSTIVE LAB</span><h3>Finite structure and declared discrete-grid evidence</h3><p>Exactness applies only to the finite tree structure or the explicitly declared FIS grid—not to arbitrary continuous models.</p></div></div>
         {exhaustiveHydrationStatus === "loading" && <p role="status">Loading saved exhaustive evidence…</p>}

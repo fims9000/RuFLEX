@@ -162,13 +162,44 @@ test("PRODUCT-EVIDENCE captures the frozen V1 Studio route from persisted object
   await capture(page, screenshots, "14_expert_correction.png");
 
   await page.getByRole("button", { name: "E", exact: true }).click();
+  let failNextEvidenceOperationStatusRead = true;
+  const evidenceOperationStatusUrls: string[] = [];
+  await page.route("**/api/projects/*/evidence/explanation-jobs/*", async (route) => {
+    if (route.request().method() !== "GET") return route.continue();
+    evidenceOperationStatusUrls.push(route.request().url());
+    if (failNextEvidenceOperationStatusRead) {
+      failNextEvidenceOperationStatusRead = false;
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Temporary evidence operation status read failure" }) });
+      return;
+    }
+    await route.continue();
+  });
+  const assuranceJobResponsePromise = page.waitForResponse((response) => response.request().method() === "POST" && response.url().endsWith("/api/projects/evidence/assurance-jobs"));
   await page.getByRole("button", { name: "Build AssuranceCase", exact: true }).click();
+  const assuranceJobResponse = await assuranceJobResponsePromise;
+  expect(assuranceJobResponse.ok()).toBeTruthy();
+  const assuranceJob = await assuranceJobResponse.json() as { job_id: string };
+  await expect(page.getByTestId("evidence-operation-resume")).toContainText("Temporary evidence operation status read failure");
+  await expect(page.getByRole("button", { name: "Build AssuranceCase", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Export and validate bundle", exact: true })).toBeDisabled();
+  await page.getByRole("button", { name: "Resume saved evidence job", exact: true }).click();
   await expect(page.getByTestId("assurance-case")).toBeVisible();
+  await expect(page.getByTestId("evidence-operation-resume")).toHaveCount(0);
+  expect(evidenceOperationStatusUrls.every((url) => url.endsWith(`/evidence/explanation-jobs/${assuranceJob.job_id}`))).toBeTruthy();
   await capture(page, screenshots, "16_assurance_case.png", page.getByTestId("assurance-case"));
+  failNextEvidenceOperationStatusRead = true;
+  const bundleJobResponsePromise = page.waitForResponse((response) => response.request().method() === "POST" && response.url().endsWith("/api/projects/evidence/verification-bundle-jobs"));
   await page.getByRole("button", { name: "Export and validate bundle", exact: true }).click();
+  const bundleJobResponse = await bundleJobResponsePromise;
+  expect(bundleJobResponse.ok()).toBeTruthy();
+  const bundleJob = await bundleJobResponse.json() as { job_id: string };
+  await expect(page.getByTestId("evidence-operation-resume")).toContainText("Temporary evidence operation status read failure");
+  await page.getByRole("button", { name: "Resume saved evidence job", exact: true }).click();
   await expect(page.getByTestId("verification-bundle")).toBeVisible();
   await expect(page.getByTestId("verification-bundle")).toContainText("Portable validation");
   await expect(page.getByTestId("verification-bundle")).toContainText("PASS");
+  await expect(page.getByTestId("evidence-operation-resume")).toHaveCount(0);
+  expect(evidenceOperationStatusUrls.every((url) => url.endsWith(`/evidence/explanation-jobs/${assuranceJob.job_id}`) || url.endsWith(`/evidence/explanation-jobs/${bundleJob.job_id}`))).toBeTruthy();
   await capture(page, screenshots, "17_verification_bundle.png", page.getByTestId("verification-bundle"));
   await page.getByRole("button", { name: "Run telemetry demonstration", exact: true }).click();
   await expect(page.getByTestId("condition-monitoring-demo")).toBeVisible();

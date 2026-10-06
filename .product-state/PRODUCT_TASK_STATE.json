@@ -110,7 +110,8 @@
     "alpha_run_capability_hydration_evidence_workspace",
     "alpha_evidence_runtime_catalog_hydration",
     "alpha_evidence_lineage_stale_state_audit",
-    "alpha_explanation_job_poll_resume"
+    "alpha_explanation_job_poll_resume",
+    "alpha_assurance_bundle_job_poll_resume"
   ],
   "active_capability": "alpha_saved_evidence_hydration_audit",
   "active_acceptance": [
@@ -118,7 +119,7 @@
     "Prioritize identity-linked EvidenceWorkspace reads and guard any action that could duplicate persisted work until its inventory resolves."
   ],
   "blockers": [],
-  "next_executable_work": "Continue alpha hardening beyond Evidence job hydration: inspect the next persisted long-running evidence operation (AssuranceCase or VerificationBundle export) for transient polling failures that could trigger duplicate work; add exact job-ID resume coverage without changing scientific product semantics. Preserve article changes and do not push.",
+  "next_executable_work": "Audit remaining project evidence mutations for request/response failures that can leave persisted objects created but UI state unresolved; prioritize exact-ID recovery for BehaviorSpec and reusable evidence operations. Preserve article changes and do not push.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -218,6 +219,7 @@
     "alpha_run_capability_hydration_evidence_workspace": "PASS: Explanation generation no longer falls back to broad model-catalog capabilities when exact-run negotiation fails. The method picker and generate action remain paused while resolving or on error, with explicit retry. PRODUCT-EVIDENCE injects a run-capability 503 on project reopen and verifies fail-closed behavior followed by exact retry recovery. TypeScript/Vite build and focused Playwright passed.",
     "alpha_evidence_runtime_catalog_hydration": "PASS: Runtime explainer, validator and execution-backend catalogs load as one explicit state; transient failures no longer become empty choices/default backend, and explanation generation/check actions stay paused until catalog identities resolve. PRODUCT-EVIDENCE injects backend-catalog 503 after close/reopen, confirms fail-closed controls, then retries successfully. Frontend unit 23/23, TypeScript/Vite build, focused Playwright and git diff --check passed.",
     "alpha_evidence_lineage_stale_state_audit": "PASS: Read-only audit confirmed EvidenceWorkspace state is reset on project close/reopen, while failed exact-ID Lineage opens leave the active workspace in Project Lineage with a scoped retry/error rather than navigating to and presenting an unrelated evidence object. Existing PRODUCT-EVIDENCE verifies VerificationBundle exact-ID retry; no code change required.",
-    "alpha_explanation_job_poll_resume": "PASS: If persisted explanation generation/check job polling fails or exceeds the poll window, Evidence retains its exact job ID, blocks new explanation/check submissions while it remains active, and exposes Resume saved job to continue polling that same ID. PRODUCT-EVIDENCE injected a status GET 503 after one generation POST, resumed successfully, and verified all status reads used the created job ID with exactly one POST. Frontend unit 23/23, TypeScript/Vite build, focused Playwright and git diff --check passed."
+    "alpha_explanation_job_poll_resume": "PASS: If persisted explanation generation/check job polling fails or exceeds the poll window, Evidence retains its exact job ID, blocks new explanation/check submissions while it remains active, and exposes Resume saved job to continue polling that same ID. PRODUCT-EVIDENCE injected a status GET 503 after one generation POST, resumed successfully, and verified all status reads used the created job ID with exactly one POST. Frontend unit 23/23, TypeScript/Vite build, focused Playwright and git diff --check passed.",
+    "alpha_assurance_bundle_job_poll_resume": "PASS: AssuranceCase and VerificationBundle jobs now have a distinct persisted-operation identity rather than being displayed as ExplanationJobs. Polling errors retain the exact job, pause duplicate Assurance/Bundle submissions and can resume by ID; successful AssuranceCase restoration fetches the job's exact assurance_id, and bundle output is validated after resume. PRODUCT-EVIDENCE injected status 503 into both operations, resumed each, and verified all reads remained bound to their original job IDs. Frontend unit 23/23, TypeScript/Vite build, focused Playwright and git diff --check passed."
   }
 }
