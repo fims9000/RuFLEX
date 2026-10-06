@@ -77,12 +77,16 @@
     "alpha_training_catalog_failure_states",
     "alpha_study_seed_input_validation",
     "alpha_training_parameter_constraint_feedback",
-    "alpha_release_readiness_closeout"
+    "alpha_release_readiness_closeout",
+    "alpha_training_run_history_recovery"
   ],
-  "active_capability": null,
-  "active_acceptance": [],
+  "active_capability": "alpha_final_test_boundary_load_truthfulness",
+  "active_acceptance": [
+    "Distinguish an unavailable persisted final-test boundary from a genuinely unopened test in the Evaluation workspace.",
+    "Do not offer validation-policy mutations until the dataset-level final-test boundary has been resolved; retain read-only inspection of existing evidence."
+  ],
   "blockers": [],
-  "next_executable_work": "Alpha release-readiness closeout is complete and pushed. Continue with the next user-directed product increment; retain the shared NumPy/Numba compatibility note in the QA receipt.",
+  "next_executable_work": "Implement and verify fail-closed Evaluation loading states for persisted final-test access/boundary evidence, then continue the next dependency-ready Alpha UX/integrity gap. Keep changes local until separately authorized to push.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -149,6 +153,7 @@
     "alpha_training_catalog_failure_states": "PASS: Training now distinguishes model-catalog request failure (visible error with explicit retry) from a loaded catalog with no compatible fit adapter (visible not-applicable explanation). Single-run and Study actions stay disabled in both states; retry does not substitute an adapter. Focused real Studio route verifies 503 → retry → empty compatible catalog, no training/Study POST, inventory, frontend unit tests (10) and TypeScript/Vite production build passed.",
     "alpha_study_seed_input_validation": "PASS: Multi-seed Study input no longer silently drops invalid seed tokens or deduplicates repeated values. It requires 3–32 distinct safe whole-number seeds; the field exposes inline accessible feedback and the Study action is disabled until corrected. Focused ExperimentWorkspace unit tests 5 passed and TypeScript/Vite production build passed.",
     "alpha_training_parameter_constraint_feedback": "PASS: Training numeric controls now combine runtime adapter constraints with API limits and prevent single-run or Study submission for invalid model settings. Exact API caps are reflected in controls (for example random-forest estimators max 5000); regression verifies out-of-range rejection and recovery at the boundary. Focused ExperimentWorkspace unit tests 6 passed and TypeScript/Vite build passed.",
-    "alpha_release_closeout": "PASS WITH DOCUMENTED LOCAL ENVIRONMENT CAVEAT: full Python suite and compileall passed in isolated Python 3.14 env with NumPy 2.3.5; the shared env's NumPy 2.5.3 remains incompatible with Numba 0.63.1. Alpha-focused checks: backend 26, frontend unit 12, Vite, Storybook, focused Studio E2E 2/2. Fresh exact-HEAD archive extraction passed unzip integrity, focused backend/compileall, clean npm ci, frontend unit and Vite build. Feature branch pushed and remote SHA verified. Receipt: docs/qa/V1_3_ALPHA_CLOSEOUT_QA.md."
+    "alpha_release_closeout": "PASS WITH DOCUMENTED LOCAL ENVIRONMENT CAVEAT: full Python suite and compileall passed in isolated Python 3.14 env with NumPy 2.3.5; the shared env's NumPy 2.5.3 remains incompatible with Numba 0.63.1. Alpha-focused checks: backend 26, frontend unit 12, Vite, Storybook, focused Studio E2E 2/2. Fresh exact-HEAD archive extraction passed unzip integrity, focused backend/compileall, clean npm ci, frontend unit and Vite build. Feature branch pushed and remote SHA verified. Receipt: docs/qa/V1_3_ALPHA_CLOSEOUT_QA.md.",
+    "alpha_training_run_history_recovery": "PASS: Evaluation distinguishes saved-run list loading failure from an empty project and exposes retry. When latest-run pointer is absent, restored run history falls back deterministically to newest saved run. Frontend unit suite 13 passed, Vite build passed, focused E2E E2E-10 passed, diff check passed. Local commit pending."
   }
 }

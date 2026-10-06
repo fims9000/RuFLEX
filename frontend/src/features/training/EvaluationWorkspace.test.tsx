@@ -39,9 +39,17 @@ const threshold = {
   probability_source: "raw", source_split: "validation", objective: "f1", decisions: [], confusion_matrix: run.confusion_matrix,
 };
 
-function renderWorkspace(readOnly = false, overrides: { dataset?: unknown; finalTestEvaluation?: unknown } = {}) {
+function renderWorkspace(readOnly = false, overrides: {
+  dataset?: unknown;
+  finalTestEvaluation?: unknown;
+  run?: unknown;
+  runs?: unknown[];
+  runListStatus?: "idle" | "loading" | "loaded" | "error";
+  runListError?: string | null;
+  onRetryRunList?: () => void;
+} = {}) {
   return render(<EvaluationWorkspace
-    project={{ ...project, read_only: readOnly } as never} dataset={(overrides.dataset ?? null) as never} fis={null} run={run as never} runs={[run] as never} study={null}
+    project={{ ...project, read_only: readOnly } as never} dataset={(overrides.dataset ?? null) as never} fis={null} run={(overrides.run === undefined ? run : overrides.run) as never} runs={(overrides.runs ?? [run]) as never} runListStatus={overrides.runListStatus ?? "loaded"} runListError={overrides.runListError ?? null} onRetryRunList={overrides.onRetryRunList ?? vi.fn()} study={null}
     evaluation={evaluation as never} calibrationTransform={null} decisionThreshold={threshold as never} finalTestEvaluation={(overrides.finalTestEvaluation ?? null) as never}
     comparison={null} sliceAnalysis={null} selectivePolicy={null} stabilityGatePolicy={null} theme={"light" as never}
     onEvaluation={vi.fn()} onCalibration={vi.fn()} onThreshold={vi.fn()} onFinalTest={vi.fn()} onComparison={vi.fn()} onSliceAnalysis={vi.fn()} onSelectivePolicy={vi.fn()}
@@ -49,6 +57,16 @@ function renderWorkspace(readOnly = false, overrides: { dataset?: unknown; final
 }
 
 describe("EvaluationWorkspace final-test boundary", () => {
+  it("does not misreport a run-list request failure as an empty project", () => {
+    const retry = vi.fn();
+    renderWorkspace(false, { run: null, runs: [], runListStatus: "error", runListError: "API unavailable", onRetryRunList: retry });
+    expect(screen.getByRole("alert")).toHaveTextContent("Could not restore saved training runs");
+    expect(screen.getByRole("alert")).toHaveTextContent("API unavailable");
+    expect(screen.queryByText("No trained run")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Retry loading saved runs" }));
+    expect(retry).toHaveBeenCalledOnce();
+  });
+
   it("requires explicit confirmation before the frozen final-test operation is callable", async () => {
     studioApi.evaluateFinalTest.mockResolvedValue({ final_test_id: "final", run_id: run.run_id, metrics: {}, test_row_count: 2, policy_identity: "policy", test_case_identity: "case" });
     renderWorkspace();

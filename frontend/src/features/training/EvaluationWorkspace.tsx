@@ -95,6 +95,9 @@ type Props = {
   fis: FISSpec | null;
   run: TrainingRun | null;
   runs: TrainingRun[];
+  runListStatus: "idle" | "loading" | "loaded" | "error";
+  runListError: string | null;
+  onRetryRunList: () => void;
   study: TrainingStudy | null;
   evaluation: AnalysisEvaluation | null;
   calibrationTransform: CalibrationTransform | null;
@@ -120,6 +123,9 @@ export function EvaluationWorkspace({
   fis,
   run,
   runs,
+  runListStatus,
+  runListError,
+  onRetryRunList,
   study,
   evaluation,
   calibrationTransform,
@@ -187,7 +193,13 @@ export function EvaluationWorkspace({
   }, [run, activeEvaluation, activeCalibration]);
 
   if (!run || !option || !runId) {
-    return <section className="feature-workspace"><EmptyState title="No trained run">Train a model in Experiment before evaluating it.</EmptyState></section>;
+    return <section className="feature-workspace">
+      {runListStatus === "error" ? <div className="error" role="alert">
+        <strong>Could not restore saved training runs</strong>
+        <p>{runListError ?? "The saved run list is temporarily unavailable. No empty state is inferred from this failure."}</p>
+        <Button view="outlined" onClick={onRetryRunList}>Retry loading saved runs</Button>
+      </div> : runListStatus === "loading" || runListStatus === "idle" ? <div role="status">Loading saved training runs…</div> : runs.length > 0 ? <div className="info-message" role="status">Saved runs are available. Restoring the most recent run…</div> : <EmptyState title="No trained run">Train a model in Experiment before evaluating it.</EmptyState>}
+    </section>;
   }
 
   async function ensureEvaluation(): Promise<AnalysisEvaluation> {
@@ -365,6 +377,11 @@ export function EvaluationWorkspace({
 
   return <section className="feature-workspace evaluation-workspace">
     {project.read_only && <div className="info-message" role="status">Read-only project: saved validation evidence is available to inspect, but new evaluations, policies and final-test access cannot be saved from this session.</div>}
+    {runListStatus === "error" && <div className="error" role="alert">
+      <strong>Saved run history could not be loaded</strong>
+      <p>{runListError ?? "Model comparison may be incomplete until the run list is available."}</p>
+      <Button view="outlined" onClick={onRetryRunList}>Retry loading saved runs</Button>
+    </div>}
     <div className="feature-toolbar">
       <div>
         <span className="eyebrow">VALIDATION EVIDENCE</span>

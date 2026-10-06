@@ -115,6 +115,9 @@ export function App() {
     useState<FISEvaluation | null>(null);
   const [trainingRun, setTrainingRun] = useState<TrainingRun | null>(null);
   const [trainingRuns, setTrainingRuns] = useState<TrainingRun[]>([]);
+  const [trainingRunsStatus, setTrainingRunsStatus] = useState<"idle" | "loading" | "loaded" | "error">("idle");
+  const [trainingRunsError, setTrainingRunsError] = useState<string | null>(null);
+  const [trainingRunsReload, setTrainingRunsReload] = useState(0);
   const [trainingStudy, setTrainingStudy] = useState<TrainingStudy | null>(null);
   const [stabilityAnalysis, setStabilityAnalysis] = useState<StudyStabilityAnalysis | null>(null);
   const [stabilityGatePolicy, setStabilityGatePolicy] = useState<StabilityGatePolicy | null>(null);
@@ -169,6 +172,8 @@ export function App() {
       setPreviousFisEvaluation(null);
       setTrainingRun(null);
       setTrainingRuns([]);
+      setTrainingRunsStatus("idle");
+      setTrainingRunsError(null);
       setTrainingStudy(null);
       setAnalysisEvaluation(null);
       setAnalysisComparison(null);
@@ -198,6 +203,10 @@ export function App() {
       return;
     }
     setOverviewContextReady(false);
+    setTrainingRun(null);
+    setTrainingRuns([]);
+    setTrainingRunsStatus("loading");
+    setTrainingRunsError(null);
     Promise.all([
       studioApi.getDatasetState(project.session_id).catch(() => null),
       studioApi.getActiveFis(project.session_id).catch(() => null),
@@ -213,14 +222,13 @@ export function App() {
         setIdColumns(state.contract.id_columns.join(", "));
       }
       setFis(activeFis);
-      setTrainingRun(latestTraining);
+      setTrainingRun((current) => latestTraining ?? current);
       setOverviewContextReady(true);
     });
     studioApi
       .getLatestFisTrace(project.session_id)
       .then(setFisEvaluation)
       .catch(() => setFisEvaluation(null));
-    studioApi.getTrainingRuns(project.session_id).then(setTrainingRuns).catch(() => setTrainingRuns([]));
     studioApi.getLatestBehaviorSpecResult(project.session_id).then(async (result) => {
       setBehaviorResult(result);
       const specs = await studioApi.listBehaviorSpecs(project.session_id);
@@ -267,6 +275,24 @@ export function App() {
     studioApi.getProjectIntegrity(project.session_id).then(setIntegrity).catch(() => setIntegrity(null));
     return () => { active = false; };
   }, [project?.session_id]);
+  useEffect(() => {
+    let active = true;
+    if (!project) return () => { active = false; };
+    setTrainingRunsStatus("loading");
+    setTrainingRunsError(null);
+    studioApi.getTrainingRuns(project.session_id).then((runs) => {
+      if (!active) return;
+      setTrainingRuns(runs);
+      setTrainingRunsStatus("loaded");
+      const newest = [...runs].sort((left, right) => Date.parse(right.created_at) - Date.parse(left.created_at))[0] ?? null;
+      setTrainingRun((current) => current ?? newest);
+    }).catch((reason: unknown) => {
+      if (!active) return;
+      setTrainingRunsStatus("error");
+      setTrainingRunsError(reason instanceof Error ? reason.message : "Could not load saved training runs.");
+    });
+    return () => { active = false; };
+  }, [project?.session_id, trainingRunsReload]);
   useEffect(() => {
     if (!project) return;
     studioApi.getProjectLineage(project.session_id).then(setLineage).catch(() => undefined);
@@ -1183,7 +1209,7 @@ export function App() {
           theme={theme}
           onRun={(run) => {
             setTrainingRun(run);
-            studioApi.getTrainingRuns(project.session_id).then(setTrainingRuns).catch(() => undefined);
+            setTrainingRunsReload((current) => current + 1);
             setStatus(`Training run ${run.run_id.slice(0, 8)} completed`);
             studioApi
               .listArtifacts(project.session_id)
@@ -1193,7 +1219,7 @@ export function App() {
           onStudy={setTrainingStudy}
         />
       ) : active === "ANALYSES" ? (
-        <EvaluationWorkspace project={project} dataset={datasetState} fis={fis} run={trainingRun} runs={trainingRuns} study={trainingStudy} evaluation={analysisEvaluation} calibrationTransform={calibrationTransform} decisionThreshold={decisionThreshold} finalTestEvaluation={finalTestEvaluation} comparison={analysisComparison} sliceAnalysis={sliceAnalysis} selectivePolicy={selectivePolicy} stabilityGatePolicy={stabilityGatePolicy} theme={theme} onEvaluation={setAnalysisEvaluation} onCalibration={setCalibrationTransform} onThreshold={setDecisionThreshold} onSelectivePolicy={setSelectivePolicy} onFinalTest={setFinalTestEvaluation} onComparison={setAnalysisComparison} onSliceAnalysis={setSliceAnalysis} />
+        <EvaluationWorkspace project={project} dataset={datasetState} fis={fis} run={trainingRun} runs={trainingRuns} runListStatus={trainingRunsStatus} runListError={trainingRunsError} onRetryRunList={() => setTrainingRunsReload((current) => current + 1)} study={trainingStudy} evaluation={analysisEvaluation} calibrationTransform={calibrationTransform} decisionThreshold={decisionThreshold} finalTestEvaluation={finalTestEvaluation} comparison={analysisComparison} sliceAnalysis={sliceAnalysis} selectivePolicy={selectivePolicy} stabilityGatePolicy={stabilityGatePolicy} theme={theme} onEvaluation={setAnalysisEvaluation} onCalibration={setCalibrationTransform} onThreshold={setDecisionThreshold} onSelectivePolicy={setSelectivePolicy} onFinalTest={setFinalTestEvaluation} onComparison={setAnalysisComparison} onSliceAnalysis={setSliceAnalysis} />
       ) : active === "EVIDENCE" ? (
         <EvidenceWorkspace
           project={project}

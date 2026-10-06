@@ -157,3 +157,24 @@ test("E2E-09 declares and freezes the new-entity generalization contract", async
   await page.getByRole("button", { name: "Freeze evaluation contract", exact: true }).click();
   await expect(page.getByText("Split recommendation: group · Frozen", { exact: true })).toBeVisible();
 });
+
+test("E2E-10 distinguishes unavailable saved training history from an empty project and retries", async ({ page }) => {
+  let runListRequests = 0;
+  await page.route("**/api/projects/*/training/runs", async (route) => {
+    if (route.request().method() !== "GET") return route.continue();
+    runListRequests += 1;
+    if (runListRequests === 1) {
+      return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "training history temporarily unavailable" }) });
+    }
+    return route.fulfill({ status: 200, contentType: "application/json", body: "[]" });
+  });
+  await createProject(page, projectPath("run-history"), "Run history project");
+  await page.getByRole("button", { name: "A", exact: true }).click();
+  const error = page.getByRole("alert");
+  await expect(error).toContainText("Could not restore saved training runs");
+  await expect(error).toContainText("training history temporarily unavailable");
+  await expect(page.getByText("No trained run", { exact: true })).toHaveCount(0);
+  await error.getByRole("button", { name: "Retry loading saved runs" }).click();
+  await expect(page.getByText("No trained run", { exact: true })).toBeVisible();
+  expect(runListRequests).toBe(2);
+});
