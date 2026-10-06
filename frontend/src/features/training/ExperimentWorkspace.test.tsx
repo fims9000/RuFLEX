@@ -56,12 +56,31 @@ beforeEach(() => {
   studioApi.getTransformPipeline.mockReset();
   studioApi.getLeakageAudit.mockReset();
   studioApi.getTrainingRunCapabilities.mockResolvedValue({ decisions: [] });
+  studioApi.getLatestTreePath.mockResolvedValue({ run_id: "other-run" });
   studioApi.getStudyJob.mockReset();
   studioApi.resumeStudyJob.mockReset();
   studioApi.getLatestTrainingStudy.mockReset();
 });
 
 describe("ExperimentWorkspace dynamic model controls", () => {
+  it("does not hide exact tree-path support when the saved capability check fails and retries the same run", async () => {
+    studioApi.getTrainingRunCapabilities
+      .mockRejectedValueOnce(new Error("run capability store unavailable"))
+      .mockResolvedValueOnce({ run_id: "tree-run", decisions: [{ capability: "exact_tree_path", status: "AVAILABLE" }] });
+    const run = {
+      run_id: "tree-run", model_kind: "decision_tree", trajectory: [], training_summary: { best_epoch: 1, epochs_ran: 1, monitor_name: "loss", best_monitor_value: 0.1 },
+      feature_columns: ["x"], model_artifact_sha256: "a".repeat(64), split: { train_count: 4, validation_count: 2, test_count: 2 }, seed: 3,
+    };
+    render(<ExperimentWorkspace project={project} dataset={dataset as never} run={run as never} study={null} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("run capability store unavailable");
+    expect(screen.queryByRole("button", { name: "Trace exact tree path" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Retry run capability check" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Trace exact tree path" })).toBeEnabled());
+    expect(studioApi.getTrainingRunCapabilities).toHaveBeenNthCalledWith(1, "session", "tree-run");
+    expect(studioApi.getTrainingRunCapabilities).toHaveBeenNthCalledWith(2, "session", "tree-run");
+  });
+
   it("does not report an empty dataset when persisted dataset hydration failed", () => {
     const retry = vi.fn();
     render(<ExperimentWorkspace project={project} dataset={null} datasetHydrationStatus="error" datasetHydrationError="dataset store unavailable" onRetryDatasetHydration={retry} run={null} study={null} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);

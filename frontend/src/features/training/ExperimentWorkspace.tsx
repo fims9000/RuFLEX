@@ -229,6 +229,9 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
   const [executionBackends, setExecutionBackends] = useState<ExecutionBackendDescriptor[]>([]);
   const [executionBackendKey, setExecutionBackendKey] = useState("local_executor");
   const [runCapabilities, setRunCapabilities] = useState<RunCapabilityNegotiation | null>(null);
+  const [runCapabilitiesStatus, setRunCapabilitiesStatus] = useState<"idle" | "loading" | "loaded" | "error">("idle");
+  const [runCapabilitiesError, setRunCapabilitiesError] = useState<string | null>(null);
+  const [runCapabilitiesReload, setRunCapabilitiesReload] = useState(0);
   const option = useMemo(() => run ? trajectoryOption(run) : null, [run]);
   const statistics = useMemo(() => study ? studyStatistics(study) : null, [study]);
   const studySeedValidation = useMemo(() => parseStudySeeds(seedList), [seedList]);
@@ -302,9 +305,22 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
     return () => { active = false; };
   }, [project.session_id, splitEvidenceReload]);
   useEffect(() => {
-    if (!run) { setRunCapabilities(null); return; }
-    studioApi.getTrainingRunCapabilities(project.session_id, run.run_id).then(setRunCapabilities).catch(() => setRunCapabilities(null));
-  }, [project.session_id, run?.run_id]);
+    let active = true;
+    if (!run) { setRunCapabilities(null); setRunCapabilitiesStatus("idle"); setRunCapabilitiesError(null); return () => { active = false; }; }
+    setRunCapabilities(null);
+    setRunCapabilitiesStatus("loading");
+    setRunCapabilitiesError(null);
+    studioApi.getTrainingRunCapabilities(project.session_id, run.run_id).then((capabilities) => {
+      if (!active) return;
+      setRunCapabilities(capabilities);
+      setRunCapabilitiesStatus("loaded");
+    }).catch((reason: unknown) => {
+      if (!active) return;
+      setRunCapabilitiesStatus("error");
+      setRunCapabilitiesError(reason instanceof Error ? reason.message : "Saved run capabilities could not be verified.");
+    });
+    return () => { active = false; };
+  }, [project.session_id, run?.run_id, runCapabilitiesReload]);
   useEffect(() => {
     let active = true;
     setCatalogStatus("loading");
@@ -557,6 +573,8 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
 
       <section className="training-result-panel">
         {!run || !option ? <EmptyState title="No training run yet">Start a run to produce an actual model artifact and training trajectory.</EmptyState> : <>
+          {run.model_kind === "decision_tree" && runCapabilitiesStatus === "loading" && <p role="status">Checking exact tree-path support for this persisted run…</p>}
+          {run.model_kind === "decision_tree" && runCapabilitiesStatus === "error" && <div className="error" role="alert"><strong>Could not verify saved run capabilities.</strong> {runCapabilitiesError} Exact tree-path actions remain unavailable until this run is checked. <Button view="outlined" size="s" onClick={() => setRunCapabilitiesReload((current) => current + 1)}>Retry run capability check</Button></div>}
           <div className="run-summary-strip">
             <div><span>Epoch 0</span><strong>{run.trajectory[0]?.validation_loss?.toFixed(5) ?? "—"}</strong></div>
             <div><span>Best epoch</span><strong>{run.training_summary.best_epoch}</strong></div>
@@ -602,7 +620,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
             {statistics && <div className="run-summary-strip"><div><span>Mean</span><strong>{statistics.mean.toFixed(5)}</strong></div><div><span>Median</span><strong>{statistics.median.toFixed(5)}</strong></div><div><span>Std</span><strong>{statistics.std.toFixed(5)}</strong></div><div><span>Min / max</span><strong>{statistics.min.toFixed(5)} / {statistics.max.toFixed(5)}</strong></div></div>}
             <div className="info-message">{study.selection_reason}</div>
           </>}
-          {canExactTreePath && <section className="tree-path-panel"><span className="eyebrow">EXACT TREE EXECUTION PATH</span><p>Structural execution evidence from the persisted declarative tree; it is not a post-hoc attribution.</p><div className="training-config-grid">{run.feature_columns.map((column) => <label className="field-label" key={column}>{column}<input aria-label={`Tree input ${column}`} type="number" value={treeSample[column] ?? "0"} onChange={(event) => setTreeSample((current) => ({ ...current, [column]: event.target.value }))} /></label>)}</div><Button view="outlined" disabled={running || project.read_only} onClick={traceTree} data-ruflex-action="tree_path.trace">Trace exact tree path</Button>{treeEvidence && <div className="info-message"><strong>{treeEvidence.label}</strong><br />{treeEvidence.steps.map((step) => `Node ${step.node_id}: ${step.feature_name} ≤ ${step.threshold.toFixed(4)} → ${step.decision.toUpperCase()}`).join(" · ")}<br />Leaf {treeEvidence.leaf_id} → prediction {treeEvidence.prediction.toFixed(5)}</div>}</section>}
+          {run.model_kind === "decision_tree" && runCapabilitiesStatus === "loaded" && canExactTreePath && <section className="tree-path-panel"><span className="eyebrow">EXACT TREE EXECUTION PATH</span><p>Structural execution evidence from the persisted declarative tree; it is not a post-hoc attribution.</p><div className="training-config-grid">{run.feature_columns.map((column) => <label className="field-label" key={column}>{column}<input aria-label={`Tree input ${column}`} type="number" value={treeSample[column] ?? "0"} onChange={(event) => setTreeSample((current) => ({ ...current, [column]: event.target.value }))} /></label>)}</div><Button view="outlined" disabled={running || project.read_only} onClick={traceTree} data-ruflex-action="tree_path.trace">Trace exact tree path</Button>{treeEvidence && <div className="info-message"><strong>{treeEvidence.label}</strong><br />{treeEvidence.steps.map((step) => `Node ${step.node_id}: ${step.feature_name} ≤ ${step.threshold.toFixed(4)} → ${step.decision.toUpperCase()}`).join(" · ")}<br />Leaf {treeEvidence.leaf_id} → prediction {treeEvidence.prediction.toFixed(5)}</div>}</section>}
           {run.model_kind === "random_forest" && <section className="tree-path-panel"><span className="eyebrow">ENSEMBLE STRUCTURAL EVIDENCE</span><h3>{String(run.model_spec.tree_count ?? "—")} persisted constituent trees</h3><p>The final forest prediction is an aggregation of all trees. RuFLEX deliberately does not present one tree path as an exact explanation of the ensemble.</p><dl className="compact-definition"><dt>Total nodes</dt><dd>{String(run.model_spec.node_count ?? "—")}</dd><dt>Maximum depth</dt><dd>{String(run.model_spec.max_depth ?? "—")}</dd><dt>Leaves</dt><dd>{String(run.model_spec.leaf_count ?? "—")}</dd><dt>Exact ensemble path</dt><dd>Not available</dd></dl></section>}
           {run.model_kind === "gradient_boosting" && <section className="tree-path-panel"><span className="eyebrow">STAGEWISE ENSEMBLE STRUCTURAL EVIDENCE</span><h3>{String(run.model_spec.tree_count ?? "—")} persisted boosting trees</h3><p>The prediction is a weighted stagewise aggregation. A single constituent-tree path is not an exact explanation of this ensemble.</p><dl className="compact-definition"><dt>Total nodes</dt><dd>{String(run.model_spec.node_count ?? "—")}</dd><dt>Maximum depth</dt><dd>{String(run.model_spec.max_depth ?? "—")}</dd><dt>Leaves</dt><dd>{String(run.model_spec.leaf_count ?? "—")}</dd><dt>Exact ensemble path</dt><dd>Not available</dd></dl></section>}
         </>}

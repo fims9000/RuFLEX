@@ -87,15 +87,16 @@
     "alpha_lineage_hydration_truthfulness",
     "alpha_dataset_contract_hydration_truthfulness",
     "alpha_split_provenance_hydration_retry",
-    "alpha_run_data_governance_evidence_retry"
+    "alpha_run_data_governance_evidence_retry",
+    "alpha_run_capability_hydration_truthfulness"
   ],
-  "active_capability": "alpha_run_capability_hydration_truthfulness",
+  "active_capability": "alpha_tree_path_evidence_hydration_retry",
   "active_acceptance": [
-    "Inspect persisted run capability and tree-path evidence reads for silent error-to-empty conversion.",
-    "Keep saved run identity visible and expose exact-ID retry if required persisted run evidence cannot be verified."
+    "Distinguish absent latest tree-path evidence from a failed persisted-evidence read for the selected run.",
+    "Expose a retry that reloads the latest evidence and only display evidence bound to the current TrainingRun."
   ],
   "blockers": [],
-  "next_executable_work": "Audit latest tree path and run capability hydration in ExperimentWorkspace; implement a small explicit retry state only where a missing/error distinction affects evidence use. Preserve unrelated article changes; no push authorized.",
+  "next_executable_work": "Make latest TreePathEvidence hydration distinguish no saved trace, saved trace for another run, and transient read failure; add retry and focused browser coverage. Preserve unrelated article changes; no push authorized.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -172,6 +173,7 @@
     "alpha_lineage_hydration_truthfulness": "PASS: Project lineage loading now distinguishes pending, loaded-empty, loaded-graph and unavailable states; failed refresh hides unresolved navigation without erasing the last in-memory graph and exposes retry. Studio lineage-recovery E2E-11 passed, existing AssuranceCase/VerificationBundle exact-ID Lineage reopen E2E passed, frontend unit 16 passed, Vite/TypeScript build and diff check passed. Commit 995b6c4.",
     "alpha_dataset_contract_hydration_truthfulness": "PASS: Dataset bootstrap distinguishes loading, confirmed absence (404), available contract and transient failure. Data import/confirmation and Training/policy/final-test actions remain blocked until identity is known; retry recovers without treating errors as an empty project. Evaluation/Experiment component tests 18 passed, focused Studio 503-to-retry-to-404 browser E2E passed, TypeScript/Vite build and git diff --check passed. Commit 464ec8d.",
     "alpha_split_provenance_hydration_retry": "PASS: SplitContract inventory is an explicit loading/loaded/error state; training and new split freezing are paused until the read succeeds. Transient failures show retry, and retry restores controls without starting a fit. Experiment/Evaluation component tests 18 passed, focused Studio 503-to-retry E2E passed, TypeScript/Vite build and git diff --check passed. Commit 60d1d8f.",
-    "alpha_run_data_governance_evidence_retry": "PASS: Saved run governance evidence distinguishes legacy absence from partial/malformed references; transient Split/Transform/Leakage reads retain an explicit unverified state and offer retry. Recovery reloads the exact run evidence identities. ExperimentWorkspace unit tests 11 passed, PRODUCT-02 real Studio training route with injected 503/retry passed, Vite/TypeScript build and git diff --check passed."
+    "alpha_run_data_governance_evidence_retry": "PASS: Saved run governance evidence distinguishes legacy absence from partial/malformed references; transient Split/Transform/Leakage reads retain an explicit unverified state and offer retry. Recovery reloads the exact run evidence identities. ExperimentWorkspace unit tests 11 passed, PRODUCT-02 real Studio training route with injected 503/retry passed, Vite/TypeScript build and git diff --check passed. Commit a91fd60.",
+    "alpha_run_capability_hydration_truthfulness": "PASS: Exact tree-path capability lookup now distinguishes pending, available and failed states; a temporary read failure no longer silently removes a supported action, and retry rechecks the same run ID. ExperimentWorkspace tests passed (11), focused decision-tree Studio 503-to-retry E2E passed, Vite/TypeScript build and git diff --check passed."
   }
 }

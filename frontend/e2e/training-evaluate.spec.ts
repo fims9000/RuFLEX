@@ -114,6 +114,37 @@ test("PRODUCT-02 performs real neuro-fuzzy training, validation evaluation and r
   expect(unopenedFinalTest.status()).toBe(404);
 });
 
+test("PRODUCT-02b retries a persisted decision-tree capability check without claiming unsupported", async ({ page }) => {
+  test.setTimeout(45_000);
+  const path = projectPath();
+  await page.goto("/");
+  await page.getByLabel("Project path").fill(path);
+  await page.getByLabel("Project name").fill("Tree capability retry");
+  await page.getByRole("button", { name: "Create project", exact: true }).click();
+  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByLabel("CSV data").fill(trainingCsv());
+  await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
+  await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
+  await page.getByRole("button", { name: "S", exact: true }).click();
+  await page.getByLabel("Training model").selectOption("decision_tree");
+  let capabilityReads = 0;
+  await page.route("**/training/runs/*/capabilities", async (route) => {
+    capabilityReads += 1;
+    if (capabilityReads === 1) {
+      return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "run capability store temporarily unavailable" }) });
+    }
+    return route.continue();
+  });
+  await page.getByRole("button", { name: "Run real training", exact: true }).click();
+  await expect(page.locator(".run-provenance")).toBeVisible({ timeout: 30_000 });
+  const error = page.getByRole("alert").filter({ hasText: "Could not verify saved run capabilities" });
+  await expect(error).toContainText("run capability store temporarily unavailable");
+  await expect(page.getByRole("button", { name: "Trace exact tree path", exact: true })).toHaveCount(0);
+  await error.getByRole("button", { name: "Retry run capability check", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Trace exact tree path", exact: true })).toBeVisible();
+  expect(capabilityReads).toBe(2);
+});
+
 test("PRODUCT-02 blocks validation policy changes when final-test access status is unavailable", async ({ page }) => {
   test.setTimeout(45_000);
   let boundaryRequests = 0;
