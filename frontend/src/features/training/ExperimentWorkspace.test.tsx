@@ -20,7 +20,7 @@ const { studioApi } = vi.hoisted(() => ({ studioApi: {
       key: "random_forest", display_name: "Random Forest", version: "1", provider: "builtin", family: "tree_ensemble",
       supported_tasks: ["binary_classification"], training_model_kinds: ["random_forest"], input_modalities: ["tabular"], available: true,
       unavailability_reason: null, capabilities: { fit: true }, supported_explainers: [], export_formats: [], config_schema: {},
-      defaults: { n_estimators: 25, max_depth: null }, parameter_constraints: { n_estimators: {}, max_depth: {} }, optional_dependencies: [], evidence_objects_produced: [], limitations: [],
+      defaults: { n_estimators: 25, max_depth: null }, parameter_constraints: { n_estimators: { minimum: 1 }, max_depth: { minimum: 1, nullable: true } }, optional_dependencies: [], evidence_objects_produced: [], limitations: [],
     },
   ]),
   getRuntimeBackends: vi.fn().mockResolvedValue([{ identity: { key: "local_executor", version: "1", provider: "ruflex.builtin", kind: "execution_backend" }, supports_cancel: true, supports_resume: true }]),
@@ -90,6 +90,26 @@ describe("ExperimentWorkspace dynamic model controls", () => {
     fireEvent.change(seeds, { target: { value: "42, 43, 43" } });
     expect(await screen.findByRole("alert")).toHaveTextContent("Each Study seed must be distinct");
     expect(startStudy).toBeDisabled();
+  });
+
+  it("applies adapter and API numeric bounds before either training action is enabled", async () => {
+    render(<ExperimentWorkspace project={project} dataset={dataset as never} run={null} study={null} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);
+
+    await screen.findByRole("option", { name: "Random Forest" });
+    fireEvent.change(screen.getByLabelText("Training model"), { target: { value: "random_forest" } });
+    const singleRun = screen.getByRole("button", { name: "Run real training" });
+    const study = screen.getByRole("button", { name: "Run multi-seed study" });
+
+    fireEvent.change(await screen.findByLabelText("Trees / estimators"), { target: { value: "5001" } });
+    expect(await screen.findByRole("alert")).toHaveTextContent("Trees / estimators must be at most 5000");
+    expect(screen.getByLabelText("Trees / estimators")).toHaveAttribute("max", "5000");
+    expect(singleRun).toBeDisabled();
+    expect(study).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText("Trees / estimators"), { target: { value: "5000" } });
+    await waitFor(() => expect(singleRun).toBeEnabled());
+    expect(study).toBeEnabled();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("reopens and presents persisted split, train-only transform and leakage-audit evidence", async () => {

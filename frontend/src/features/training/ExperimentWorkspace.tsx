@@ -104,6 +104,74 @@ function parseStudySeeds(value: string): { seeds: number[]; error: string | null
   return { seeds, error: null };
 }
 
+type NumericConstraint = { minimum?: number; exclusiveMinimum?: number; maximum?: number; exclusiveMaximum?: number; nullable?: boolean };
+const API_TRAINING_CONSTRAINTS: Record<string, NumericConstraint & { integer?: boolean }> = {
+  max_epochs: { minimum: 1, maximum: 2000, integer: true },
+  learning_rate: { exclusiveMinimum: 0, maximum: 1 },
+  batch_size: { minimum: 1, maximum: 100000, integer: true },
+  patience: { minimum: 1, maximum: 2000, nullable: true, integer: true },
+  max_rules: { minimum: 1, maximum: 128, integer: true },
+  n_estimators: { minimum: 1, maximum: 5000, nullable: true, integer: true },
+  max_depth: { minimum: 1, maximum: 1000, nullable: true, integer: true },
+};
+const PARAMETER_LABELS: Record<string, string> = {
+  max_epochs: "Epochs", learning_rate: "Learning rate", batch_size: "Batch size", patience: "Patience",
+  max_rules: "Max rules / layer", n_estimators: "Trees / estimators", max_depth: "Maximum depth",
+};
+
+function numericConstraint(value: unknown): NumericConstraint {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const record = value as Record<string, unknown>;
+  const result: NumericConstraint = {};
+  for (const key of ["minimum", "exclusiveMinimum", "maximum", "exclusiveMaximum"] as const) {
+    if (typeof record[key] === "number" && Number.isFinite(record[key])) result[key] = record[key] as number;
+  }
+  if (typeof record.nullable === "boolean") result.nullable = record.nullable;
+  return result;
+}
+
+function parameterBounds(name: string, declared: unknown): { min?: number; max?: number } {
+  const constraints = [API_TRAINING_CONSTRAINTS[name], numericConstraint(declared)].filter((item): item is NumericConstraint => Boolean(item));
+  const lower = constraints.flatMap((item) => [item.minimum, item.exclusiveMinimum]).filter((value): value is number => typeof value === "number");
+  const upper = constraints.flatMap((item) => [item.maximum, item.exclusiveMaximum]).filter((value): value is number => typeof value === "number");
+  return {
+    min: lower.length ? Math.max(...lower) : undefined,
+    max: upper.length ? Math.min(...upper) : undefined,
+  };
+}
+
+function validateTrainingParameters(model: ModelCapabilityContract | null, values: Record<string, number | null>): string[] {
+  if (!model) return [];
+  const errors: string[] = [];
+  for (const [name, declaredValue] of Object.entries(model.parameter_constraints)) {
+    if (!(name in API_TRAINING_CONSTRAINTS) || !(name in values)) continue;
+    const api = API_TRAINING_CONSTRAINTS[name];
+    const declared = numericConstraint(declaredValue);
+    const value = values[name];
+    const label = PARAMETER_LABELS[name] ?? name;
+    if (value === null) {
+      if (!api.nullable || declared.nullable !== true) errors.push(`${label} cannot be empty for this model.`);
+      continue;
+    }
+    if (!Number.isFinite(value) || (api.integer && !Number.isSafeInteger(value))) {
+      errors.push(`${label} must be a finite${api.integer ? " whole-number" : ""} value.`);
+      continue;
+    }
+    const constraints = [api, declared];
+    const minimum = constraints.flatMap((item) => [item.minimum, item.exclusiveMinimum]).filter((bound): bound is number => typeof bound === "number");
+    const maximum = constraints.flatMap((item) => [item.maximum, item.exclusiveMaximum]).filter((bound): bound is number => typeof bound === "number");
+    if (constraints.some((item) => item.minimum !== undefined && value < item.minimum || item.exclusiveMinimum !== undefined && value <= item.exclusiveMinimum)) {
+      const bound = Math.max(...minimum);
+      errors.push(`${label} must be ${constraints.some((item) => item.exclusiveMinimum === bound) ? "greater than" : "at least"} ${bound}.`);
+    }
+    if (constraints.some((item) => item.maximum !== undefined && value > item.maximum || item.exclusiveMaximum !== undefined && value >= item.exclusiveMaximum)) {
+      const bound = Math.min(...maximum);
+      errors.push(`${label} must be ${constraints.some((item) => item.exclusiveMaximum === bound) ? "less than" : "at most"} ${bound}.`);
+    }
+  }
+  return errors;
+}
+
 export function ExperimentWorkspace({ project, dataset, run, study: restoredStudy, theme, onRun, onStudy }: {
   project: ProjectSummary;
   dataset: DatasetState | null;
@@ -229,6 +297,8 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
   const selectedModel = compatibleModels.find((entry) => entry.training_model_kinds.includes(modelKind)) ?? null;
   const selectedAdapterKey = selectedModel?.provider === "ruflex.builtin" ? null : selectedModel?.key ?? null;
   const supportsParameter = (name: string) => Boolean(selectedModel?.parameter_constraints[name]);
+  const trainingParameterValues: Record<string, number | null> = { max_epochs: maxEpochs, learning_rate: learningRate, batch_size: batchSize, patience, max_rules: maxRules, n_estimators: nEstimators, max_depth: maxDepth };
+  const parameterErrors = useMemo(() => validateTrainingParameters(selectedModel, trainingParameterValues), [selectedModel, maxEpochs, learningRate, batchSize, patience, maxRules, nEstimators, maxDepth]);
   const canExactTreePath = runCapabilities?.decisions.some((decision) => decision.capability === "exact_tree_path" && decision.status === "AVAILABLE") ?? false;
   useEffect(() => {
     const defaults = selectedModel?.defaults;
@@ -379,13 +449,13 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
           <label className="field-label">Split family<select aria-label="Split family" value={splitFamily} disabled={running || project.read_only} onChange={(event) => setSplitFamily(event.target.value as SplitContract["family"])}><option value="RANDOM">Random holdout</option><option value="GROUP">Group holdout</option><option value="TEMPORAL">Temporal holdout</option><option value="SITE_HOLDOUT">Site holdout</option><option value="DEVICE_HOLDOUT">Device holdout</option><option value="SPATIAL">Spatial-block holdout</option><option value="REGIME">Regime holdout</option></select></label>
           {splitFamily !== "RANDOM" && <label className="field-label">{splitFamily === "TEMPORAL" ? "Time" : "Declared identity"}<select aria-label="Split identity column" value={groupColumn} disabled={running || project.read_only} onChange={(event) => setGroupColumn(event.target.value)}><option value="">Choose column</option>{dataset.profile.columns.map((column) => <option key={column.name} value={column.name}>{column.name}</option>)}</select></label>}
           <label className="field-label">Rigor profile<select aria-label="Rigor profile" value={rigorProfile} disabled={running || project.read_only} onChange={(event) => setRigorProfile(event.target.value as typeof rigorProfile)}><option value="EXPLORATORY">Exploratory</option><option value="CONFIRMATORY">Confirmatory</option><option value="HIGH_ASSURANCE_LIKE">High-assurance-like</option></select></label>
-          {supportsParameter("max_epochs") && <NumberField label="Epochs" value={maxEpochs} min={1} max={2000} step={1} disabled={running || project.read_only} onChange={setMaxEpochs} />}
-          {supportsParameter("learning_rate") && <NumberField label="Learning rate" value={learningRate} min={0.000001} max={1} step={0.001} disabled={running || project.read_only} onChange={setLearningRate} />}
-          {supportsParameter("batch_size") && <NumberField label="Batch size" value={batchSize} min={1} step={1} disabled={running || project.read_only} onChange={setBatchSize} />}
-          {supportsParameter("patience") && <NumberField label="Patience" value={patience} min={1} step={1} disabled={running || project.read_only} onChange={setPatience} />}
-          {supportsParameter("max_rules") && <NumberField label="Max rules / layer" value={maxRules} min={1} max={128} step={1} disabled={running || project.read_only} onChange={setMaxRules} />}
-          {supportsParameter("n_estimators") && <NumberField label="Trees / estimators" value={nEstimators} min={1} step={1} disabled={running || project.read_only} onChange={setNEstimators} />}
-          {supportsParameter("max_depth") && <label className="field-label">Maximum depth<input aria-label="Maximum depth" type="number" min={1} value={maxDepth ?? ""} placeholder="unlimited" disabled={running || project.read_only} onChange={(event) => setMaxDepth(event.target.value === "" ? null : Number(event.target.value))} /></label>}
+          {supportsParameter("max_epochs") && <NumberField label="Epochs" value={maxEpochs} {...parameterBounds("max_epochs", selectedModel?.parameter_constraints.max_epochs)} step={1} disabled={running || project.read_only} onChange={setMaxEpochs} />}
+          {supportsParameter("learning_rate") && <NumberField label="Learning rate" value={learningRate} {...parameterBounds("learning_rate", selectedModel?.parameter_constraints.learning_rate)} step={0.001} disabled={running || project.read_only} onChange={setLearningRate} />}
+          {supportsParameter("batch_size") && <NumberField label="Batch size" value={batchSize} {...parameterBounds("batch_size", selectedModel?.parameter_constraints.batch_size)} step={1} disabled={running || project.read_only} onChange={setBatchSize} />}
+          {supportsParameter("patience") && <NumberField label="Patience" value={patience} {...parameterBounds("patience", selectedModel?.parameter_constraints.patience)} step={1} disabled={running || project.read_only} onChange={setPatience} />}
+          {supportsParameter("max_rules") && <NumberField label="Max rules / layer" value={maxRules} {...parameterBounds("max_rules", selectedModel?.parameter_constraints.max_rules)} step={1} disabled={running || project.read_only} onChange={setMaxRules} />}
+          {supportsParameter("n_estimators") && <NumberField label="Trees / estimators" value={nEstimators} {...parameterBounds("n_estimators", selectedModel?.parameter_constraints.n_estimators)} step={1} disabled={running || project.read_only} onChange={setNEstimators} />}
+          {supportsParameter("max_depth") && <label className="field-label">Maximum depth<input aria-label="Maximum depth" type="number" min={parameterBounds("max_depth", selectedModel?.parameter_constraints.max_depth).min} max={parameterBounds("max_depth", selectedModel?.parameter_constraints.max_depth).max} value={maxDepth ?? ""} placeholder="unlimited" disabled={running || project.read_only} onChange={(event) => setMaxDepth(event.target.value === "" ? null : Number(event.target.value))} /></label>}
           <label className="field-label">Study seeds<input aria-label="Study seeds" aria-invalid={Boolean(studySeedValidation.error)} aria-describedby="study-seeds-help" value={seedList} disabled={running || project.read_only} onChange={(event) => setSeedList(event.target.value)} /></label>
           <label className="field-label">Study randomness protocol<select aria-label="Study randomness protocol" value={studyMode} disabled={running || project.read_only} onChange={(event) => setStudyMode(event.target.value as typeof studyMode)}><option value="TRAINING_VARIABILITY">Training variability (fixed split)</option><option value="SPLIT_VARIABILITY">Split variability (fixed training seed)</option><option value="COMBINED_VARIABILITY">Combined variability</option></select></label>
           <label className="field-label">Study execution backend<select aria-label="Study execution backend" value={executionBackendKey} disabled={running || project.read_only || !executionBackends.length} onChange={(event) => setExecutionBackendKey(event.target.value)}>{executionBackends.map((backend) => <option key={backend.identity.key} value={backend.identity.key}>{backend.identity.key} · {backend.identity.provider}</option>)}</select></label>
@@ -400,9 +470,10 @@ export function ExperimentWorkspace({ project, dataset, run, study: restoredStud
           <p><strong>Run multi-seed study</strong> executes the distinct seeds listed above under the selected randomness protocol and preserves the per-seed results as a TrainingStudy. It requires at least three seeds.</p>
           <p>Both paths use the declared training/validation workflow; opening this screen or changing settings does not start computation or unlock the test split.</p>
         </section>
-        <Button view="action" disabled={running || project.read_only || Boolean(splitEvidenceError) || catalogStatus !== "loaded" || !selectedModel} onClick={train} data-ruflex-action="training.run">{running ? "Training…" : "Run real training"}</Button>
+        <Button view="action" disabled={running || project.read_only || Boolean(splitEvidenceError) || catalogStatus !== "loaded" || !selectedModel || parameterErrors.length > 0} onClick={train} data-ruflex-action="training.run">{running ? "Training…" : "Run real training"}</Button>
         <p id="study-seeds-help" className={studySeedValidation.error ? "error" : "property-description"} role={studySeedValidation.error ? "alert" : undefined}>{studySeedValidation.error ?? "Enter 3–32 distinct whole-number seeds, separated by commas."}</p>
-        <Button view="outlined" disabled={running || project.read_only || Boolean(splitEvidenceError) || catalogStatus !== "loaded" || !selectedModel || Boolean(studySeedValidation.error)} onClick={trainStudy} data-ruflex-action="study.start">{running ? "Training…" : "Run multi-seed study"}</Button>
+        {parameterErrors.length > 0 && <div className="error" role="alert">Review model settings before training: {parameterErrors.join(" ")}</div>}
+        <Button view="outlined" disabled={running || project.read_only || Boolean(splitEvidenceError) || catalogStatus !== "loaded" || !selectedModel || Boolean(studySeedValidation.error) || parameterErrors.length > 0} onClick={trainStudy} data-ruflex-action="study.start">{running ? "Training…" : "Run multi-seed study"}</Button>
         {studyJob && <div className="info-message"><strong>Study job {studyJob.status}</strong> · {studyJob.execution_backend_key ?? studyJob.execution_backend} · {studyJob.seed_states.map((state) => `seed ${state.seed}: ${state.status}`).join(" · ")} {(["QUEUED", "RUNNING"].includes(studyJob.status)) && <><Button view="flat" size="s" onClick={resumeStudy} data-ruflex-action="study.resume">Resume persisted study</Button><Button view="flat" size="s" onClick={cancelStudy} data-ruflex-action="study.cancel">Cancel study</Button></>} {studyJob.recovery_note && <small>{studyJob.recovery_note}</small>}</div>}
         <div className="info-message">A frozen SplitContract assigns exact source rows before fitting. GROUP keeps each declared identity in one role. It makes split membership auditable; it does not by itself establish generalization validity.</div>
         {splitEvidenceError && <div className="error" role="alert">Saved split provenance is invalid or unavailable. Training is blocked rather than falling back to an unverified split. {splitEvidenceError}</div>}

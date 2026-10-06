@@ -75,16 +75,18 @@
     "alpha_post_import_next_step_guidance",
     "alpha_training_choice_guidance",
     "alpha_training_catalog_failure_states",
-    "alpha_study_seed_input_validation"
+    "alpha_study_seed_input_validation",
+    "alpha_training_parameter_constraint_feedback"
   ],
-  "active_capability": "alpha_training_parameter_constraint_feedback",
+  "active_capability": "alpha_release_readiness_closeout",
   "active_acceptance": [
-    "Align numeric model-parameter inputs with the exact API constraints and surface invalid values before submission.",
-    "Keep adapter-specific model constraints authoritative and preserve current training/model-selection semantics.",
+    "Audit the current Alpha acceptance evidence and run release-appropriate verification against the actual checkout, preserving unrelated article/research changes.",
+    "Create a concise Alpha QA receipt and exact-source archive after required product changes are committed.",
+    "Push the verified feature branch only after final working-tree, target-ref and ancestry checks.",
     "Keep unrelated article and interrupted S03 work out of the committed product baseline."
   ],
   "blockers": [],
-  "next_executable_work": "Inspect model parameter_constraints serialization and the API bounds; update numeric fields/buttons to respect their declared constraints, with a focused regression proving invalid settings cannot be submitted.",
+  "next_executable_work": "Run the release-readiness audit: map Alpha workflows to current tests and receipts, identify any remaining critical gate, then execute appropriate final QA and produce an exact-HEAD source archive/QA receipt before push.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -149,6 +151,7 @@
     "alpha_post_import_next_step_guidance": "PASS: Project Overview offers an optional route from a confirmed DatasetContract to the actual Training workspace when no run exists. Copy states that no fit starts until explicit user action and that the held-out test remains locked. E2E confirms the card after close/reopen, opens Training, and records no training/Study POST; action inventory, frontend unit tests (10) and TypeScript/Vite production build passed.",
     "alpha_training_choice_guidance": "PASS: Training explains the difference between one fitted TrainingRun and a multi-seed TrainingStudy, including its minimum of three distinct seeds and that merely opening/configuring Training does not start compute or unlock test. The reopened-dataset Studio route asserts these explanations before any training request; focused browser 2/2, frontend unit 10/10, TypeScript/Vite build and diff check passed.",
     "alpha_training_catalog_failure_states": "PASS: Training now distinguishes model-catalog request failure (visible error with explicit retry) from a loaded catalog with no compatible fit adapter (visible not-applicable explanation). Single-run and Study actions stay disabled in both states; retry does not substitute an adapter. Focused real Studio route verifies 503 → retry → empty compatible catalog, no training/Study POST, inventory, frontend unit tests (10) and TypeScript/Vite production build passed.",
-    "alpha_study_seed_input_validation": "PASS: Multi-seed Study input no longer silently drops invalid seed tokens or deduplicates repeated values. It requires 3–32 distinct safe whole-number seeds; the field exposes inline accessible feedback and the Study action is disabled until corrected. Focused ExperimentWorkspace unit tests 5 passed and TypeScript/Vite production build passed."
+    "alpha_study_seed_input_validation": "PASS: Multi-seed Study input no longer silently drops invalid seed tokens or deduplicates repeated values. It requires 3–32 distinct safe whole-number seeds; the field exposes inline accessible feedback and the Study action is disabled until corrected. Focused ExperimentWorkspace unit tests 5 passed and TypeScript/Vite production build passed.",
+    "alpha_training_parameter_constraint_feedback": "PASS: Training numeric controls now combine runtime adapter constraints with API limits and prevent single-run or Study submission for invalid model settings. Exact API caps are reflected in controls (for example random-forest estimators max 5000); regression verifies out-of-range rejection and recovery at the boundary. Focused ExperimentWorkspace unit tests 6 passed and TypeScript/Vite build passed."
   }
 }
