@@ -89,6 +89,10 @@ test("PRODUCT-EVIDENCE captures the frozen V1 Studio route from persisted object
   await page.getByRole("button", { name: "Run multi-seed study", exact: true }).click();
   await expect(page.getByText("Validation f1 across seeds", { exact: true })).toBeVisible({ timeout: 45_000 });
   await capture(page, screenshots, "05_training_and_study.png", page.getByText("Validation f1 across seeds", { exact: true }));
+  await page.getByRole("button", { name: "A", exact: true }).click();
+  await page.getByRole("button", { name: "Compare study seeds", exact: true }).click();
+  await expect(page.getByText("SAVED MODEL COMPARISON · VALIDATION ONLY", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "S", exact: true }).click();
 
   // Restore a real logistic run as active evidence subject after the Study.
   await page.getByRole("button", { name: "S", exact: true }).click();
@@ -215,6 +219,15 @@ test("PRODUCT-EVIDENCE captures the frozen V1 Studio route from persisted object
     }
     await route.continue();
   });
+  let comparisonReadFailed = false;
+  await page.route(`**/api/projects/*/analyses/comparisons/latest`, async (route) => {
+    if (!comparisonReadFailed) {
+      comparisonReadFailed = true;
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Temporary validation comparison read failure" }) });
+      return;
+    }
+    await route.continue();
+  });
   let latestAssuranceReadFailed = false;
   await page.route(`**/api/projects/*/evidence/assurance-cases/latest`, async (route) => {
     if (!latestAssuranceReadFailed) {
@@ -232,6 +245,11 @@ test("PRODUCT-EVIDENCE captures the frozen V1 Studio route from persisted object
   await page.getByRole("button", { name: "Retry GeneralizationContract", exact: true }).click();
   await expect(page.getByTestId("evidence-generalization-hydration-error")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Run telemetry demonstration", exact: true })).toBeEnabled();
+  await page.getByRole("button", { name: "A", exact: true }).click();
+  await expect(page.getByTestId("comparison-hydration-error")).toContainText("Temporary validation comparison read failure");
+  await expect(page.getByRole("button", { name: "Compare study seeds", exact: true })).toBeDisabled();
+  await page.getByRole("button", { name: "Retry validation comparison", exact: true }).click();
+  await expect(page.getByText("SAVED MODEL COMPARISON · VALIDATION ONLY", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "M", exact: true }).click();
   await expect(page.getByTestId("expert-correction-load-error")).toContainText("Temporary expert correction read failure");
   await page.getByRole("button", { name: "Retry expert correction", exact: true }).click();

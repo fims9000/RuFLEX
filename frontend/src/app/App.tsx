@@ -145,6 +145,9 @@ export function App() {
   const [validationPolicyEvidenceError, setValidationPolicyEvidenceError] = useState<string | null>(null);
   const [validationPolicyEvidenceReload, setValidationPolicyEvidenceReload] = useState(0);
   const [analysisComparison, setAnalysisComparison] = useState<AnalysisComparison | null>(null);
+  const [analysisComparisonHydrationStatus, setAnalysisComparisonHydrationStatus] = useState<"idle" | "loading" | "none" | "available" | "error">("idle");
+  const [analysisComparisonHydrationError, setAnalysisComparisonHydrationError] = useState<string | null>(null);
+  const [analysisComparisonHydrationReload, setAnalysisComparisonHydrationReload] = useState(0);
   const [calibrationTransform, setCalibrationTransform] = useState<CalibrationTransform | null>(null);
   const [decisionThreshold, setDecisionThreshold] = useState<DecisionThresholdPolicy | null>(null);
   const [finalTestEvaluation, setFinalTestEvaluation] = useState<FinalTestEvaluation | null>(null);
@@ -243,6 +246,8 @@ export function App() {
       setValidationPolicyEvidenceStatus("idle");
       setValidationPolicyEvidenceError(null);
       setAnalysisComparison(null);
+      setAnalysisComparisonHydrationStatus("idle");
+      setAnalysisComparisonHydrationError(null);
       setCalibrationTransform(null);
       setDecisionThreshold(null);
       setFinalTestEvaluation(null);
@@ -343,14 +348,37 @@ export function App() {
       }
     });
     studioApi.listStudyStabilityAnalyses(project.session_id).then((items) => setStabilityAnalysis(items.at(-1) ?? null)).catch(() => setStabilityAnalysis(null));
-    studioApi
-      .getLatestAnalysisComparison(project.session_id)
-      .then(setAnalysisComparison)
-      .catch(() => setAnalysisComparison(null));
     studioApi.getLatestSliceAnalysis(project.session_id).then(setSliceAnalysis).catch(() => setSliceAnalysis(null));
     studioApi.getLatestTreePath(project.session_id).then(setTreeEvidence).catch(() => setTreeEvidence(null));
     return () => { active = false; };
   }, [project?.session_id, overviewContextReload]);
+  useEffect(() => {
+    let active = true;
+    if (!project) {
+      setAnalysisComparison(null);
+      setAnalysisComparisonHydrationStatus("idle");
+      setAnalysisComparisonHydrationError(null);
+      return () => { active = false; };
+    }
+    setAnalysisComparison(null);
+    setAnalysisComparisonHydrationError(null);
+    setAnalysisComparisonHydrationStatus("loading");
+    studioApi.getLatestAnalysisComparison(project.session_id).then((value) => {
+      if (!active) return;
+      setAnalysisComparison(value);
+      setAnalysisComparisonHydrationStatus("available");
+    }).catch((reason: unknown) => {
+      if (!active) return;
+      setAnalysisComparison(null);
+      if (reason instanceof ProductApiError && reason.status === 404) {
+        setAnalysisComparisonHydrationStatus("none");
+        return;
+      }
+      setAnalysisComparisonHydrationError(reason instanceof Error ? reason.message : "Saved validation comparison could not be verified.");
+      setAnalysisComparisonHydrationStatus("error");
+    });
+    return () => { active = false; };
+  }, [project?.session_id, analysisComparisonHydrationReload]);
   useEffect(() => {
     let active = true;
     if (!project) {
@@ -1679,7 +1707,7 @@ export function App() {
           onStudy={(study) => { setTrainingStudy(study); setTrainingStudyStatus("available"); setTrainingStudyError(null); }}
         />
       ) : active === "ANALYSES" ? (
-        <EvaluationWorkspace project={project} dataset={datasetState} datasetHydrationStatus={datasetStateStatus} datasetHydrationError={datasetStateError} onRetryDatasetHydration={() => setDatasetStateReload((current) => current + 1)} fis={fis} run={trainingRun} runs={trainingRuns} runListStatus={trainingRunsStatus} runListError={trainingRunsError} onRetryRunList={() => setTrainingRunsReload((current) => current + 1)} study={trainingStudy} evaluation={analysisEvaluation} evaluationStatus={analysisEvaluationStatus} evaluationError={analysisEvaluationError} onRetryEvaluation={() => setAnalysisEvaluationReload((current) => current + 1)} validationPolicyEvidenceStatus={validationPolicyEvidenceStatus} validationPolicyEvidenceError={validationPolicyEvidenceError} onRetryValidationPolicyEvidence={() => setValidationPolicyEvidenceReload((current) => current + 1)} calibrationTransform={calibrationTransform} decisionThreshold={decisionThreshold} finalTestEvaluation={finalTestEvaluation} finalTestEvidenceStatus={finalTestEvidenceStatus} finalTestEvidenceError={finalTestEvidenceError} onRetryFinalTestEvidence={() => setFinalTestEvidenceReload((current) => current + 1)} comparison={analysisComparison} sliceAnalysis={sliceAnalysis} selectivePolicy={selectivePolicy} stabilityGatePolicy={stabilityGatePolicy} theme={theme} onEvaluation={(evaluation) => { setAnalysisEvaluation(evaluation); setAnalysisEvaluationStatus("available"); }} onCalibration={setCalibrationTransform} onThreshold={setDecisionThreshold} onSelectivePolicy={setSelectivePolicy} onFinalTest={(evaluation) => { setFinalTestEvaluation(evaluation); if (evaluation) setFinalTestEvidenceStatus("available"); }} onComparison={setAnalysisComparison} onSliceAnalysis={setSliceAnalysis} />
+        <EvaluationWorkspace project={project} dataset={datasetState} datasetHydrationStatus={datasetStateStatus} datasetHydrationError={datasetStateError} onRetryDatasetHydration={() => setDatasetStateReload((current) => current + 1)} fis={fis} run={trainingRun} runs={trainingRuns} runListStatus={trainingRunsStatus} runListError={trainingRunsError} onRetryRunList={() => setTrainingRunsReload((current) => current + 1)} study={trainingStudy} evaluation={analysisEvaluation} evaluationStatus={analysisEvaluationStatus} evaluationError={analysisEvaluationError} onRetryEvaluation={() => setAnalysisEvaluationReload((current) => current + 1)} validationPolicyEvidenceStatus={validationPolicyEvidenceStatus} validationPolicyEvidenceError={validationPolicyEvidenceError} onRetryValidationPolicyEvidence={() => setValidationPolicyEvidenceReload((current) => current + 1)} calibrationTransform={calibrationTransform} decisionThreshold={decisionThreshold} finalTestEvaluation={finalTestEvaluation} finalTestEvidenceStatus={finalTestEvidenceStatus} finalTestEvidenceError={finalTestEvidenceError} onRetryFinalTestEvidence={() => setFinalTestEvidenceReload((current) => current + 1)} comparison={analysisComparison} comparisonHydrationStatus={analysisComparisonHydrationStatus} comparisonHydrationError={analysisComparisonHydrationError} onRetryComparison={() => setAnalysisComparisonHydrationReload((current) => current + 1)} sliceAnalysis={sliceAnalysis} selectivePolicy={selectivePolicy} stabilityGatePolicy={stabilityGatePolicy} theme={theme} onEvaluation={(evaluation) => { setAnalysisEvaluation(evaluation); setAnalysisEvaluationStatus("available"); }} onCalibration={setCalibrationTransform} onThreshold={setDecisionThreshold} onSelectivePolicy={setSelectivePolicy} onFinalTest={(evaluation) => { setFinalTestEvaluation(evaluation); if (evaluation) setFinalTestEvidenceStatus("available"); }} onComparison={(comparison) => { setAnalysisComparison(comparison); setAnalysisComparisonHydrationStatus("available"); setAnalysisComparisonHydrationError(null); }} onSliceAnalysis={setSliceAnalysis} />
       ) : active === "EVIDENCE" ? (
         <EvidenceWorkspace
           project={project}
