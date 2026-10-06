@@ -243,6 +243,7 @@ export function App() {
   const backendHealthRequestRef = useRef(0);
   const csvInspectionRequestRef = useRef(0);
   const datasetMutationRequestRef = useRef(0);
+  const pendingImportedFingerprintRef = useRef<string | null>(null);
   const generalizationMutationRequestRef = useRef(0);
   const scopeClassificationRequestRef = useRef(0);
   const artifactInventoryRequestRef = useRef(0);
@@ -813,6 +814,11 @@ export function App() {
     setDatasetStateError(null);
     studioApi.getDatasetState(project.session_id).then((state) => {
       if (!active) return;
+      if (pendingImportedFingerprintRef.current === state.contract.dataset_fingerprint) {
+        setPendingDatasetFile(null);
+        setPendingDatasetProfile(null);
+        pendingImportedFingerprintRef.current = null;
+      }
       setDatasetState(state);
       setProfile(state.profile);
       setDataset({ contract: state.contract, audit: state.audit });
@@ -1222,6 +1228,7 @@ export function App() {
     setDatasetState(null);
     setPendingDatasetFile(null);
     setPendingDatasetProfile(null);
+    pendingImportedFingerprintRef.current = null;
     setInspectingDatasetFile(false);
     setImportingDatasetFile(false);
     setConfirmingCsvDataset(false);
@@ -1363,6 +1370,7 @@ export function App() {
         idColumns.split(",").map((column) => column.trim()).filter(Boolean),
       );
       if (!isCurrent()) return;
+      pendingImportedFingerprintRef.current = confirmed.contract.dataset_fingerprint;
       setDataset(confirmed);
       const persisted = await studioApi.getDatasetState(sessionId);
       if (!isCurrent()) return;
@@ -1373,6 +1381,7 @@ export function App() {
       setStatus(`${file.name} saved as a verified dataset artifact`);
       setPendingDatasetFile(null);
       setPendingDatasetProfile(null);
+      pendingImportedFingerprintRef.current = null;
       setError(null);
     } catch (reason) {
       if (!isCurrent()) return;
