@@ -48,6 +48,13 @@ def test_project_integrity_survives_reopen_and_reports_missing_frozen_model_arti
     assert trained.status_code == 201, trained.text
     initial_integrity = client.get(f"/api/projects/{session_id}/integrity").json()
     assert initial_integrity["status"] == "PASS", initial_integrity["issues"]
+    second_trained = client.post("/api/projects/training/run", json={"session_id": session_id, "model_kind": "logistic_regression", "seed": 43, "max_epochs": 1, "learning_rate": .01, "batch_size": 16, "patience": 1, "validation_fraction": .2, "test_fraction": .2, "max_rules": 3})
+    assert second_trained.status_code == 201, second_trained.text
+    active_run_path = root / "runs" / "active-training-run.json"
+    active_run_path.write_text(json.dumps({"run_id": trained.json()["run_id"]}), encoding="utf-8")
+    stale_run_pointer = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert any(issue["code"] == "TRAINING_RUN_ACTIVE_POINTER_INVALID" for issue in stale_run_pointer["issues"])
+    active_run_path.write_text(json.dumps({"run_id": second_trained.json()["run_id"]}), encoding="utf-8")
     assert client.post("/api/projects/close", json={"session_id": session_id}).status_code == 204
     reopened = client.post("/api/projects/open", json={"path": str(root), "read_only": True}).json()["session_id"]
     assert client.get(f"/api/projects/{reopened}/integrity").json()["status"] == "PASS"

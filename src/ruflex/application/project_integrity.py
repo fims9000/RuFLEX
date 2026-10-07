@@ -789,6 +789,18 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
     except (ValidationError, ValueError, FileNotFoundError) as error:
         runs = []
         issues.append(ProjectIntegrityIssue(code="TRAINING_EVIDENCE_MALFORMED", status="FAIL", path="runs", detail=str(error)))
+    active_run_path = base / "runs" / "active-training-run.json"
+    if active_run_path.exists():
+        checked += 1
+        try:
+            active_run_id = json.loads(active_run_path.read_text(encoding="utf-8"))["run_id"]
+            if str(active_run_id) not in {str(run.run_id) for run in runs}:
+                raise ValueError("Active TrainingRun pointer does not resolve to persisted evidence.")
+            latest_run = max(runs, key=lambda item: (item.created_at, str(item.run_id)), default=None)
+            if latest_run is not None and str(latest_run.run_id) != str(active_run_id):
+                raise ValueError("Active TrainingRun pointer does not identify the latest persisted run.")
+        except (KeyError, TypeError, ValueError, OSError, json.JSONDecodeError) as error:
+            issues.append(ProjectIntegrityIssue(code="TRAINING_RUN_ACTIVE_POINTER_INVALID", status="FAIL", path="runs/active-training-run.json", detail=str(error)))
     store = ArtifactStore(base)
     fis_root = base / "models" / "fis"
     if fis_root.exists() and not fis_root.is_dir():
