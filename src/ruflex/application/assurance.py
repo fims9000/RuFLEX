@@ -158,6 +158,7 @@ def create_assurance_case(root: Path) -> AssuranceCase:
     gates.append(_gate("multi_seed_evidence", status, [f"study:{x.study_id}" for x in studies], risk))
     evaluations_root = base / "analyses" / "evaluations"; evaluations = _objects(evaluations_root, AnalysisEvaluation)
     evaluation_ids = {x.evaluation_id for x in evaluations}
+    evaluation_by_id = {item.evaluation_id: item for item in evaluations}
     valid_evaluations = evaluations and all(x.split == "validation" and x.test_status == "LOCKED_NOT_EVALUATED" for x in evaluations)
     status, risk = _evidence_status(present=bool(evaluations), valid=bool(valid_evaluations), malformed=_has_malformed_object(evaluations_root, AnalysisEvaluation), unavailable="Validation evidence is absent.", invalid="Validation evidence is not a locked validation evaluation.")
     gates.append(_gate("validation_evidence", status, [f"evaluation:{x.evaluation_id}" for x in evaluations], risk))
@@ -176,6 +177,8 @@ def create_assurance_case(root: Path) -> AssuranceCase:
     stability_root = base / "analyses" / "stability-analyses"; stability = _objects(stability_root, StudyStabilityAnalysis)
     run_by_id = {item.run_id: item for item in runs}
     study_by_id = {item.study_id: item for item in studies}
+    threshold_by_id = {item.threshold_id: item for item in thresholds}
+    from ruflex.application.project_integrity import _stability_analysis_cases_match
     stability_ok = stability and all(
         item.applicability == "APPLICABLE"
         and item.validation_alignment_status == "EXACT_MATCH"
@@ -188,13 +191,19 @@ def create_assurance_case(root: Path) -> AssuranceCase:
         and item.study_id in study_by_id
         and set(item.run_ids) == {run.run_id for run in study_by_id[item.study_id].seed_runs}
         and all(run_id in run_by_id and run_by_id[run_id].dataset_fingerprint == item.dataset_fingerprint for run_id in item.run_ids)
+        and _stability_analysis_cases_match(
+            item,
+            study_by_id[item.study_id],
+            evaluation_by_id.get(item.evaluation_id) if item.evaluation_id is not None else None,
+            threshold_by_id.get(item.class_threshold_id) if item.class_threshold_id is not None else None,
+        )
         for item in stability
     )
     status, risk = _evidence_status(present=bool(stability), valid=bool(stability_ok), malformed=_has_malformed_object(stability_root, StudyStabilityAnalysis), unavailable="Study Stability Analysis is absent.", invalid="Cross-run stability evidence is incomplete.")
     gates.append(_gate("prediction_stability", status, [f"stability-analysis:{x.analysis_id}" for x in stability], risk))
     stability_policy_root = base / "analyses" / "stability-policies"; stability_policies = _objects(stability_policy_root, StabilityGatePolicy)
     stability_by_id = {item.analysis_id: item for item in stability}
-    evaluation_by_id = {item.evaluation_id: item for item in evaluations}
+    from ruflex.application.project_integrity import _stability_gate_evidence_matches
     stability_policy_ok = stability_policies and all(
         item.source_split == "validation"
         and item.frozen_at is not None
@@ -217,6 +226,7 @@ def create_assurance_case(root: Path) -> AssuranceCase:
         and stability_by_id[item.stability_analysis_id].decision_threshold == item.decision_threshold
         and item.fit_sample_identity == stability_by_id[item.stability_analysis_id].evaluation_case_identity
         and len(item.decisions) == stability_by_id[item.stability_analysis_id].case_count
+        and _stability_gate_evidence_matches(item, stability_by_id[item.stability_analysis_id])
         for item in stability_policies
     )
     status, risk = _evidence_status(present=bool(stability_policies), valid=bool(stability_policy_ok), malformed=_has_malformed_object(stability_policy_root, StabilityGatePolicy), unavailable="Stability-aware review policy is absent.", invalid="Stability-aware review policy is incompatible with validation stability evidence.")

@@ -111,6 +111,12 @@ def _validate_relationships(objects: list[BaseModel]) -> list[str]:
     splits = objects_by_type.get(SplitContract, {})
     transforms = objects_by_type.get(TransformPipelineContract, {})
     audits = objects_by_type.get(LeakageAuditReport, {})
+    studies = objects_by_type.get(TrainingStudy, {})
+    runs = objects_by_type.get(TrainingRun, {})
+    evaluations = objects_by_type.get(AnalysisEvaluation, {})
+    thresholds = objects_by_type.get(DecisionThresholdPolicy, {})
+    stability_analyses = objects_by_type.get(StudyStabilityAnalysis, {})
+    from ruflex.application.project_integrity import _stability_analysis_cases_match, _stability_gate_evidence_matches
     for object_ in objects:
         if isinstance(object_, SplitContract):
             contract = contracts.get(object_.dataset_fingerprint)
@@ -190,7 +196,44 @@ def _validate_relationships(objects: list[BaseModel]) -> list[str]:
                 or object_.transition != transition or object_.regression_detected != (transition == "PASS_TO_FAIL")
             ):
                 errors.append(f"Behavior revision comparison {object_.comparison_id} has broken result provenance.")
-        elif isinstance(object_, StabilityGatePolicy) and (not exists(StudyStabilityAnalysis, object_.stability_analysis_id) or not exists(TrainingRun, object_.selected_run_id) or not exists(AnalysisEvaluation, object_.evaluation_id) or not exists(DecisionThresholdPolicy, object_.class_threshold_id)): errors.append(f"Stability gate {object_.policy_id} has broken frozen-policy provenance.")
+        elif isinstance(object_, StudyStabilityAnalysis):
+            study = studies.get(str(object_.study_id))
+            evaluation = evaluations.get(str(object_.evaluation_id)) if object_.evaluation_id is not None else None
+            threshold = thresholds.get(str(object_.class_threshold_id)) if object_.class_threshold_id is not None else None
+            if (
+                not isinstance(study, TrainingStudy)
+                or (object_.evaluation_id is not None and not isinstance(evaluation, AnalysisEvaluation))
+                or (object_.class_threshold_id is not None and not isinstance(threshold, DecisionThresholdPolicy))
+                or not _stability_analysis_cases_match(object_, study, evaluation, threshold)
+            ):
+                errors.append(f"Study Stability Analysis {object_.analysis_id} does not match its frozen runs and validation evidence.")
+        elif isinstance(object_, StabilityGatePolicy):
+            analysis = stability_analyses.get(str(object_.stability_analysis_id))
+            evaluation = evaluations.get(str(object_.evaluation_id))
+            threshold = thresholds.get(str(object_.class_threshold_id))
+            if (
+                not isinstance(analysis, StudyStabilityAnalysis)
+                or not isinstance(evaluation, AnalysisEvaluation)
+                or not isinstance(threshold, DecisionThresholdPolicy)
+                or object_.study_id != analysis.study_id
+                or object_.selected_run_id != analysis.selected_run_id
+                or object_.run_ids != analysis.run_ids
+                or object_.evaluation_id != analysis.evaluation_id
+                or object_.class_threshold_id != analysis.class_threshold_id
+                or object_.dataset_fingerprint != analysis.dataset_fingerprint
+                or object_.dataset_artifact_sha256 != analysis.dataset_artifact_sha256
+                or object_.source_split != "validation"
+                or object_.probability_source != "raw"
+                or object_.calibration_id is not None
+                or object_.decision_threshold != threshold.selected_threshold
+                or threshold.source_split != "validation"
+                or threshold.probability_source != "raw"
+                or threshold.calibration_id is not None
+                or evaluation.run_id != object_.selected_run_id
+                or evaluation.split != "validation"
+                or not _stability_gate_evidence_matches(object_, analysis)
+            ):
+                errors.append(f"Stability gate {object_.policy_id} does not match its frozen analysis, selected run, validation threshold, or case evidence.")
     return errors
 
 

@@ -17,6 +17,7 @@ from ruflex.application.datasets import DatasetConfirmationError, DatasetContrac
 from ruflex.application.fis import list_fis_revisions, load_fis
 from ruflex.application.jobs import Job
 from ruflex.application.projects import ProjectService
+from ruflex.application.stability import _identity as _stability_identity
 from ruflex.application.training import _baseline_metrics, _calibration_bins_from_probabilities, _classification_metrics_at_threshold, _ece_from_bins, _operating_curves, _select_study_run, _stable_identity, _validation_sample_identity, list_training_runs
 from ruflex.application.behavior import _requirement_identity, evaluate_behavior_spec
 from ruflex.application.generalization import SliceAnalysis, load_generalization_contract
@@ -500,7 +501,7 @@ def _stability_gate_evidence_matches(policy: StabilityGatePolicy, analysis: Stud
     accepted_count = len(accepted)
     ranked_confidence = sorted(analysis.cases, key=lambda case: max(case.selected_run_probability, 1.0 - case.selected_run_probability), reverse=True)
     confidence_only = ranked_confidence[:accepted_count]
-    random_selected = sorted(analysis.cases, key=lambda case: _stable_identity("stability-random-baseline-v1", case.case_id))[:accepted_count]
+    random_selected = sorted(analysis.cases, key=lambda case: _stability_identity("stability-random-baseline-v1", case.case_id))[:accepted_count]
 
     def accepted_risk(cases: list[object]) -> float | None:
         if not cases:

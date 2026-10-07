@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import hashlib
 from pathlib import Path
 import zipfile
 from uuid import uuid4
@@ -9,6 +11,7 @@ from fastapi.testclient import TestClient
 
 from ruflex.api.main import app
 from ruflex.application.stability import evaluate_frozen_stability_probabilities
+from ruflex.application.verification_bundle import validate_verification_bundle
 from ruflex.domain.stability import StabilityGatePolicy
 
 
@@ -76,6 +79,8 @@ def test_training_variability_keeps_split_identity_and_persists_stability_gate(t
     assert evidence["confidence_only_accepted_count"] == evidence["accepted_count"]
     post_unlock = client.post("/api/projects/analyses/stability-policies", json={"session_id": session_id, "analysis_id": analysis["analysis_id"], "evaluation_id": evaluation_response.json()["evaluation_id"], "min_confidence": .85, "min_class_agreement": .8, "max_probability_std": .15})
     assert post_unlock.status_code == 422
+    integrity = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert integrity["status"] == "PASS", integrity["issues"]
     assurance = client.post("/api/projects/evidence/assurance-cases", json={"session_id": session_id})
     assert assurance.status_code == 201, assurance.text
     gates = {gate["key"]: gate for gate in assurance.json()["gates"]}
@@ -83,10 +88,35 @@ def test_training_variability_keeps_split_identity_and_persists_stability_gate(t
     assert gates["stability_gate_policy"]["status"] == "PASS"
     bundle = client.post("/api/projects/evidence/verification-bundles", json={"session_id": session_id})
     assert bundle.status_code == 201, bundle.text
-    with zipfile.ZipFile(bundle.json()["path"]) as archive:
+    bundle_path = Path(bundle.json()["path"])
+    assert validate_verification_bundle(bundle_path).status == "PASS"
+    with zipfile.ZipFile(bundle_path) as archive:
         names = archive.namelist()
     assert any(name.startswith("analyses/stability-analyses/") for name in names)
     assert any(name.startswith("analyses/stability-policies/") for name in names)
+    # Recompute every checksum after tampering: semantic validation must still
+    # reject internally inconsistent policy evidence.
+    with zipfile.ZipFile(bundle_path) as archive:
+        entries = {name: archive.read(name) for name in archive.namelist()}
+    policy_entry = f"analyses/stability-policies/{policy['policy_id']}.json"
+    bundle_policy = json.loads(entries[policy_entry])
+    bundle_policy["decisions"][0]["selected_run_agreement"] = (
+        0.0 if bundle_policy["decisions"][0]["selected_run_agreement"] != 0.0 else 1.0
+    )
+    entries[policy_entry] = json.dumps(bundle_policy, indent=2).encode()
+    bundle_manifest = json.loads(entries["verification-manifest.json"])
+    bundle_manifest["checksums"][policy_entry] = hashlib.sha256(entries[policy_entry]).hexdigest()
+    entries["verification-manifest.json"] = json.dumps(bundle_manifest, indent=2, sort_keys=True).encode()
+    entries["verification-manifest.sha256"] = (
+        f"{hashlib.sha256(entries['verification-manifest.json']).hexdigest()}  verification-manifest.json\n".encode()
+    )
+    tampered_bundle = tmp_path / "tampered-verification-bundle.zip"
+    with zipfile.ZipFile(tampered_bundle, "w", zipfile.ZIP_DEFLATED) as archive:
+        for name, payload in entries.items():
+            archive.writestr(name, payload)
+    bundle_validation = validate_verification_bundle(tampered_bundle)
+    assert bundle_validation.status == "FAIL"
+    assert any("Stability gate" in error and "case evidence" in error for error in bundle_validation.errors)
     reopened = client.post("/api/projects/open", json={"path": str(tmp_path / "stability")})
     listed = client.get(f"/api/projects/{reopened.json()['session_id']}/analyses/stability")
     assert listed.status_code == 200 and listed.json()[0]["analysis_id"] == analysis["analysis_id"]
@@ -105,6 +135,15 @@ def test_training_variability_keeps_split_identity_and_persists_stability_gate(t
     # Assurance must validate references, not merely accept a parseable JSON
     # object in the evidence directory.
     policy_path = tmp_path / "stability" / "analyses" / "stability-policies" / f"{policy['policy_id']}.json"
+    original_policy = policy_path.read_text(encoding="utf-8")
+    tampered_decision = json.loads(original_policy)
+    tampered_decision["decisions"][0]["selected_run_agreement"] = 0.0 if tampered_decision["decisions"][0]["selected_run_agreement"] != 0.0 else 1.0
+    policy_path.write_text(json.dumps(tampered_decision), encoding="utf-8")
+    decision_assurance = client.post("/api/projects/evidence/assurance-cases", json={"session_id": session_id})
+    assert decision_assurance.status_code == 201
+    decision_gates = {gate["key"]: gate for gate in decision_assurance.json()["gates"]}
+    assert decision_gates["stability_gate_policy"]["status"] == "FAIL"
+    policy_path.write_text(original_policy, encoding="utf-8")
     corrupted = policy_path.read_text(encoding="utf-8").replace(f'"dataset_fingerprint": "{analysis["dataset_fingerprint"]}"', '"dataset_fingerprint": "wrong-revision"').replace(f'"class_threshold_id": "{threshold.json()["threshold_id"]}"', '"class_threshold_id": "00000000-0000-0000-0000-000000000000"')
     policy_path.write_text(corrupted, encoding="utf-8")
     invalid_assurance = client.post("/api/projects/evidence/assurance-cases", json={"session_id": session_id})
