@@ -532,7 +532,12 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
         const created = await studioApi.createSplitContract(project.session_id, request);
         setSplitContract(created); setSplitContractRecovery(null);
       } catch (reason) {
-        setSplitContractRecovery({ request, datasetFingerprint: dataset.contract.dataset_fingerprint, datasetArtifactSha256: dataset.contract.source_artifact_sha256, error: reason instanceof Error ? reason.message : "SplitContract response was uncertain.", notFound: false });
+        const definitiveValidationRejection = reason instanceof ProductApiError
+          && reason.status === 422
+          && reason.code === "VALIDATION_FAILED";
+        if (!definitiveValidationRejection) {
+          setSplitContractRecovery({ request, datasetFingerprint: dataset.contract.dataset_fingerprint, datasetArtifactSha256: dataset.contract.source_artifact_sha256, error: reason instanceof Error ? reason.message : "SplitContract response was uncertain.", notFound: false });
+        }
         throw reason;
       }
     } catch (reason) { setError(reason instanceof Error ? reason.message : "Could not freeze split contract"); }

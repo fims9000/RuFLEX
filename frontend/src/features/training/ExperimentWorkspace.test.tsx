@@ -5,6 +5,7 @@ import type { ButtonHTMLAttributes } from "react";
 
 const { studioApi } = vi.hoisted(() => ({ studioApi: {
   listSplitContracts: vi.fn().mockResolvedValue([]),
+  createSplitContract: vi.fn(),
   getSplitContract: vi.fn(),
   getTransformPipeline: vi.fn(),
   getLeakageAudit: vi.fn(),
@@ -43,6 +44,7 @@ vi.mock("../../charts/ChartSurface", () => ({ ChartSurface: () => <div /> }));
 vi.mock("./StabilityLab", () => ({ StabilityLab: () => <div /> }));
 
 import { ExperimentWorkspace } from "./ExperimentWorkspace";
+import { ProductApiError } from "../../api";
 
 const project = { session_id: "session", project_id: "project", name: "Test", description: null, root: "/tmp/test", schema_version: 1, read_only: false, modified_at: "2026-01-01T00:00:00Z" };
 const dataset = {
@@ -53,6 +55,7 @@ const dataset = {
 
 beforeEach(() => {
   studioApi.listSplitContracts.mockResolvedValue([]);
+  studioApi.createSplitContract.mockReset();
   studioApi.getSplitContract.mockReset();
   studioApi.getTransformPipeline.mockReset();
   studioApi.getLeakageAudit.mockReset();
@@ -65,6 +68,27 @@ beforeEach(() => {
 });
 
 describe("ExperimentWorkspace dynamic model controls", () => {
+  it("keeps split validation errors editable instead of treating them as uncertain writes", async () => {
+    studioApi.createSplitContract
+      .mockRejectedValueOnce(new ProductApiError({ code: "VALIDATION_FAILED", status: 422, detail: "GROUP split requires at least three distinct groups." }))
+      .mockResolvedValueOnce({ split_id: "split-random", family: "RANDOM", split_seed: 42 } as never);
+    render(<ExperimentWorkspace project={project} dataset={dataset as never} run={null} study={null} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);
+
+    await screen.findByRole("option", { name: "Random Forest" });
+    fireEvent.change(screen.getByLabelText("Split family"), { target: { value: "GROUP" } });
+    fireEvent.change(screen.getByLabelText("Split identity column"), { target: { value: "x" } });
+    fireEvent.click(screen.getByRole("button", { name: "Freeze GROUP SplitContract" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("GROUP split requires at least three distinct groups.");
+    expect(screen.queryByTestId("split-contract-recovery")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Run real training" })).toBeEnabled();
+
+    fireEvent.change(screen.getByLabelText("Split family"), { target: { value: "RANDOM" } });
+    fireEvent.click(screen.getByRole("button", { name: "Freeze RANDOM SplitContract" }));
+    await waitFor(() => expect(studioApi.createSplitContract).toHaveBeenCalledTimes(2));
+    expect(screen.queryByTestId("split-contract-recovery")).not.toBeInTheDocument();
+  });
+
   it("retries an uncertain Study submission with the exact same request identity and configuration", async () => {
     studioApi.startStudyJob.mockRejectedValueOnce(new Error("response lost after submit"));
     const completed = { job_id: "job-1", name: "Study", model_kind: "flat_neuro_fuzzy", selection_metric: "f1", status: "SUCCEEDED", cancel_requested: false, seed_states: [], study_id: "study-1", error: null, execution_backend: "LOCAL", execution_backend_key: "local_executor", execution_config: {}, recovery_count: 0, recovery_note: null };

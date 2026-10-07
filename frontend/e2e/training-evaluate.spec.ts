@@ -17,6 +17,33 @@ function trainingCsv(): string {
   return `${rows.join("\n")}\n`;
 }
 
+test("a rejected GROUP split can be corrected without uncertain-write recovery", async ({ page }) => {
+  const path = projectPath();
+  const rows = ["group,x,target", "a,1,0", "a,2,1", "a,3,0", "b,4,1", "b,5,0", "b,6,1"];
+  await page.goto("/");
+  await page.getByLabel("Project path").fill(path);
+  await page.getByLabel("Project name").fill("Invalid split recovery");
+  await page.getByRole("button", { name: "Create project", exact: true }).click();
+  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByLabel("CSV data").fill(rows.join("\n"));
+  await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
+  await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
+  await page.getByRole("button", { name: "S", exact: true }).click();
+
+  await page.getByLabel("Split family").selectOption("GROUP");
+  await page.getByLabel("Split identity column").selectOption("group");
+  await page.getByRole("button", { name: "Freeze GROUP SplitContract", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("GROUP split requires at least three distinct groups");
+  await expect(page.getByTestId("split-contract-recovery")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Run real training", exact: true })).toBeEnabled();
+
+  await page.getByLabel("Split family").selectOption("RANDOM");
+  await page.getByRole("button", { name: "Freeze RANDOM SplitContract", exact: true }).click();
+  const frozenSplitLabel = page.locator(".compact-definition dt").filter({ hasText: "Frozen split" });
+  await expect(frozenSplitLabel.locator("xpath=following-sibling::dd[1]")).toContainText("RANDOM");
+  await expect(page.getByTestId("split-contract-recovery")).toHaveCount(0);
+});
+
 test("PRODUCT-02 performs real neuro-fuzzy training, validation evaluation and reopen", async ({ page }) => {
   test.setTimeout(45_000);
   const path = projectPath();
