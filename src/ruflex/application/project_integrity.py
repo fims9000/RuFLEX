@@ -887,6 +887,9 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                 active_id = json.loads(active_path.read_text(encoding="utf-8"))["evaluation_id"]
                 if str(active_id) not in {str(key) for key in evaluations}:
                     raise ValueError("Active validation Evaluation pointer does not resolve to persisted evidence.")
+                latest_evaluation = max(evaluations.values(), key=lambda item: (item.created_at, str(item.evaluation_id)), default=None)
+                if latest_evaluation is not None and str(latest_evaluation.evaluation_id) != str(active_id):
+                    raise ValueError("Active validation Evaluation pointer does not identify the latest persisted Evaluation.")
             except (KeyError, TypeError, ValueError, OSError, json.JSONDecodeError) as error:
                 issues.append(ProjectIntegrityIssue(code="VALIDATION_EVALUATION_ACTIVE_POINTER_INVALID", status="FAIL", path="analyses/evaluations/active-evaluation.json", detail=str(error)))
     calibration_root = base / "analyses" / "calibrations"

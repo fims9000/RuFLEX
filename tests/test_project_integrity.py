@@ -102,6 +102,11 @@ def test_project_integrity_rejects_validation_evaluation_detached_from_frozen_ru
     assert second_run.status_code == 201, second_run.text
     second_evaluation = client.post("/api/projects/analyses/evaluations", json={"session_id": session_id, "run_id": second_run.json()["run_id"]})
     assert second_evaluation.status_code == 201, second_evaluation.text
+    active_evaluation_path = root / "analyses" / "evaluations" / "active-evaluation.json"
+    active_evaluation_path.write_text(json.dumps({"evaluation_id": evaluation_id}), encoding="utf-8")
+    stale_evaluation_pointer = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert any(issue["code"] == "VALIDATION_EVALUATION_ACTIVE_POINTER_INVALID" for issue in stale_evaluation_pointer["issues"])
+    active_evaluation_path.write_text(json.dumps({"evaluation_id": second_evaluation.json()["evaluation_id"]}), encoding="utf-8")
     newer_threshold = client.post("/api/projects/analyses/thresholds", json={"session_id": session_id, "evaluation_id": second_evaluation.json()["evaluation_id"], "calibration_id": None, "objective": "f1"})
     assert newer_threshold.status_code == 201, newer_threshold.text
     active_threshold_path = root / "analyses" / "thresholds" / "active-threshold.json"

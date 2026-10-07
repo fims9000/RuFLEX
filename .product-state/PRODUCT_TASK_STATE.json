@@ -218,12 +218,13 @@
     "alpha_explanation_check_component_integrity",
     "alpha_assurance_claim_graph_integrity",
     "alpha_selective_active_pointer_integrity",
-    "alpha_threshold_active_pointer_integrity"
+    "alpha_threshold_active_pointer_integrity",
+    "alpha_evaluation_active_pointer_integrity"
   ],
-  "active_capability": "alpha_threshold_active_pointer_integrity",
+  "active_capability": "alpha_evaluation_active_pointer_integrity",
   "active_acceptance": [
-    "The active DecisionThresholdPolicy pointer resolves to the latest validation threshold under deterministic created_at/identity ordering.",
-    "A stale but otherwise valid threshold pointer fails integrity rather than presenting a silently older decision rule as active."
+    "The active validation Evaluation pointer resolves to the latest persisted Evaluation under deterministic created_at/identity ordering.",
+    "A stale but otherwise valid Evaluation pointer fails integrity rather than silently hydrating the wrong validation evidence."
   ],
   "blockers": [],
   "next_executable_work": "Continue lightweight project-integrity audit for stale active pointers on other persisted analysis/evidence families; preserve unrelated article files.",
@@ -448,6 +449,7 @@
     "alpha_explanation_check_component_integrity": "PASS: Contract-derived ExplanationCheck identity and numerical-completeness results are re-derived from the persisted ExplanationContract/TrainingRun without replaying explainers. Valid check reopen passes; internally consistent forged overall/component statuses are rejected; tests/test_project_integrity.py: 15 passed, compileall/json/diff checks passed.",
     "alpha_assurance_claim_graph_integrity": "PASS: Persisted Assurance claim statement/status/evidence/assumptions/limitations and unresolved risks are checked against their source gates. A forged claim statement fails integrity; focused API/project test passed.",
     "alpha_selective_active_pointer_integrity": "PASS: Active selective-policy pointer must reference the latest persisted policy by deterministic timestamp/identity ordering; a stale-but-resolving pointer is rejected. Focused project integrity test passed.",
-    "alpha_threshold_active_pointer_integrity": "PASS: Active DecisionThreshold pointer must reference the latest persisted validation policy by deterministic timestamp/identity ordering; a stale-but-resolving threshold pointer is rejected using two real run/evaluation/threshold chains. Focused project integrity test passed."
+    "alpha_threshold_active_pointer_integrity": "PASS: Active DecisionThreshold pointer must reference the latest persisted validation policy by deterministic timestamp/identity ordering; a stale-but-resolving threshold pointer is rejected using two real run/evaluation/threshold chains. Focused project integrity test passed.",
+    "alpha_evaluation_active_pointer_integrity": "PASS: Active validation Evaluation pointer must identify the latest persisted run-bound Evaluation; rollback to an older but valid Evaluation fails integrity. Focused project integrity test passes with two real training runs and evaluations."
   }
 }
