@@ -2029,10 +2029,13 @@ def create_selective_policy_route(request: CreateSelectivePolicyRequest) -> Sele
 @app.get("/api/projects/{session_id}/analyses/selective-policies/latest", response_model=SelectivePredictionPolicy)
 def get_latest_selective_policy(session_id: UUID) -> SelectivePredictionPolicy:
     from ruflex.application.selective import load_latest_selective_policy
+    from ruflex.application.training import TrainingError
     try:
         return load_latest_selective_policy(service.get(session_id).project.root)
     except ProjectError as error:
         raise _project_error(error) from error
+    except TrainingError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
     except FileNotFoundError as error:
         raise HTTPException(status_code=404, detail="No persisted selective-review policy exists in this project.") from error
 
@@ -2068,12 +2071,15 @@ def get_latest_selective_policy_for_binding(
 @app.get("/api/projects/{session_id}/analyses/selective-policies/{policy_id}", response_model=SelectivePredictionPolicy)
 def get_selective_policy_route(session_id: UUID, policy_id: UUID) -> SelectivePredictionPolicy:
     from ruflex.application.selective import load_selective_policy
+    from ruflex.application.training import TrainingError
     try:
         return load_selective_policy(service.get(session_id).project.root, policy_id)
     except ProjectError as error:
         raise _project_error(error) from error
     except FileNotFoundError as error:
         raise HTTPException(status_code=404, detail=f"Selective-review policy not found: {policy_id}") from error
+    except TrainingError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
 
 
 @app.post("/api/projects/analyses/selective-policies/apply", response_model=SelectiveDecision)

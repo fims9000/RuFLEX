@@ -503,6 +503,18 @@ def test_validation_calibration_and_threshold_reopen_validate_persisted_identity
     threshold = client.post("/api/projects/analyses/thresholds", json={"session_id": session_id, "evaluation_id": evaluation_id, "calibration_id": None, "objective": "f1"})
     assert threshold.status_code == 201, threshold.text
     threshold_id = threshold.json()["threshold_id"]
+    selective = client.post("/api/projects/analyses/selective-policies", json={"session_id": session_id, "evaluation_id": evaluation_id, "confidence_cutoff": .7, "calibration_id": None, "threshold_id": threshold_id})
+    assert selective.status_code == 201, selective.text
+    selective_id = selective.json()["policy_id"]
+
+    selective_path = root / "analyses" / "selective-policies" / f"{selective_id}.json"
+    selective_payload = json.loads(selective_path.read_text(encoding="utf-8"))
+    selective_payload["policy_id"] = "00000000-0000-0000-0000-000000000003"
+    selective_path.write_text(json.dumps(selective_payload), encoding="utf-8")
+    exact_selective = client.get(f"/api/projects/{session_id}/analyses/selective-policies/{selective_id}")
+    latest_selective = client.get(f"/api/projects/{session_id}/analyses/selective-policies/latest")
+    assert exact_selective.status_code == latest_selective.status_code == 422
+    assert "identity does not match" in exact_selective.text
 
     calibration_path = root / "analyses" / "calibrations" / f"{calibration_id}.json"
     calibration_payload = json.loads(calibration_path.read_text(encoding="utf-8"))

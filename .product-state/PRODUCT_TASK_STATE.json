@@ -190,7 +190,7 @@
   ],
   "active_capability": "alpha_validation_policy_reopen_identity_guard",
   "active_acceptance": [
-    "Exact and latest calibration/threshold reads verify immutable object identity and fail closed on malformed active pointers.",
+    "Exact and latest calibration/threshold/selective-policy reads verify immutable object identity and fail closed on malformed active pointers.",
     "Missing evidence remains distinguishable from malformed or identity-mismatched persisted policy evidence at the API boundary."
   ],
   "blockers": [],
@@ -384,6 +384,6 @@
     "alpha_study_job_dataset_binding": "PASS: StudyJob schema v7 binds the active DatasetContract fingerprint; submission persists it, execution verifies it before adapter resolution/fitting, and resume rejects stale or unbound jobs. Regression proves changed-dataset resume is refused without modifying queued state. Focused backend route/Stability/runtime suites 57 passed; compileall and diff check passed.",
     "alpha_study_job_midrun_dataset_revision_guard": "PASS: StudyJob revalidates the bound DatasetContract before each seed, checks new and reopened TrainingRuns against the frozen fingerprint, and verifies the active revision before aggregation. Mid-seed revision-change regression confirms one fit only, remaining seeds fail, and no TrainingStudy is created; focused StudyJob regression tests passed.",
     "alpha_validation_evaluation_reopen_identity_guard": "PASS: Exact Evaluation reopen validates the requested ID against the immutable object; latest reopen rejects malformed active pointers and identity mismatches with typed 422 integrity errors. Focused recovery, normal reopen and corruption regression tests passed.",
-    "alpha_validation_policy_reopen_identity_guard": "PASS: Exact and latest calibration/threshold reopen validate immutable object IDs; malformed latest pointers and identity mismatches return typed 422 integrity errors. Regression corrupts both policy records and the threshold pointer; policy-object integrity test passed."
+    "alpha_validation_policy_reopen_identity_guard": "PASS: Exact and latest calibration/threshold/selective-policy reopen validate immutable object IDs; malformed latest pointers and identity mismatches return typed 422 integrity errors. Regression corrupts policy records and a threshold pointer; policy-object integrity test passed."
   }
 }

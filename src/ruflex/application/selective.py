@@ -65,7 +65,16 @@ def create_selective_policy(project_root: Path, evaluation_id: UUID, confidence_
 
 
 def load_selective_policy(project_root: Path, policy_id: UUID) -> SelectivePredictionPolicy:
-    return SelectivePredictionPolicy.model_validate_json((_root(project_root) / f"{policy_id}.json").read_text())
+    path = _root(project_root) / f"{policy_id}.json"
+    try:
+        policy = SelectivePredictionPolicy.model_validate_json(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        raise
+    except (ValueError, OSError) as error:
+        raise TrainingError(f"Persisted selective-review policy {policy_id} is malformed or unreadable.") from error
+    if policy.policy_id != policy_id:
+        raise TrainingError("Persisted selective-review policy identity does not match the requested object ID.")
+    return policy
 
 
 def apply_selective_policy(project_root: Path, policy_id: UUID, sample: dict[str, float], *, metadata: dict[str, object] | None = None, generalization_contract_id: UUID | None = None) -> SelectiveDecision:
@@ -91,8 +100,15 @@ def apply_selective_policy(project_root: Path, policy_id: UUID, sample: dict[str
 
 
 def load_latest_selective_policy(project_root: Path) -> SelectivePredictionPolicy:
-    pointer = json.loads((_root(project_root) / "active-policy.json").read_text())
-    return load_selective_policy(project_root, UUID(pointer["policy_id"]))
+    pointer_path = _root(project_root) / "active-policy.json"
+    try:
+        pointer = json.loads(pointer_path.read_text(encoding="utf-8"))
+        policy_id = UUID(pointer["policy_id"])
+    except FileNotFoundError:
+        raise
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        raise TrainingError("The persisted latest selective-policy pointer is malformed; refusing to infer the active object.") from error
+    return load_selective_policy(project_root, policy_id)
 
 
 def load_latest_selective_policy_for_binding(
