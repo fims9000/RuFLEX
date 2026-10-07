@@ -434,6 +434,8 @@ def _error_code(*, status_code: int, detail: object) -> str:
     machine-readable branch point for recoverable product states.
     """
 
+    if isinstance(detail, dict) and isinstance(detail.get("code"), str):
+        return detail["code"]
     message = str(detail).lower()
     if "test" in message and ("opened" in message or "unlock" in message):
         return "TEST_ALREADY_OPENED"

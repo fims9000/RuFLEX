@@ -71,6 +71,7 @@ def test_training_rejects_adapter_key_incompatible_with_concrete_model(tmp_path:
     session_id = client.post("/api/projects", json={"path": str(tmp_path / "incompatible"), "name": "Incompatible"}).json()["session_id"]
     response = client.post("/api/projects/training/run", json={"session_id": session_id, "model_kind": "decision_tree", "adapter_key": "native_linear"})
     assert response.status_code == 422
+    assert response.json()["code"] == "RUNTIME_INCOMPATIBLE"
     assert response.json()["detail"]["code"] == "RUNTIME_INCOMPATIBLE"
 
 

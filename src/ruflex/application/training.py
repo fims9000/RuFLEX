@@ -22,6 +22,7 @@ from sklearn.metrics import accuracy_score, average_precision_score, f1_score, m
 
 from ruflex.application.artifacts import ArtifactMetadata, ArtifactRef, ArtifactStore
 from ruflex.runtime.backends import resolve_execution_backend
+from ruflex.runtime.errors import RuntimeErrorBase
 from ruflex.runtime.registry import builtin_runtime_registry
 from ruflex.application.datasets import load_dataset_contract, load_dataset_frame, load_split_contract, load_transform_pipeline_contract, row_identity
 from ruflex.core.enums import NormalizationMode, TaskType, VariableRole
@@ -995,6 +996,8 @@ def train_model(project_root: Path, *, model_kind: str, adapter_key: str | None 
             declared_training_config=declared_training_config,
         )
     except Exception as error:
+        if isinstance(error, RuntimeErrorBase):
+            raise
         if isinstance(error, TrainingError):
             raise
         raise TrainingError(f"Unsupported or unavailable model adapter for {model_kind!r}.") from error
