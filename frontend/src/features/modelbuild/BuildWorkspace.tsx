@@ -532,6 +532,7 @@ export function BuildWorkspace({
     if (!working) return;
     const next = cloneFis(working);
     edit(next);
+    next.semantic_hash = null;
     setWorking(next);
     const nextHistory = [
       ...editorHistory.slice(0, historyIndex + 1),
@@ -1088,6 +1089,10 @@ export function BuildWorkspace({
   async function run() {
     if (!working || fisEvaluationRecovery || fisEvaluationInFlightRef.current) return;
     setError(null);
+    if (!working.semantic_hash) {
+      setError("Save this FIS revision before evaluating; inference uses the active persisted model. No inference was submitted.");
+      return;
+    }
     const parsed = parseFisRunInputs(working.inputs.map((variable) => variable.name), runInputs);
     if (!parsed.ok) {
       setError(`Enter a finite number for each model input. Invalid: ${parsed.invalidInputs.join(", ")}. No inference was submitted.`);
@@ -1335,7 +1340,7 @@ export function BuildWorkspace({
           <Button view="outlined" onClick={exportMatlabFile} data-ruflex-action="fis.export">
             Export MATLAB .fis
           </Button>
-          <Button view="action" disabled={!!fisEvaluationRecovery} onClick={run} data-ruflex-action="fis.evaluate">
+          <Button view="action" disabled={evaluatingFis || !working.semantic_hash || !!fisEvaluationRecovery} onClick={run} data-ruflex-action="fis.evaluate">
             Run exact inference
           </Button>
         </div>
@@ -1991,9 +1996,10 @@ export function BuildWorkspace({
               />
             </label>
           ))}
-          <Button view="action" disabled={evaluatingFis || !!fisEvaluationRecovery} onClick={run}>
+          <Button view="action" disabled={evaluatingFis || !working.semantic_hash || !!fisEvaluationRecovery} onClick={run}>
             {evaluatingFis ? "Evaluating…" : "Evaluate"}
           </Button>
+          {!working.semantic_hash && <p role="status">Save this FIS revision before evaluating; inference uses the active persisted model.</p>}
           {evaluatingFis && <p role="status">Running the current FIS input sample…</p>}
           {evaluationStatus === "loading" && <p role="status">Checking the saved exact FIS trace…</p>}
           {evaluationStatus === "none" && !lastOutput && <p>No saved exact FIS trace is available yet.</p>}
