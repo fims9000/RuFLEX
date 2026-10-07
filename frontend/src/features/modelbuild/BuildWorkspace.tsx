@@ -1170,8 +1170,10 @@ export function BuildWorkspace({
     }
   }
   async function recoverFisEvaluation() {
+    if (fisEvaluationInFlightRef.current) return;
     const pending = fisEvaluationRecovery;
     if (!pending) return;
+    fisEvaluationInFlightRef.current = true;
     setRecoveringFisEvaluation(true); setError(null);
     try {
       const latest = await studioApi.getLatestFisTrace(project.session_id);
@@ -1188,11 +1190,13 @@ export function BuildWorkspace({
         const message = reason instanceof Error ? reason.message : "Could not recover the exact FIS trace.";
         setFisEvaluationRecovery({ ...pending, notFound: false, error: message }); setError(message);
       }
-    } finally { setRecoveringFisEvaluation(false); }
+    } finally { fisEvaluationInFlightRef.current = false; setRecoveringFisEvaluation(false); }
   }
   async function explicitlyRepeatFisEvaluation() {
+    if (fisEvaluationInFlightRef.current) return;
     const pending = fisEvaluationRecovery;
     if (!pending?.notFound || working?.fis_id !== pending.fisId || working.semantic_hash !== pending.semanticHash) return;
+    fisEvaluationInFlightRef.current = true;
     setRecoveringFisEvaluation(true); setError(null);
     try {
       const evaluation = await studioApi.evaluateFis(project.session_id, pending.inputs, true);
@@ -1200,7 +1204,7 @@ export function BuildWorkspace({
     } catch (reason) {
       const message = reason instanceof Error ? reason.message : "The explicitly repeated FIS inference could not be confirmed.";
       setFisEvaluationRecovery({ ...pending, notFound: false, error: message }); setError(message);
-    } finally { setRecoveringFisEvaluation(false); }
+    } finally { fisEvaluationInFlightRef.current = false; setRecoveringFisEvaluation(false); }
   }
   async function refreshSurface() {
     if (!working || !surfaceAxes) return;
@@ -2048,7 +2052,7 @@ export function BuildWorkspace({
               />
             </label>
           ))}
-          <Button view="action" disabled={evaluatingFis || !working.semantic_hash || !!fisEvaluationRecovery} onClick={run}>
+          <Button view="action" disabled={evaluatingFis || recoveringFisEvaluation || !working.semantic_hash || !!fisEvaluationRecovery} onClick={run}>
             {evaluatingFis ? "Evaluating…" : "Evaluate"}
           </Button>
           {!working.semantic_hash && <p role="status">Save this FIS revision before evaluating or exporting; both operations use the active persisted model.</p>}

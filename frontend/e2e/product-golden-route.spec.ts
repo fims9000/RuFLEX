@@ -50,7 +50,21 @@ test("PRODUCT-01 persists data, builds an editable FIS, runs it and exposes exac
   expect(fisSavePosts).toBe(1);
   await expect(page.getByText(/Recovered the exact saved FIS revision after the response was lost/)).toBeVisible();
 
-  await page.getByRole("button", { name: "Run exact inference", exact: true }).click();
+  let inferencePosts = 0;
+  await page.route("**/api/projects/fis/evaluate", async (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    inferencePosts += 1;
+    await route.fetch();
+    await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Exact FIS trace response lost after persistence" }) });
+  });
+  await page.getByRole("button", { name: "Run exact inference", exact: true }).evaluate((button) => { button.dispatchEvent(new MouseEvent("click", { bubbles: true })); button.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
+  const evaluationRecovery = page.getByTestId("fis-evaluation-recovery");
+  await expect(evaluationRecovery).toContainText("Exact FIS trace response lost after persistence");
+  await expect(page.getByRole("button", { name: "Run exact inference", exact: true })).toBeDisabled();
+  expect(inferencePosts).toBe(1);
+  await page.getByRole("button", { name: "Retry exact FIS trace lookup", exact: true }).click();
+  await expect(evaluationRecovery).toHaveCount(0);
+  expect(inferencePosts).toBe(1);
   await expect(page.getByText("OUTPUT", { exact: true })).toBeVisible();
   await expect(page.getByText(/trace error/)).toBeVisible();
   await page.getByRole("button", { name: "Open exact trace", exact: true }).click();
