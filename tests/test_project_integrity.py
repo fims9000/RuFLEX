@@ -11,6 +11,8 @@ from fastapi.testclient import TestClient
 
 from ruflex.api.main import app
 from ruflex.application.training import _stable_identity
+from ruflex.application.project_integrity import _inspect_auxiliary_active_pointers
+from ruflex.domain.training import AnalysisComparison
 from ruflex.sdk.studio import open_studio_project
 
 
@@ -38,6 +40,39 @@ MF1='low':'trimf',[0 0 1]
 def _frame() -> str:
     rows = [{"temperature": 10 + index, "torque": 20 + 3 * index, "target": int(index > 8)} for index in range(32)]
     return pd.DataFrame(rows).to_csv(index=False)
+
+
+def test_project_integrity_rejects_stale_or_missing_auxiliary_analysis_pointers(tmp_path: Path) -> None:
+    root = tmp_path / "auxiliary-integrity"
+    comparison_root = root / "analyses" / "comparisons"
+    comparison_root.mkdir(parents=True)
+    run_ids = [uuid4(), uuid4()]
+    first = AnalysisComparison(task="binary_classification", target="target", run_ids=run_ids, metric_rows=[])
+    second = AnalysisComparison(task="binary_classification", target="target", run_ids=run_ids, metric_rows=[])
+    first_path = comparison_root / f"{first.comparison_id}.json"
+    second_path = comparison_root / f"{second.comparison_id}.json"
+    first_path.write_text(first.model_dump_json(), encoding="utf-8")
+    second_path.write_text(second.model_dump_json(), encoding="utf-8")
+    pointer_path = comparison_root / "active-comparison.json"
+
+    # Deterministically make the second object the latest regardless of wall-clock timing.
+    first_payload = json.loads(first_path.read_text(encoding="utf-8"))
+    second_payload = json.loads(second_path.read_text(encoding="utf-8"))
+    first_payload["created_at"] = "2026-01-01T00:00:00Z"
+    second_payload["created_at"] = "2026-01-02T00:00:00Z"
+    first_path.write_text(json.dumps(first_payload), encoding="utf-8")
+    second_path.write_text(json.dumps(second_payload), encoding="utf-8")
+
+    issues, _ = _inspect_auxiliary_active_pointers(root)
+    assert any(issue.code == "ANALYSIS_COMPARISON_ACTIVE_POINTER_INVALID" for issue in issues)
+
+    pointer_path.write_text(json.dumps({"comparison_id": str(second.comparison_id)}), encoding="utf-8")
+    issues, _ = _inspect_auxiliary_active_pointers(root)
+    assert not any(issue.code == "ANALYSIS_COMPARISON_ACTIVE_POINTER_INVALID" for issue in issues)
+
+    pointer_path.unlink()
+    issues, _ = _inspect_auxiliary_active_pointers(root)
+    assert any(issue.code == "ANALYSIS_COMPARISON_ACTIVE_POINTER_INVALID" for issue in issues)
 
 
 def test_project_integrity_survives_reopen_and_reports_missing_frozen_model_artifact(tmp_path: Path) -> None:

@@ -19,12 +19,15 @@ from ruflex.application.jobs import Job
 from ruflex.application.projects import ProjectService
 from ruflex.application.training import _baseline_metrics, _calibration_bins_from_probabilities, _classification_metrics_at_threshold, _ece_from_bins, _operating_curves, _select_study_run, _stable_identity, list_training_runs
 from ruflex.application.behavior import _requirement_identity
+from ruflex.application.generalization import SliceAnalysis
 from ruflex.domain.behavior import BehaviorRevisionComparison, BehaviorSpec, BehaviorSpecResult
-from ruflex.domain.evidence import ExplanationCheck, ExplanationContract
+from ruflex.domain.evidence import ExplanationCheck, ExplanationContract, ExplanationReproducibilityAnalysis
+from ruflex.domain.expert_correction import ExpertCorrectionRevision
+from ruflex.domain.exhaustive import ExhaustiveLabResult
 from ruflex.domain.assurance import AssuranceCase
 from ruflex.domain.verification import VerificationBundle
 from ruflex.domain.project import ProjectIntegrityIssue, ProjectIntegrityReport
-from ruflex.domain.training import AnalysisEvaluation, CalibrationTransform, DecisionThresholdPolicy, FinalTestEvaluation, StudyJob, TrainingStudy
+from ruflex.domain.training import AnalysisComparison, AnalysisEvaluation, CalibrationTransform, DecisionThresholdPolicy, FinalTestEvaluation, StudyJob, TrainingStudy, TreePathEvidence
 from ruflex.domain.selective import SelectivePredictionPolicy
 from ruflex.domain.stability import StabilityGatePolicy, StudyStabilityAnalysis
 from ruflex.runtime.registry import builtin_runtime_registry
@@ -701,6 +704,119 @@ def _require_active_pointer(objects, pointer_path: Path, relative_path: str, cod
             detail=f"Persisted {label} exist but the active pointer required by latest-object hydration is missing.",
         )
     return None
+
+
+def _active_latest_pointer_issue(
+    objects: list | dict,
+    pointer_path: Path,
+    relative_path: str,
+    code: str,
+    label: str,
+    pointer_key: str,
+    identity_attribute: str,
+    *,
+    require_latest: bool = True,
+) -> ProjectIntegrityIssue | None:
+    """Validate a persisted active pointer against its collection and latest object."""
+    values = list(objects.values()) if isinstance(objects, dict) else list(objects)
+    if values and not pointer_path.exists():
+        return _require_active_pointer(values, pointer_path, relative_path, code, label)
+    if not pointer_path.exists():
+        return None
+    try:
+        payload = json.loads(pointer_path.read_text(encoding="utf-8"))
+        active_id = payload[pointer_key]
+        by_id = {str(getattr(item, identity_attribute)): item for item in values}
+        active = by_id.get(str(active_id))
+        if active is None:
+            raise ValueError(f"Active {label} pointer does not resolve to persisted evidence.")
+        if require_latest and all(hasattr(item, "created_at") for item in values):
+            latest = max(values, key=lambda item: (item.created_at, str(getattr(item, identity_attribute))))
+            if str(getattr(latest, identity_attribute)) != str(active_id):
+                raise ValueError(f"Active {label} pointer does not identify the latest persisted object.")
+    except (KeyError, TypeError, ValueError, OSError, json.JSONDecodeError) as error:
+        return ProjectIntegrityIssue(code=code, status="FAIL", path=relative_path, detail=str(error))
+    return None
+
+
+def _load_pointer_collection(
+    base: Path,
+    relative_dir: str,
+    validator,
+    identity_attribute: str,
+    pointer_name: str,
+    pointer_key: str,
+    code: str,
+    label: str,
+    *,
+    exclude: tuple[str, ...] = (),
+    require_latest: bool = True,
+) -> tuple[list, list[ProjectIntegrityIssue], int]:
+    """Read a small persisted evidence family and verify its active/latest pointer."""
+    root = base / relative_dir
+    issues: list[ProjectIntegrityIssue] = []
+    if root.exists() and not root.is_dir():
+        return [], [ProjectIntegrityIssue(code=f"{code.removesuffix('_ACTIVE_POINTER_INVALID')}_EVIDENCE_MALFORMED", status="FAIL", path=relative_dir, detail="Persisted evidence path is not a directory.")], 0
+    objects = []
+    checked = 0
+    if root.is_dir():
+        for path in sorted(root.glob("*.json")):
+            if path.name == pointer_name or path.name in exclude:
+                continue
+            checked += 1
+            try:
+                item = validator.model_validate_json(path.read_text(encoding="utf-8"))
+                if path.stem != str(getattr(item, identity_attribute)):
+                    raise ValueError(f"{label} filename does not match its persisted identity.")
+                objects.append(item)
+            except (ValidationError, ValueError, OSError, json.JSONDecodeError) as error:
+                issues.append(ProjectIntegrityIssue(code=f"{code.removesuffix('_ACTIVE_POINTER_INVALID')}_EVIDENCE_MALFORMED", status="FAIL", path=str(path.relative_to(base)), detail=str(error)))
+    pointer_issue = _active_latest_pointer_issue(
+        objects,
+        root / pointer_name,
+        f"{relative_dir}/{pointer_name}",
+        code,
+        label,
+        pointer_key,
+        identity_attribute,
+        require_latest=require_latest,
+    )
+    if pointer_issue is not None:
+        issues.append(pointer_issue)
+        checked += 1
+    elif (root / pointer_name).exists():
+        checked += 1
+    return objects, issues, checked
+
+
+def _inspect_auxiliary_active_pointers(base: Path) -> tuple[list[ProjectIntegrityIssue], int]:
+    """Check latest-object pointers for persisted evidence families not loaded above."""
+    specs = (
+        ("analyses/comparisons", AnalysisComparison, "active-comparison.json", "comparison_id", "comparison_id", "ANALYSIS_COMPARISON_ACTIVE_POINTER_INVALID"),
+        ("analyses/slices", SliceAnalysis, "active-slice-analysis.json", "analysis_id", "analysis_id", "SLICE_ANALYSIS_ACTIVE_POINTER_INVALID"),
+        ("evidence/explanation-reproducibility", ExplanationReproducibilityAnalysis, "active-analysis.json", "analysis_id", "analysis_id", "EXPLANATION_REPRODUCIBILITY_ACTIVE_POINTER_INVALID"),
+        ("analyses/expert-corrections", ExpertCorrectionRevision, "active-correction.json", "correction_id", "correction_id", "EXPERT_CORRECTION_ACTIVE_POINTER_INVALID"),
+        ("evidence/exhaustive-lab", ExhaustiveLabResult, "active-result.json", "result_id", "result_id", "EXHAUSTIVE_RESULT_ACTIVE_POINTER_INVALID"),
+        # TreePathEvidence has no created_at field, so only referential integrity is meaningful.
+        ("evidence/tree-paths", TreePathEvidence, "latest.json", "evidence_id", "evidence_id", "TREE_PATH_ACTIVE_POINTER_INVALID"),
+    )
+    issues: list[ProjectIntegrityIssue] = []
+    checked = 0
+    for relative_dir, validator, pointer_name, pointer_key, identity_attribute, code in specs:
+        _, family_issues, family_checked = _load_pointer_collection(
+            base,
+            relative_dir,
+            validator,
+            identity_attribute,
+            pointer_name,
+            pointer_key,
+            code,
+            relative_dir.rsplit("/", 1)[-1],
+            require_latest=relative_dir != "evidence/tree-paths",
+        )
+        issues.extend(family_issues)
+        checked += family_checked
+    return issues, checked
 
 
 def _final_test_freeze_timestamps_match(
@@ -1587,6 +1703,24 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                     raise ValueError("BehaviorRevisionComparison transition or requirement provenance does not match its frozen results.")
             except (OSError, ValidationError, ValueError) as error:
                 issues.append(ProjectIntegrityIssue(code="BEHAVIOR_EVIDENCE_MALFORMED", status="FAIL", path=relative_path, detail=str(error)))
+        for objects, pointer_name, pointer_key, identity_attribute, code, label in (
+            (behavior_specs, "active-spec.json", "spec_id", "spec_id", "BEHAVIOR_SPEC_ACTIVE_POINTER_INVALID", "BehaviorSpecs"),
+            (behavior_results, "active-result.json", "result_id", "result_id", "BEHAVIOR_RESULT_ACTIVE_POINTER_INVALID", "BehaviorSpecResults"),
+        ):
+            pointer_issue = _active_latest_pointer_issue(
+                objects,
+                behavior_root / pointer_name,
+                f"evidence/behavior-specs/{pointer_name}",
+                code,
+                label,
+                pointer_key,
+                identity_attribute,
+            )
+            if pointer_issue is not None:
+                checked += 1
+                issues.append(pointer_issue)
+            elif (behavior_root / pointer_name).exists():
+                checked += 1
     explanation_root = base / "evidence" / "explanations"
     explanations: dict[object, ExplanationContract] = {}
     if explanation_root.exists() and not explanation_root.is_dir():
@@ -1823,5 +1957,8 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                 issues.append(ProjectIntegrityIssue(code="JOB_OUTPUT_PROVENANCE_MISMATCH", status="FAIL", path=relative_path, detail=str(error)))
     except (ValidationError, ValueError, FileNotFoundError) as error:
         issues.append(ProjectIntegrityIssue(code="JOB_EVIDENCE_MALFORMED", status="FAIL", path="jobs", detail=str(error)))
+    auxiliary_pointer_issues, auxiliary_pointer_checks = _inspect_auxiliary_active_pointers(base)
+    issues.extend(auxiliary_pointer_issues)
+    checked += auxiliary_pointer_checks
     status = "FAIL" if any(issue.status == "FAIL" for issue in issues) else "WARN" if any(issue.status == "WARN" for issue in issues) else "PASS"
     return ProjectIntegrityReport(project_id=project.id, status=status, checked_objects=checked, issues=issues)
