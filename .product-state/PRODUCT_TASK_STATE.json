@@ -261,16 +261,17 @@
     "alpha_project_overview_study_history_truthfulness",
     "alpha_project_overview_model_truthfulness",
     "alpha_project_overview_analysis_evidence_navigation_truthfulness",
-    "alpha_project_saved_study_next_step_truthfulness"
+    "alpha_project_saved_study_next_step_truthfulness",
+    "alpha_fis_response_surface_refresh_inputs"
   ],
-  "active_capability": "alpha_project_saved_study_next_step_truthfulness",
+  "active_capability": "alpha_fis_response_surface_refresh_inputs",
   "active_acceptance": [
-    "Overview never recommends a first model fit until persisted TrainingStudy history is resolved.",
-    "A saved TrainingStudy with no active TrainingRun is surfaced as existing work with a route to inspect it.",
-    "A study-history read error suppresses training advice and offers an explicit retry."
+    "Response surfaces refresh when non-axis run inputs change.",
+    "Late response-surface requests cannot overwrite results for newer input/spec/axis state.",
+    "The Studio exposes response-surface refresh progress and errors near the chart."
   ],
   "blockers": [],
-  "next_executable_work": "Inspect the next focused alpha workflow for an evidenced usability or recovery gap; make a bounded fix with targeted tests and a local commit.",
+  "next_executable_work": "Inspect the next low-memory alpha workflow for a concrete functional or recovery gap; implement a bounded user-visible slice, verify it, and commit locally.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -535,6 +536,7 @@
     "alpha_project_overview_study_history_truthfulness": "PASS: Project Overview Study tile now distinguishes saved TrainingStudy history, individual-run-only state, loading, read failure and verified absence instead of inferring 'No studies' from a missing active TrainingRun. Focused helper tests: 3 passed; TypeScript project build (tsc -b) and git diff --check passed. Browser E2E not run for this contained summary-state fix.",
     "alpha_project_overview_model_truthfulness": "PASS: Project Overview Models tile now distinguishes context loading/failure, saved FIS, native trained model runs and verified absence. Focused projectOverview tests: 5 passed; TypeScript project build (tsc -b) and git diff --check passed. Browser E2E not run for this contained summary-state fix.",
     "alpha_project_overview_analysis_evidence_navigation_truthfulness": "PASS: Overview no longer labels the absence of a latest validation Evaluation as 'No analyses' or a missing exact FIS trace as 'No evidence'; neutral navigation guidance keeps other saved evidence discoverable. Focused projectOverview tests: 7 passed; TypeScript project build (tsc -b) and git diff --check passed. Browser E2E not run for this copy-only navigation fallback.",
-    "alpha_project_saved_study_next_step_truthfulness": "PASS: Overview waits for saved TrainingStudy hydration before recommending a first model fit, routes to a persisted study when present, and suppresses advice with retry when history is unavailable. Focused projectOverview tests: 9 passed; TypeScript project build (tsc -b) and git diff --check passed. Browser E2E not run for this contained next-step guidance change."
+    "alpha_project_saved_study_next_step_truthfulness": "PASS: Overview waits for saved TrainingStudy hydration before recommending a first model fit, routes to a persisted study when present, and suppresses advice with retry when history is unavailable. Focused projectOverview tests: 9 passed; TypeScript project build (tsc -b) and git diff --check passed. Browser E2E not run for this contained next-step guidance change.",
+    "alpha_fis_response_surface_refresh_inputs": "PASS: Response surfaces now recompute when fixed run inputs change, discard stale async replies after spec/axis/input changes, and expose loading/error status beside the chart. TypeScript project build (tsc -b), focused Studio Playwright E2E (1/1) verifying changed fixed-input payload, and git diff --check passed."
   }
 }

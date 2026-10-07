@@ -371,6 +371,9 @@ export function BuildWorkspace({
   const [recoveringExpertRefit, setRecoveringExpertRefit] = useState(false);
   const [surface, setSurface] = useState<ResponseSurface | null>(null);
   const [surfaceAxes, setSurfaceAxes] = useState<[string, string] | null>(null);
+  const [surfaceLoading, setSurfaceLoading] = useState(false);
+  const [surfaceError, setSurfaceError] = useState<string | null>(null);
+  const responseSurfaceRequestRef = useRef(0);
   const [diagnostics, setDiagnostics] = useState<
     Array<{ code: string; severity: string; message: string }>
   >([]);
@@ -1105,11 +1108,16 @@ export function BuildWorkspace({
   }
   async function refreshSurface() {
     if (!working || !surfaceAxes) return;
-    setError(null);
+    const requestId = ++responseSurfaceRequestRef.current;
+    const requestedSpec = working;
+    const requestedAxes = surfaceAxes;
+    setSurface(null);
+    setSurfaceLoading(true);
+    setSurfaceError(null);
     try {
       const fixedInputs = Object.fromEntries(
-        working.inputs
-          .filter((variable) => !surfaceAxes.includes(variable.name))
+        requestedSpec.inputs
+          .filter((variable) => !requestedAxes.includes(variable.name))
           .map((variable) => [
             variable.name,
             Number(
@@ -1118,21 +1126,20 @@ export function BuildWorkspace({
             ),
           ]),
       );
-      setSurface(
-        await studioApi.previewResponseSurface(
-          project.session_id,
-          working,
-          surfaceAxes[0],
-          surfaceAxes[1],
-          fixedInputs,
-        ),
+      const result = await studioApi.previewResponseSurface(
+        project.session_id,
+        requestedSpec,
+        requestedAxes[0],
+        requestedAxes[1],
+        fixedInputs,
       );
+      if (requestId !== responseSurfaceRequestRef.current) return;
+      setSurface(result);
     } catch (reason) {
-      setError(
-        reason instanceof Error
-          ? reason.message
-          : "Response surface evaluation failed",
-      );
+      if (requestId !== responseSurfaceRequestRef.current) return;
+      setSurfaceError(reason instanceof Error ? reason.message : "Response surface evaluation failed");
+    } finally {
+      if (requestId === responseSurfaceRequestRef.current) setSurfaceLoading(false);
     }
   }
   async function refreshDiagnostics() {
@@ -1145,12 +1152,20 @@ export function BuildWorkspace({
     }
   }
   useEffect(() => {
-    if (!working || !surfaceAxes || working.inputs.length < 2) return;
+    if (!working || !surfaceAxes || working.inputs.length < 2) {
+      responseSurfaceRequestRef.current += 1;
+      setSurface(null);
+      setSurfaceLoading(false);
+      return;
+    }
     const timer = window.setTimeout(() => {
       void refreshSurface();
     }, 250);
-    return () => window.clearTimeout(timer);
-  }, [working, surfaceAxes]);
+    return () => {
+      window.clearTimeout(timer);
+      responseSurfaceRequestRef.current += 1;
+    };
+  }, [working, surfaceAxes, runInputs]);
   if (!working)
     return (
       <section className="feature-workspace">
@@ -1966,8 +1981,8 @@ export function BuildWorkspace({
               <span className="eyebrow">RESPONSE SURFACE</span>
               <h3>Canonical control surface</h3>
             </div>
-            <Button view="outlined" onClick={refreshSurface}>
-              Refresh surface
+            <Button view="outlined" disabled={surfaceLoading} onClick={refreshSurface}>
+              {surfaceLoading ? "Refreshing surface…" : "Refresh surface"}
             </Button>
           </div>
           <div className="surface-controls">
@@ -2019,18 +2034,20 @@ export function BuildWorkspace({
                 : "Every cell uses the current canonical FIS."}
             </span>
           </div>
+          {surfaceError && <p className="error" role="alert">Response surface could not be refreshed. {surfaceError}</p>}
+          {surfaceLoading && <p role="status">Evaluating the current FIS and fixed input values…</p>}
           {surface ? (
             <ChartSurface
               title={`${surface.x_variable} × ${surface.y_variable} → ${working.output.name}`}
               option={responseSurfaceOption(surface)}
               theme={theme}
             />
-          ) : (
+          ) : !surfaceLoading && !surfaceError ? (
             <p className="surface-placeholder">
               Choose axes and refresh to evaluate the real current FIS over the
               control grid.
             </p>
-          )}
+          ) : null}
         </section>
       )}
       <section className="rule-engineering">
