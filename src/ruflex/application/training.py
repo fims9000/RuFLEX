@@ -1398,6 +1398,30 @@ def load_latest_validation_evaluation(project_root: Path) -> AnalysisEvaluation:
     return load_validation_evaluation(project_root, UUID(pointer["evaluation_id"]))
 
 
+def load_latest_validation_evaluation_for_run(project_root: Path, run_id: UUID) -> AnalysisEvaluation:
+    """Resolve a persisted Evaluation by its immutable TrainingRun identity.
+
+    This read path is for recovering an uncertain Evaluation write. It does
+    not trust the mutable active pointer, which may not have been updated if
+    persistence failed after the immutable evidence file was written.
+    """
+    latest: AnalysisEvaluation | None = None
+    root = _evaluations_root(project_root)
+    for path in root.glob("*.json"):
+        if path.name == "active-evaluation.json":
+            continue
+        evaluation = AnalysisEvaluation.model_validate_json(path.read_text(encoding="utf-8"))
+        if path.stem != str(evaluation.evaluation_id):
+            raise TrainingError(f"Persisted Evaluation identity does not match its filename: {path.name}.")
+        if evaluation.run_id != run_id:
+            continue
+        if latest is None or (evaluation.created_at, str(evaluation.evaluation_id)) > (latest.created_at, str(latest.evaluation_id)):
+            latest = evaluation
+    if latest is None:
+        raise FileNotFoundError(f"No persisted validation Evaluation exists for TrainingRun {run_id}.")
+    return latest
+
+
 def fit_validation_calibration(project_root: Path, evaluation_id: UUID) -> CalibrationTransform:
     """Fit and persist Platt scaling on validation evidence only.
 

@@ -166,15 +166,16 @@
     "alpha_split_validation_rejection_recovery",
     "alpha_training_validation_rejection_recovery",
     "alpha_training_mutation_persistence_error_classification",
-    "alpha_frozen_split_selection_binding"
+    "alpha_frozen_split_selection_binding",
+    "alpha_validation_evaluation_exact_run_recovery"
   ],
-  "active_capability": "alpha_frozen_split_selection_binding",
+  "active_capability": "alpha_validation_evaluation_exact_run_recovery",
   "active_acceptance": [
-    "TrainingRun and TrainingStudy can start only when the currently selected split family, seed, identity column, dataset identity and frozen split contract agree.",
-    "No invalid or stale frozen-split selection can silently fall back to legacy RANDOM; explicit frozen fractions are reused for training and shown truthfully in Studio."
+    "If Evaluation evidence is persisted but the active-evaluation pointer write fails, the API classifies the write as an uncertain persistence failure rather than validation rejection.",
+    "Studio can recover the latest immutable validation Evaluation by exact TrainingRun identity without trusting the mutable active pointer or creating a duplicate Evaluation."
   ],
   "blockers": [],
-  "next_executable_work": "Continue the real first-run route from frozen split through TrainingRun, persisted TRAIN-only preprocessing, validation evidence save/reopen, then verify policy/evidence navigation without opening final test.",
+  "next_executable_work": "Continue first-run workflow verification from recovered validation Evaluation through frozen threshold/selective or stability policy navigation and reopen; preserve the final-test boundary.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -344,6 +345,7 @@
     "alpha_split_validation_rejection_recovery": "PASS: Definitive SplitContract HTTP 422 VALIDATION_FAILED responses no longer create uncertain-write recovery state; users can correct the split and submit a valid contract. Frontend unit tests 18/18, TypeScript/Vite production build, focused Playwright correction flow 1/1, and git diff --check passed.",
     "alpha_training_validation_rejection_recovery": "PASS: Typed HTTP 422 VALIDATION_FAILED responses for single TrainingRun and Study requests remain editable and do not create stale recovery requests; Study correction creates a new request identity and retains corrected parameters. Frontend unit tests 20/20, TypeScript/Vite production build, and git diff --check passed; existing network/uncertain Study retry regression remains in the focused suite.",
     "alpha_training_mutation_persistence_error_classification": "PASS: SplitContract, TrainingRun and StudyJob persistence OSErrors now map to HTTP 500 instead of validation 422; Studio treats only typed 422 VALIDATION_FAILED with string detail as definitive, retaining exact recovery for ambiguous/runtime failures. Runtime application errors retain their typed runtime code through API and remain visible in Studio. Backend API/runtime/split selections 14 passed, frontend unit 20/20, focused split-correction Playwright 1/1, compileall, Vite build and git diff --check passed.",
-    "alpha_frozen_split_selection_binding": "PASS: Training is blocked when visible split controls disagree with the frozen Dataset-bound SplitContract; invalid GROUP no longer silently executes legacy RANDOM. Matching contract fractions are reused for single runs/Studies and displayed accurately, including a custom 25/25 validation/test split; family/seed mismatch is covered. Frontend unit 21/21, Vite production build, invalid-GROUP-to-RANDOM correction E2E 1/1, and real training/validation/reopen E2E 1/1 passed."
+    "alpha_frozen_split_selection_binding": "PASS: Training is blocked when visible split controls disagree with the frozen Dataset-bound SplitContract; invalid GROUP no longer silently executes legacy RANDOM. Matching contract fractions are reused for single runs/Studies and displayed accurately, including a custom 25/25 validation/test split; family/seed mismatch is covered. Frontend unit 21/21, Vite production build, invalid-GROUP-to-RANDOM correction E2E 1/1, and real training/validation/reopen E2E 1/1 passed.",
+    "alpha_validation_evaluation_exact_run_recovery": "PASS: Evaluation persistence failures now return HTTP 500 with exact-run recovery guidance; API reopens immutable Validation Evaluation evidence by TrainingRun ID even when the active pointer is absent. Backend regression simulates pointer-write failure after immutable save and verifies exact recovery plus truthful latest-pointer 404 (2 focused route tests passed); EvaluationWorkspace regression proves retry adopts persisted exact-run evidence (13 focused unit tests passed); compileall, TypeScript/Vite build, and git diff --check passed."
   }
 }

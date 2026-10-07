@@ -6,6 +6,7 @@ import type { ButtonHTMLAttributes } from "react";
 const { studioApi } = vi.hoisted(() => ({ studioApi: {
   evaluateFinalTest: vi.fn(),
   createAnalysisEvaluation: vi.fn(),
+  getLatestAnalysisEvaluationForRun: vi.fn(),
   fitAnalysisCalibration: vi.fn(),
   selectAnalysisThreshold: vi.fn(),
   createSelectivePolicy: vi.fn(),
@@ -66,17 +67,34 @@ function renderWorkspace(readOnly = false, overrides: {
   validationPolicyEvidenceStatus?: "idle" | "loading" | "available" | "error";
   validationPolicyEvidenceError?: string | null;
   onRetryValidationPolicyEvidence?: () => void;
+  onEvaluation?: (evaluation: unknown) => void;
 } = {}) {
   return render(<EvaluationWorkspace
     project={{ ...project, read_only: readOnly } as never} dataset={(overrides.dataset === undefined ? dataset : overrides.dataset) as never} datasetHydrationStatus={overrides.datasetHydrationStatus ?? "available"} datasetHydrationError={overrides.datasetHydrationError ?? null} onRetryDatasetHydration={overrides.onRetryDatasetHydration ?? vi.fn()} fis={null} run={(overrides.run === undefined ? run : overrides.run) as never} runs={(overrides.runs ?? [run]) as never} runListStatus={overrides.runListStatus ?? "loaded"} runListError={overrides.runListError ?? null} onRetryRunList={overrides.onRetryRunList ?? vi.fn()} study={null}
     evaluation={(overrides.evaluationStatus === "error" ? null : evaluation) as never} evaluationStatus={overrides.evaluationStatus ?? "available"} evaluationError={overrides.evaluationError ?? null} onRetryEvaluation={overrides.onRetryEvaluation ?? vi.fn()} validationPolicyEvidenceStatus={overrides.validationPolicyEvidenceStatus ?? "available"} validationPolicyEvidenceError={overrides.validationPolicyEvidenceError ?? null} onRetryValidationPolicyEvidence={overrides.onRetryValidationPolicyEvidence ?? vi.fn()} calibrationTransform={null} decisionThreshold={(overrides.decisionThreshold === undefined ? threshold : overrides.decisionThreshold) as never} finalTestEvaluation={(overrides.finalTestEvaluation ?? null) as never}
     finalTestEvidenceStatus={overrides.finalTestEvidenceStatus ?? "none"} finalTestEvidenceError={overrides.finalTestEvidenceError ?? null} onRetryFinalTestEvidence={overrides.onRetryFinalTestEvidence ?? vi.fn()}
     comparison={null} sliceAnalysis={null} selectivePolicy={(overrides.selectivePolicy ?? null) as never} stabilityGatePolicy={(overrides.stabilityGatePolicy ?? null) as never} theme={"light" as never}
-    onEvaluation={vi.fn()} onCalibration={vi.fn()} onThreshold={vi.fn()} onFinalTest={vi.fn()} onComparison={vi.fn()} onSliceAnalysis={vi.fn()} onSelectivePolicy={vi.fn()}
+    onEvaluation={overrides.onEvaluation ?? vi.fn()} onCalibration={vi.fn()} onThreshold={vi.fn()} onFinalTest={vi.fn()} onComparison={vi.fn()} onSliceAnalysis={vi.fn()} onSelectivePolicy={vi.fn()}
   />);
 }
 
 describe("EvaluationWorkspace final-test boundary", () => {
+  it("recovers a persisted Evaluation by its exact run when the active pointer write failed", async () => {
+    const onEvaluation = vi.fn();
+    studioApi.createAnalysisEvaluation.mockRejectedValueOnce(new Error("active-evaluation pointer write failed"));
+    studioApi.getLatestAnalysisEvaluationForRun.mockResolvedValueOnce(evaluation);
+    renderWorkspace(false, { onEvaluation });
+
+    fireEvent.click(screen.getByRole("button", { name: "Save evaluation revision" }));
+    const recovery = await screen.findByTestId("evaluation-recovery");
+    expect(recovery).toHaveTextContent("active-evaluation pointer write failed");
+    fireEvent.click(screen.getByRole("button", { name: "Retry saved Evaluation lookup" }));
+
+    await waitFor(() => expect(onEvaluation).toHaveBeenCalledWith(evaluation));
+    expect(studioApi.getLatestAnalysisEvaluationForRun).toHaveBeenCalledWith("session", run.run_id);
+    expect(screen.queryByTestId("evaluation-recovery")).not.toBeInTheDocument();
+  });
+
   it("labels the default 0.50 confusion matrix as a preview rather than a frozen threshold policy", () => {
     renderWorkspace(false, { decisionThreshold: null });
     expect(screen.getByRole("heading", { name: "Preview at default cutoff 0.50 · no frozen threshold policy" })).toBeVisible();

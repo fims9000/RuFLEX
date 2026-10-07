@@ -324,7 +324,7 @@ export function EvaluationWorkspace({
     setSaving(true); setError(null);
     try {
       let latest: AnalysisEvaluation;
-      try { latest = await studioApi.getLatestAnalysisEvaluation(project.session_id); }
+      try { latest = await studioApi.getLatestAnalysisEvaluationForRun(project.session_id, targetRunId); }
       catch (reason) {
         if (reason instanceof ProductApiError && reason.status === 404) {
           setEvaluationRecoveryNotFound(true);
@@ -333,11 +333,7 @@ export function EvaluationWorkspace({
         }
         throw reason;
       }
-      if (latest.run_id !== targetRunId) {
-        setEvaluationRecoveryNotFound(true);
-        setEvaluationRecoveryError("The latest Evaluation belongs to another run; no replacement was created.");
-        return;
-      }
+      if (latest.run_id !== targetRunId) throw new Error("The run-bound Evaluation lookup returned evidence for another TrainingRun.");
       onEvaluation(latest); onCalibration(null); onThreshold(null);
       setEvaluationRecoveryRunId(null); setEvaluationRecoveryError(null); setEvaluationRecoveryNotFound(false);
     } catch (reason) {

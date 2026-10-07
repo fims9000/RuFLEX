@@ -1826,8 +1826,10 @@ def create_analysis_evaluation(request: CreateAnalysisEvaluationRequest) -> Anal
         raise _project_error(error) from error
     except FileNotFoundError as error:
         raise HTTPException(status_code=404, detail="The selected training run does not exist in this project.") from error
-    except (TrainingError, ValueError, OSError) as error:
+    except (TrainingError, ValueError) as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
+    except OSError as error:
+        raise HTTPException(status_code=500, detail="Validation Evaluation persistence failed; look up the selected run before retrying.") from error
 
 
 @app.get("/api/projects/{session_id}/analyses/evaluations/latest", response_model=AnalysisEvaluation)
@@ -1839,6 +1841,21 @@ def get_latest_analysis_evaluation(session_id: UUID) -> AnalysisEvaluation:
         raise _project_error(error) from error
     except FileNotFoundError as error:
         raise HTTPException(status_code=404, detail="No persisted analysis evaluation exists in this project.") from error
+
+
+@app.get("/api/projects/{session_id}/analyses/evaluations/by-run/{run_id}/latest", response_model=AnalysisEvaluation)
+def get_latest_analysis_evaluation_for_run(session_id: UUID, run_id: UUID) -> AnalysisEvaluation:
+    from ruflex.application.training import TrainingError, load_latest_validation_evaluation_for_run
+    try:
+        return load_latest_validation_evaluation_for_run(service.get(session_id).project.root, run_id)
+    except ProjectError as error:
+        raise _project_error(error) from error
+    except FileNotFoundError as error:
+        raise HTTPException(status_code=404, detail="No persisted validation Evaluation exists for this TrainingRun.") from error
+    except (TrainingError, ValueError) as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    except OSError as error:
+        raise HTTPException(status_code=500, detail="Persisted validation Evaluation lookup failed.") from error
 
 
 @app.get("/api/projects/{session_id}/analyses/evaluations/{evaluation_id}", response_model=AnalysisEvaluation)

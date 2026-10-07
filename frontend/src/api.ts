@@ -620,6 +620,8 @@ export const studioApi = {
     }),
   getLatestAnalysisEvaluation: (sessionId: string) =>
     request<AnalysisEvaluation>(`/api/projects/${sessionId}/analyses/evaluations/latest`),
+  getLatestAnalysisEvaluationForRun: (sessionId: string, runId: string) =>
+    request<AnalysisEvaluation>(`/api/projects/${sessionId}/analyses/evaluations/by-run/${runId}/latest`),
   getAnalysisEvaluation: (sessionId: string, evaluationId: string) =>
     request<AnalysisEvaluation>(`/api/projects/${sessionId}/analyses/evaluations/${evaluationId}`),
   fitAnalysisCalibration: (sessionId: string, evaluationId: string) =>

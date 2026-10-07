@@ -15,6 +15,7 @@ from ruflex.application.datasets import (
     run_data_audit,
 )
 from ruflex.application.projects import ProjectService
+from ruflex.application import training as training_application
 from ruflex.application.training import load_latest_training_run, train_flat_neuro_fuzzy, verify_training_model_artifact
 
 
@@ -341,6 +342,34 @@ def test_validation_evaluation_is_a_persistent_run_bound_analysis_object(tmp_pat
     assert len(policy["risk_coverage"]) == 10
     reopened_policy = client.get(f"/api/projects/{session_id}/analyses/selective-policies/latest")
     assert reopened_policy.status_code == 200 and reopened_policy.json()["policy_id"] == policy["policy_id"]
+
+
+def test_validation_evaluation_recovers_after_active_pointer_write_failure(tmp_path: Path, monkeypatch) -> None:
+    client = TestClient(app)
+    root = tmp_path / "evaluation-recovery"
+    session_id = client.post("/api/projects", json={"path": str(root), "name": "Evaluation recovery"}).json()["session_id"]
+    confirmed = client.post("/api/projects/dataset/confirm", json={"session_id": session_id, "csv_text": _binary_frame().to_csv(index=False), "target": "target", "task": "binary_classification", "id_columns": []})
+    assert confirmed.status_code == 200, confirmed.text
+    trained = client.post("/api/projects/training/run", json={"session_id": session_id, "model_kind": "logistic_regression", "seed": 31, "max_epochs": 1, "learning_rate": .01, "batch_size": 16, "patience": 1, "validation_fraction": .2, "test_fraction": .2, "max_rules": 3})
+    assert trained.status_code == 201, trained.text
+
+    original_write = training_application._atomic_write_text
+
+    def fail_active_pointer(path, text):
+        if Path(path).name == "active-evaluation.json":
+            raise OSError("simulated active pointer failure")
+        return original_write(path, text)
+
+    monkeypatch.setattr(training_application, "_atomic_write_text", fail_active_pointer)
+    created = client.post("/api/projects/analyses/evaluations", json={"session_id": session_id, "run_id": trained.json()["run_id"]})
+    assert created.status_code == 500
+    assert "look up the selected run" in created.json()["detail"]
+
+    recovered = client.get(f"/api/projects/{session_id}/analyses/evaluations/by-run/{trained.json()['run_id']}/latest")
+    assert recovered.status_code == 200, recovered.text
+    assert recovered.json()["run_id"] == trained.json()["run_id"]
+    assert recovered.json()["test_status"] == "LOCKED_NOT_EVALUATED"
+    assert client.get(f"/api/projects/{session_id}/analyses/evaluations/latest").status_code == 404
 
 
 def test_validation_comparison_persists_compatible_seed_runs_and_rejects_duplicates(tmp_path: Path) -> None:
