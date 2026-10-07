@@ -685,6 +685,7 @@ def test_assurance_and_bundle_jobs_persist_the_selected_execution_backend(tmp_pa
 
 
 def test_verification_bundle_validates_portably_and_fails_closed_on_tampering(tmp_path: Path) -> None:
+    import hashlib
     from ruflex.application.verification_bundle import validate_verification_bundle
     from ruflex.sdk.studio import validate_bundle
     import shutil
@@ -702,6 +703,39 @@ def test_verification_bundle_validates_portably_and_fails_closed_on_tampering(tm
     assert validate_bundle(bundle_path).status == "PASS"
     extracted = tmp_path / "fresh-root"; shutil.unpack_archive(bundle_path, extracted, "zip")
     assert validate_verification_bundle(extracted).status == "PASS"
+    report_copy = tmp_path / "report-tamper"
+    shutil.copytree(extracted, report_copy)
+    report_path = report_copy / "report.md"
+    report_path.write_text(report_path.read_text(encoding="utf-8") + "\nUnsupported PASS claim.\n", encoding="utf-8")
+    report_manifest_path = report_copy / "verification-manifest.json"
+    report_manifest = json.loads(report_manifest_path.read_text(encoding="utf-8"))
+    report_relative = report_path.relative_to(report_copy).as_posix()
+    report_manifest["checksums"][report_relative] = hashlib.sha256(report_path.read_bytes()).hexdigest()
+    report_manifest_bytes = json.dumps(report_manifest, indent=2, sort_keys=True).encode()
+    report_manifest_path.write_bytes(report_manifest_bytes)
+    (report_copy / "verification-manifest.sha256").write_text(f"{hashlib.sha256(report_manifest_bytes).hexdigest()}  verification-manifest.json\n", encoding="utf-8")
+    invalid_report = validate_verification_bundle(report_copy)
+    assert invalid_report.status == "FAIL"
+    assert any("report.md does not match" in error for error in invalid_report.errors)
+    no_assurance = tmp_path / "missing-assurance"
+    shutil.copytree(extracted, no_assurance)
+    assurance_dir = no_assurance / "evidence" / "assurance"
+    for assurance_file in assurance_dir.glob("*.json"):
+        assurance_file.unlink()
+    summary_path = no_assurance / "assurance-summary.json"
+    summary_path.unlink()
+    missing_manifest_path = no_assurance / "verification-manifest.json"
+    missing_manifest = json.loads(missing_manifest_path.read_text(encoding="utf-8"))
+    missing_manifest["checksums"] = {
+        name: digest for name, digest in missing_manifest["checksums"].items()
+        if name != "assurance-summary.json" and not name.startswith("evidence/assurance/")
+    }
+    missing_manifest_bytes = json.dumps(missing_manifest, indent=2, sort_keys=True).encode()
+    missing_manifest_path.write_bytes(missing_manifest_bytes)
+    (no_assurance / "verification-manifest.sha256").write_text(f"{hashlib.sha256(missing_manifest_bytes).hexdigest()}  verification-manifest.json\n", encoding="utf-8")
+    invalid_assurance = validate_verification_bundle(no_assurance)
+    assert invalid_assurance.status == "FAIL"
+    assert any("No typed AssuranceCase" in error for error in invalid_assurance.errors)
     contract = extracted / "data" / "dataset-contract.json"
     contract.write_text('{"tampered": true}', encoding="utf-8")
     invalid = validate_verification_bundle(extracted)

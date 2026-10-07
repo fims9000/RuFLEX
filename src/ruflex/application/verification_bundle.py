@@ -561,6 +561,8 @@ def validate_verification_bundle(path: Path | str) -> VerificationBundleValidati
         return VerificationBundleValidation(bundle_path=str(source), status="FAIL", bundle_sha256=bundle_sha, errors=[*errors, "verification-manifest.json is malformed JSON."])
     if manifest.get("schema_version") != 2 or manifest.get("inspection_first") is not True:
         errors.append("Unsupported or non-inspection-first verification manifest.")
+    if manifest.get("excluded") != _EXCLUDED:
+        errors.append("Verification manifest does not declare the frozen inspection-first exclusions.")
     checksum_file = entries.get("verification-manifest.sha256", b"").decode("utf-8", errors="replace").split()
     if not checksum_file or checksum_file[0] != manifest_sha:
         errors.append("verification-manifest.sha256 does not match the manifest.")
@@ -593,7 +595,7 @@ def validate_verification_bundle(path: Path | str) -> VerificationBundleValidati
         warnings.append("ConditionMonitoringDemo policy and decision arithmetic were checked, but model inference cannot be replayed because executable/model artifacts are excluded from the inspection-first bundle.")
     assurance_objects = {str(item.assurance_id): item for item in objects if isinstance(item, AssuranceCase)}
     if not assurance_objects:
-        warnings.append("No typed AssuranceCase object was found in the bundle.")
+        errors.append("No typed AssuranceCase object was found in the bundle.")
     else:
         summary_raw = entries.get("assurance-summary.json")
         try:
@@ -601,6 +603,13 @@ def validate_verification_bundle(path: Path | str) -> VerificationBundleValidati
             assurance_id = str(manifest.get("assurance_id"))
             if summary is None or str(summary.assurance_id) != assurance_id or assurance_objects.get(assurance_id) != summary:
                 errors.append("assurance-summary.json does not match its manifest-bound persisted AssuranceCase.")
+            elif entries.get("report.md") != (
+                "# RuFLEX Verification Bundle\n\nInspection-first declarative evidence package. Independent AssuranceCase gates are not a trust score.\n\n"
+                + "## Assurance gates\n\n"
+                + "\n".join(f"- {gate.key}: {gate.status}" + (f" — {gate.risk}" if gate.risk else "") for gate in summary.gates)
+                + "\n"
+            ).encode():
+                errors.append("report.md does not match the manifest-bound AssuranceCase gates.")
         except (ValidationError, ValueError) as error:
             errors.append(f"assurance-summary.json is malformed or invalid: {error}.")
     return VerificationBundleValidation(bundle_path=str(source), status="FAIL" if errors else "PASS", bundle_sha256=bundle_sha, manifest_sha256=manifest_sha, checked_entries=len(checksums), errors=errors, warnings=warnings)

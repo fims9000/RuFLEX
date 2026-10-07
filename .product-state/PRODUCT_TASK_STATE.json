@@ -249,16 +249,17 @@
     "alpha_tree_path_bundle_provenance",
     "alpha_remaining_auxiliary_bundle_semantics",
     "alpha_condition_demo_bundle_provenance",
-    "alpha_reproducibility_assurance_provenance"
+    "alpha_reproducibility_assurance_provenance",
+    "alpha_verification_bundle_assurance_report_integrity"
   ],
-  "active_capability": "alpha_reproducibility_assurance_provenance",
+  "active_capability": "alpha_verification_bundle_assurance_report_integrity",
   "active_acceptance": [
     "VerificationBundle parses TreePathEvidence and checks its exact frozen Decision Tree run, model artifact identity and ordered feature schema.",
     "Portable validation explicitly warns that exact path replay cannot be completed because executable/model artifacts are excluded from the inspection-first archive.",
     "A valid tree-path bundle remains PASS with this limitation visible."
   ],
   "blockers": [],
-  "next_executable_work": "Review portable manifest completeness and remaining Assurance claim/gate semantics, then continue the next dependency-ready alpha capability.",
+  "next_executable_work": "Inspect remaining persisted auxiliary Assurance gates for weak existence-only checks and continue the next dependency-ready product capability.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -511,6 +512,7 @@
     "alpha_tree_path_bundle_provenance": "PASS: VerificationBundle now parses TreePathEvidence, checks exact run/model hash and feature schema, and discloses that exact replay is unavailable because model artifacts are excluded. Decision-tree path route + bundle validation regression passed.",
     "alpha_remaining_auxiliary_bundle_semantics": "PASS: Portable VerificationBundle now types and checks ExplanationReproducibilityAnalysis, ExpertCorrectionRevision, ExhaustiveLabResult and FISSpec references. Reproducibility validation requires complete run coverage, exact pairwise combinations and aligned unique validation identities; portable output explicitly states that aggregate agreement is not recomputed. Reopen route tests validate bundles for all three evidence families; integrated product journey also passes (4 focused tests), compileall and git diff --check pass.",
     "alpha_condition_demo_bundle_provenance": "PASS: ConditionMonitoringDemo is now typed in portable bundles; its frozen selective policy/run/threshold, prediction/confidence/disposition arithmetic, optional scope/explanation/check, AssuranceCase and bundle reference are validated. active-demo pointer is excluded from Pydantic object parsing. Real API route creates the demo, closes/reopens the project, and validates an exported bundle; re-checksummed probability corruption is rejected. Five focused evidence/reopen journey tests passed; compileall and diff check passed.",
-    "alpha_reproducibility_assurance_provenance": "PASS: Assurance cross-run reproducibility gate now resolves every run and ExplanationContract, requires full run coverage, compatible dataset/task/target/method/reference, aligned unique validation case identities, and the exact pairwise run set. Tampered dangling explanation reference now makes the Assurance gate FAIL; five focused evidence, reopen and integrated journey tests plus compileall passed."
+    "alpha_reproducibility_assurance_provenance": "PASS: Assurance cross-run reproducibility gate now resolves every run and ExplanationContract, requires full run coverage, compatible dataset/task/target/method/reference, aligned unique validation case identities, and the exact pairwise run set. Tampered dangling explanation reference now makes the Assurance gate FAIL; five focused evidence, reopen and integrated journey tests plus compileall passed.",
+    "alpha_verification_bundle_assurance_report_integrity": "PASS: Portable bundle validator now fails closed without a typed manifest-bound AssuranceCase, verifies the frozen inspection-first exclusion declaration, and recomputes report.md from the Assurance gate summary. Regression re-checksums tampered report and missing-Assurance bundles and confirms rejection; focused bundle, demo, reproducibility, and integrated-route tests passed."
   }
 }
