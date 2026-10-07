@@ -40,6 +40,10 @@ test("response surface refreshes when a fixed run input changes", async ({ page 
   await page.getByRole("button", { name: "Create FIS from dataset", exact: true }).click();
 
   await expect.poll(() => requests.length).toBeGreaterThan(0);
+  const initialRequestCount = requests.length;
+  await page.getByLabel("pressure", { exact: true }).fill("not numeric");
+  await expect(page.getByRole("alert").filter({ hasText: "Invalid: pressure" })).toBeVisible();
+  expect(requests).toHaveLength(initialRequestCount);
   await page.getByLabel("pressure", { exact: true }).fill("0.9");
   await expect.poll(() => requests.length).toBeGreaterThan(1);
   await expect.poll(() => requests.at(-1)?.fixed_inputs.pressure).toBe(0.9);

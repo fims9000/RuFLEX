@@ -1125,23 +1125,24 @@ export function BuildWorkspace({
     setSurfaceLoading(true);
     setSurfaceError(null);
     try {
-      const fixedInputs = Object.fromEntries(
-        requestedSpec.inputs
-          .filter((variable) => !requestedAxes.includes(variable.name))
-          .map((variable) => [
-            variable.name,
-            Number(
-              runInputs[variable.name] ??
-                (variable.minimum + variable.maximum) / 2,
-            ),
-          ]),
+      const fixedVariables = requestedSpec.inputs.filter(
+        (variable) => !requestedAxes.includes(variable.name),
       );
+      const fixedInputDraft = Object.fromEntries(fixedVariables.map((variable) => [
+        variable.name,
+        runInputs[variable.name] ?? String((variable.minimum + variable.maximum) / 2),
+      ]));
+      const parsedFixedInputs = parseFisRunInputs(fixedVariables.map((variable) => variable.name), fixedInputDraft);
+      if (!parsedFixedInputs.ok) {
+        setSurfaceError(`Enter a finite number for each fixed surface input. Invalid: ${parsedFixedInputs.invalidInputs.join(", ")}. No surface request was submitted.`);
+        return;
+      }
       const result = await studioApi.previewResponseSurface(
         project.session_id,
         requestedSpec,
         requestedAxes[0],
         requestedAxes[1],
-        fixedInputs,
+        parsedFixedInputs.values,
       );
       if (requestId !== responseSurfaceRequestRef.current) return;
       setSurface(result);
