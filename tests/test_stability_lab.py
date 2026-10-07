@@ -154,6 +154,28 @@ def test_training_variability_keeps_split_identity_and_persists_stability_gate(t
     final_test_validation = validate_verification_bundle(tampered_final_test_bundle)
     assert final_test_validation.status == "FAIL"
     assert any("Final-test evaluation" in error and "metrics" in error for error in final_test_validation.errors)
+    assurance_id = json.loads(entries["verification-manifest.json"])["assurance_id"]
+    assurance_entry = f"evidence/assurance/{assurance_id}.json"
+    assurance_entries = dict(entries)
+    assurance_case = json.loads(assurance_entries[assurance_entry])
+    assurance_case["claims"][0]["statement"] = "Forged claim disconnected from its evidence gate."
+    forged_summary = dict(assurance_case)
+    assurance_entries[assurance_entry] = json.dumps(assurance_case, indent=2).encode()
+    assurance_entries["assurance-summary.json"] = json.dumps(forged_summary, indent=2).encode()
+    assurance_manifest = json.loads(assurance_entries["verification-manifest.json"])
+    for name in (assurance_entry, "assurance-summary.json"):
+        assurance_manifest["checksums"][name] = hashlib.sha256(assurance_entries[name]).hexdigest()
+    assurance_entries["verification-manifest.json"] = json.dumps(assurance_manifest, indent=2, sort_keys=True).encode()
+    assurance_entries["verification-manifest.sha256"] = (
+        f"{hashlib.sha256(assurance_entries['verification-manifest.json']).hexdigest()}  verification-manifest.json\n".encode()
+    )
+    tampered_assurance_bundle = tmp_path / "tampered-assurance-bundle.zip"
+    with zipfile.ZipFile(tampered_assurance_bundle, "w", zipfile.ZIP_DEFLATED) as archive:
+        for name, payload in assurance_entries.items():
+            archive.writestr(name, payload)
+    assurance_validation = validate_verification_bundle(tampered_assurance_bundle)
+    assert assurance_validation.status == "FAIL"
+    assert any("AssuranceCase" in error and "evidence gates" in error for error in assurance_validation.errors)
     reopened = client.post("/api/projects/open", json={"path": str(tmp_path / "stability")})
     listed = client.get(f"/api/projects/{reopened.json()['session_id']}/analyses/stability")
     assert listed.status_code == 200 and listed.json()[0]["analysis_id"] == analysis["analysis_id"]

@@ -120,6 +120,7 @@ def _validate_relationships(objects: list[BaseModel]) -> list[str]:
     selective_policies = objects_by_type.get(SelectivePredictionPolicy, {})
     final_tests = objects_by_type.get(FinalTestEvaluation, {})
     from ruflex.application.project_integrity import _stability_analysis_cases_match, _stability_gate_evidence_matches
+    from ruflex.application.project_integrity import _assurance_claim_graph_matches
     for object_ in objects:
         if isinstance(object_, SplitContract):
             contract = contracts.get(object_.dataset_fingerprint)
@@ -324,6 +325,8 @@ def _validate_relationships(objects: list[BaseModel]) -> list[str]:
                 or not _final_test_stability_evidence_matches(object_, gate)
             ):
                 errors.append(f"Final-test evaluation {object_.final_test_id} does not match its frozen model, policy, case identities, metrics, or Stability evidence.")
+        elif isinstance(object_, AssuranceCase) and not _assurance_claim_graph_matches(object_):
+            errors.append(f"AssuranceCase {object_.assurance_id} claims or unresolved risks do not match its declared evidence gates.")
     return errors
 
 
@@ -368,7 +371,18 @@ def validate_verification_bundle(path: Path | str) -> VerificationBundleValidati
         try: objects.append(model.model_validate_json(entries[name]))
         except (ValidationError, ValueError, KeyError) as error: errors.append(f"Invalid {model.__name__} evidence at {name}: {error}.")
     errors.extend(_validate_relationships(objects))
-    if not any(isinstance(item, AssuranceCase) for item in objects): warnings.append("No typed AssuranceCase object was found in the bundle.")
+    assurance_objects = {str(item.assurance_id): item for item in objects if isinstance(item, AssuranceCase)}
+    if not assurance_objects:
+        warnings.append("No typed AssuranceCase object was found in the bundle.")
+    else:
+        summary_raw = entries.get("assurance-summary.json")
+        try:
+            summary = AssuranceCase.model_validate_json(summary_raw) if summary_raw is not None else None
+            assurance_id = str(manifest.get("assurance_id"))
+            if summary is None or str(summary.assurance_id) != assurance_id or assurance_objects.get(assurance_id) != summary:
+                errors.append("assurance-summary.json does not match its manifest-bound persisted AssuranceCase.")
+        except (ValidationError, ValueError) as error:
+            errors.append(f"assurance-summary.json is malformed or invalid: {error}.")
     return VerificationBundleValidation(bundle_path=str(source), status="FAIL" if errors else "PASS", bundle_sha256=bundle_sha, manifest_sha256=manifest_sha, checked_entries=len(checksums), errors=errors, warnings=warnings)
 
 

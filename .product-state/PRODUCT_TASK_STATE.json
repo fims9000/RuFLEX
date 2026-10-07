@@ -240,13 +240,14 @@
     "alpha_behavior_spec_result_integrity",
     "alpha_stability_assurance_bundle_semantic_integrity",
     "alpha_selective_policy_bundle_semantic_integrity",
-    "alpha_final_test_bundle_semantic_integrity"
+    "alpha_final_test_bundle_semantic_integrity",
+    "alpha_assurance_bundle_claim_integrity"
   ],
-  "active_capability": "alpha_final_test_bundle_semantic_integrity",
+  "active_capability": "alpha_assurance_bundle_claim_integrity",
   "active_acceptance": [
-    "VerificationBundle resolves FinalTestEvaluation to its exact frozen run, validation evaluation, threshold, calibration, selective policy and Stability Gate.",
-    "Final-test source row/case/policy identities and freeze timestamps are verified.",
-    "Final-test metrics and persisted Stability case evidence are independently recomputed; re-checksummed tampering fails closed."
+    "Persisted AssuranceCase claims and unresolved risks must be derivable from its typed gate graph.",
+    "VerificationBundle manifest assurance_id and assurance-summary.json resolve to the exact typed persisted AssuranceCase.",
+    "A consistently re-checksummed forged claim in both summary and object fails semantic validation."
   ],
   "blockers": [],
   "next_executable_work": "Inspect the remaining persisted evidence families for summary fields that can be tampered without semantic revalidation; keep each change narrow and resource-light.",
@@ -493,6 +494,7 @@
     "alpha_behavior_spec_result_integrity": "PASS: BehaviorSpec binds exact run/model or FIS semantic revision; persisted BehaviorSpecResult is deterministically replayed from the frozen requirement, and behavior revision comparisons bind their exact artifact/FIS identities. Project Integrity and Assurance now fail on forged result output, stale FIS revision, or corrupted comparison binding. Focused integrity and behavior-route regressions: 23 passed; integrated product journey: 1 passed; compileall and diff check passed.",
     "alpha_stability_assurance_bundle_semantic_integrity": "PASS: Project Integrity and Assurance recompute stability case evidence and frozen gate decisions; VerificationBundle validates analysis/policy provenance and rejects re-checksummed semantic tampering. Fixed deterministic random-review baseline validation to use the product identity protocol. Focused Stability/Integrity tests: 8 passed; compileall and git diff --check passed.",
     "alpha_selective_policy_bundle_semantic_integrity": "PASS: VerificationBundle now resolves frozen confidence policy to exact validation run/evaluation/threshold/calibration, verifies probability-source consistency, and recomputes the policy fit identity and confidence risk-coverage curve. Re-checksummed curve tampering is rejected; tests/test_stability_lab.py: 7 passed; compileall and git diff --check passed.",
-    "alpha_final_test_bundle_semantic_integrity": "PASS: VerificationBundle validates final-test frozen-policy bindings, case/sample/policy identities, freeze timestamps, metrics and Stability evidence. A re-checksummed final-test metric tamper is rejected; tests/test_stability_lab.py: 7 passed."
+    "alpha_final_test_bundle_semantic_integrity": "PASS: VerificationBundle validates final-test frozen-policy bindings, case/sample/policy identities, freeze timestamps, metrics and Stability evidence. A re-checksummed final-test metric tamper is rejected; tests/test_stability_lab.py: 7 passed.",
+    "alpha_assurance_bundle_claim_integrity": "PASS: VerificationBundle recomputes AssuranceCase claim graph and binds manifest assurance_id plus assurance-summary.json to the typed persisted AssuranceCase. A forged claim copied consistently into both objects and re-checksummed still fails; tests/test_stability_lab.py: 7 passed."
   }
 }
