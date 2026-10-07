@@ -57,21 +57,19 @@ test("Stability Lab persists fixed-split multi-run evidence and its validation-o
   const screenshotPath = updateProductEvidence ? evidenceScreenshot : testInfo.outputPath("20_stability_lab.png");
   await mkdir(resolve(screenshotPath, ".."), { recursive: true });
   await page.screenshot({ path: screenshotPath });
-  let stabilityListFailures = 2;
+  let rejectStabilityListReads = true;
   let stabilityListRequests = 0;
   await page.route(/\/api\/projects\/[^/]+\/analyses\/stability$/, async (route) => {
     stabilityListRequests += 1;
-    if (stabilityListFailures > 0) {
-      stabilityListFailures -= 1;
+    if (rejectStabilityListReads) {
       await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Temporary StabilityAnalysis read failure" }) });
       return;
     }
     await route.continue();
   });
-  let gateListFailures = 2;
+  let rejectGateListReads = true;
   await page.route(/\/api\/projects\/[^/]+\/analyses\/stability-policies$/, async (route) => {
-    if (gateListFailures > 0) {
-      gateListFailures -= 1;
+    if (rejectGateListReads) {
       await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Temporary StabilityGatePolicy read failure" }) });
       return;
     }
@@ -82,6 +80,8 @@ test("Stability Lab persists fixed-split multi-run evidence and its validation-o
   await expect(page.getByTestId("stability-analysis-load-error")).toContainText("Temporary StabilityAnalysis read failure");
   await expect(page.getByTestId("stability-policy-load-error")).toContainText("Temporary StabilityGatePolicy read failure");
   await expect(page.getByRole("button", { name: "Create Study Stability Analysis", exact: true })).toBeDisabled();
+  rejectStabilityListReads = false;
+  rejectGateListReads = false;
   await page.getByRole("button", { name: "Retry Stability Analysis", exact: true }).click();
   await expect(page.getByText("Case Stability Map · selected-run agreement; red = high-confidence unstable", { exact: true })).toBeVisible();
   await expect(page.getByTestId("stability-analysis-load-error")).toHaveCount(0);
@@ -92,4 +92,12 @@ test("Stability Lab persists fixed-split multi-run evidence and its validation-o
   await frozenPolicyNode.click({ force: true });
   await expect(page.getByText("Opened lineage object: Stability-aware review", { exact: true })).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText("The saved Stability Gate is bound to a different run, Evaluation, threshold or dataset and will not be applied here.", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "S", exact: true }).click();
+  await page.getByLabel("Study seeds").fill("21, 22, 23");
+  await page.getByRole("button", { name: "Run multi-seed study", exact: true }).click();
+  await expect(page.getByText("Validation f1 across seeds", { exact: true })).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByText("Case Stability Map · selected-run agreement; red = high-confidence unstable", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Risk–coverage comparison (same coverage)", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Create Study Stability Analysis", exact: true })).toBeEnabled();
 });

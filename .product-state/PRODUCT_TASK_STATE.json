@@ -168,15 +168,16 @@
     "alpha_training_mutation_persistence_error_classification",
     "alpha_frozen_split_selection_binding",
     "alpha_validation_evaluation_exact_run_recovery",
-    "alpha_stability_reopen_hydration_callback_stability"
+    "alpha_stability_reopen_hydration_callback_stability",
+    "alpha_stability_evidence_study_binding"
   ],
-  "active_capability": "alpha_stability_reopen_hydration_callback_stability",
+  "active_capability": "alpha_stability_evidence_study_binding",
   "active_acceptance": [
-    "StabilityLab persisted analysis and policy hydration must not restart merely because parent callbacks receive new function identities after state updates.",
-    "After close/reopen, transient read failures stay visible until an explicit retry, and a Stability Gate bound to another run/evaluation/threshold/dataset is never presented as active."
+    "Stability analysis and gate hydration must be scoped to the currently selected TrainingStudy and its frozen selected run.",
+    "When the selected Study changes, previous case evidence/risk coverage is hidden until matching evidence exists; a gate must also match the exact analysis, Evaluation and threshold."
   ],
   "blockers": [],
-  "next_executable_work": "Continue alpha workflow verification around stale-policy rejection and final-test gating; confirm the frozen validation policy identity survives navigation/reopen and no test evaluation occurs without an exact matching policy.",
+  "next_executable_work": "Continue alpha workflow verification around final-test policy gating and project evidence export; preserve the locked test boundary and verify only exact matching frozen validation policies can be applied.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -348,6 +349,7 @@
     "alpha_training_mutation_persistence_error_classification": "PASS: SplitContract, TrainingRun and StudyJob persistence OSErrors now map to HTTP 500 instead of validation 422; Studio treats only typed 422 VALIDATION_FAILED with string detail as definitive, retaining exact recovery for ambiguous/runtime failures. Runtime application errors retain their typed runtime code through API and remain visible in Studio. Backend API/runtime/split selections 14 passed, frontend unit 20/20, focused split-correction Playwright 1/1, compileall, Vite build and git diff --check passed.",
     "alpha_frozen_split_selection_binding": "PASS: Training is blocked when visible split controls disagree with the frozen Dataset-bound SplitContract; invalid GROUP no longer silently executes legacy RANDOM. Matching contract fractions are reused for single runs/Studies and displayed accurately, including a custom 25/25 validation/test split; family/seed mismatch is covered. Frontend unit 21/21, Vite production build, invalid-GROUP-to-RANDOM correction E2E 1/1, and real training/validation/reopen E2E 1/1 passed.",
     "alpha_validation_evaluation_exact_run_recovery": "PASS: Evaluation persistence failures now return HTTP 500 with exact-run recovery guidance; API reopens immutable Validation Evaluation evidence by TrainingRun ID even when the active pointer is absent. Backend regression simulates pointer-write failure after immutable save and verifies exact recovery plus truthful latest-pointer 404 (2 focused route tests passed); EvaluationWorkspace regression proves retry adopts persisted exact-run evidence (13 focused unit tests passed); compileall, TypeScript/Vite build, and git diff --check passed.",
-    "alpha_stability_reopen_hydration_callback_stability": "PASS: StabilityLab hydration now keeps latest parent callbacks in refs instead of restarting persisted reads whenever callback identity changes. Close/reopen E2E confirms injected analysis/policy read failures remain visible until explicit retry, lineage opens the exact frozen gate, and a gate bound to different run/evaluation/threshold/dataset is explicitly not applied. Stability Lab E2E passed; PRODUCT-02 now also freezes raw F1 threshold and ACCEPT/REVIEW policy then verifies both after reopen; that E2E passed."
+    "alpha_stability_reopen_hydration_callback_stability": "PASS: StabilityLab hydration now keeps latest parent callbacks in refs instead of restarting persisted reads whenever callback identity changes. Close/reopen E2E confirms injected analysis/policy read failures remain visible until explicit retry, lineage opens the exact frozen gate, and a gate bound to different run/evaluation/threshold/dataset is explicitly not applied. Stability Lab E2E passed; PRODUCT-02 now also freezes raw F1 threshold and ACCEPT/REVIEW policy then verifies both after reopen; that E2E passed.",
+    "alpha_stability_evidence_study_binding": "PASS: Persisted StabilityAnalysis hydration is selected by current study ID and frozen selected run; gate hydration is filtered by the same study/run and is rendered only when it matches exact analysis/evaluation/threshold. Stability Lab E2E creates and freezes a gate, closes/reopens with transient reads, verifies stale gate is not applied to another run, then runs a second TrainingStudy and confirms prior map/coverage disappear until new analysis is created. Production build and Stability Lab E2E passed."
   }
 }
