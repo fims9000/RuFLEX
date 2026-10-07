@@ -23,6 +23,7 @@ import {
 } from "../../components/StudioPrimitives";
 import { StudioTheme } from "../../design/tokens";
 import { MembershipEditorCanvas } from "./MembershipEditorCanvas";
+import { exactFisEvaluationMatchesCurrent } from "./exactFisEvaluation";
 
 function canonicalJson(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
@@ -491,6 +492,9 @@ export function BuildWorkspace({
     );
   }, [working?.fis_id, working?.inputs.map((item) => item.name).join("|")]);
   const selectedVariable = working?.inputs[selected] ?? null;
+  const lastOutputMatchesCurrent = working
+    ? exactFisEvaluationMatchesCurrent(working, lastOutput, runInputs)
+    : false;
   const chart = useMemo(
     () => (selectedVariable ? membershipOption(selectedVariable) : null),
     [selectedVariable],
@@ -1957,7 +1961,8 @@ export function BuildWorkspace({
           {evaluationStatus === "loading" && <p role="status">Checking the saved exact FIS trace…</p>}
           {evaluationStatus === "none" && !lastOutput && <p>No saved exact FIS trace is available yet.</p>}
           {evaluationStatus === "error" && <div className="error" role="alert"><strong>Could not load saved FIS evaluation evidence.</strong> {evaluationError} <Button view="outlined" size="s" onClick={onRetryEvaluation}>Retry FIS trace check</Button></div>}
-          {lastOutput && (
+          {lastOutput && !lastOutputMatchesCurrent && <p role="status">The displayed FIS result belongs to another model revision or input sample. Evaluate to produce a trace for the current values.</p>}
+          {lastOutput && lastOutputMatchesCurrent && (
             <div className="result-card">
               <span className="eyebrow">OUTPUT</span>
               <strong>{lastOutput.evaluation.output.toFixed(5)}</strong>

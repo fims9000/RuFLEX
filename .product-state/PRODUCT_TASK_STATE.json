@@ -262,16 +262,16 @@
     "alpha_project_overview_model_truthfulness",
     "alpha_project_overview_analysis_evidence_navigation_truthfulness",
     "alpha_project_saved_study_next_step_truthfulness",
-    "alpha_fis_response_surface_refresh_inputs"
+    "alpha_fis_response_surface_refresh_inputs",
+    "alpha_fis_current_result_identity"
   ],
-  "active_capability": "alpha_fis_response_surface_refresh_inputs",
+  "active_capability": "alpha_fis_current_result_identity",
   "active_acceptance": [
-    "Response surfaces refresh when non-axis run inputs change.",
-    "Late response-surface requests cannot overwrite results for newer input/spec/axis state.",
-    "The Studio exposes response-surface refresh progress and errors near the chart."
+    "A previous FIS output is shown as current only when its exact model revision and input values match the current editor/run state.",
+    "Stale persisted output is clearly labeled as belonging to another sample or revision and is hidden from the current-output card."
   ],
   "blockers": [],
-  "next_executable_work": "Inspect the next low-memory alpha workflow for a concrete functional or recovery gap; implement a bounded user-visible slice, verify it, and commit locally.",
+  "next_executable_work": "Inspect the next low-memory alpha user route for a concrete functional/recovery gap, then implement and commit one tested slice locally.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -537,6 +537,7 @@
     "alpha_project_overview_model_truthfulness": "PASS: Project Overview Models tile now distinguishes context loading/failure, saved FIS, native trained model runs and verified absence. Focused projectOverview tests: 5 passed; TypeScript project build (tsc -b) and git diff --check passed. Browser E2E not run for this contained summary-state fix.",
     "alpha_project_overview_analysis_evidence_navigation_truthfulness": "PASS: Overview no longer labels the absence of a latest validation Evaluation as 'No analyses' or a missing exact FIS trace as 'No evidence'; neutral navigation guidance keeps other saved evidence discoverable. Focused projectOverview tests: 7 passed; TypeScript project build (tsc -b) and git diff --check passed. Browser E2E not run for this copy-only navigation fallback.",
     "alpha_project_saved_study_next_step_truthfulness": "PASS: Overview waits for saved TrainingStudy hydration before recommending a first model fit, routes to a persisted study when present, and suppresses advice with retry when history is unavailable. Focused projectOverview tests: 9 passed; TypeScript project build (tsc -b) and git diff --check passed. Browser E2E not run for this contained next-step guidance change.",
-    "alpha_fis_response_surface_refresh_inputs": "PASS: Response surfaces now recompute when fixed run inputs change, discard stale async replies after spec/axis/input changes, and expose loading/error status beside the chart. TypeScript project build (tsc -b), focused Studio Playwright E2E (1/1) verifying changed fixed-input payload, and git diff --check passed."
+    "alpha_fis_response_surface_refresh_inputs": "PASS: Response surfaces now recompute when fixed run inputs change, discard stale async replies after spec/axis/input changes, and expose loading/error status beside the chart. TypeScript project build (tsc -b), focused Studio Playwright E2E (1/1) verifying changed fixed-input payload, and git diff --check passed.",
+    "alpha_fis_current_result_identity": "PASS: BuildWorkspace displays an FIS output as current only when persisted trace model ID, semantic revision and exact numeric input map match the current state; stale output is replaced by explicit guidance. Focused helper unit test passed, TypeScript build passed, and focused real Studio Playwright E2E passed (1/1)."
   }
 }
