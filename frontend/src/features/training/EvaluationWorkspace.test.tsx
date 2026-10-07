@@ -145,6 +145,7 @@ describe("EvaluationWorkspace final-test boundary", () => {
     studioApi.createSliceAnalysis.mockReset().mockImplementationOnce(() => new Promise((_resolve, reject) => { rejectRequest = reject; }));
     const view = renderWorkspace();
     fireEvent.change(screen.getByLabelText("Slice name"), { target: { value: "Old project subgroup" } });
+    fireEvent.change(screen.getByLabelText("Slice minimum"), { target: { value: "20" } });
     fireEvent.click(screen.getByRole("button", { name: "Run and persist slice" }));
     await waitFor(() => expect(studioApi.createSliceAnalysis).toHaveBeenCalledTimes(1));
     const newRun = { ...run, run_id: "new-run-123456789" };
@@ -179,6 +180,24 @@ describe("EvaluationWorkspace final-test boundary", () => {
     fireEvent.click(screen.getByRole("button", { name: "Run and persist slice" }));
     await waitFor(() => expect(studioApi.createSliceAnalysis).toHaveBeenCalledTimes(1));
     expect(studioApi.createSliceAnalysis.mock.calls[0][3][0].source_rows).toEqual([2, 7]);
+  });
+
+  it.each([
+    { kind: "categorical", label: "Slice values", draft: "A,", message: "no entry may be blank or ignored" },
+    { kind: "group", label: "Slice values", draft: "", message: "no entry may be blank or ignored" },
+    { kind: "numeric_range", label: "Slice minimum", draft: "", message: "Enter a minimum or maximum" },
+    { kind: "temporal", label: "Slice start", draft: "", message: "Enter a start or end" },
+  ])("rejects an incomplete $kind slice before creating evidence", async ({ kind, label, draft, message }) => {
+    studioApi.createSliceAnalysis.mockClear();
+    studioApi.createAnalysisEvaluation.mockClear();
+    renderWorkspace();
+    fireEvent.change(screen.getByLabelText("Slice type"), { target: { value: kind } });
+    fireEvent.change(screen.getByLabelText(label), { target: { value: draft } });
+    fireEvent.click(screen.getByRole("button", { name: "Run and persist slice" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(message);
+    expect(studioApi.createSliceAnalysis).not.toHaveBeenCalled();
+    expect(studioApi.createAnalysisEvaluation).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("slice-analysis-recovery")).not.toBeInTheDocument();
   });
 
   it("never carries final-test confirmation or a late opening error into another project", async () => {

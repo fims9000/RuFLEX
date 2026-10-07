@@ -54,6 +54,14 @@ test("one frozen TrainingRun and one saved manual FIS form a persisted validatio
   expect(await response.json()).toMatchObject({ run_ids: [runId], fis_id: (await fis.json()).fis_id, validation_alignment: "same_cases" });
 
   await page.getByLabel("Slice name").fill("Temperature validation slice");
+  let sliceWrites = 0;
+  await page.route("**/api/projects/analyses/slices", async (route) => {
+    sliceWrites += 1;
+    await route.continue();
+  });
+  await page.getByRole("button", { name: "Run and persist slice" }).click();
+  await expect(page.getByRole("alert").filter({ hasText: "minimum or maximum" })).toBeVisible();
+  expect(sliceWrites).toBe(0);
   await page.getByLabel("Slice minimum").fill("20");
   await page.getByRole("button", { name: "Run and persist slice" }).click();
   await expect(page.getByRole("cell", { name: "Temperature validation slice" })).toBeVisible();
@@ -61,21 +69,17 @@ test("one frozen TrainingRun and one saved manual FIS form a persisted validatio
   expect(sliceResponse.ok()).toBeTruthy();
   expect((await sliceResponse.json()).definitions[0].name).toBe("Temperature validation slice");
 
-  let sliceWrites = 0;
-  await page.route("**/api/projects/analyses/slices", async (route) => {
-    sliceWrites += 1;
-    await route.continue();
-  });
+  expect(sliceWrites).toBe(1);
   await page.getByLabel("Slice type").selectOption("manual");
   await page.getByLabel("Slice name").fill("Exact source-row slice");
   await page.getByLabel("Slice source rows").fill("2,invalid");
   await page.getByRole("button", { name: "Run and persist slice" }).click();
   await expect(page.getByRole("alert").filter({ hasText: "source row IDs" })).toBeVisible();
-  expect(sliceWrites).toBe(0);
+  expect(sliceWrites).toBe(1);
   await page.getByLabel("Slice source rows").fill("2, 7");
   await page.getByRole("button", { name: "Run and persist slice" }).click();
   await expect(page.getByRole("cell", { name: "Exact source-row slice" })).toBeVisible();
-  expect(sliceWrites).toBe(1);
+  expect(sliceWrites).toBe(2);
   const manualSliceResponse = await page.request.get(`${api}/${sessionId}/analyses/slices/latest`);
   expect(manualSliceResponse.ok()).toBeTruthy();
   expect((await manualSliceResponse.json()).definitions[0].source_rows).toEqual([2, 7]);

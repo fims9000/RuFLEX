@@ -46,6 +46,14 @@ function parseManualSourceRows(draft: string): number[] {
   return rows;
 }
 
+function parseSliceValues(draft: string): string[] {
+  const values = draft.split(",").map((value) => value.trim());
+  if (values.some((value) => !value)) {
+    throw new Error("Enter one or more comma-separated slice values; no entry may be blank or ignored.");
+  }
+  return values;
+}
+
 type ValidationPolicyRecovery =
   | { kind: "calibration"; evaluationId: string; error: string; notFound: boolean }
   | { kind: "threshold"; evaluationId: string; calibrationId: string | null; error: string; notFound: boolean }
@@ -706,6 +714,13 @@ export function EvaluationWorkspace({
     setError(null);
     try {
       const manualRows = sliceKind === "manual" ? parseManualSourceRows(sliceRows) : null;
+      const selectedValues = sliceKind === "categorical" || sliceKind === "group" ? parseSliceValues(sliceValues) : null;
+      if (sliceKind === "numeric_range" && !sliceMinimum.trim() && !sliceMaximum.trim()) {
+        throw new Error("Enter a minimum or maximum before saving a numeric-range slice.");
+      }
+      if (sliceKind === "temporal" && !sliceStart.trim() && !sliceEnd.trim()) {
+        throw new Error("Enter a start or end before saving a temporal slice.");
+      }
       const current = await ensureEvaluation();
       if (workspaceSessionRef.current !== requestSessionId) return;
       const field = sliceField || dataset.contract.feature_columns[0] || dataset.profile.columns[0]?.name || "";
@@ -716,7 +731,7 @@ export function EvaluationWorkspace({
         definition.field = field;
       }
       if (sliceKind === "categorical" || sliceKind === "group") {
-        definition.values = sliceValues.split(",").map((value) => value.trim()).filter(Boolean);
+        definition.values = selectedValues!;
       } else if (sliceKind === "numeric_range") {
         definition.minimum = sliceMinimum.trim() === "" ? null : Number(sliceMinimum);
         definition.maximum = sliceMaximum.trim() === "" ? null : Number(sliceMaximum);

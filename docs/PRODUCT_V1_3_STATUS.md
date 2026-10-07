@@ -67,6 +67,10 @@ Target branch: `feature/v1.3-data-governance-runtime`.
   duplicate, or unsafe IDs cannot be silently dropped or coerced to row zero.
   The real Studio route rejects such a draft without a write, then persists the
   corrected original-row list and restores its saved analysis after reopen.
+- Other Slice Lab forms reject blank categorical/group entries and numeric or
+  temporal slices without either bound before creating evidence. This keeps a
+  mistaken draft from changing the declared subgroup or creating an unrelated
+  validation Evaluation first.
 - Project Integrity, Assurance and portable bundles reject missing or malformed
   manual-FIS comparison rows and mismatched semantic-revision provenance.
   A portable bundle excludes raw dataset rows, so it checks the frozen row's

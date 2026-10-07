@@ -328,7 +328,8 @@
     "alpha_selective_policy_definitive_rejection_recovery",
     "alpha_validation_policy_definitive_rejection_recovery",
     "alpha_evaluation_definitive_rejection_recovery",
-    "alpha_manual_slice_exact_source_row_validation"
+    "alpha_manual_slice_exact_source_row_validation",
+    "alpha_slice_draft_completeness_validation"
   ],
   "active_capability": "alpha_master_spec_gap_audit",
   "active_acceptance": [
@@ -336,8 +337,9 @@
     "Select the next concrete, low-resource, end-to-end product gap and implement it without broad refactoring."
   ],
   "blockers": [],
-  "next_executable_work": "Continue the bounded Studio product-gap audit after exact manual Slice Lab row-input validation. Inspect remaining slice draft kinds for silent input coercion, then verify the next real user path with focused browser coverage. Preserve unrelated docs/article edits.",
+  "next_executable_work": "Continue the bounded Studio product-gap audit after Slice Lab exact/completeness validation. Inspect a different unmet real-user workflow in the master spec, keeping checks resource-aware and preserving unrelated docs/article edits.",
   "qa": {
+    "slice_draft_completeness_validation": "PASS: Slice Lab rejects blank categorical/group entries and missing numeric/temporal bounds before creating an Evaluation or SliceAnalysis. Existing session-isolation test now submits a valid bound. Component suite 39 passed, TypeScript/Vite build passed, and the real Studio route confirmed zero writes for empty numeric range and malformed manual rows, then persisted/reopened valid slices.",
     "manual_slice_exact_source_row_validation": "PASS: Slice Lab rejects blank, malformed, duplicate and unsafe original source-row IDs before creating an Evaluation or SliceAnalysis; no token is silently discarded or coerced to row zero. Component suite 35 passed; TypeScript/Vite build passed; focused real Studio route confirmed zero writes for malformed input, exact [2,7] persisted after correction, and close/reopen evidence.",
     "evaluation_definitive_rejection_recovery": "PASS: Run-bound Evaluation creation checks run/dataset and constructs the typed object before its first persisted write; Studio treats definitive API 403/404/409/422 as refusal without recovery lock, while lost responses and pointer-write failures retain run-bound exact lookup. EvaluationWorkspace unit suite 27 passed, PRODUCT-07 real Studio route simulated Evaluation 404 then saved/reopened validation policy, TypeScript/Vite build passed.",
     "validation_policy_definitive_rejection_recovery": "PASS: Product calibration and threshold routes validate evaluation/task/bound calibration before first artifact write, so Studio treats HTTP 403/404/409/422 as definite refusal rather than uncertain persistence. API 5xx/lost response still retains exact recovery. EvaluationWorkspace unit suite 26 passed; PRODUCT-04 browser route simulated calibration 422 and threshold 404, verified no recovery lock, then persisted both policies and completed the separate frozen final-test route. TypeScript/Vite build passed.",
