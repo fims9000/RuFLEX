@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom/vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { ButtonHTMLAttributes } from "react";
 
@@ -50,6 +50,7 @@ const dataset = {
 };
 
 function renderWorkspace(readOnly = false, overrides: {
+  project?: unknown;
   dataset?: unknown;
   datasetHydrationStatus?: "idle" | "loading" | "none" | "available" | "error";
   datasetHydrationError?: string | null;
@@ -79,16 +80,63 @@ function renderWorkspace(readOnly = false, overrides: {
   onThreshold?: (threshold: unknown) => void;
   onSelectivePolicy?: (policy: unknown) => void;
 } = {}) {
-  return render(<EvaluationWorkspace
-    project={{ ...project, read_only: readOnly } as never} dataset={(overrides.dataset === undefined ? dataset : overrides.dataset) as never} datasetHydrationStatus={overrides.datasetHydrationStatus ?? "available"} datasetHydrationError={overrides.datasetHydrationError ?? null} onRetryDatasetHydration={overrides.onRetryDatasetHydration ?? vi.fn()} fis={(overrides.fis ?? null) as never} modelContextStatus={overrides.modelContextStatus ?? "loaded"} run={(overrides.run === undefined ? run : overrides.run) as never} runs={(overrides.runs ?? [run]) as never} runListStatus={overrides.runListStatus ?? "loaded"} runListError={overrides.runListError ?? null} onRetryRunList={overrides.onRetryRunList ?? vi.fn()} study={null}
+  return render(workspaceElement(readOnly, overrides));
+}
+
+function workspaceElement(readOnly = false, overrides: Parameters<typeof renderWorkspace>[1] = {}) {
+  return <EvaluationWorkspace
+    project={(overrides.project ?? { ...project, read_only: readOnly }) as never} dataset={(overrides.dataset === undefined ? dataset : overrides.dataset) as never} datasetHydrationStatus={overrides.datasetHydrationStatus ?? "available"} datasetHydrationError={overrides.datasetHydrationError ?? null} onRetryDatasetHydration={overrides.onRetryDatasetHydration ?? vi.fn()} fis={(overrides.fis ?? null) as never} modelContextStatus={overrides.modelContextStatus ?? "loaded"} run={(overrides.run === undefined ? run : overrides.run) as never} runs={(overrides.runs ?? [run]) as never} runListStatus={overrides.runListStatus ?? "loaded"} runListError={overrides.runListError ?? null} onRetryRunList={overrides.onRetryRunList ?? vi.fn()} study={null}
     evaluation={(overrides.evaluationStatus === "error" ? null : evaluation) as never} evaluationStatus={overrides.evaluationStatus ?? "available"} evaluationError={overrides.evaluationError ?? null} onRetryEvaluation={overrides.onRetryEvaluation ?? vi.fn()} validationPolicyEvidenceStatus={overrides.validationPolicyEvidenceStatus ?? "available"} validationPolicyEvidenceError={overrides.validationPolicyEvidenceError ?? null} onRetryValidationPolicyEvidence={overrides.onRetryValidationPolicyEvidence ?? vi.fn()} calibrationTransform={null} decisionThreshold={(overrides.decisionThreshold === undefined ? threshold : overrides.decisionThreshold) as never} finalTestEvaluation={(overrides.finalTestEvaluation ?? null) as never}
     finalTestEvidenceStatus={overrides.finalTestEvidenceStatus ?? "none"} finalTestEvidenceError={overrides.finalTestEvidenceError ?? null} onRetryFinalTestEvidence={overrides.onRetryFinalTestEvidence ?? vi.fn()}
     comparison={null} sliceAnalysis={null} selectivePolicy={(overrides.selectivePolicy ?? null) as never} stabilityGatePolicy={(overrides.stabilityGatePolicy ?? null) as never} theme={"light" as never}
     onEvaluation={overrides.onEvaluation ?? vi.fn()} onCalibration={overrides.onCalibration ?? vi.fn()} onThreshold={overrides.onThreshold ?? vi.fn()} onFinalTest={vi.fn()} onComparison={vi.fn()} onSliceAnalysis={vi.fn()} onSelectivePolicy={overrides.onSelectivePolicy ?? vi.fn()}
-  />);
+  />;
 }
 
 describe("EvaluationWorkspace final-test boundary", () => {
+  it("drops an old project's comparison draft when the project session changes", async () => {
+    const fis = { fis_id: "fis-1", semantic_hash: "saved-semantic-hash", system_type: "mamdani", rules: [] };
+    const view = renderWorkspace(false, { fis });
+    fireEvent.click(screen.getByText(/Manual mamdani FIS/).closest("label")!.querySelector("input")!);
+    fireEvent.click(screen.getByText(/logistic_regression · seed/).closest("label")!.querySelector("input")!);
+    expect(screen.getByRole("button", { name: "Compare 2 selected models" })).toBeEnabled();
+    const newRun = { ...run, run_id: "new-run-123456789" };
+    view.rerender(workspaceElement(false, { project: { ...project, session_id: "another-session" }, fis, run: newRun, runs: [newRun] }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Compare 0 selected models" })).toBeDisabled());
+    expect(screen.getByText(/Manual mamdani FIS/).closest("label")!.querySelector("input")).not.toBeChecked();
+    expect(screen.getByText(/logistic_regression · seed/).closest("label")!.querySelector("input")).not.toBeChecked();
+  });
+
+  it("does not offer an old project's uncertain comparison retry in another session", async () => {
+    studioApi.createAnalysisComparison.mockReset().mockRejectedValueOnce(new Error("comparison response lost"));
+    const fis = { fis_id: "fis-1", semantic_hash: "saved-semantic-hash", system_type: "mamdani", rules: [] };
+    const view = renderWorkspace(false, { fis });
+    fireEvent.click(screen.getByText(/Manual mamdani FIS/).closest("label")!.querySelector("input")!);
+    fireEvent.click(screen.getByText(/logistic_regression · seed/).closest("label")!.querySelector("input")!);
+    fireEvent.click(screen.getByRole("button", { name: "Compare 2 selected models" }));
+    expect(await screen.findByTestId("comparison-recovery")).toHaveTextContent("comparison response lost");
+    const newRun = { ...run, run_id: "new-run-123456789" };
+    view.rerender(workspaceElement(false, { project: { ...project, session_id: "another-session" }, fis, run: newRun, runs: [newRun] }));
+    await waitFor(() => expect(screen.queryByTestId("comparison-recovery")).not.toBeInTheDocument());
+    expect(studioApi.createAnalysisComparison).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignores a late comparison failure from the previous project session", async () => {
+    let rejectRequest: (error: Error) => void = () => undefined;
+    studioApi.createAnalysisComparison.mockReset().mockImplementationOnce(() => new Promise((_resolve, reject) => { rejectRequest = reject; }));
+    const fis = { fis_id: "fis-1", semantic_hash: "saved-semantic-hash", system_type: "mamdani", rules: [] };
+    const view = renderWorkspace(false, { fis });
+    fireEvent.click(screen.getByText(/Manual mamdani FIS/).closest("label")!.querySelector("input")!);
+    fireEvent.click(screen.getByText(/logistic_regression · seed/).closest("label")!.querySelector("input")!);
+    fireEvent.click(screen.getByRole("button", { name: "Compare 2 selected models" }));
+    const newRun = { ...run, run_id: "new-run-123456789" };
+    view.rerender(workspaceElement(false, { project: { ...project, session_id: "another-session" }, fis, run: newRun, runs: [newRun] }));
+    await act(async () => { rejectRequest(new Error("old project response lost")); });
+    expect(screen.getByRole("button", { name: "Compare 0 selected models" })).toBeDisabled();
+    expect(screen.queryByTestId("comparison-recovery")).not.toBeInTheDocument();
+    expect(screen.queryByText("old project response lost")).not.toBeInTheDocument();
+  });
+
   it("compares one selected run with one saved manual FIS on validation", async () => {
     studioApi.createAnalysisComparison.mockClear().mockResolvedValueOnce({ comparison_id: "comparison-1", fis_id: "fis-1", fis_semantic_hash: "saved-semantic-hash" } as never);
     renderWorkspace(false, { fis: { fis_id: "fis-1", semantic_hash: "saved-semantic-hash", system_type: "mamdani", rules: [] } });

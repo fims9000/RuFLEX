@@ -39,6 +39,9 @@ Target branch: `feature/v1.3-data-governance-runtime`.
   stale revisions are rejected, while older persisted comparisons remain
   inspectable after later FIS edits. Failed FIS reads pause manual-FIS
   comparison and expose retry rather than implying that no FIS exists.
+- Analysis comparison drafts and uncertain-response recovery are scoped to the
+  current project session; a late response from another project cannot reopen
+  its recovery controls in the active Studio view.
 - Project Integrity, Assurance and portable bundles reject missing or malformed
   manual-FIS comparison rows and mismatched semantic-revision provenance.
   A portable bundle excludes raw dataset rows, so it checks the frozen row's

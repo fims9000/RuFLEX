@@ -220,8 +220,16 @@ export function EvaluationWorkspace({
   const [comparing, setComparing] = useState(false);
   const [comparisonRecovery, setComparisonRecovery] = useState<ComparisonRecovery | null>(null);
   const [recoveringComparison, setRecoveringComparison] = useState(false);
+  const comparisonSessionRef = useRef(project.session_id);
+  comparisonSessionRef.current = project.session_id;
   const [selectedRunIds, setSelectedRunIds] = useState<string[]>([]);
   const [includeManualFis, setIncludeManualFis] = useState(false);
+  useEffect(() => {
+    setSelectedRunIds([]);
+    setIncludeManualFis(false);
+    setComparisonRecovery(null);
+    setError(null);
+  }, [project.session_id]);
   useEffect(() => {
     if (modelContextStatus !== "loaded" || !fis?.semantic_hash) setIncludeManualFis(false);
   }, [modelContextStatus, fis?.fis_id, fis?.semantic_hash]);
@@ -569,14 +577,17 @@ export function EvaluationWorkspace({
   }
 
   async function createComparisonForExactRequest(request: ComparisonRecovery) {
+    const requestSessionId = project.session_id;
     const includeFis = request.fisId !== null;
     if (includeFis && (modelContextStatus !== "loaded" || fis?.fis_id !== request.fisId || fis.semantic_hash !== request.fisSemanticHash)) throw new Error("The saved FIS revision is unverified or changed; the original comparison request cannot be repeated safely.");
     try {
-      const created = await studioApi.createAnalysisComparison(project.session_id, request.runIds, includeFis, request.fisId, request.fisSemanticHash);
+      const created = await studioApi.createAnalysisComparison(requestSessionId, request.runIds, includeFis, request.fisId, request.fisSemanticHash);
+      if (comparisonSessionRef.current !== requestSessionId) return;
       if (created.fis_id !== request.fisId || created.fis_semantic_hash !== request.fisSemanticHash) throw new Error("Saved comparison does not match the exact requested FIS revision.");
       onComparison(created);
       setComparisonRecovery(null);
     } catch (reason) {
+      if (comparisonSessionRef.current !== requestSessionId) return;
       const pending = { ...request, error: reason instanceof Error ? reason.message : "Comparison response was uncertain.", notFound: false };
       setComparisonRecovery(pending);
       throw reason;
@@ -604,15 +615,18 @@ export function EvaluationWorkspace({
   async function recoverComparison() {
     const pending = comparisonRecovery;
     if (!pending) return;
+    const requestSessionId = project.session_id;
     setRecoveringComparison(true); setError(null);
     try {
-      const latest = await studioApi.getLatestAnalysisComparison(project.session_id);
+      const latest = await studioApi.getLatestAnalysisComparison(requestSessionId);
+      if (comparisonSessionRef.current !== requestSessionId) return;
       if (canonicalJson(latest.run_ids) !== canonicalJson(pending.runIds) || latest.fis_id !== pending.fisId || latest.fis_semantic_hash !== pending.fisSemanticHash) {
         setComparisonRecovery({ ...pending, notFound: true, error: "The latest comparison has different run/FIS identities; no replacement was created." });
         return;
       }
       onComparison(latest); setComparisonRecovery(null);
     } catch (reason) {
+      if (comparisonSessionRef.current !== requestSessionId) return;
       if (reason instanceof ProductApiError && reason.status === 404) {
         setComparisonRecovery({ ...pending, notFound: true, error: "No matching saved comparison is visible yet. Retry lookup later, or explicitly repeat this exact validation comparison." });
       } else {
