@@ -1888,6 +1888,9 @@ export function App() {
             Evidence-centered model engineering · persisted data, fuzzy models,
             real training and validation
           </p>
+          {project && datasetStateStatus === "available" && datasetState?.contract.source_artifact_sha256 === SYNTHETIC_PRACTICE_SHA256 && (
+            <p className="practice-context" data-testid="synthetic-practice-context">Synthetic practice data · results are not benchmark or research evidence.</p>
+          )}
         </div>
         {project && (
           <StatusBadge tone={project.read_only ? "warning" : "success"}>

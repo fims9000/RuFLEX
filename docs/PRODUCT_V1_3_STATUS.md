@@ -96,10 +96,14 @@ Target branch: `feature/v1.3-data-governance-runtime`.
   DatasetContract before training. A real Studio route persisted a logistic
   TrainingRun, validation Evaluation, post-hoc Explanation and ExplanationCheck,
   AssuranceCase, and VerificationBundle. After close/reopen it restored the
-  evidence chain; the saved bundle can be reopened from Lineage.
-  read-only sessions do not offer the practice loader. This is training
+  evidence chain; the saved bundle can be reopened from Lineage. Read-only
+  sessions do not offer the practice loader. This is training
   practice data, not frozen research evidence. Exact source-byte SHA-256 keeps
-  this practice designation visible after project reopen.
+  this practice designation visible after project reopen and across Studio
+  workspaces. The same synthetic route freezes a raw validation threshold and
+  selective policy before a one-time final-test evaluation; reopening shows
+  the saved result and disables threshold reselection. This exercise does not
+  access A01 or S03 benchmark projects.
 - Project Integrity, Assurance and portable bundles reject missing or malformed
   manual-FIS comparison rows and mismatched semantic-revision provenance.
   A portable bundle excludes raw dataset rows, so it checks the frozen row's
