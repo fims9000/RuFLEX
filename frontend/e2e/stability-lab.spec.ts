@@ -93,6 +93,17 @@ test("Stability Lab persists fixed-split multi-run evidence and its validation-o
   await expect(page.getByText("Opened lineage object: Stability-aware review", { exact: true })).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText("The saved Stability Gate is bound to a different run, Evaluation, threshold or dataset and will not be applied here.", { exact: true })).toBeVisible();
 
+  await page.getByRole("button", { name: "E", exact: true }).click();
+  await page.getByRole("button", { name: "Build AssuranceCase", exact: true }).click();
+  const assurance = page.getByTestId("assurance-case");
+  await expect(assurance).toBeVisible({ timeout: 30_000 });
+  const stabilityGateRow = assurance.locator("tr").filter({ hasText: "stability gate policy" });
+  await expect(stabilityGateRow).toContainText("PASS");
+  await page.getByRole("button", { name: "Export and validate bundle", exact: true }).click();
+  const bundle = page.getByTestId("verification-bundle");
+  await expect(bundle).toContainText("Portable validation");
+  await expect(bundle).toContainText("PASS");
+
   await page.getByRole("button", { name: "S", exact: true }).click();
   await page.getByLabel("Study seeds").fill("21, 22, 23");
   await page.getByRole("button", { name: "Run multi-seed study", exact: true }).click();
@@ -100,4 +111,9 @@ test("Stability Lab persists fixed-split multi-run evidence and its validation-o
   await expect(page.getByText("Case Stability Map · selected-run agreement; red = high-confidence unstable", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Risk–coverage comparison (same coverage)", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Create Study Stability Analysis", exact: true })).toBeEnabled();
+  const reopened = await page.request.post("http://127.0.0.1:8010/api/projects/open", { data: { path: root } });
+  expect(reopened.status()).toBe(200);
+  const { session_id: reopenedSessionId } = await reopened.json();
+  const unopenedFinalTest = await page.request.get(`http://127.0.0.1:8010/api/projects/${reopenedSessionId}/analyses/final-test/latest`);
+  expect(unopenedFinalTest.status()).toBe(404);
 });
