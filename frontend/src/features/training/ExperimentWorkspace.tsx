@@ -234,6 +234,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
   const pendingStudyRequestRef = useRef<Parameters<typeof studioApi.startStudyJob>[1] | null>(null);
   const [running, setRunning] = useState(false);
   const singleTrainingInFlightRef = useRef(false);
+  const studyStartInFlightRef = useRef(false);
   const studyResumeInFlightRef = useRef(false);
   const splitContractMutationInFlightRef = useRef(false);
   const [splitContractMutationInFlight, setSplitContractMutationInFlight] = useState(false);
@@ -493,7 +494,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
   }
 
   async function train() {
-    if (singleTrainingInFlightRef.current || splitContractMutationInFlightRef.current || running || splitContractRecovery || trainingRecovery) return;
+    if (singleTrainingInFlightRef.current || studyStartInFlightRef.current || splitContractMutationInFlightRef.current || running || splitContractRecovery || trainingRecovery) return;
     if (!studyJobStateResolved) {
       setError("Resolve saved Study job status before starting a single TrainingRun.");
       return;
@@ -558,7 +559,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
   }
   async function explicitlyRepeatTraining() {
     const pending = trainingRecovery;
-    if (!pending?.notFound || project.read_only || running || singleTrainingInFlightRef.current || splitContractMutationInFlightRef.current || !studyJobStateResolved || activeStudyJob) return;
+    if (!pending?.notFound || project.read_only || running || singleTrainingInFlightRef.current || studyStartInFlightRef.current || splitContractMutationInFlightRef.current || !studyJobStateResolved || activeStudyJob) return;
     singleTrainingInFlightRef.current = true;
     setRecoveringTraining(true); setRunning(true); setError(null);
     try { onRun(await studioApi.runTraining(project.session_id, pending.config)); setTrainingRecovery(null); }
@@ -636,9 +637,10 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
     } finally { splitContractMutationInFlightRef.current = false; setSplitContractMutationInFlight(false); setRecoveringSplitContract(false); setRunning(false); }
   }
   async function trainStudy() {
-    if (splitContractMutationInFlightRef.current || running) return;
+    if (studyStartInFlightRef.current || singleTrainingInFlightRef.current || splitContractMutationInFlightRef.current || running || splitContractRecovery || trainingRecovery) return;
     const pendingRequest = pendingStudyRequestRef.current;
     if (pendingRequest) {
+      studyStartInFlightRef.current = true;
       setRunning(true);
       setError(null);
       try {
@@ -649,6 +651,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
       } catch (reason) {
         setError(reason instanceof Error ? reason.message : "The original Study request could not be recovered.");
       } finally {
+        studyStartInFlightRef.current = false;
         setRunning(false);
       }
       return;
@@ -675,6 +678,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
       return;
     }
     const seeds = studySeedValidation.seeds;
+    studyStartInFlightRef.current = true;
     setRunning(true);
     setError(null);
     try {
@@ -695,6 +699,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
       }
       setError(reason instanceof Error ? reason.message : "Multi-seed study failed");
     } finally {
+      studyStartInFlightRef.current = false;
       setRunning(false);
     }
   }

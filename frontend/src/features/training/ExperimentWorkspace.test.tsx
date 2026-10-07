@@ -183,6 +183,26 @@ describe("ExperimentWorkspace dynamic model controls", () => {
     expect(studioApi.runTraining).toHaveBeenCalledTimes(1);
   });
 
+  it("synchronously rejects duplicate Study submissions before React can rerender", async () => {
+    const completed = { job_id: "job-study-once", name: "Study", model_kind: "flat_neuro_fuzzy", selection_metric: "f1", status: "SUCCEEDED", cancel_requested: false, seed_states: [], study_id: "study-once", error: null, execution_backend: "LOCAL", execution_backend_key: "local_executor", execution_config: {}, recovery_count: 0, recovery_note: null };
+    let finishStudy!: (value: never) => void;
+    studioApi.startStudyJob.mockImplementationOnce(() => new Promise((resolve) => { finishStudy = resolve as (value: never) => void; }));
+    studioApi.getLatestTrainingStudy.mockResolvedValue({ study_id: "study-once", selection_metric: "f1", selected_run_id: null, seed_runs: [] });
+    render(<ExperimentWorkspace project={project} dataset={dataset as never} run={null} study={null} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);
+
+    const start = await screen.findByRole("button", { name: "Run multi-seed study" });
+    await waitFor(() => expect(start).toBeEnabled());
+    act(() => {
+      start.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      start.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(studioApi.startStudyJob).toHaveBeenCalledTimes(1);
+    expect(start).toBeDisabled();
+    await act(async () => { finishStudy(completed as never); });
+    await waitFor(() => expect(screen.getByText(/Study job SUCCEEDED/)).toBeVisible());
+    expect(studioApi.startStudyJob).toHaveBeenCalledTimes(1);
+  });
+
   it("clears a rejected Study request so corrected parameters create a new request", async () => {
     studioApi.startStudyJob
       .mockRejectedValueOnce(new ProductApiError({ code: "VALIDATION_FAILED", status: 422, detail: "Study configuration is invalid." }))

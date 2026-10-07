@@ -280,13 +280,14 @@
     "alpha_single_training_submission_guard",
     "alpha_split_contract_duplicate_guard",
     "alpha_training_study_execution_mutex",
-    "alpha_study_resume_duplicate_guard"
+    "alpha_study_resume_duplicate_guard",
+    "alpha_study_submission_duplicate_guard"
   ],
-  "active_capability": "alpha_study_resume_duplicate_guard",
+  "active_capability": "alpha_study_submission_duplicate_guard",
   "active_acceptance": [
-    "Resume for one persisted StudyJob can be submitted only once at a time, before React rerenders.",
-    "The in-flight resume control communicates that the action is busy and cannot trigger duplicate resume requests.",
-    "The synchronous guard releases after success or failure so explicit recovery remains possible."
+    "A new or exact-retry StudyJob submission is guarded synchronously before network work begins.",
+    "Single-run fit and Study submission mutually reject overlapping in-flight writes, including before React rerenders.",
+    "The Study submission guard releases in finally so an explicit same-request retry remains possible."
   ],
   "blockers": [],
   "next_executable_work": "Inspect the next user-facing alpha workflow for an evidenced reliability/usability gap; use focused, low-resource checks and commit each verified slice locally.",
@@ -573,6 +574,7 @@
     "alpha_single_training_submission_guard": "PASS: single-run TrainingRun submission now has a synchronous ref guard, including explicit retry after confirmed absence. ExperimentWorkspace unit suite: 22 passed; PRODUCT-02 real Studio training/reopen E2E passed with a delayed response and one POST; TypeScript build and git diff checks passed.",
     "alpha_split_contract_duplicate_guard": "PASS: SplitContract freeze and explicit retry now use a synchronous duplicate guard; single-run training and Study start are refused while the split write is pending. Studio reports 'Saving split contract' and keeps fitting disabled. ExperimentWorkspace unit suite: 23 passed; focused GROUP-split correction E2E passed; TypeScript build and diff check passed.",
     "alpha_training_study_execution_mutex": "PASS: single-run fitting now fails closed until saved StudyJob status is restored and while any persisted StudyJob is QUEUED/RUNNING; the submit handler enforces the same guard as the disabled control. Explicit repeat of an uncertain single fit also refuses to overlap an active/unresolved Study. ExperimentWorkspace unit suite: 25 passed; TypeScript project build and git diff --check passed.",
-    "alpha_study_resume_duplicate_guard": "PASS: Resume persisted study now has a synchronous in-flight guard, preventing duplicate backend resume requests before React updates; the guard releases in finally. ExperimentWorkspace unit suite: 26 passed; TypeScript project build and git diff --check passed."
+    "alpha_study_resume_duplicate_guard": "PASS: Resume persisted study now has a synchronous in-flight guard, preventing duplicate backend resume requests before React updates; the guard releases in finally. ExperimentWorkspace unit suite: 26 passed; TypeScript project build and git diff --check passed.",
+    "alpha_study_submission_duplicate_guard": "PASS: Initial Study creation and exact retry now use a synchronous request guard before API submission; single-run fit and Study submission reject overlapping writes. A rapid double-submit regression test confirms one backend request. ExperimentWorkspace unit suite: 27 passed; TypeScript project build and git diff --check passed."
   }
 }
