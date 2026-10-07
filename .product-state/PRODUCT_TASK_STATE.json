@@ -287,16 +287,17 @@
     "alpha_split_contract_duplicate_freeze",
     "alpha_study_cancel_during_polling",
     "alpha_training_study_cross_action_mutex",
-    "alpha_stability_lab_write_serialization"
+    "alpha_stability_lab_write_serialization",
+    "alpha_explanation_job_submission_mutex"
   ],
-  "active_capability": "alpha_evidence_workspace_write_serialization",
+  "active_capability": "alpha_explanation_job_submission_mutex",
   "active_acceptance": [
-    "Inspect Evidence Workspace multi-step artifact/job writes for rapid duplicate submission and uncertain-response paths.",
-    "Use only evidenced gaps; preserve exact request identity and recovery semantics where already implemented.",
-    "Verify with focused component tests and the smallest relevant UI route, then commit only explicit product files."
+    "Explanation generation, validation-check jobs, and exact resume share a synchronous submission mutex.",
+    "Repeated event dispatch before React rerender must start at most one persisted job.",
+    "An uncertain job response remains recoverable through its persisted job identity without starting another job."
   ],
   "blockers": [],
-  "next_executable_work": "Inspect EvidenceWorkspace persisted explanation/check/assurance/bundle job actions for handler-level duplicate guards and safe cancellation; choose one concrete gap before editing.",
+  "next_executable_work": "Inspect and serialize AssuranceCase / VerificationBundle job submission, exact resume, and cancellation using one synchronous shared Evidence-operation guard; cover delayed API responses and recovery in focused tests.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -587,6 +588,7 @@
     "alpha_split_contract_duplicate_freeze": "PASS: when current split controls exactly match the persisted SplitContract, freeze is visibly disabled/labeled 'SplitContract frozen' and the handler refuses redundant immutable writes; changing split-defining controls allows a new contract. ExperimentWorkspace unit suite, TypeScript build, state JSON parse and git diff --check passed.",
     "alpha_study_cancel_during_polling": "PASS: Cancel remains available while Resume is polling an active persisted StudyJob; cancel request is sent, cancellation intent is reflected, and terminal CANCELLED state is observed. ExperimentWorkspace unit suite, TypeScript project build, state JSON parse and git diff --check passed.",
     "alpha_training_study_cross_action_mutex": "PASS: cross-action race tests cover both orders of single TrainingRun vs multi-seed Study submission; the first action holds its synchronous ref and the competing path sends no request. ExperimentWorkspace unit suite, TypeScript build, state JSON parse and diff check passed.",
-    "alpha_stability_lab_write_serialization": "PASS: a synchronous shared mutation guard serializes persisted Analysis build/recovery/continuation and Gate freeze/recovery; exact active Analysis/Gate objects are shown as saved and cannot be duplicated. New StabilityLab component tests: 2 passed; focused existing Stability Lab Studio E2E: 1 passed (11.5s); TypeScript project build, state JSON parse and git diff --check passed."
+    "alpha_stability_lab_write_serialization": "PASS: a synchronous shared mutation guard serializes persisted Analysis build/recovery/continuation and Gate freeze/recovery; exact active Analysis/Gate objects are shown as saved and cannot be duplicated. New StabilityLab component tests: 2 passed; focused existing Stability Lab Studio E2E: 1 passed (11.5s); TypeScript project build, state JSON parse and git diff --check passed.",
+    "alpha_explanation_job_submission_mutex": "PASS: explanation generation, check-job creation, and exact saved-job resume share a synchronous handler-level mutex; duplicate event dispatch before rerender starts at most one persisted job. EvidenceWorkspace component tests: 2 passed; focused real Studio PRODUCT-05 Playwright E2E: 1 passed, with double synchronous click verification for both generation and validation-check jobs; TypeScript build, state JSON parse and git diff --check passed."
   }
 }

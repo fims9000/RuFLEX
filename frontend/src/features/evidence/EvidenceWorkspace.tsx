@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DatasetState,
   ProductApiError,
@@ -163,6 +163,7 @@ export function EvidenceWorkspace({
   const [comparisonSample, setComparisonSample] = useState<Record<string, string>>(initialSample);
   const [method, setMethod] = useState("occlusion");
   const [busy, setBusy] = useState(false);
+  const explanationJobActionInFlightRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [behaviorKind, setBehaviorKind] = useState<BehaviorSpec["kind"]>("output_range");
   const [behaviorName, setBehaviorName] = useState("Output remains in declared range");
@@ -477,7 +478,8 @@ export function EvidenceWorkspace({
   }
 
   async function generate() {
-    if (!run) return;
+    if (explanationJobActionInFlightRef.current || !run || explanationJobHydrationStatus === "loading" || explanationJobHydrationStatus === "error" || explanationJobPollError || explanationJob && ["queued", "running"].includes(explanationJob.status)) return;
+    explanationJobActionInFlightRef.current = true;
     setBusy(true);
     setError(null);
     let job: ProductJob | null = null;
@@ -491,6 +493,7 @@ export function EvidenceWorkspace({
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
     } finally {
+      explanationJobActionInFlightRef.current = false;
       setBusy(false);
     }
   }
@@ -539,7 +542,8 @@ export function EvidenceWorkspace({
   }
 
   async function resumeExplanationJob() {
-    if (!explanationJob || (!["queued", "running"].includes(explanationJob.status) && !explanationJobPollError)) return;
+    if (explanationJobActionInFlightRef.current || !explanationJob || (!["queued", "running"].includes(explanationJob.status) && !explanationJobPollError)) return;
+    explanationJobActionInFlightRef.current = true;
     setBusy(true);
     setError(null);
     setExplanationJobPollError(null);
@@ -548,12 +552,14 @@ export function EvidenceWorkspace({
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
     } finally {
+      explanationJobActionInFlightRef.current = false;
       setBusy(false);
     }
   }
 
   async function check() {
-    if (!explanation) return;
+    if (explanationJobActionInFlightRef.current || !explanation || explanationJobHydrationStatus === "loading" || explanationJobHydrationStatus === "error" || explanationJobPollError || explanationJob && ["queued", "running"].includes(explanationJob.status)) return;
+    explanationJobActionInFlightRef.current = true;
     setBusy(true);
     setError(null);
     let job: ProductJob | null = null;
@@ -567,6 +573,7 @@ export function EvidenceWorkspace({
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
     } finally {
+      explanationJobActionInFlightRef.current = false;
       setBusy(false);
     }
   }

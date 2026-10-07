@@ -37,12 +37,30 @@ test("PRODUCT-05 persists post-hoc evidence separately from exact traces", async
   await expect(page.getByText("Computation evidence and post-hoc attribution", { exact: true })).toBeVisible();
   await expect(page.getByTestId("run-capability-negotiation")).toContainText("occlusion");
   await expect(page.getByTestId("run-capability-negotiation")).toContainText("NOT_APPLICABLE");
-  await page.getByRole("button", { name: "Generate explanation", exact: true }).click();
+  let explanationJobPostCount = 0;
+  await page.route("**/api/projects/evidence/explanation-jobs", async (route) => {
+    if (route.request().method() === "POST") explanationJobPostCount += 1;
+    await route.continue();
+  });
+  await page.getByRole("button", { name: "Generate explanation", exact: true }).evaluate((button) => {
+    button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
   await expect(page.getByTestId("explanation-job")).toContainText("SUCCEEDED");
+  expect(explanationJobPostCount).toBe(1);
   await expect(page.getByText("POST-HOC ATTRIBUTION", { exact: true }).first()).toBeVisible();
   await expect(page.getByText(/not a causal effect/i).first()).toBeVisible();
-  await page.getByRole("button", { name: "Run explanation checks", exact: true }).click();
+  let explanationCheckJobPostCount = 0;
+  await page.route("**/api/projects/evidence/explanation-check-jobs", async (route) => {
+    if (route.request().method() === "POST") explanationCheckJobPostCount += 1;
+    await route.continue();
+  });
+  await page.getByRole("button", { name: "Run explanation checks", exact: true }).evaluate((button) => {
+    button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
   await expect(page.getByText("PASSED_AVAILABLE_CHECKS", { exact: true })).toBeVisible();
+  expect(explanationCheckJobPostCount).toBe(1);
   await expect(page.getByText("replay integrity", { exact: true })).toBeVisible();
   await expect(page.getByTestId("validator-plugin")).toContainText("native_explanation_validator v1");
 
