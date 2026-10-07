@@ -123,6 +123,10 @@ def test_project_integrity_validates_frozen_stability_analysis_and_gate_chain(tm
     assert policy_response.status_code == 201, policy_response.text
     calibration_response = client.post("/api/projects/analyses/calibrations", json={"session_id": session_id, "evaluation_id": evaluation_id})
     assert calibration_response.status_code == 201, calibration_response.text
+    calibrated_threshold_response = client.post("/api/projects/analyses/thresholds", json={"session_id": session_id, "evaluation_id": evaluation_id, "calibration_id": calibration_response.json()["calibration_id"], "objective": "f1"})
+    assert calibrated_threshold_response.status_code == 201, calibrated_threshold_response.text
+    calibrated_selective_response = client.post("/api/projects/analyses/selective-policies", json={"session_id": session_id, "evaluation_id": evaluation_id, "confidence_cutoff": .75, "calibration_id": calibration_response.json()["calibration_id"], "threshold_id": calibrated_threshold_response.json()["threshold_id"]})
+    assert calibrated_selective_response.status_code == 201, calibrated_selective_response.text
     initial_integrity = client.get(f"/api/projects/{session_id}/integrity").json()
     assert initial_integrity["status"] == "PASS", initial_integrity["issues"]
     calibration_id_for_audit = calibration_response.json()["calibration_id"]
