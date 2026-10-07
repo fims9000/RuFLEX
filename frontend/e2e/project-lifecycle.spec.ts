@@ -357,6 +357,8 @@ test("E2E-09 declares and freezes the new-entity generalization contract", async
   await expect(page.getByRole("button", { name: "Declaring…", exact: true })).toBeDisabled();
   await expect(page.getByLabel("Intended use")).toBeDisabled();
   await expect(page.getByRole("button", { name: "Freeze evaluation contract", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Save", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Close", exact: true })).toBeDisabled();
   expect(declarationRequests).toBe(1);
   releaseDeclaration();
   await expect(page.getByText("Split recommendation: group · Ready to freeze", { exact: true })).toBeVisible();
@@ -377,6 +379,8 @@ test("E2E-09 declares and freezes the new-entity generalization contract", async
   await expect(page.getByRole("button", { name: "Freezing…", exact: true })).toBeDisabled();
   await expect(page.getByRole("button", { name: "Declare generalization contract", exact: true })).toBeDisabled();
   await expect(page.getByLabel("Supported values")).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Save", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Close", exact: true })).toBeDisabled();
   expect(freezeRequests).toBe(1);
   releaseFreeze();
   await expect(page.getByText("Split recommendation: group · Frozen", { exact: true })).toBeVisible();

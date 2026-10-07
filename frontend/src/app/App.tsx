@@ -1232,7 +1232,7 @@ export function App() {
     }
   }
   async function save() {
-    if (!project || projectWriteInFlightRef.current) return;
+    if (!project || projectWriteInFlightRef.current || generalizationMutationInFlightRef.current) return;
     const sessionId = project.session_id;
     projectWriteInFlightRef.current = true;
     setProjectWriteOperation("save");
@@ -1253,7 +1253,7 @@ export function App() {
     }
   }
   async function updateDescription() {
-    if (!project || project.read_only || projectWriteInFlightRef.current) return;
+    if (!project || project.read_only || projectWriteInFlightRef.current || generalizationMutationInFlightRef.current) return;
     const sessionId = project.session_id;
     projectWriteInFlightRef.current = true;
     setProjectWriteOperation("description");
@@ -1276,7 +1276,7 @@ export function App() {
     }
   }
   async function close() {
-    if (projectWriteInFlightRef.current) return;
+    if (projectWriteInFlightRef.current || generalizationMutationInFlightRef.current) return;
     const requestId = ++projectLifecycleRequestRef.current;
     datasetFileSelectionId.current += 1;
     csvInspectionRequestRef.current += 1;
@@ -1559,7 +1559,7 @@ export function App() {
     }
   }
   async function createGeneralization() {
-    if (!project || generalizationMutationInFlightRef.current) return;
+    if (!project || projectWriteInFlightRef.current || generalizationMutationInFlightRef.current) return;
     generalizationMutationInFlightRef.current = true;
     setGeneralizationMutationOperation("declare");
     const requestId = ++generalizationMutationRequestRef.current;
@@ -1599,7 +1599,7 @@ export function App() {
     }
   }
   async function freezeGeneralization() {
-    if (!project || !generalization || generalizationMutationInFlightRef.current) return;
+    if (!project || !generalization || projectWriteInFlightRef.current || generalizationMutationInFlightRef.current) return;
     generalizationMutationInFlightRef.current = true;
     setGeneralizationMutationOperation("freeze");
     const requestId = ++generalizationMutationRequestRef.current;
@@ -1667,7 +1667,7 @@ export function App() {
         <TextInput
           aria-label="Description"
           value={description}
-          disabled={project.read_only || projectWriteOperation !== null}
+          disabled={project.read_only || projectWriteOperation !== null || generalizationMutationOperation !== null}
           onUpdate={setDescription}
           placeholder="Project description"
         />
@@ -1675,7 +1675,7 @@ export function App() {
       <Button
         view="outlined"
         size="m"
-        disabled={project.read_only || projectWriteOperation !== null}
+        disabled={project.read_only || projectWriteOperation !== null || generalizationMutationOperation !== null}
         onClick={updateDescription}
         data-ruflex-action="project.description.update"
       >
@@ -1761,8 +1761,8 @@ export function App() {
       projectName={project?.name}
       readOnly={project?.read_only}
       saving={projectWriteOperation === "save"}
-      saveDisabled={projectWriteOperation !== null}
-      closeDisabled={projectWriteOperation !== null}
+      saveDisabled={projectWriteOperation !== null || generalizationMutationOperation !== null}
+      closeDisabled={projectWriteOperation !== null || generalizationMutationOperation !== null}
       status={status}
       error={error}
       onSave={save}
