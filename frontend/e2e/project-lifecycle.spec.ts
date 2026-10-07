@@ -89,6 +89,49 @@ test("serializes create and recent-project open requests", async ({ page }) => {
   expect(openRequests).toBe(1);
 });
 
+test("serializes project save and metadata update writes", async ({ page }) => {
+  let saveRequests = 0;
+  let metadataRequests = 0;
+  let releaseSave: () => void = () => {};
+  let releaseMetadata: () => void = () => {};
+  let saveStarted: () => void = () => {};
+  let metadataStarted: () => void = () => {};
+  const saveStartedPromise = new Promise<void>((resolve) => { saveStarted = resolve; });
+  const metadataStartedPromise = new Promise<void>((resolve) => { metadataStarted = resolve; });
+  await page.route("**/api/projects/save", async (route) => {
+    saveRequests += 1;
+    saveStarted();
+    await new Promise<void>((resolve) => { releaseSave = resolve; });
+    await route.continue();
+  });
+  await page.route("**/api/projects/metadata", async (route) => {
+    metadataRequests += 1;
+    metadataStarted();
+    await new Promise<void>((resolve) => { releaseMetadata = resolve; });
+    await route.continue();
+  });
+
+  await createProject(page, projectPath("save-metadata-serialization"), "Write serialization");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await saveStartedPromise;
+  await expect(page.getByRole("button", { name: "Saving…", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Update description", exact: true })).toBeDisabled();
+  await expect(page.getByLabel("Description")).toBeDisabled();
+  releaseSave();
+  await expect(page.getByText("Saved Write serialization", { exact: true })).toBeVisible();
+  expect(saveRequests).toBe(1);
+
+  await page.getByLabel("Description").fill("Serialized metadata write");
+  await page.getByRole("button", { name: "Update description", exact: true }).click();
+  await metadataStartedPromise;
+  await expect(page.getByRole("button", { name: "Save", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Updating description…", exact: true })).toBeDisabled();
+  await expect(page.getByLabel("Description")).toBeDisabled();
+  releaseMetadata();
+  await expect(page.getByText("Updated Write serialization", { exact: true })).toBeVisible();
+  expect(metadataRequests).toBe(1);
+});
+
 test("E2E-02b keeps dataset import paused on a state-read failure and enables it after retry confirms absence", async ({ page }) => {
   let datasetReads = 0;
   await page.route("**/api/projects/*/dataset", async (route) => {

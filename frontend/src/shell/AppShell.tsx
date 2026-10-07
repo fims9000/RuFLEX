@@ -22,6 +22,8 @@ type Props = {
   onSave?: () => void;
   onClose?: () => void;
   readOnly?: boolean;
+  saving?: boolean;
+  saveDisabled?: boolean;
 };
 const workbenches = ["PROJECT", "MODELS", "STUDIES", "ANALYSES", "EVIDENCE"];
 export function AppShell({
@@ -44,6 +46,8 @@ export function AppShell({
   onSave,
   onClose,
   readOnly,
+  saving = false,
+  saveDisabled = false,
 }: Props) {
   useEffect(() => {
     document.documentElement.dataset.ruflexTheme = theme;
@@ -80,10 +84,10 @@ export function AppShell({
           {projectName && (
             <button
               className="tool-button"
-              disabled={readOnly}
+              disabled={readOnly || saveDisabled}
               onClick={onSave}
             >
-              Save
+              {saving ? "Saving…" : "Save"}
             </button>
           )}
           {projectName && (

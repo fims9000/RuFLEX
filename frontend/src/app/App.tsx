@@ -114,6 +114,7 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [projectFormError, setProjectFormError] = useState<string | null>(null);
   const [projectLifecycleOperation, setProjectLifecycleOperation] = useState<"create" | "open" | "recent" | null>(null);
+  const [projectWriteOperation, setProjectWriteOperation] = useState<"save" | "description" | null>(null);
   const [theme, setTheme] = useState<StudioTheme>(initialTheme);
   const [active, setActive] = useState("PROJECT");
   const [collapsed, setCollapsed] = useState<Record<Panels, boolean>>({
@@ -259,6 +260,7 @@ export function App() {
   const projectSessionRef = useRef<string | null>(null);
   const projectLifecycleRequestRef = useRef(0);
   const projectLifecycleInFlightRef = useRef(false);
+  const projectWriteInFlightRef = useRef(false);
   const backendHealthRequestRef = useRef(0);
   const csvInspectionRequestRef = useRef(0);
   const csvDraftRevisionRef = useRef(0);
@@ -1228,8 +1230,10 @@ export function App() {
     }
   }
   async function save() {
-    if (!project) return;
+    if (!project || projectWriteInFlightRef.current) return;
     const sessionId = project.session_id;
+    projectWriteInFlightRef.current = true;
+    setProjectWriteOperation("save");
     setError(null);
     try {
       const result = await studioApi.saveProject(sessionId);
@@ -1241,11 +1245,16 @@ export function App() {
       setError(
         reason instanceof Error ? reason.message : "Unknown request failure",
       );
+    } finally {
+      projectWriteInFlightRef.current = false;
+      setProjectWriteOperation(null);
     }
   }
   async function updateDescription() {
-    if (!project || project.read_only) return;
+    if (!project || project.read_only || projectWriteInFlightRef.current) return;
     const sessionId = project.session_id;
+    projectWriteInFlightRef.current = true;
+    setProjectWriteOperation("description");
     try {
       const result = await studioApi.updateProjectMetadata(
         sessionId,
@@ -1259,6 +1268,9 @@ export function App() {
       setError(
         reason instanceof Error ? reason.message : "Unknown request failure",
       );
+    } finally {
+      projectWriteInFlightRef.current = false;
+      setProjectWriteOperation(null);
     }
   }
   async function close() {
@@ -1642,7 +1654,7 @@ export function App() {
         <TextInput
           aria-label="Description"
           value={description}
-          disabled={project.read_only}
+          disabled={project.read_only || projectWriteOperation !== null}
           onUpdate={setDescription}
           placeholder="Project description"
         />
@@ -1650,11 +1662,11 @@ export function App() {
       <Button
         view="outlined"
         size="m"
-        disabled={project.read_only}
+        disabled={project.read_only || projectWriteOperation !== null}
         onClick={updateDescription}
         data-ruflex-action="project.description.update"
       >
-        Update description
+        {projectWriteOperation === "description" ? "Updating description…" : "Update description"}
       </Button>
       <p className="property-description">
         Description: {project.description ?? "None"}
@@ -1735,6 +1747,8 @@ export function App() {
       toggleBottom={() => toggle("bottom")}
       projectName={project?.name}
       readOnly={project?.read_only}
+      saving={projectWriteOperation === "save"}
+      saveDisabled={projectWriteOperation !== null}
       status={status}
       error={error}
       onSave={save}
