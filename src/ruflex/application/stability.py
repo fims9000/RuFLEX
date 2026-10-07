@@ -8,7 +8,7 @@ from uuid import UUID
 
 import numpy as np
 
-from ruflex.application.training import TrainingError, _atomic_write_text, load_decision_threshold, load_training_run, load_training_study, load_validation_evaluation
+from ruflex.application.training import TrainingError, _atomic_write_text, _ensure_validation_policy_selection_open, load_decision_threshold, load_training_run, load_training_study, load_validation_evaluation
 from ruflex.domain.stability import CaseStability, MetricDistribution, RiskCoverageComparison, StabilityGateApplication, StabilityGateDecision, StabilityGatePolicy, StudyStabilityAnalysis
 
 
@@ -164,9 +164,8 @@ def _risk(cases: list[CaseStability], accepted: list[CaseStability]) -> float | 
 
 
 def create_stability_gate_policy(project_root: Path, analysis_id: UUID, evaluation_id: UUID, *, min_confidence: float, min_class_agreement: float, max_probability_std: float, calibration_id: UUID | None = None) -> StabilityGatePolicy:
-    if any((_root(project_root, "final-tests")).glob("*.json")):
-        raise TrainingError("Final-test evidence already exists; a Stability Gate cannot be fitted after final-test access.")
     analysis = load_study_stability_analysis(project_root, analysis_id)
+    _ensure_validation_policy_selection_open(project_root, analysis.dataset_fingerprint)
     if analysis.applicability != "APPLICABLE" or analysis.validation_alignment_status != "EXACT_MATCH":
         raise TrainingError("A Stability Gate requires a fully matched TRAINING_VARIABILITY analysis; this study has no applicable case-level evidence.")
     if analysis.evaluation_id is None or analysis.class_threshold_id is None or analysis.decision_threshold is None:

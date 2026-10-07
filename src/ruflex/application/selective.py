@@ -9,7 +9,7 @@ import numpy as np
 
 from ruflex.application.evidence import predict_run_sample
 from ruflex.application.generalization import ScopeDisposition, classify_scope, load_generalization_contract
-from ruflex.application.training import TrainingError, _atomic_write_text, load_decision_threshold, load_validation_calibration, load_validation_evaluation
+from ruflex.application.training import TrainingError, _atomic_write_text, _ensure_validation_policy_selection_open, load_decision_threshold, load_validation_calibration, load_validation_evaluation
 from ruflex.domain.selective import RiskCoveragePoint, SelectiveDecision, SelectivePredictionPolicy
 
 
@@ -21,9 +21,8 @@ def _root(project_root: Path) -> Path:
 
 def create_selective_policy(project_root: Path, evaluation_id: UUID, confidence_cutoff: float, calibration_id: UUID | None = None, threshold_id: UUID | None = None) -> SelectivePredictionPolicy:
     """Freeze ACCEPT/REVIEW on the same validation cases as a class policy."""
-    if any((Path(project_root).resolve() / "analyses" / "final-tests").glob("*.json")):
-        raise TrainingError("Final-test evidence already exists; a selective-review policy cannot be tuned after final-test access.")
     evaluation = load_validation_evaluation(project_root, evaluation_id)
+    _ensure_validation_policy_selection_open(project_root, evaluation.dataset_fingerprint)
     if evaluation.task != "binary_classification":
         raise TrainingError("Selective prediction is available only for binary probabilistic classification.")
     if threshold_id is None:

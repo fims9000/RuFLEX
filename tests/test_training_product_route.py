@@ -917,3 +917,31 @@ def test_final_test_requires_frozen_validation_policy_and_persists_separate_evid
     # evidence exists only in its separate, explicit analysis object.
     run_after = client.get(f"/api/projects/{session_id}/training/runs/{run['run_id']}").json()
     assert run_after["split"]["test_status"] == "LOCKED_NOT_EVALUATED"
+
+
+def test_new_dataset_revision_gets_an_independent_validation_policy_boundary(tmp_path: Path) -> None:
+    client = TestClient(app)
+    root = tmp_path / "revision-policy-boundary"
+    session_id = client.post("/api/projects", json={"path": str(root), "name": "Revision boundary"}).json()["session_id"]
+    first = _binary_frame(36)
+    assert client.post("/api/projects/dataset/confirm", json={"session_id": session_id, "csv_text": first.to_csv(index=False), "target": "target", "task": "binary_classification", "id_columns": []}).status_code == 200
+    run = client.post("/api/projects/training/run", json={"session_id": session_id, "model_kind": "logistic_regression", "seed": 51, "max_epochs": 1, "learning_rate": .01, "batch_size": 16, "patience": 1, "validation_fraction": .2, "test_fraction": .2, "max_rules": 3})
+    assert run.status_code == 201, run.text
+    evaluation = client.post("/api/projects/analyses/evaluations", json={"session_id": session_id, "run_id": run.json()["run_id"]})
+    assert evaluation.status_code == 201, evaluation.text
+    threshold = client.post("/api/projects/analyses/thresholds", json={"session_id": session_id, "evaluation_id": evaluation.json()["evaluation_id"], "objective": "f1"})
+    assert threshold.status_code == 201, threshold.text
+    final_test = client.post("/api/projects/analyses/final-test", json={"session_id": session_id, "evaluation_id": evaluation.json()["evaluation_id"], "threshold_id": threshold.json()["threshold_id"]})
+    assert final_test.status_code == 201, final_test.text
+
+    second = _binary_frame(40)
+    confirmed = client.post("/api/projects/dataset/confirm", json={"session_id": session_id, "csv_text": second.to_csv(index=False), "target": "target", "task": "binary_classification", "id_columns": []})
+    assert confirmed.status_code == 200, confirmed.text
+    new_run = client.post("/api/projects/training/run", json={"session_id": session_id, "model_kind": "decision_tree", "seed": 52, "max_epochs": 1, "learning_rate": .01, "batch_size": 16, "patience": 1, "validation_fraction": .2, "test_fraction": .2, "max_rules": 3})
+    assert new_run.status_code == 201, new_run.text
+    new_evaluation = client.post("/api/projects/analyses/evaluations", json={"session_id": session_id, "run_id": new_run.json()["run_id"]})
+    assert new_evaluation.status_code == 201, new_evaluation.text
+    new_threshold = client.post("/api/projects/analyses/thresholds", json={"session_id": session_id, "evaluation_id": new_evaluation.json()["evaluation_id"], "objective": "f1"})
+    assert new_threshold.status_code == 201, new_threshold.text
+    assert new_run.json()["dataset_fingerprint"] == confirmed.json()["contract"]["dataset_fingerprint"]
+    assert new_run.json()["dataset_fingerprint"] != run.json()["dataset_fingerprint"]

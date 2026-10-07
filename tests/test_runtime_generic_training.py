@@ -227,7 +227,7 @@ def test_external_runtime_governed_golden_route_reopens_and_exports_portable_evi
     policy = create_selective_policy(root, evaluation.evaluation_id, confidence_cutoff=.6, threshold_id=threshold.threshold_id)
     explanation = create_runtime_explanation(root, explainer_key="fixture_explainer", run_id=run.run_id, sample={"x": 3.0})
     final = evaluate_final_test(root, evaluation.evaluation_id, threshold_id=threshold.threshold_id, selective_policy_id=policy.policy_id)
-    with pytest.raises(TrainingError, match="cannot be tuned after final-test access"):
+    with pytest.raises(TrainingError, match="closed for this revision"):
         create_selective_policy(root, evaluation.evaluation_id, confidence_cutoff=.7, threshold_id=threshold.threshold_id)
 
     reopened = ProjectService().open(root, read_only=True)

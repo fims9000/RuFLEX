@@ -151,10 +151,24 @@ def _final_test_path(project_root: Path, final_test_id: UUID) -> Path:
     return _final_tests_root(project_root) / f"{final_test_id}.json"
 
 
-def _ensure_validation_policy_selection_open(project_root: Path) -> None:
-    """Refuse validation-derived fitting/selection once holdout evidence exists."""
-    if any(_final_tests_root(project_root).glob("*.json")):
-        raise TrainingError("Final-test evidence already exists; validation calibration or threshold selection is closed for this project.")
+def _ensure_validation_policy_selection_open(project_root: Path, dataset_fingerprint: str | None = None) -> None:
+    """Refuse fitting/selection only for a dataset revision whose holdout was opened."""
+    fingerprint = dataset_fingerprint or load_dataset_contract(project_root).dataset_fingerprint
+    if fingerprint is None:
+        raise TrainingError("Cannot establish dataset identity for the final-test policy boundary.")
+    for path in _final_tests_root(project_root).glob("*.json"):
+        try:
+            UUID(path.stem)
+        except ValueError:
+            continue
+        try:
+            evidence = FinalTestEvaluation.model_validate_json(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as error:
+            raise TrainingError(f"Persisted final-test evidence is unreadable; refusing validation work: {path.name}.") from error
+        if path.stem != str(evidence.final_test_id):
+            raise TrainingError(f"Persisted final-test identity does not match its filename: {path.name}.")
+        if evidence.dataset_fingerprint == fingerprint:
+            raise TrainingError("Final-test evidence already exists for this dataset revision; validation fitting, selection, and training are closed for this revision.")
 
 
 def _calibrations_root(project_root: Path) -> Path:
@@ -1451,8 +1465,8 @@ def fit_validation_calibration(project_root: Path, evaluation_id: UUID) -> Calib
     resulting diagnostics describe the same validation evidence used for fit;
     they must not be interpreted as final-test calibration performance.
     """
-    _ensure_validation_policy_selection_open(project_root)
     evaluation = load_validation_evaluation(project_root, evaluation_id)
+    _ensure_validation_policy_selection_open(project_root, evaluation.dataset_fingerprint)
     if evaluation.task != "binary_classification":
         raise TrainingError("Probability calibration is only available for binary classification evaluations.")
     rows = evaluation.prediction_preview
@@ -1576,10 +1590,10 @@ def select_validation_threshold(
     objective: str = "f1",
 ) -> DecisionThresholdPolicy:
     """Select and persist a decision threshold using validation evidence only."""
-    _ensure_validation_policy_selection_open(project_root)
     if objective != "f1":
         raise TrainingError("Product V1 currently supports validation F1 threshold selection only.")
     evaluation = load_validation_evaluation(project_root, evaluation_id)
+    _ensure_validation_policy_selection_open(project_root, evaluation.dataset_fingerprint)
     if evaluation.task != "binary_classification":
         raise TrainingError("Decision-threshold selection is only available for binary classification evaluations.")
     rows = evaluation.prediction_preview
