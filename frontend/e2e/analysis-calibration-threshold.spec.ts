@@ -23,7 +23,13 @@ test("PRODUCT-04 persists validation calibration and decision-threshold provenan
   let releaseCalibration: () => void = () => {};
   let calibrationStarted: () => void = () => {};
   const calibrationStartedPromise = new Promise<void>((resolve) => { calibrationStarted = resolve; });
+  let calibrationRequests = 0;
   await page.route("**/api/projects/analyses/calibrations", async (route) => {
+    calibrationRequests += 1;
+    if (calibrationRequests === 1) {
+      await route.fulfill({ status: 422, contentType: "application/json", body: JSON.stringify({ code: "VALIDATION_FAILED", detail: "Validation calibration requires both target classes." }) });
+      return;
+    }
     calibrationStarted();
     await new Promise<void>((resolve) => { releaseCalibration = resolve; });
     await route.continue();
@@ -49,6 +55,9 @@ test("PRODUCT-04 persists validation calibration and decision-threshold provenan
   await expect(page.getByText(/validation rows persisted/)).toBeVisible();
 
   await page.getByRole("button", { name: "Fit validation calibration", exact: true }).click();
+  await expect(page.getByText("Validation calibration requires both target classes.")).toBeVisible();
+  await expect(page.getByTestId("validation-policy-recovery")).toHaveCount(0);
+  await page.getByRole("button", { name: "Fit validation calibration", exact: true }).click();
   await calibrationStartedPromise;
   await expect(page.getByRole("button", { name: /Select F1 threshold \(raw\)/ })).toBeDisabled();
   await expect(page.getByRole("button", { name: "Save evaluation revision", exact: true })).toBeDisabled();
@@ -56,6 +65,15 @@ test("PRODUCT-04 persists validation calibration and decision-threshold provenan
   await expect(page.getByText("Brier calibrated", { exact: true })).toBeVisible();
   await expect(page.getByText(/Platt transform/)).toBeVisible();
 
+  let thresholdRequests = 0;
+  await page.route("**/api/projects/analyses/thresholds", async (route) => {
+    thresholdRequests += 1;
+    if (thresholdRequests === 1) await route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ code: "RESOURCE_NOT_FOUND", detail: "The selected calibration object does not exist." }) });
+    else await route.continue();
+  });
+  await page.getByRole("button", { name: "Select F1 threshold (calibrated)", exact: true }).click();
+  await expect(page.getByText("The selected calibration object does not exist.")).toBeVisible();
+  await expect(page.getByTestId("validation-policy-recovery")).toHaveCount(0);
   await page.getByRole("button", { name: "Select F1 threshold (calibrated)", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Probability → calibration → threshold → class", exact: true })).toBeVisible();
   await expect(page.getByText(/Final-test data remain locked/)).toBeVisible();

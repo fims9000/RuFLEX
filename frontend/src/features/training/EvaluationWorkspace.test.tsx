@@ -283,6 +283,18 @@ describe("EvaluationWorkspace final-test boundary", () => {
     expect(screen.getByRole("button", { name: "Save ACCEPT / REVIEW policy" })).toBeEnabled();
   });
 
+  it("does not invent uncertain calibration or threshold saves after definite API rejections", async () => {
+    studioApi.fitAnalysisCalibration.mockReset().mockRejectedValueOnce(new ProductApiError(422, "Validation calibration requires both target classes."));
+    studioApi.selectAnalysisThreshold.mockReset().mockRejectedValueOnce(new ProductApiError(404, "The selected calibration object does not exist."));
+    renderWorkspace();
+    fireEvent.click(screen.getByRole("button", { name: "Fit validation calibration" }));
+    expect(await screen.findByText("Validation calibration requires both target classes.")).toBeVisible();
+    expect(screen.queryByTestId("validation-policy-recovery")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Reselect threshold" }));
+    expect(await screen.findByText("The selected calibration object does not exist.")).toBeVisible();
+    expect(screen.queryByTestId("validation-policy-recovery")).not.toBeInTheDocument();
+  });
+
   it("labels the default 0.50 confusion matrix as a preview rather than a frozen threshold policy", () => {
     renderWorkspace(false, { decisionThreshold: null });
     expect(screen.getByRole("heading", { name: "Preview at default cutoff 0.50 · no frozen threshold policy" })).toBeVisible();

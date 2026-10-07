@@ -56,6 +56,10 @@ Target branch: `feature/v1.3-data-governance-runtime`.
   correctable validation refusal, not as an uncertain persistence outcome.
   Lost responses and server-side persistence failures still use exact-binding
   lookup before any explicit repeat.
+- The same definitive-refusal distinction applies to validation calibration
+  and decision-threshold selection. These routes validate before their first
+  persisted write; HTTP 403/404/409/422 does not create a false recovery lock,
+  while ambiguous persistence failures still require exact-object lookup.
 - Project Integrity, Assurance and portable bundles reject missing or malformed
   manual-FIS comparison rows and mismatched semantic-revision provenance.
   A portable bundle excludes raw dataset rows, so it checks the frozen row's

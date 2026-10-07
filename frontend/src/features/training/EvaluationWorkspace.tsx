@@ -30,6 +30,10 @@ function canonicalJson(value: unknown): string {
   return JSON.stringify(value) ?? "undefined";
 }
 
+function isDefinitiveValidationWriteRejection(reason: unknown): boolean {
+  return reason instanceof ProductApiError && [403, 404, 409, 422].includes(reason.status);
+}
+
 type ValidationPolicyRecovery =
   | { kind: "calibration"; evaluationId: string; error: string; notFound: boolean }
   | { kind: "threshold"; evaluationId: string; calibrationId: string | null; error: string; notFound: boolean }
@@ -463,6 +467,7 @@ export function EvaluationWorkspace({
       let fitted: CalibrationTransform;
       try { fitted = await studioApi.fitAnalysisCalibration(project.session_id, current.evaluation_id); }
       catch (reason) {
+        if (isDefinitiveValidationWriteRejection(reason)) throw reason;
         setPolicyRecovery({ kind: "calibration", evaluationId: current.evaluation_id, error: reason instanceof Error ? reason.message : "Calibration response was uncertain.", notFound: false });
         throw reason;
       }
@@ -489,6 +494,7 @@ export function EvaluationWorkspace({
         current.evaluation_id,
         calibrationId,
       ); } catch (reason) {
+        if (isDefinitiveValidationWriteRejection(reason)) throw reason;
         setPolicyRecovery({ kind: "threshold", evaluationId: current.evaluation_id, calibrationId, error: reason instanceof Error ? reason.message : "Threshold response was uncertain.", notFound: false });
         throw reason;
       }
@@ -518,7 +524,7 @@ export function EvaluationWorkspace({
       const calibrationId = activeCalibration?.calibration_id ?? null;
       try { onSelectivePolicy(await studioApi.createSelectivePolicy(project.session_id, current.evaluation_id, confidenceCutoff, calibrationId, activeThreshold.threshold_id)); }
       catch (reason) {
-        if (reason instanceof ProductApiError && reason.status === 422) throw reason;
+        if (isDefinitiveValidationWriteRejection(reason)) throw reason;
         setPolicyRecovery({ kind: "selective", evaluationId: current.evaluation_id, confidenceCutoff, calibrationId, thresholdId: activeThreshold.threshold_id, error: reason instanceof Error ? reason.message : "Selective policy response was uncertain.", notFound: false });
         throw reason;
       }
