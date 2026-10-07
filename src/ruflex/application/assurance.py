@@ -10,6 +10,7 @@ from pydantic import BaseModel, ValidationError
 from ruflex.application.datasets import LeakageAuditReport, TransformPipelineContract, load_dataset_contract, load_leakage_audit, load_transform_pipeline_contract
 from ruflex.application.evidence import _atomic_write_text
 from ruflex.application.generalization import GeneralizationContract, SliceAnalysis
+from ruflex.application.fis import list_fis_revisions
 from ruflex.domain.assurance import AssuranceCase, AssuranceClaim, AssuranceGate
 from ruflex.application.behavior import _requirement_identity, evaluate_behavior_spec
 from ruflex.domain.behavior import BehaviorRevisionComparison, BehaviorSpec, BehaviorSpecResult
@@ -358,7 +359,36 @@ def create_assurance_case(root: Path) -> AssuranceCase:
     else:
         gates.append(_gate("behavior_revision_comparisons", "PASS", [f"behavior-comparison:{item.comparison_id}" for item in comparisons]))
     exhaustive_root = base / "evidence" / "exhaustive-lab"; exhaustive = _objects(exhaustive_root, ExhaustiveLabResult)
-    exhaustive_ok = exhaustive and all(x.exactness_label in {"EXACT_FINITE_STRUCTURE", "EXACT_ON_DECLARED_DISCRETE_GRID"} for x in exhaustive)
+    try:
+        known_fis_hashes = {item.semantic_hash for item in list_fis_revisions(base)}
+    except (OSError, ValueError, ValidationError):
+        known_fis_hashes = set()
+
+    def exhaustive_result_matches(item: ExhaustiveLabResult) -> bool:
+        if item.state_count != len(item.paths) or item.state_estimate < item.state_count or item.state_count > item.max_states:
+            return False
+        if item.kind == "decision_tree_structure":
+            run = runs_by_id.get(item.run_id) if item.run_id is not None else None
+            return (
+                item.exactness_label == "EXACT_FINITE_STRUCTURE"
+                and isinstance(run, TrainingRun)
+                and run.model_kind == "decision_tree"
+                and item.fis_semantic_hash is None
+                and item.requested_grid_points is None
+            )
+        points = item.requested_grid_points
+        return (
+            item.exactness_label == "EXACT_ON_DECLARED_DISCRETE_GRID"
+            and item.fis_semantic_hash in known_fis_hashes
+            and item.run_id is None
+            and points is not None
+            and len(item.declared_grid) > 0
+            and all(len(values) == points for values in item.declared_grid.values())
+            and item.state_estimate == points ** len(item.declared_grid)
+            and all(set(state.get("inputs", {})) == set(item.declared_grid) for state in item.paths)
+        )
+
+    exhaustive_ok = bool(exhaustive) and all(exhaustive_result_matches(item) for item in exhaustive)
     status, risk = _evidence_status(present=bool(exhaustive), valid=bool(exhaustive_ok), malformed=_has_malformed_object(exhaustive_root, ExhaustiveLabResult), unavailable="Exhaustive evidence is absent.", invalid="Exhaustive evidence has an invalid exactness label.")
     gates.append(_gate("exhaustive_lab", status, [f"exhaustive:{x.result_id}" for x in exhaustive], risk))
     final_root = base / "analyses" / "final-tests"; final_tests = _objects(final_root, FinalTestEvaluation)

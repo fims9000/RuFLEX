@@ -548,6 +548,10 @@ def test_exhaustive_lab_persists_exact_tree_structure_and_declared_fis_grid(tmp_
     result_path.write_text(json.dumps(tampered), encoding="utf-8")
     report = inspect_project_integrity(root)
     assert any(issue.code == "EXHAUSTIVE_RESULT_PROVENANCE_MISMATCH" for issue in report.issues)
+    assurance = client.post("/api/projects/evidence/assurance-cases", json={"session_id": reopened})
+    assert assurance.status_code == 201, assurance.text
+    exhaustive_gate = next(gate for gate in assurance.json()["gates"] if gate["key"] == "exhaustive_lab")
+    assert exhaustive_gate["status"] == "FAIL"
 
 
 def test_condition_monitoring_demo_bundle_checks_policy_and_linked_evidence(tmp_path: Path) -> None:
