@@ -220,8 +220,8 @@ export function EvaluationWorkspace({
   const [comparing, setComparing] = useState(false);
   const [comparisonRecovery, setComparisonRecovery] = useState<ComparisonRecovery | null>(null);
   const [recoveringComparison, setRecoveringComparison] = useState(false);
-  const comparisonSessionRef = useRef(project.session_id);
-  comparisonSessionRef.current = project.session_id;
+  const workspaceSessionRef = useRef(project.session_id);
+  workspaceSessionRef.current = project.session_id;
   const [selectedRunIds, setSelectedRunIds] = useState<string[]>([]);
   const [includeManualFis, setIncludeManualFis] = useState(false);
   useEffect(() => {
@@ -248,6 +248,21 @@ export function EvaluationWorkspace({
   const [sliceRows, setSliceRows] = useState("");
   const [sliceMetric, setSliceMetric] = useState("");
   const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    setSliceRecoveryRequest(null);
+    setSliceRecoveryError(null);
+    setSliceRecoveryNotFound(false);
+    setSliceName("Validation slice");
+    setSliceKind("numeric_range");
+    setSliceField("");
+    setSliceValues("");
+    setSliceMinimum("");
+    setSliceMaximum("");
+    setSliceStart("");
+    setSliceEnd("");
+    setSliceRows("");
+    setSliceMetric("");
+  }, [project.session_id]);
 
   function beginValidationMutation(): boolean {
     if (validationMutationInFlightRef.current) return false;
@@ -582,12 +597,12 @@ export function EvaluationWorkspace({
     if (includeFis && (modelContextStatus !== "loaded" || fis?.fis_id !== request.fisId || fis.semantic_hash !== request.fisSemanticHash)) throw new Error("The saved FIS revision is unverified or changed; the original comparison request cannot be repeated safely.");
     try {
       const created = await studioApi.createAnalysisComparison(requestSessionId, request.runIds, includeFis, request.fisId, request.fisSemanticHash);
-      if (comparisonSessionRef.current !== requestSessionId) return;
+      if (workspaceSessionRef.current !== requestSessionId) return;
       if (created.fis_id !== request.fisId || created.fis_semantic_hash !== request.fisSemanticHash) throw new Error("Saved comparison does not match the exact requested FIS revision.");
       onComparison(created);
       setComparisonRecovery(null);
     } catch (reason) {
-      if (comparisonSessionRef.current !== requestSessionId) return;
+      if (workspaceSessionRef.current !== requestSessionId) return;
       const pending = { ...request, error: reason instanceof Error ? reason.message : "Comparison response was uncertain.", notFound: false };
       setComparisonRecovery(pending);
       throw reason;
@@ -619,14 +634,14 @@ export function EvaluationWorkspace({
     setRecoveringComparison(true); setError(null);
     try {
       const latest = await studioApi.getLatestAnalysisComparison(requestSessionId);
-      if (comparisonSessionRef.current !== requestSessionId) return;
+      if (workspaceSessionRef.current !== requestSessionId) return;
       if (canonicalJson(latest.run_ids) !== canonicalJson(pending.runIds) || latest.fis_id !== pending.fisId || latest.fis_semantic_hash !== pending.fisSemanticHash) {
         setComparisonRecovery({ ...pending, notFound: true, error: "The latest comparison has different run/FIS identities; no replacement was created." });
         return;
       }
       onComparison(latest); setComparisonRecovery(null);
     } catch (reason) {
-      if (comparisonSessionRef.current !== requestSessionId) return;
+      if (workspaceSessionRef.current !== requestSessionId) return;
       if (reason instanceof ProductApiError && reason.status === 404) {
         setComparisonRecovery({ ...pending, notFound: true, error: "No matching saved comparison is visible yet. Retry lookup later, or explicitly repeat this exact validation comparison." });
       } else {
@@ -646,6 +661,7 @@ export function EvaluationWorkspace({
   }
 
   async function runSliceAnalysis() {
+    const requestSessionId = project.session_id;
     if (!dataset) {
       setError("Dataset state is required for Slice Lab.");
       return;
@@ -654,6 +670,7 @@ export function EvaluationWorkspace({
     setError(null);
     try {
       const current = await ensureEvaluation();
+      if (workspaceSessionRef.current !== requestSessionId) return;
       const field = sliceField || dataset.contract.feature_columns[0] || dataset.profile.columns[0]?.name || "";
       const definition: SliceDefinition = { name: sliceName.trim() || "Validation slice", kind: sliceKind };
       if (sliceKind === "manual") {
@@ -683,13 +700,16 @@ export function EvaluationWorkspace({
       };
       const request = { evaluationId: current.evaluation_id, metric, definitions: [persistedDefinition] };
       try {
-        const result = await studioApi.createSliceAnalysis(project.session_id, request.evaluationId, request.metric, request.definitions);
+        const result = await studioApi.createSliceAnalysis(requestSessionId, request.evaluationId, request.metric, request.definitions);
+        if (workspaceSessionRef.current !== requestSessionId) return;
         onSliceAnalysis(result); setSliceRecoveryRequest(null); setSliceRecoveryError(null); setSliceRecoveryNotFound(false);
       } catch (reason) {
+        if (workspaceSessionRef.current !== requestSessionId) return;
         setSliceRecoveryRequest(request); setSliceRecoveryError(reason instanceof Error ? reason.message : "The saved SliceAnalysis could not be confirmed."); setSliceRecoveryNotFound(false);
         throw reason;
       }
     } catch (reason) {
+      if (workspaceSessionRef.current !== requestSessionId) return;
       setError(reason instanceof Error ? reason.message : "Could not create Slice Analysis");
     } finally {
       setSliceRunning(false);
@@ -699,21 +719,25 @@ export function EvaluationWorkspace({
   async function recoverSliceAnalysis() {
     const request = sliceRecoveryRequest;
     if (!request) return;
+    const requestSessionId = project.session_id;
     setSliceRunning(true); setError(null);
     try {
       let latest: SliceAnalysis;
-      try { latest = await studioApi.getLatestSliceAnalysis(project.session_id); }
+      try { latest = await studioApi.getLatestSliceAnalysis(requestSessionId); }
       catch (reason) {
+        if (workspaceSessionRef.current !== requestSessionId) return;
         if (reason instanceof ProductApiError && reason.status === 404) {
           setSliceRecoveryNotFound(true); setSliceRecoveryError("No saved SliceAnalysis is visible yet. Retry lookup later, or explicitly rerun this exact validation slice if the original request did not finish."); return;
         }
         throw reason;
       }
+      if (workspaceSessionRef.current !== requestSessionId) return;
       if (latest.evaluation_id !== request.evaluationId || latest.metric !== request.metric || canonicalJson(latest.definitions) !== canonicalJson(request.definitions)) {
         setSliceRecoveryNotFound(true); setSliceRecoveryError("The latest saved SliceAnalysis belongs to another definition; no replacement was created."); return;
       }
       onSliceAnalysis(latest); setSliceRecoveryRequest(null); setSliceRecoveryError(null); setSliceRecoveryNotFound(false);
     } catch (reason) {
+      if (workspaceSessionRef.current !== requestSessionId) return;
       setSliceRecoveryError(reason instanceof Error ? reason.message : "Could not recover the exact SliceAnalysis."); setSliceRecoveryNotFound(false);
       setError(reason instanceof Error ? reason.message : String(reason));
     } finally { setSliceRunning(false); }
@@ -721,12 +745,16 @@ export function EvaluationWorkspace({
 
   async function explicitlyRerunSliceAnalysis() {
     if (!sliceRecoveryRequest || !sliceRecoveryNotFound) return;
+    const requestSessionId = project.session_id;
     setSliceRunning(true); setError(null);
     try {
       const request = sliceRecoveryRequest;
-      onSliceAnalysis(await studioApi.createSliceAnalysis(project.session_id, request.evaluationId, request.metric, request.definitions));
+      const repeated = await studioApi.createSliceAnalysis(requestSessionId, request.evaluationId, request.metric, request.definitions);
+      if (workspaceSessionRef.current !== requestSessionId) return;
+      onSliceAnalysis(repeated);
       setSliceRecoveryRequest(null); setSliceRecoveryError(null); setSliceRecoveryNotFound(false);
     } catch (reason) {
+      if (workspaceSessionRef.current !== requestSessionId) return;
       setSliceRecoveryError(reason instanceof Error ? reason.message : "The explicitly repeated SliceAnalysis could not be confirmed."); setSliceRecoveryNotFound(false);
       setError(reason instanceof Error ? reason.message : String(reason));
     } finally { setSliceRunning(false); }

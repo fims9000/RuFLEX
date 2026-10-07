@@ -53,9 +53,18 @@ test("one frozen TrainingRun and one saved manual FIS form a persisted validatio
   expect(response.ok()).toBeTruthy();
   expect(await response.json()).toMatchObject({ run_ids: [runId], fis_id: (await fis.json()).fis_id, validation_alignment: "same_cases" });
 
+  await page.getByLabel("Slice name").fill("Temperature validation slice");
+  await page.getByLabel("Slice minimum").fill("20");
+  await page.getByRole("button", { name: "Run and persist slice" }).click();
+  await expect(page.getByRole("cell", { name: "Temperature validation slice" })).toBeVisible();
+  const sliceResponse = await page.request.get(`${api}/${sessionId}/analyses/slices/latest`);
+  expect(sliceResponse.ok()).toBeTruthy();
+  expect((await sliceResponse.json()).definitions[0].name).toBe("Temperature validation slice");
+
   await page.getByRole("button", { name: "Close", exact: true }).click();
   await page.getByLabel("Project path").fill(path);
   await page.getByRole("button", { name: "Open project", exact: true }).click();
   await page.getByRole("button", { name: "A", exact: true }).click();
   await expect(page.getByText("SAVED MODEL COMPARISON · VALIDATION ONLY", { exact: true })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Temperature validation slice" })).toBeVisible();
 });

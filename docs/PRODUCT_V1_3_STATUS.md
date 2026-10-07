@@ -42,6 +42,9 @@ Target branch: `feature/v1.3-data-governance-runtime`.
 - Analysis comparison drafts and uncertain-response recovery are scoped to the
   current project session; a late response from another project cannot reopen
   its recovery controls in the active Studio view.
+- Slice Lab drafts and save/recovery callbacks are likewise session-scoped;
+  the real validation slice route persists and reopens without carrying a
+  prior project's draft into the new project.
 - Project Integrity, Assurance and portable bundles reject missing or malformed
   manual-FIS comparison rows and mismatched semantic-revision provenance.
   A portable bundle excludes raw dataset rows, so it checks the frozen row's
