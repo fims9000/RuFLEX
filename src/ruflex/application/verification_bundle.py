@@ -21,7 +21,7 @@ from ruflex.domain.evidence import ExplanationCheck, ExplanationContract, Explan
 from ruflex.application.generalization import GeneralizationContract, SliceAnalysis
 from ruflex.domain.selective import SelectivePredictionPolicy
 from ruflex.domain.stability import StabilityGatePolicy, StudyStabilityAnalysis
-from ruflex.domain.training import AnalysisComparison, AnalysisEvaluation, CalibrationTransform, DecisionThresholdPolicy, FinalTestEvaluation, TrainingRun, TrainingStudy
+from ruflex.domain.training import AnalysisComparison, AnalysisEvaluation, CalibrationTransform, DecisionThresholdPolicy, FinalTestEvaluation, TrainingRun, TrainingStudy, TreePathEvidence
 
 _EVIDENCE_DIRS = (
     "runs", "studies", "analyses/evaluations", "analyses/calibrations", "analyses/thresholds",
@@ -68,6 +68,7 @@ def _model_for_entry(name: str) -> type[BaseModel] | None:
     if name.startswith("evidence/explanations/"): return ExplanationContract
     if name.startswith("evidence/explanation-checks/"): return ExplanationCheck
     if name.startswith("evidence/explanation-reproducibility/"): return ExplanationReproducibilityAnalysis
+    if name.startswith("evidence/tree-paths/"): return TreePathEvidence
     if name.startswith("evidence/behavior-specs/comparison-"): return BehaviorRevisionComparison
     if name.startswith("evidence/behavior-specs/result-"): return BehaviorSpecResult
     if name.startswith("evidence/behavior-specs/"): return BehaviorSpec
@@ -100,7 +101,7 @@ def _validate_relationships(objects: list[BaseModel]) -> list[str]:
     objects_by_type: dict[type[BaseModel], dict[str, BaseModel]] = {}
     for object_ in objects:
         identifier_field = {
-            DatasetContract: "dataset_fingerprint", SplitContract: "split_id", TransformPipelineContract: "pipeline_id", LeakageAuditReport: "audit_id", TrainingRun: "run_id", TrainingStudy: "study_id", AnalysisEvaluation: "evaluation_id", CalibrationTransform: "calibration_id", DecisionThresholdPolicy: "threshold_id", SelectivePredictionPolicy: "policy_id", StudyStabilityAnalysis: "analysis_id", StabilityGatePolicy: "policy_id", FinalTestEvaluation: "final_test_id", ExplanationContract: "explanation_id", ExplanationCheck: "check_id", ExplanationReproducibilityAnalysis: "analysis_id", BehaviorSpec: "spec_id", BehaviorSpecResult: "result_id", BehaviorRevisionComparison: "comparison_id", AssuranceCase: "assurance_id",
+            DatasetContract: "dataset_fingerprint", SplitContract: "split_id", TransformPipelineContract: "pipeline_id", LeakageAuditReport: "audit_id", TrainingRun: "run_id", TrainingStudy: "study_id", AnalysisEvaluation: "evaluation_id", CalibrationTransform: "calibration_id", DecisionThresholdPolicy: "threshold_id", SelectivePredictionPolicy: "policy_id", StudyStabilityAnalysis: "analysis_id", StabilityGatePolicy: "policy_id", FinalTestEvaluation: "final_test_id", ExplanationContract: "explanation_id", ExplanationCheck: "check_id", ExplanationReproducibilityAnalysis: "analysis_id", TreePathEvidence: "evidence_id", BehaviorSpec: "spec_id", BehaviorSpecResult: "result_id", BehaviorRevisionComparison: "comparison_id", AssuranceCase: "assurance_id",
         }.get(type(object_))
         identifier = getattr(object_, identifier_field) if identifier_field else None
         if identifier is not None:
@@ -311,6 +312,17 @@ def _validate_relationships(objects: list[BaseModel]) -> list[str]:
                 or any(result.metric != object_.metric or result.kind != definitions[name].kind or (result.n == 0 and (result.status != "EMPTY" or result.value is not None or result.delta_vs_overall is not None)) or (result.n > 0 and result.value is not None and (result.delta_vs_overall is None or abs(result.delta_vs_overall - (result.value - result.overall_value)) > 1e-12)) for name, result in results.items())
             ):
                 errors.append(f"Slice analysis {object_.analysis_id} does not match its frozen validation Evaluation, scope contract, definitions, or result arithmetic.")
+        elif isinstance(object_, TreePathEvidence):
+            run = runs.get(str(object_.run_id))
+            if (
+                not isinstance(run, TrainingRun)
+                or run.model_kind != "decision_tree"
+                or object_.model_artifact_sha256 != run.model_artifact_sha256
+                or list(object_.input_sample) != list(run.feature_columns)
+                or [step.feature_name for step in object_.steps if step.feature_name not in run.feature_columns]
+                or (object_.class_probabilities is not None and run.task != "binary_classification")
+            ):
+                errors.append(f"Tree path evidence {object_.evidence_id} does not match its frozen Decision Tree run and feature schema.")
         elif isinstance(object_, BehaviorRevisionComparison):
             baseline = objects_by_type.get(BehaviorSpecResult, {}).get(str(object_.baseline_result_id))
             candidate = objects_by_type.get(BehaviorSpecResult, {}).get(str(object_.candidate_result_id))
@@ -476,6 +488,8 @@ def validate_verification_bundle(path: Path | str) -> VerificationBundleValidati
         try: objects.append(model.model_validate_json(entries[name]))
         except (ValidationError, ValueError, KeyError) as error: errors.append(f"Invalid {model.__name__} evidence at {name}: {error}.")
     errors.extend(_validate_relationships(objects))
+    if any(isinstance(item, TreePathEvidence) for item in objects):
+        warnings.append("TreePathEvidence run/hash/feature bindings were checked, but exact path replay is unavailable because model artifacts are excluded from the inspection-first bundle.")
     assurance_objects = {str(item.assurance_id): item for item in objects if isinstance(item, AssuranceCase)}
     if not assurance_objects:
         warnings.append("No typed AssuranceCase object was found in the bundle.")

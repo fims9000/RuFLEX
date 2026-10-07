@@ -827,6 +827,13 @@ def test_decision_tree_persists_declarative_structure_and_exact_path_evidence(tm
     artifacts = client.get(f"/api/projects/{session_id}/artifacts")
     assert any(record["media_type"] == "application/vnd.ruflex.declarative-decision-tree+json" for record in artifacts.json())
     assert inspect_project_integrity(root).status == "PASS"
+    assert client.post("/api/projects/evidence/assurance-cases", json={"session_id": session_id}).status_code == 201
+    bundle_response = client.post("/api/projects/evidence/verification-bundles", json={"session_id": session_id})
+    assert bundle_response.status_code == 201, bundle_response.text
+    from ruflex.application.verification_bundle import validate_verification_bundle
+    bundle_validation = validate_verification_bundle(bundle_response.json()["path"])
+    assert bundle_validation.status == "PASS", bundle_validation.errors
+    assert any("exact path replay is unavailable" in warning for warning in bundle_validation.warnings)
     evidence_path = root / "evidence" / "tree-paths" / f"{evidence.json()['evidence_id']}.json"
     tampered = json.loads(evidence_path.read_text(encoding="utf-8"))
     tampered["prediction"] += 1.0
