@@ -149,8 +149,22 @@ def test_project_integrity_validates_frozen_stability_analysis_and_gate_chain(tm
     analysis_response = client.post("/api/projects/analyses/stability", json={"session_id": session_id, "study_id": study["study_id"], "evaluation_id": evaluation_id, "threshold_id": threshold_id, "high_confidence_threshold": .9, "unstable_agreement_threshold": .8})
     assert analysis_response.status_code == 201, analysis_response.text
     analysis = analysis_response.json()
+    newer_analysis = client.post("/api/projects/analyses/stability", json={"session_id": session_id, "study_id": study["study_id"], "evaluation_id": evaluation_id, "threshold_id": threshold_id, "high_confidence_threshold": .85, "unstable_agreement_threshold": .8})
+    assert newer_analysis.status_code == 201, newer_analysis.text
+    active_analysis_path = root / "analyses" / "stability-analyses" / "active-analysis.json"
+    active_analysis_path.write_text(json.dumps({"analysis_id": analysis["analysis_id"]}), encoding="utf-8")
+    stale_analysis_pointer = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert any(issue["code"] == "STABILITY_ANALYSIS_ACTIVE_POINTER_INVALID" for issue in stale_analysis_pointer["issues"])
+    active_analysis_path.write_text(json.dumps({"analysis_id": newer_analysis.json()["analysis_id"]}), encoding="utf-8")
     policy_response = client.post("/api/projects/analyses/stability-policies", json={"session_id": session_id, "analysis_id": analysis["analysis_id"], "evaluation_id": evaluation_id, "min_confidence": .9, "min_class_agreement": .8, "max_probability_std": .15})
     assert policy_response.status_code == 201, policy_response.text
+    newer_policy = client.post("/api/projects/analyses/stability-policies", json={"session_id": session_id, "analysis_id": analysis["analysis_id"], "evaluation_id": evaluation_id, "min_confidence": .85, "min_class_agreement": .8, "max_probability_std": .15})
+    assert newer_policy.status_code == 201, newer_policy.text
+    active_gate_path = root / "analyses" / "stability-policies" / "active-policy.json"
+    active_gate_path.write_text(json.dumps({"policy_id": policy_response.json()["policy_id"]}), encoding="utf-8")
+    stale_gate_pointer = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert any(issue["code"] == "STABILITY_GATE_ACTIVE_POINTER_INVALID" for issue in stale_gate_pointer["issues"])
+    active_gate_path.write_text(json.dumps({"policy_id": newer_policy.json()["policy_id"]}), encoding="utf-8")
     calibration_response = client.post("/api/projects/analyses/calibrations", json={"session_id": session_id, "evaluation_id": evaluation_id})
     assert calibration_response.status_code == 201, calibration_response.text
     calibrated_threshold_response = client.post("/api/projects/analyses/thresholds", json={"session_id": session_id, "evaluation_id": evaluation_id, "calibration_id": calibration_response.json()["calibration_id"], "objective": "f1"})

@@ -1217,6 +1217,9 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                     active_id = json.loads(active_path.read_text(encoding="utf-8"))["analysis_id"]
                     if str(active_id) not in {str(key) for key in stability_analyses}:
                         raise ValueError("Active Stability Analysis pointer does not resolve to persisted evidence.")
+                    latest_analysis = max(stability_analyses.values(), key=lambda item: (item.created_at, str(item.analysis_id)), default=None)
+                    if latest_analysis is not None and str(latest_analysis.analysis_id) != str(active_id):
+                        raise ValueError("Active Stability Analysis pointer does not identify the latest persisted analysis.")
                 except (KeyError, TypeError, ValueError, OSError, json.JSONDecodeError) as error:
                     issues.append(ProjectIntegrityIssue(code="STABILITY_ANALYSIS_ACTIVE_POINTER_INVALID", status="FAIL", path="analyses/stability-analyses/active-analysis.json", detail=str(error)))
         stability_policy_root = base / "analyses" / "stability-policies"
@@ -1266,6 +1269,9 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                     active_id = json.loads(active_path.read_text(encoding="utf-8"))["policy_id"]
                     if str(active_id) not in {str(key) for key in stability_policies}:
                         raise ValueError("Active Stability Gate pointer does not resolve to persisted evidence.")
+                    latest_policy = max(stability_policies.values(), key=lambda item: (item.created_at, str(item.policy_id)), default=None)
+                    if latest_policy is not None and str(latest_policy.policy_id) != str(active_id):
+                        raise ValueError("Active Stability Gate pointer does not identify the latest persisted policy.")
                 except (KeyError, TypeError, ValueError, OSError, json.JSONDecodeError) as error:
                     issues.append(ProjectIntegrityIssue(code="STABILITY_GATE_ACTIVE_POINTER_INVALID", status="FAIL", path="analyses/stability-policies/active-policy.json", detail=str(error)))
         final_test_root = base / "analyses" / "final-tests"
