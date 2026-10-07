@@ -800,8 +800,10 @@ def create_project_split_contract(request: CreateSplitContractRequest) -> SplitC
         )
     except ProjectError as error:
         raise _project_error(error) from error
-    except (ValueError, OSError) as error:
+    except ValueError as error:
         raise HTTPException(status_code=422, detail=f"Split-contract creation failed: {error}") from error
+    except OSError as error:
+        raise HTTPException(status_code=500, detail="Split-contract persistence failed; verify the saved split before retrying.") from error
 
 
 @app.get("/api/projects/{session_id}/dataset/splits", response_model=list[SplitContract])
@@ -1129,8 +1131,10 @@ def run_training(request: TrainModelRequest) -> TrainingRun:
         raise HTTPException(status_code=422, detail="Confirm a DatasetContract before training.") from error
     except RuntimeErrorBase as error:
         raise _runtime_error(error) from error
-    except (TrainingError, ValueError, OSError) as error:
+    except (TrainingError, ValueError) as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
+    except OSError as error:
+        raise HTTPException(status_code=500, detail="Training persistence failed; verify run history before retrying.") from error
 
 
 @app.get("/api/projects/{session_id}/training/latest", response_model=TrainingRun)
@@ -1650,8 +1654,10 @@ def start_multi_seed_study_job(request: MultiSeedStudyRequest) -> StudyJob:
         raise _project_error(error) from error
     except RuntimeErrorBase as error:
         raise _runtime_error(error) from error
-    except (TrainingError, ValueError, OSError) as error:
+    except (TrainingError, ValueError) as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
+    except OSError as error:
+        raise HTTPException(status_code=500, detail="StudyJob persistence failed; look up the request ID before retrying.") from error
 
 
 @app.get("/api/projects/{session_id}/training/study-jobs/{job_id}", response_model=StudyJob)

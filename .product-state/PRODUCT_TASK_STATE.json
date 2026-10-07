@@ -164,15 +164,16 @@
     "alpha_dataset_role_api_rejection",
     "alpha_frozen_dataset_role_inspection_ui",
     "alpha_split_validation_rejection_recovery",
-    "alpha_training_validation_rejection_recovery"
+    "alpha_training_validation_rejection_recovery",
+    "alpha_training_mutation_persistence_error_classification"
   ],
-  "active_capability": "alpha_training_validation_rejection_recovery",
+  "active_capability": "alpha_training_mutation_persistence_error_classification",
   "active_acceptance": [
-    "Typed validation rejection for a single TrainingRun is not misrepresented as an uncertain persisted fit.",
-    "Typed validation rejection for a Study clears the stale idempotency request so corrected parameters produce a new request identity; genuinely uncertain responses still retain exact retry behavior."
+    "Split, single TrainingRun, and StudyJob endpoints distinguish validation failures from filesystem persistence failures that may occur after a durable write.",
+    "Persistence OSErrors are not encoded as validation 422s; Studio treats only typed string-body validation errors as definitive and retains lookup/recovery for ambiguous failures."
   ],
   "blockers": [],
-  "next_executable_work": "Continue reviewing train-only preprocessing and transform-evidence failure states, then follow the first-run route through persisted training and validation evidence.",
+  "next_executable_work": "Review train-only preprocessing and transform-evidence failure states, then continue the first-run route through persisted training and validation evidence.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -340,6 +341,7 @@
     "alpha_dataset_role_api_rejection": "PASS: API regressions exercise nonexistent, duplicate, and target-overlapping ID selections; each returns 422 before DatasetContract or source Artifact persistence. DatasetContract/API suite 17 passed; git diff --check passed.",
     "alpha_frozen_dataset_role_inspection_ui": "PASS: Data workspace now separates persisted feature/ID roles from advisory profile proposals in a compact expandable summary. PRODUCT E2E-08 deliberately leaves the ID candidate unselected and verifies it remains a model feature; TypeScript/Vite production build and focused browser route passed.",
     "alpha_split_validation_rejection_recovery": "PASS: Definitive SplitContract HTTP 422 VALIDATION_FAILED responses no longer create uncertain-write recovery state; users can correct the split and submit a valid contract. Frontend unit tests 18/18, TypeScript/Vite production build, focused Playwright correction flow 1/1, and git diff --check passed.",
-    "alpha_training_validation_rejection_recovery": "PASS: Typed HTTP 422 VALIDATION_FAILED responses for single TrainingRun and Study requests remain editable and do not create stale recovery requests; Study correction creates a new request identity and retains corrected parameters. Frontend unit tests 20/20, TypeScript/Vite production build, and git diff --check passed; existing network/uncertain Study retry regression remains in the focused suite."
+    "alpha_training_validation_rejection_recovery": "PASS: Typed HTTP 422 VALIDATION_FAILED responses for single TrainingRun and Study requests remain editable and do not create stale recovery requests; Study correction creates a new request identity and retains corrected parameters. Frontend unit tests 20/20, TypeScript/Vite production build, and git diff --check passed; existing network/uncertain Study retry regression remains in the focused suite.",
+    "alpha_training_mutation_persistence_error_classification": "PASS: SplitContract, TrainingRun and StudyJob persistence OSErrors now map to HTTP 500 instead of validation 422; Studio treats only typed 422 VALIDATION_FAILED with string detail as definitive, retaining exact recovery for ambiguous/runtime failures. Backend API plus split tests 14 passed, frontend unit 20/20, focused split-correction Playwright 1/1, compileall, Vite build and git diff --check passed."
   }
 }

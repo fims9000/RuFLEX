@@ -126,6 +126,13 @@ function canonicalJson(value: unknown): string {
   return JSON.stringify(value) ?? "undefined";
 }
 
+function isDefinitiveValidationRejection(reason: unknown): reason is ProductApiError {
+  return reason instanceof ProductApiError
+    && reason.status === 422
+    && reason.code === "VALIDATION_FAILED"
+    && typeof reason.detail === "string";
+}
+
 function numericConstraint(value: unknown): NumericConstraint {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   const record = value as Record<string, unknown>;
@@ -485,9 +492,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
     try {
       onRun(await studioApi.runTraining(project.session_id, config)); setTrainingRecovery(null);
     } catch (reason) {
-      const definitiveValidationRejection = reason instanceof ProductApiError
-        && reason.status === 422
-        && reason.code === "VALIDATION_FAILED";
+      const definitiveValidationRejection = isDefinitiveValidationRejection(reason);
       if (!definitiveValidationRejection) {
         setTrainingRecovery({ config, requestedAt, error: reason instanceof Error ? reason.message : "Training result response was uncertain.", notFound: false });
       }
@@ -537,9 +542,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
         const created = await studioApi.createSplitContract(project.session_id, request);
         setSplitContract(created); setSplitContractRecovery(null);
       } catch (reason) {
-        const definitiveValidationRejection = reason instanceof ProductApiError
-          && reason.status === 422
-          && reason.code === "VALIDATION_FAILED";
+        const definitiveValidationRejection = isDefinitiveValidationRejection(reason);
         if (!definitiveValidationRejection) {
           setSplitContractRecovery({ request, datasetFingerprint: dataset.contract.dataset_fingerprint, datasetArtifactSha256: dataset.contract.source_artifact_sha256, error: reason instanceof Error ? reason.message : "SplitContract response was uncertain.", notFound: false });
         }
@@ -639,9 +642,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
       setPendingStudyRequest(null);
       await observeStudy(job);
     } catch (reason) {
-      const definitiveValidationRejection = reason instanceof ProductApiError
-        && reason.status === 422
-        && reason.code === "VALIDATION_FAILED";
+      const definitiveValidationRejection = isDefinitiveValidationRejection(reason);
       if (definitiveValidationRejection) {
         pendingStudyRequestRef.current = null;
         setPendingStudyRequest(null);
