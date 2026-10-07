@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-test("a first-time user can persist synthetic evidence and apply a frozen final-test policy", async ({ page }) => {
+test("a first-time user can persist synthetic evidence and apply a frozen final-test policy", async ({ page }, testInfo) => {
   test.setTimeout(75_000);
   const path = join(tmpdir(), `ruflex-practice-route-${Date.now()}-${Math.random().toString(16).slice(2)}`);
   await page.goto("/");
@@ -33,6 +33,9 @@ test("a first-time user can persist synthetic evidence and apply a frozen final-
   await page.getByRole("button", { name: "Run real training", exact: true }).click();
   expect((await response).status()).toBe(201);
   await expect(page.locator(".run-provenance")).toContainText("model artifact persisted");
+  await expect(page.getByTestId("artifact-inventory")).toContainText(`SHA-256 ${frozenSha}`);
+  await expect(page.getByTestId("artifact-inventory")).toContainText("logistic_regression");
+  await page.getByTestId("artifact-inventory").screenshot({ path: testInfo.outputPath("artifact-inventory.png") });
 
   await page.getByRole("button", { name: "A", exact: true }).click();
   await expect(page.getByTestId("synthetic-practice-context")).toBeVisible();
@@ -67,6 +70,7 @@ test("a first-time user can persist synthetic evidence and apply a frozen final-
   await expect(page.getByTestId("synthetic-practice-context")).toBeVisible();
   await page.getByRole("button", { name: "S", exact: true }).click();
   await expect(page.locator(".run-provenance")).toContainText("model artifact persisted");
+  await expect(page.getByTestId("artifact-inventory")).toContainText(`SHA-256 ${frozenSha}`);
   await page.getByRole("button", { name: "A", exact: true }).click();
   await expect(page.getByText("Validation ROC curve · raw model", { exact: true })).toBeVisible();
   await expect(page.getByText("REVIEW BELOW 0.80", { exact: false })).toBeVisible();
@@ -97,6 +101,12 @@ test("a first-time user can persist synthetic evidence and apply a frozen final-
   await expect(page.getByRole("heading", { name: "Final-test evidence persisted separately", exact: true })).toBeVisible();
   await expect(page.getByTestId("synthetic-practice-context")).toBeVisible();
   await expect(page.getByRole("button", { name: "Reselect threshold", exact: true })).toBeDisabled();
+  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await page.getByLabel("Project path").fill(path);
+  await page.getByRole("checkbox", { name: "Read-only", exact: true }).check();
+  await page.getByRole("button", { name: "Open project", exact: true }).click();
+  await expect(page.getByTestId("artifact-inventory")).toContainText(`SHA-256 ${frozenSha}`);
+  await expect(page.getByRole("button", { name: "Save", exact: true })).toBeDisabled();
 });
 
 test("synthetic practice loading is unavailable in a read-only project", async ({ page }) => {

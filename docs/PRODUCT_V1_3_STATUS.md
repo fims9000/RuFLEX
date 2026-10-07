@@ -108,6 +108,9 @@ Target branch: `feature/v1.3-data-governance-runtime`.
   compact initials, active-section semantics and assistive descriptions. The
   project inspector separates artifact headings from their loading/empty
   states at the minimum supported viewport width.
+- The project inspector lists saved artifact names, origins, sizes and full
+  SHA-256 identities instead of only truncated hashes. The inventory remains
+  inspectable after reopen, including in a read-only project session.
 - Project Integrity, Assurance and portable bundles reject missing or malformed
   manual-FIS comparison rows and mismatched semantic-revision provenance.
   A portable bundle excludes raw dataset rows, so it checks the frozen row's

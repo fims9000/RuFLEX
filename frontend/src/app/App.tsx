@@ -1800,12 +1800,15 @@ export function App() {
         {artifactsHydrationStatus === "loading" && <span role="status">Loading project artifacts…</span>}
         {artifactsHydrationStatus === "error" && <div className="error" role="alert" data-testid="artifact-hydration-error"><span>Project artifacts could not be verified. {artifactsHydrationError}</span><Button view="outlined" size="s" onClick={() => setArtifactsHydrationReload((current) => current + 1)}>Retry artifact list</Button></div>}
         {artifactsHydrationStatus === "loaded" && artifacts.length ? (
-          artifacts.map((artifact) => (
-            <div key={artifact.sha256} className="mono">
-              {artifact.sha256.slice(0, 12)} · {artifact.size_bytes} B ·{" "}
-              {artifact.source_kind}
-            </div>
-          ))
+          <ul className="artifact-inventory" data-testid="artifact-inventory">
+            {artifacts.map((artifact) => (
+              <li key={artifact.sha256}>
+                <strong>{artifact.original_name || "Unnamed artifact"}</strong>
+                <span>{artifact.source_kind} · {artifact.size_bytes.toLocaleString()} bytes</span>
+                <code>SHA-256 {artifact.sha256}</code>
+              </li>
+            ))}
+          </ul>
         ) : artifactsHydrationStatus === "loaded" ? (
           <span>No immutable artifacts yet.</span>
         ) : null}

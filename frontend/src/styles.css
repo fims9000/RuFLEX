@@ -303,6 +303,29 @@ input:focus-visible,
   margin-top: 12px;
   overflow-wrap: anywhere;
 }
+.artifact-inventory {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.artifact-inventory li {
+  display: grid;
+  gap: 3px;
+  padding: 8px;
+  border: 1px solid var(--rf-border);
+  border-radius: 6px;
+  background: var(--rf-bg-surface-2);
+}
+.artifact-inventory li span {
+  color: var(--rf-text-secondary);
+}
+.artifact-inventory code {
+  overflow-wrap: anywhere;
+  color: var(--rf-text-muted);
+  font-size: 11px;
+}
 .empty-state {
   display: grid;
   gap: 7px;
