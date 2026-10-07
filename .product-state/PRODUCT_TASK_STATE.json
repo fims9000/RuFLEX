@@ -341,7 +341,8 @@
     "alpha_synthetic_practice_training_route",
     "alpha_synthetic_practice_evidence_route",
     "alpha_synthetic_practice_final_test_route",
-    "alpha_workbench_navigation_semantics"
+    "alpha_workbench_navigation_semantics",
+    "alpha_synthetic_practice_behavior_route"
   ],
   "active_capability": "alpha_master_spec_gap_audit",
   "active_acceptance": [
@@ -349,8 +350,9 @@
     "Select the next concrete, low-resource, end-to-end product gap and implement it without broad refactoring."
   ],
   "blockers": [],
-  "next_executable_work": "Continue the alpha product-gap audit after the verified workbench navigation semantics. Select the next concrete low-resource user-facing gap; preserve frozen research artifacts and unrelated docs/article edits.",
+  "next_executable_work": "Continue the alpha product-gap audit after the verified synthetic BehaviorSpec-to-Assurance route. Select the next concrete low-resource user-facing gap; preserve frozen research artifacts and unrelated docs/article edits.",
   "qa": {
+    "synthetic_practice_behavior_route": "PASS: The same first-use synthetic project creates and executes a run-bound BehaviorSpec after explanation validation, builds an AssuranceCase that includes behavior-spec evidence, exports a validated VerificationBundle, then reopens the BehaviorSpec result. Focused real Studio Playwright passed 2/2; no A01/S03 benchmark evidence was used.",
     "workbench_navigation_semantics": "PASS: Existing one-letter Studio workbench buttons now expose full workspace descriptions and aria-current for the active section without changing the visual rail or established button names. Focused accessibility Playwright passed 1/1, including axe baseline across Project, Data, Training, Analysis and Evidence and active-state checks.",
     "synthetic_practice_final_test_route": "PASS: The first-use synthetic project persisted a raw validation F1 threshold and ACCEPT/REVIEW policy before one final-test evaluation. Studio reopened the final-test result and disabled threshold reselection after access. Exact saved source SHA labels the project as synthetic practice across Data, Analysis and other workspaces, including after reopen. Focused Playwright passed 2/2 and TypeScript/Vite production build passed. Only a new temporary synthetic project was used; no A01/S03 benchmark was accessed.",
     "synthetic_practice_evidence_route": "PASS: Real Studio browser path persisted a logistic TrainingRun, raw validation Evaluation, post-hoc Explanation and ExplanationCheck, AssuranceCase, and validated VerificationBundle in one synthetic practice project. Close/reopen restored training, validation, explanation check and Assurance; Lineage reopened the persisted bundle. Focused Playwright passed 2/2, including the read-only negative route. No A01/S03 benchmark artifact was used.",

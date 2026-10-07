@@ -48,8 +48,11 @@ test("a first-time user can persist synthetic evidence and apply a frozen final-
   await expect(page.getByText("POST-HOC ATTRIBUTION", { exact: true }).first()).toBeVisible();
   await page.getByRole("button", { name: "Run explanation checks", exact: true }).click();
   await expect(page.getByText("PASSED_AVAILABLE_CHECKS", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Create and run BehaviorSpec", exact: true }).click();
+  await expect(page.getByTestId("behavior-result")).toContainText("Output remains in declared range");
   await page.getByRole("button", { name: "Build AssuranceCase", exact: true }).click();
   await expect(page.getByTestId("assurance-case")).toContainText("dataset contract");
+  await expect(page.getByTestId("assurance-case")).toContainText("behavior specs");
   await page.getByRole("button", { name: "Export and validate bundle", exact: true }).click();
   await expect(page.getByTestId("verification-bundle")).toContainText("Portable validation");
   await expect(page.getByTestId("verification-bundle")).toContainText("PASS");
@@ -70,6 +73,7 @@ test("a first-time user can persist synthetic evidence and apply a frozen final-
   await page.getByRole("button", { name: "E", exact: true }).click();
   await expect(page.getByTestId("explanation-job")).toContainText("SUCCEEDED");
   await expect(page.getByText("PASSED_AVAILABLE_CHECKS", { exact: true })).toBeVisible();
+  await expect(page.getByTestId("behavior-result")).toContainText("Output remains in declared range");
   await expect(page.getByTestId("assurance-case")).toContainText("dataset contract");
   await page.getByRole("button", { name: "P", exact: true }).click();
   await page.locator(".lineage-verification_bundle").first().click({ force: true });
