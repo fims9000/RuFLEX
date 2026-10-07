@@ -256,6 +256,21 @@ describe("EvaluationWorkspace final-test boundary", () => {
     expect(studioApi.getLatestSelectivePolicyForBinding).toHaveBeenCalledWith("session", evaluation.evaluation_id, .8, null, threshold.threshold_id);
   });
 
+  it("rejects an empty or out-of-range selective cutoff without any policy write", () => {
+    studioApi.createSelectivePolicy.mockClear();
+    const view = renderWorkspace();
+    const cutoff = screen.getByLabelText("Selective confidence cutoff");
+    fireEvent.change(cutoff, { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save ACCEPT / REVIEW policy" }));
+    expect(screen.getByText(/confidence cutoff must be a finite number between 0.5 and 1.0/)).toBeVisible();
+    expect(studioApi.createSelectivePolicy).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("validation-policy-recovery")).not.toBeInTheDocument();
+    fireEvent.change(cutoff, { target: { value: "0.4" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save ACCEPT / REVIEW policy" }));
+    expect(studioApi.createSelectivePolicy).not.toHaveBeenCalled();
+    view.unmount();
+  });
+
   it("labels the default 0.50 confusion matrix as a preview rather than a frozen threshold policy", () => {
     renderWorkspace(false, { decisionThreshold: null });
     expect(screen.getByRole("heading", { name: "Preview at default cutoff 0.50 · no frozen threshold policy" })).toBeVisible();

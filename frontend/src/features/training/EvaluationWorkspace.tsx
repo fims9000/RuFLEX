@@ -502,13 +502,19 @@ export function EvaluationWorkspace({
   }
 
   async function selectReviewPolicy() {
-    if (policyRecovery || !beginValidationMutation()) return;
+    if (policyRecovery) return;
+    const cutoffText = selectiveCutoff.trim();
+    const confidenceCutoff = Number(cutoffText);
+    if (!cutoffText || !Number.isFinite(confidenceCutoff) || confidenceCutoff < 0.5 || confidenceCutoff > 1.0) {
+      setError("The confidence cutoff must be a finite number between 0.5 and 1.0; no policy request was sent.");
+      return;
+    }
+    if (!beginValidationMutation()) return;
     setSelectingReview(true);
     setError(null);
     try {
       const current = await ensureEvaluation();
       if (!activeThreshold) throw new Error("Select a validation DecisionThreshold before creating a selective policy.");
-      const confidenceCutoff = Number(selectiveCutoff);
       const calibrationId = activeCalibration?.calibration_id ?? null;
       try { onSelectivePolicy(await studioApi.createSelectivePolicy(project.session_id, current.evaluation_id, confidenceCutoff, calibrationId, activeThreshold.threshold_id)); }
       catch (reason) {

@@ -323,7 +323,8 @@
     "alpha_manual_fis_comparison_evidence_integrity",
     "alpha_analysis_comparison_project_session_isolation",
     "alpha_slice_analysis_project_session_isolation",
-    "alpha_final_test_confirmation_session_isolation"
+    "alpha_final_test_confirmation_session_isolation",
+    "alpha_selective_cutoff_draft_validation"
   ],
   "active_capability": "alpha_master_spec_gap_audit",
   "active_acceptance": [
@@ -331,8 +332,9 @@
     "Select the next concrete, low-resource, end-to-end product gap and implement it without broad refactoring."
   ],
   "blockers": [],
-  "next_executable_work": "Continue the alpha product gap audit. Inspect remaining validation-policy request/recovery state for exact project-session isolation; preserve frozen final-test semantics and unrelated docs/article edits. Add focused negative checks before a code change.",
+  "next_executable_work": "Continue the alpha product gap audit. Check deterministic API rejections versus genuinely uncertain persistence failures across validation policy authoring; preserve the final-test boundary and unrelated docs/article edits. Use focused negative/browser checks.",
   "qa": {
+    "selective_cutoff_draft_validation": "PASS: A blank, non-finite or outside-[0.5,1.0] selective confidence cutoff is rejected in Studio before any Evaluation or policy persistence request. Red regression reproduced the prior missing guidance; updated EvaluationWorkspace unit suite 24 passed, PRODUCT-07 real Studio route confirmed zero policy POSTs for blank input then one valid frozen policy POST and close/reopen, TypeScript/Vite build and diff check passed. Scientific cutoff semantics are unchanged.",
     "final_test_confirmation_session_isolation": "PASS: The Analysis workspace remounts for each project session and clears local final-test confirmation/recovery on session change; old final-test create/lookup responses cannot populate the new project's UI. Component tests 23 passed including late-response regression, TypeScript/Vite build and two focused real Studio browser routes passed. Backend final-test evaluation and policy semantics were not changed; full browser matrix deferred to release QA.",
     "slice_analysis_project_session_isolation": "PASS: Slice Lab resets its draft and exact save-recovery state on project-session change; delayed create, lookup and explicit-repeat responses from an earlier project cannot update the active project's local UI. EvaluationWorkspace component tests 22 passed including delayed slice failure, TypeScript/Vite build passed, and the real Analysis browser route saved a validation slice and reopened it after project close/open. Full suites deferred to release QA.",
     "analysis_comparison_project_session_isolation": "PASS: Analysis resets selected-run/manual-FIS draft and exact comparison recovery when the project session changes; late comparison create/lookup responses are ignored if they belong to the former session. EvaluationWorkspace unit tests 21 passed including draft, uncertain recovery and late-response regressions; TypeScript/Vite build and real manual-FIS comparison browser route passed. Full browser suite deferred to release QA.",

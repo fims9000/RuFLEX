@@ -49,6 +49,9 @@ Target branch: `feature/v1.3-data-governance-runtime`.
   result recovery cannot carry into another project, and a late response from
   the previous session is ignored by the active view. This changes Studio
   lifecycle behavior, not the frozen final-test evaluation semantics.
+- The validation-only selective-policy form rejects blank, non-finite and
+  out-of-range confidence cutoffs before any evaluation or policy write. A
+  rejected draft does not enter uncertain-write recovery and can be corrected.
 - Project Integrity, Assurance and portable bundles reject missing or malformed
   manual-FIS comparison rows and mismatched semantic-revision provenance.
   A portable bundle excludes raw dataset rows, so it checks the frozen row's
