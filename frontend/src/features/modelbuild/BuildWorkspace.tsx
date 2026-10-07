@@ -389,6 +389,8 @@ export function BuildWorkspace({
   const createDefaultFisInFlightRef = useRef(false);
   const [savingFis, setSavingFis] = useState(false);
   const saveFisInFlightRef = useRef(false);
+  const [fisActionBusy, setFisActionBusy] = useState(false);
+  const fisActionInFlightRef = useRef(false);
   const [diagnostics, setDiagnostics] = useState<
     Array<{ code: string; severity: string; message: string }>
   >([]);
@@ -424,6 +426,16 @@ export function BuildWorkspace({
   const publishFisChange = onFisChange;
   const publishEvaluation = onEvaluation;
   const publishExpertCorrection = onExpertCorrection ?? (() => undefined);
+  function beginFisAction(): boolean {
+    if (fisActionInFlightRef.current) return false;
+    fisActionInFlightRef.current = true;
+    setFisActionBusy(true);
+    return true;
+  }
+  function endFisAction(): void {
+    fisActionInFlightRef.current = false;
+    setFisActionBusy(false);
+  }
   useEffect(() => {
     setLinkSourceExplanation(false);
   }, [sourceExplanationId]);
@@ -607,7 +619,7 @@ export function BuildWorkspace({
     setWorking(next);
   }
   async function createDefault() {
-    if (fisImportRecovery || createDefaultFisInFlightRef.current) return;
+    if (fisImportRecovery || createDefaultFisInFlightRef.current || !beginFisAction()) return;
     setError(null);
     createDefaultFisInFlightRef.current = true;
     setCreatingDefaultFis(true);
@@ -623,6 +635,7 @@ export function BuildWorkspace({
     } finally {
       createDefaultFisInFlightRef.current = false;
       setCreatingDefaultFis(false);
+      endFisAction();
     }
   }
   async function importMatlabFile(event: ChangeEvent<HTMLInputElement>) {
@@ -632,7 +645,7 @@ export function BuildWorkspace({
     await submitMatlabImport(await file.text());
   }
   async function submitMatlabImport(source: string) {
-    if (importMatlabFisInFlightRef.current) return;
+    if (importMatlabFisInFlightRef.current || !beginFisAction()) return;
     const submittedWorking = workingRef.current;
     importMatlabFisInFlightRef.current = true;
     setImportingMatlabFis(true);
@@ -669,6 +682,7 @@ export function BuildWorkspace({
     } finally {
       importMatlabFisInFlightRef.current = false;
       setImportingMatlabFis(false);
+      endFisAction();
     }
   }
   async function retrySameMatlabImport() {
@@ -1019,7 +1033,7 @@ export function BuildWorkspace({
   }
 
   async function save() {
-    if (!working || fisSaveRecovery || fisImportRecovery || saveFisInFlightRef.current) return;
+    if (!working || fisSaveRecovery || fisImportRecovery || saveFisInFlightRef.current || !beginFisAction()) return;
     setError(null);
     const requestedSpec = cloneFis(working);
     saveFisInFlightRef.current = true;
@@ -1053,12 +1067,13 @@ export function BuildWorkspace({
     } finally {
       saveFisInFlightRef.current = false;
       setSavingFis(false);
+      endFisAction();
     }
   }
   async function recoverFisSave() {
     if (saveFisInFlightRef.current) return;
     const pending = fisSaveRecovery;
-    if (!pending) return;
+    if (!pending || !beginFisAction()) return;
     saveFisInFlightRef.current = true;
     setRecoveringFisSave(true); setError(null);
     try {
@@ -1072,12 +1087,12 @@ export function BuildWorkspace({
       }
     } catch (reason) {
       setFisSaveRecovery({ ...pending, notFound: false, error: reason instanceof Error ? reason.message : "The saved FIS revision could not be verified." });
-    } finally { saveFisInFlightRef.current = false; setRecoveringFisSave(false); }
+    } finally { saveFisInFlightRef.current = false; setRecoveringFisSave(false); endFisAction(); }
   }
   async function explicitlyRepeatFisSave() {
     if (saveFisInFlightRef.current) return;
     const pending = fisSaveRecovery;
-    if (!pending?.notFound || !working || project.read_only || canonicalJson(fisSemanticPayload(working)) !== canonicalJson(fisSemanticPayload(pending.spec))) return;
+    if (!pending?.notFound || !working || project.read_only || canonicalJson(fisSemanticPayload(working)) !== canonicalJson(fisSemanticPayload(pending.spec)) || !beginFisAction()) return;
     saveFisInFlightRef.current = true;
     setRecoveringFisSave(true); setError(null);
     try {
@@ -1093,16 +1108,16 @@ export function BuildWorkspace({
       setFisSaveRecovery(null);
     } catch (reason) {
       setFisSaveRecovery({ ...pending, notFound: false, error: reason instanceof Error ? reason.message : "The explicitly repeated FIS save response was uncertain." });
-    } finally { saveFisInFlightRef.current = false; setRecoveringFisSave(false); }
+    } finally { saveFisInFlightRef.current = false; setRecoveringFisSave(false); endFisAction(); }
   }
   function restorePendingFisSaveSnapshot() {
-    if (saveFisInFlightRef.current || !fisSaveRecovery) return;
+    if (fisActionInFlightRef.current || saveFisInFlightRef.current || !fisSaveRecovery) return;
     const restored = cloneFis(fisSaveRecovery.spec);
     setWorking(restored); setEditorHistory([cloneFis(restored)]); setHistoryIndex(0);
     setMessage("Restored the exact FIS snapshot from the uncertain save; verify its persisted identity before retrying.");
   }
   async function refitExpertConsequents() {
-    if (expertCorrectionActionInFlightRef.current || !working || working.system_type !== "sugeno" || expertRefitRecovery) return;
+    if (expertCorrectionActionInFlightRef.current || !working || working.system_type !== "sugeno" || expertRefitRecovery || !beginFisAction()) return;
     expertCorrectionActionInFlightRef.current = true;
     setRecoveringExpertRefit(true);
     setError(null);
@@ -1151,12 +1166,13 @@ export function BuildWorkspace({
     } finally {
       expertCorrectionActionInFlightRef.current = false;
       setRecoveringExpertRefit(false);
+      endFisAction();
     }
   }
   async function recoverExpertRefit() {
     if (expertCorrectionActionInFlightRef.current) return;
     const pending = expertRefitRecovery;
-    if (!pending) return;
+    if (!pending || !beginFisAction()) return;
     expertCorrectionActionInFlightRef.current = true;
     setRecoveringExpertRefit(true);
     try {
@@ -1184,12 +1200,12 @@ export function BuildWorkspace({
       } catch (activeError) {
         setExpertRefitRecovery({ ...pending, notFound: false, error: activeError instanceof Error ? activeError.message : "Could not verify the active FIS after the uncertain correction." });
       }
-    } finally { expertCorrectionActionInFlightRef.current = false; setRecoveringExpertRefit(false); }
+    } finally { expertCorrectionActionInFlightRef.current = false; setRecoveringExpertRefit(false); endFisAction(); }
   }
   async function retryExpertRefit() {
     if (expertCorrectionActionInFlightRef.current) return;
     const pending = expertRefitRecovery;
-    if (!pending?.notFound || project.read_only) return;
+    if (!pending?.notFound || project.read_only || !beginFisAction()) return;
     expertCorrectionActionInFlightRef.current = true;
     setRecoveringExpertRefit(true);
     try {
@@ -1207,11 +1223,11 @@ export function BuildWorkspace({
       setRevisions(await studioApi.getFisRevisions(project.session_id)); publishFisChange(result.fis); setMessage(newerDraftExists ? "The exact TRAIN-only expert correction retry completed; newer editor changes remain unsaved. Save again to activate your draft." : "The exact TRAIN-only expert correction retry completed."); setExpertRefitRecovery(null);
     } catch (reason) {
       setExpertRefitRecovery({ ...pending, notFound: false, error: reason instanceof Error ? reason.message : "The explicit exact correction retry was uncertain." });
-    } finally { expertCorrectionActionInFlightRef.current = false; setRecoveringExpertRefit(false); }
+    } finally { expertCorrectionActionInFlightRef.current = false; setRecoveringExpertRefit(false); endFisAction(); }
   }
 
   async function run() {
-    if (!working || fisEvaluationRecovery || fisEvaluationInFlightRef.current) return;
+    if (!working || fisEvaluationRecovery || fisEvaluationInFlightRef.current || fisActionInFlightRef.current) return;
     setError(null);
     if (!working.semantic_hash) {
       setError("Save this FIS revision before evaluating; inference uses the active persisted model. No inference was submitted.");
@@ -1223,6 +1239,7 @@ export function BuildWorkspace({
       return;
     }
     const inputs = parsed.values;
+    if (!beginFisAction()) return;
     fisEvaluationInFlightRef.current = true;
     setEvaluatingFis(true);
     try {
@@ -1239,12 +1256,13 @@ export function BuildWorkspace({
     } finally {
       fisEvaluationInFlightRef.current = false;
       setEvaluatingFis(false);
+      endFisAction();
     }
   }
   async function recoverFisEvaluation() {
     if (fisEvaluationInFlightRef.current) return;
     const pending = fisEvaluationRecovery;
-    if (!pending) return;
+    if (!pending || !beginFisAction()) return;
     fisEvaluationInFlightRef.current = true;
     setRecoveringFisEvaluation(true); setError(null);
     try {
@@ -1262,12 +1280,12 @@ export function BuildWorkspace({
         const message = reason instanceof Error ? reason.message : "Could not recover the exact FIS trace.";
         setFisEvaluationRecovery({ ...pending, notFound: false, error: message }); setError(message);
       }
-    } finally { fisEvaluationInFlightRef.current = false; setRecoveringFisEvaluation(false); }
+    } finally { fisEvaluationInFlightRef.current = false; setRecoveringFisEvaluation(false); endFisAction(); }
   }
   async function explicitlyRepeatFisEvaluation() {
     if (fisEvaluationInFlightRef.current) return;
     const pending = fisEvaluationRecovery;
-    if (!pending?.notFound || working?.fis_id !== pending.fisId || working.semantic_hash !== pending.semanticHash) return;
+    if (!pending?.notFound || working?.fis_id !== pending.fisId || working.semantic_hash !== pending.semanticHash || !beginFisAction()) return;
     fisEvaluationInFlightRef.current = true;
     setRecoveringFisEvaluation(true); setError(null);
     try {
@@ -1276,7 +1294,7 @@ export function BuildWorkspace({
     } catch (reason) {
       const message = reason instanceof Error ? reason.message : "The explicitly repeated FIS inference could not be confirmed.";
       setFisEvaluationRecovery({ ...pending, notFound: false, error: message }); setError(message);
-    } finally { fisEvaluationInFlightRef.current = false; setRecoveringFisEvaluation(false); }
+    } finally { fisEvaluationInFlightRef.current = false; setRecoveringFisEvaluation(false); endFisAction(); }
   }
   async function refreshSurface() {
     if (!working || !surfaceAxes) return;
@@ -1353,7 +1371,7 @@ export function BuildWorkspace({
         <div className="form-actions">
           <Button
             view="action"
-            disabled={project.read_only || !!fisImportRecovery || creatingDefaultFis}
+            disabled={project.read_only || !!fisImportRecovery || creatingDefaultFis || fisActionBusy}
             onClick={createDefault}
             data-ruflex-action="fis.create"
           >
@@ -1369,14 +1387,14 @@ export function BuildWorkspace({
           />
           <Button
             view="outlined"
-            disabled={project.read_only || !!fisImportRecovery || importingMatlabFis}
+            disabled={project.read_only || !!fisImportRecovery || importingMatlabFis || fisActionBusy}
             onClick={() => importInputRef.current?.click()}
             data-ruflex-action="fis.import"
           >
             {importingMatlabFis ? "Importing MATLAB FIS…" : "Import MATLAB .fis"}
           </Button>
         </div>
-        {fisImportRecovery && <div className="error" role="alert" data-testid="fis-import-recovery"><strong>MATLAB FIS import response is uncertain.</strong><p>{fisImportRecovery.error} The exact source is retained; retrying it will not create a duplicate imported revision.</p><Button view="outlined" disabled={retryingFisImport || importingMatlabFis} onClick={retrySameMatlabImport}>Retry exact MATLAB FIS import</Button></div>}
+        {fisImportRecovery && <div className="error" role="alert" data-testid="fis-import-recovery"><strong>MATLAB FIS import response is uncertain.</strong><p>{fisImportRecovery.error} The exact source is retained; retrying it will not create a duplicate imported revision.</p><Button view="outlined" disabled={retryingFisImport || importingMatlabFis || fisActionBusy} onClick={retrySameMatlabImport}>Retry exact MATLAB FIS import</Button></div>}
         {compatibilityIssues.length > 0 && (
           <section className="compatibility-report">
             <span className="eyebrow">MATLAB FIS COMPATIBILITY</span>
@@ -1451,7 +1469,7 @@ export function BuildWorkspace({
               <option value="sugeno">Type-1 Sugeno</option>
             </select>
           </label>
-          <Button view="outlined" disabled={project.read_only || !!fisImportRecovery || !!fisSaveRecovery || savingFis || recoveringFisSave} onClick={save} data-ruflex-action="fis.save_revision">
+          <Button view="outlined" disabled={project.read_only || !!fisImportRecovery || !!fisSaveRecovery || savingFis || recoveringFisSave || fisActionBusy} onClick={save} data-ruflex-action="fis.save_revision">
             {savingFis ? "Saving FIS…" : recoveringFisSave ? "Resolving FIS save…" : "Save FIS"}
           </Button>
           <input
@@ -1464,7 +1482,7 @@ export function BuildWorkspace({
           />
           <Button
             view="outlined"
-            disabled={project.read_only || !!fisImportRecovery || !!fisSaveRecovery || importingMatlabFis}
+            disabled={project.read_only || !!fisImportRecovery || !!fisSaveRecovery || importingMatlabFis || fisActionBusy}
             onClick={() => importInputRef.current?.click()}
             data-ruflex-action="fis.import"
           >
@@ -1473,12 +1491,12 @@ export function BuildWorkspace({
           <Button view="outlined" disabled={!working.semantic_hash || savingFis} onClick={exportMatlabFile} data-ruflex-action="fis.export">
             Export MATLAB .fis
           </Button>
-          <Button view="action" disabled={evaluatingFis || !working.semantic_hash || !!fisEvaluationRecovery} onClick={run} data-ruflex-action="fis.evaluate">
+          <Button view="action" disabled={evaluatingFis || !working.semantic_hash || !!fisEvaluationRecovery || fisActionBusy} onClick={run} data-ruflex-action="fis.evaluate">
             Run exact inference
           </Button>
         </div>
-        {fisSaveRecovery && <div className="error" role="alert" data-testid="fis-save-recovery"><strong>FIS save response is uncertain; the exact revision has not been resubmitted.</strong><p>{fisSaveRecovery.error}</p><Button view="outlined" disabled={recoveringFisSave} onClick={recoverFisSave}>Retry exact FIS revision lookup</Button>{fisSaveRecovery.notFound && working && canonicalJson(fisSemanticPayload(working)) !== canonicalJson(fisSemanticPayload(fisSaveRecovery.spec)) && <Button view="outlined" disabled={recoveringFisSave} onClick={restorePendingFisSaveSnapshot}>Restore exact pending FIS copy</Button>}{fisSaveRecovery.notFound && <Button view="outlined" disabled={recoveringFisSave || project.read_only || !working || canonicalJson(fisSemanticPayload(working)) !== canonicalJson(fisSemanticPayload(fisSaveRecovery.spec))} onClick={explicitlyRepeatFisSave}>Explicitly repeat unchanged FIS save</Button>}</div>}
-        {fisImportRecovery && <div className="error" role="alert" data-testid="fis-import-recovery"><strong>MATLAB FIS import response is uncertain.</strong><p>{fisImportRecovery.error} The exact source is retained; retrying it will not create a duplicate imported revision.</p><Button view="outlined" disabled={retryingFisImport || importingMatlabFis} onClick={retrySameMatlabImport}>Retry exact MATLAB FIS import</Button></div>}
+        {fisSaveRecovery && <div className="error" role="alert" data-testid="fis-save-recovery"><strong>FIS save response is uncertain; the exact revision has not been resubmitted.</strong><p>{fisSaveRecovery.error}</p><Button view="outlined" disabled={recoveringFisSave || fisActionBusy} onClick={recoverFisSave}>Retry exact FIS revision lookup</Button>{fisSaveRecovery.notFound && working && canonicalJson(fisSemanticPayload(working)) !== canonicalJson(fisSemanticPayload(fisSaveRecovery.spec)) && <Button view="outlined" disabled={recoveringFisSave || fisActionBusy} onClick={restorePendingFisSaveSnapshot}>Restore exact pending FIS copy</Button>}{fisSaveRecovery.notFound && <Button view="outlined" disabled={recoveringFisSave || project.read_only || !working || fisActionBusy || canonicalJson(fisSemanticPayload(working)) !== canonicalJson(fisSemanticPayload(fisSaveRecovery.spec))} onClick={explicitlyRepeatFisSave}>Explicitly repeat unchanged FIS save</Button>}</div>}
+        {fisImportRecovery && <div className="error" role="alert" data-testid="fis-import-recovery"><strong>MATLAB FIS import response is uncertain.</strong><p>{fisImportRecovery.error} The exact source is retained; retrying it will not create a duplicate imported revision.</p><Button view="outlined" disabled={retryingFisImport || importingMatlabFis || fisActionBusy} onClick={retrySameMatlabImport}>Retry exact MATLAB FIS import</Button></div>}
       </div>
       <div className="designer-grid">
         <aside className="variable-list">
@@ -2129,7 +2147,7 @@ export function BuildWorkspace({
               />
             </label>
           ))}
-          <Button view="action" disabled={evaluatingFis || recoveringFisEvaluation || !working.semantic_hash || !!fisEvaluationRecovery} onClick={run}>
+          <Button view="action" disabled={evaluatingFis || recoveringFisEvaluation || !working.semantic_hash || !!fisEvaluationRecovery || fisActionBusy} onClick={run}>
             {evaluatingFis ? "Evaluating…" : "Evaluate"}
           </Button>
           {!working.semantic_hash && <p role="status">Save this FIS revision before evaluating or exporting; both operations use the active persisted model.</p>}
@@ -2497,7 +2515,7 @@ export function BuildWorkspace({
             </div>
             <Button
               view="action"
-              disabled={project.read_only || recoveringExpertRefit || !!expertRefitRecovery || expertLockedRules.length >= working.rules.filter((rule) => rule.enabled).length}
+              disabled={project.read_only || recoveringExpertRefit || !!expertRefitRecovery || expertLockedRules.length >= working.rules.filter((rule) => rule.enabled).length || fisActionBusy}
               onClick={refitExpertConsequents}
             >
               {recoveringExpertRefit && !expertRefitRecovery ? "Fitting unlocked consequents…" : "Refit unlocked consequents on TRAIN"}
@@ -2505,7 +2523,7 @@ export function BuildWorkspace({
           </div>
           <div className="expert-correction-summary">
             <span>{expertLockedRules.length} consequent(s) preserved by expert lock.</span>
-            {expertRefitRecovery && <div className="error" role="alert" data-testid="expert-refit-recovery"><strong>Expert correction response is uncertain; no second TRAIN fit was started.</strong><p>{expertRefitRecovery.error}</p><Button view="outlined" disabled={recoveringExpertRefit} onClick={recoverExpertRefit}>Retry exact correction lookup</Button>{expertRefitRecovery.notFound && <Button view="outlined" disabled={recoveringExpertRefit || project.read_only} onClick={retryExpertRefit}>Explicitly retry exact correction on unchanged source FIS</Button>}</div>}
+            {expertRefitRecovery && <div className="error" role="alert" data-testid="expert-refit-recovery"><strong>Expert correction response is uncertain; no second TRAIN fit was started.</strong><p>{expertRefitRecovery.error}</p><Button view="outlined" disabled={recoveringExpertRefit || fisActionBusy} onClick={recoverExpertRefit}>Retry exact correction lookup</Button>{expertRefitRecovery.notFound && <Button view="outlined" disabled={recoveringExpertRefit || project.read_only || fisActionBusy} onClick={retryExpertRefit}>Explicitly retry exact correction on unchanged source FIS</Button>}</div>}
             {expertCorrectionLoadStatus === "loading" && <span role="status">Loading saved expert correction…</span>}
             {expertCorrectionLoadStatus === "none" && <span data-testid="expert-correction-empty">No saved expert correction is available for this FIS revision.</span>}
             {expertCorrectionLoadStatus === "error" && <div className="error" role="alert" data-testid="expert-correction-load-error"><strong>Saved expert correction could not be verified.</strong><p>{expertCorrectionLoadError}</p><Button view="outlined" onClick={() => setExpertCorrectionReload((current) => current + 1)}>Retry expert correction</Button></div>}
@@ -2630,7 +2648,7 @@ export function BuildWorkspace({
         </section>
       )}
       {message && <div className="info-message">{message}</div>}
-        {fisEvaluationRecovery && <div className="error" role="alert" data-testid="fis-evaluation-recovery"><strong>FIS inference outcome is uncertain; no duplicate trace was submitted.</strong><p>{fisEvaluationRecovery.error}</p><Button view="outlined" disabled={recoveringFisEvaluation} onClick={recoverFisEvaluation}>Retry exact FIS trace lookup</Button>{fisEvaluationRecovery.notFound && <Button view="outlined" disabled={recoveringFisEvaluation || project.read_only || working.fis_id !== fisEvaluationRecovery.fisId || working.semantic_hash !== fisEvaluationRecovery.semanticHash} onClick={explicitlyRepeatFisEvaluation}>Explicitly repeat this exact inference</Button>}</div>}
+        {fisEvaluationRecovery && <div className="error" role="alert" data-testid="fis-evaluation-recovery"><strong>FIS inference outcome is uncertain; no duplicate trace was submitted.</strong><p>{fisEvaluationRecovery.error}</p><Button view="outlined" disabled={recoveringFisEvaluation || fisActionBusy} onClick={recoverFisEvaluation}>Retry exact FIS trace lookup</Button>{fisEvaluationRecovery.notFound && <Button view="outlined" disabled={recoveringFisEvaluation || project.read_only || working.fis_id !== fisEvaluationRecovery.fisId || working.semantic_hash !== fisEvaluationRecovery.semanticHash || fisActionBusy} onClick={explicitlyRepeatFisEvaluation}>Explicitly repeat this exact inference</Button>}</div>}
         {error && (
         <div className="error" role="alert">
           {error}

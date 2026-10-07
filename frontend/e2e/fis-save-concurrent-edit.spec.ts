@@ -159,3 +159,41 @@ test("dataset range response cannot overwrite an FIS draft edited while it is pe
   await page.getByRole("button", { name: "Save FIS", exact: true }).click();
   await expect.poll(() => savedResolution).toBe(draftResolution);
 });
+
+test("MATLAB import cannot race an in-flight FIS save", async ({ page }) => {
+  const projectPath = join(tmpdir(), `ruflex-fis-write-mutex-${Date.now()}`);
+  let releaseSave: () => void = () => {};
+  let saveStarted: () => void = () => {};
+  const saveStartedPromise = new Promise<void>((resolve) => { saveStarted = resolve; });
+  let importRequests = 0;
+  await page.route("**/api/projects/fis/save", async (route) => {
+    const response = await route.fetch();
+    saveStarted();
+    await new Promise<void>((resolve) => { releaseSave = resolve; });
+    await route.fulfill({ response });
+  });
+  await page.route("**/api/projects/fis/import/matlab", async (route) => {
+    importRequests += 1;
+    await route.continue();
+  });
+
+  await page.goto("/");
+  await page.getByLabel("Project path").fill(projectPath);
+  await page.getByLabel("Project name").fill("FIS write mutex");
+  await page.getByRole("button", { name: "Create project", exact: true }).click();
+  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
+  await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
+  await page.getByRole("button", { name: /New FIS from dataset/ }).click();
+  await page.getByRole("button", { name: "Create FIS from dataset", exact: true }).click();
+
+  await page.getByRole("button", { name: "Save FIS", exact: true }).click();
+  await saveStartedPromise;
+  await expect(page.getByRole("button", { name: "Import MATLAB .fis", exact: true })).toBeDisabled();
+  await page.getByLabel("MATLAB FIS file").setInputFiles({ name: "racing.fis", mimeType: "text/plain", buffer: Buffer.from("[System]\nName='racing'\nType='mamdani'\n") });
+  await page.waitForTimeout(100);
+  expect(importRequests).toBe(0);
+  releaseSave();
+  await expect(page.getByText("Canonical executable FIS saved with a semantic hash.", { exact: true })).toBeVisible();
+  expect(importRequests).toBe(0);
+});

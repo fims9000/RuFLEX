@@ -123,3 +123,62 @@ test("TRAIN-only correction completion preserves a newer Sugeno editor draft", a
   await page.getByRole("button", { name: "Save FIS", exact: true }).click();
   await expect.poll(() => savedFirstConsequent).toBe(0.75);
 });
+
+test("an in-flight FIS save blocks a concurrent TRAIN-only expert refit", async ({ page }) => {
+  test.setTimeout(45_000);
+  const path = join(tmpdir(), `ruflex-fis-save-refit-mutex-${Date.now()}`);
+  let releaseSave: () => void = () => {};
+  let saveStarted: () => void = () => {};
+  const saveStartedPromise = new Promise<void>((resolve) => { saveStarted = resolve; });
+  let savePosts = 0;
+  let refitPosts = 0;
+
+  await page.goto("/");
+  await page.getByLabel("Project path").fill(path);
+  await page.getByLabel("Project name").fill("FIS save refit mutex");
+  await page.getByRole("button", { name: "Create project", exact: true }).click();
+  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByLabel("CSV data").fill(csv());
+  await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
+  await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
+  await page.getByRole("button", { name: /New FIS from dataset/ }).click();
+  await page.getByRole("button", { name: "Create FIS from dataset", exact: true }).click();
+  await page.getByLabel("FIS family").selectOption("sugeno");
+  const consequents = page.getByLabel(/Rule .* Sugeno value/);
+  for (let index = 0; index < await consequents.count(); index += 1) await consequents.nth(index).fill("0.5");
+  await page.getByRole("button", { name: "Save FIS", exact: true }).click();
+  await expect(page.getByText(/Canonical executable FIS saved with a semantic hash/)).toBeVisible();
+
+  await page.route("**/api/projects/fis/save", async (route) => {
+    if (route.request().method() === "POST") {
+      savePosts += 1;
+      const response = await route.fetch();
+      saveStarted();
+      await new Promise<void>((resolve) => { releaseSave = resolve; });
+      await route.fulfill({ response });
+      return;
+    }
+    await route.continue();
+  });
+  await page.route("**/api/projects/fis/expert-correction", async (route) => {
+    if (route.request().method() === "POST") refitPosts += 1;
+    await route.continue();
+  });
+
+  await page.getByLabel("Rule 1 Sugeno value", { exact: true }).fill("0.6");
+  await page.getByLabel("Rule 1 Sugeno value", { exact: true }).blur();
+  await page.getByRole("button", { name: "Save FIS", exact: true }).click();
+  await saveStartedPromise;
+
+  const refit = page.getByRole("button", { name: "Refit unlocked consequents on TRAIN", exact: true });
+  await expect(refit).toBeDisabled();
+  await refit.evaluate((button) => button.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+  await page.waitForTimeout(100);
+  expect(refitPosts).toBe(0);
+  expect(savePosts).toBe(1);
+
+  releaseSave();
+  await expect(page.getByText("Canonical executable FIS saved with a semantic hash.", { exact: true })).toBeVisible();
+  expect(refitPosts).toBe(0);
+  expect(savePosts).toBe(1);
+});
