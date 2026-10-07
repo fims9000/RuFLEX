@@ -13,7 +13,7 @@ const { studioApi } = vi.hoisted(() => ({ studioApi: {
 } }));
 
 vi.mock("../../api", async (importOriginal) => ({ ...await importOriginal<typeof import("../../api")>(), studioApi }));
-vi.mock("../../charts/ChartSurface", () => ({ ChartSurface: () => <div /> }));
+vi.mock("../../charts/ChartSurface", () => ({ ChartSurface: ({ title, option }: { title: string; option: unknown }) => <div data-testid={title.startsWith("Case Stability Map") ? "stability-map-option" : "other-chart-option"}>{JSON.stringify(option)}</div> }));
 vi.mock("../../components/StudioPrimitives", () => ({
   Button: ({ children, view: _view, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { view?: string }) => <button {...props}>{children}</button>,
   EmptyState: ({ title, children }: { title: string; children: React.ReactNode }) => <div><strong>{title}</strong>{children}</div>,
@@ -48,6 +48,24 @@ beforeEach(() => {
 });
 
 describe("StabilityLab persisted evidence writes", () => {
+  it("shows confident minority support below 0.5 and never plots undefined agreement as zero", async () => {
+    const minorityCase = {
+      case_id: "minority", selected_run_probability: 0.9, selected_run_class: 1, selected_run_agreement: 0.05,
+      majority_class_agreement: 0.95, run_support_count: 20, std_probability: 0.09,
+      run_probabilities: Object.fromEntries(Array.from({ length: 20 }, (_, index) => [`run-${index + 1}`, index === 0 ? 0.9 : 0.49])),
+      run_labels: Object.fromEntries(Array.from({ length: 20 }, (_, index) => [`run-${index + 1}`, index === 0 ? 1 : 0])),
+    };
+    renderStability({ ...analysis, case_count: 2, cases: [minorityCase, { ...minorityCase, case_id: "undefined", selected_run_agreement: null, majority_class_agreement: null, selected_run_class: null }] } as never);
+    const option = JSON.parse((await screen.findByTestId("stability-map-option")).textContent ?? "{}") as { yAxis: { min: number }; series: Array<{ data: number[][] }> };
+    expect(option.yAxis.min).toBe(0);
+    expect(option.series[0].data).toEqual([[0.9, 0.05, 0]]);
+    expect(screen.getByText(/Cases without defined selected-run agreement are omitted/)).toBeVisible();
+    expect(screen.getByText(/selected decision supported by 1\/20 independent fits/)).toBeVisible();
+    fireEvent.change(screen.getByLabelText("Stability case"), { target: { value: "undefined" } });
+    expect(screen.getByText(/selected decision supported by N\/A/)).toBeVisible();
+    expect(screen.getByText(/majority consensus N\/A/)).toBeVisible();
+  });
+
   it("synchronously serializes the multi-step analysis chain and marks the saved analysis", async () => {
     let finishEvaluation!: (value: never) => void;
     studioApi.createAnalysisEvaluation.mockImplementationOnce(() => new Promise((resolve) => { finishEvaluation = resolve as (value: never) => void; }));

@@ -52,7 +52,8 @@ test("Stability Lab persists fixed-split multi-run evidence and its validation-o
   await page.getByRole("button", { name: "Freeze Stability Gate", exact: true }).click();
   await expect(page.getByTestId("stability-gate-recovery")).toContainText("Stability Gate response lost after persistence");
   await page.getByRole("button", { name: "Retry saved gate lookup", exact: true }).click();
-  await expect(page.getByText("Risk–coverage comparison (same coverage)", { exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText("Validation policy operating points (descriptive)", { exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText(/No-review uses full coverage/)).toBeVisible();
   await expect(page.getByTestId("stability-gate-recovery")).toHaveCount(0);
   expect(stabilityGateCreateCount).toBe(1);
   await page.getByLabel("Collapse explorer").click();
@@ -115,7 +116,7 @@ test("Stability Lab persists fixed-split multi-run evidence and its validation-o
   await page.getByRole("button", { name: "Run multi-seed study", exact: true }).click();
   await expect(page.getByText("Validation f1 across seeds", { exact: true })).toBeVisible({ timeout: 60_000 });
   await expect(page.getByText("Case Stability Map · selected-run agreement; red = high-confidence unstable", { exact: true })).toHaveCount(0);
-  await expect(page.getByText("Risk–coverage comparison (same coverage)", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Validation policy operating points (descriptive)", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Create Study Stability Analysis", exact: true })).toBeEnabled();
   const reopened = await page.request.post("http://127.0.0.1:8010/api/projects/open", { data: { path: root } });
   expect(reopened.status()).toBe(200);

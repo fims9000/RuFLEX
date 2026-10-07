@@ -71,6 +71,12 @@ Target branch: `feature/v1.3-data-governance-runtime`.
   temporal slices without either bound before creating evidence. This keeps a
   mistaken draft from changing the declared subgroup or creating an unrelated
   validation Evaluation first.
+- Stability Map now displays the full 0–100% selected-run-agreement range, so
+  confident minority decisions are visible. Undefined agreement is omitted
+  from the plot and shown as N/A in Case Inspector, never fabricated as zero.
+  The policy chart explicitly distinguishes full-coverage no-review from the
+  descriptive matched-count confidence/random references; it is not the
+  frozen A01 confirmatory comparator.
 - Project Integrity, Assurance and portable bundles reject missing or malformed
   manual-FIS comparison rows and mismatched semantic-revision provenance.
   A portable bundle excludes raw dataset rows, so it checks the frozen row's
