@@ -19,7 +19,7 @@ async function declaredActions(root: string): Promise<string[]> {
 
 test("UI action inventory is complete and stable", async ({ page }) => {
   const ids = inventory.map((item) => item.action_id);
-  expect(ids).toHaveLength(44);
+  expect(ids).toHaveLength(46);
   expect(new Set(ids).size).toBe(ids.length);
   const e2eSpecFiles = new Set((await readdir(import.meta.dirname)).filter((entry) => entry.endsWith(".spec.ts")));
   for (const item of inventory) {

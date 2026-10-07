@@ -309,7 +309,8 @@
     "alpha_fis_editor_history_async_integrity",
     "alpha_explicit_model_feature_exclusion",
     "alpha_profile_column_role_selection",
-    "alpha_declared_train_only_scaling"
+    "alpha_declared_train_only_scaling",
+    "alpha_verified_bundle_download"
   ],
   "active_capability": "alpha_master_spec_gap_audit",
   "active_acceptance": [
@@ -317,8 +318,9 @@
     "Select the next concrete, low-resource, end-to-end product gap and implement it without broad refactoring."
   ],
   "blockers": [],
-  "next_executable_work": "Inspect the next unresolved Golden Route workflow after DatasetContract roles and declared train-only scaling; verify scope against the master spec before changing target or scientific protocol semantics, and preserve unrelated docs/article changes.",
+  "next_executable_work": "Inspect the next unresolved Golden Route workflow after verified VerificationBundle download; choose a bounded low-resource user-facing gap, preserving unrelated docs/article changes and frozen scientific semantics.",
   "qa": {
+    "verified_bundle_download": "PASS: Session-scoped GET downloads only the exact persisted VerificationBundle ZIP after SHA-256 and portable manifest validation. New exports use unique bundle-ID filenames so older records survive repeat exports; legacy assurance-ID filenames remain readable. Studio supports downloading immediately or after close/reopen, including read-only sessions. Focused Python evidence and integrity tests 44 passed, frontend unit 81 passed, TypeScript/Vite build and two real Playwright routes passed. Action inventory also includes the previously missing saved-study navigation. Diff check passed.",
     "declared_train_only_scaling": "PASS: Studio/API choose none, standard, or minmax with standard as the legacy default; core runtime fits scaling on TRAIN, freezes mode/parameters in preprocessing and TrainingRun, StudyJob carries the exact mode, and final-test replay reconstructs it. Focused Training/runtime Python: 58 passed; frontend unit: 81 passed; TypeScript/Vite build and one real Studio close/reopen E2E passed; compileall and diff check passed. Full suites deferred to release QA for this resource-aware slice.",
     "profile_column_role_selection": "PASS: inspected CSV/XLSX column tables allow direct target/ID/excluded/feature choice; the same DatasetContract is persisted, and roles reopen identically. TypeScript/Vite build passed; 3 focused profile/first-project browser checks and 5 import-recovery browser checks passed. No scientific backend semantics changed.",
     "explicit_model_feature_exclusion": "PASS: DatasetContract persists distinct excluded role, API CSV/XLSX accepts it, training omits excluded features, project/bundle integrity fail closed, Studio displays and reopens the choice. Focused Python dataset/integrity/evidence tests: 69 passed; TypeScript/Vite build and focused real Studio close/reopen E2E passed. No full suite run for this resource-aware slice.",

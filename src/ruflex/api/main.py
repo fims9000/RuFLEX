@@ -11,9 +11,10 @@ import yaml
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.responses import JSONResponse, PlainTextResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ValidationError
 
 from uuid import UUID
 from typing import Any, Literal
@@ -1523,6 +1524,17 @@ def get_verification_bundle_route(session_id: UUID, bundle_id: UUID) -> Verifica
     try: return load_verification_bundle_record(service.get(session_id).project.root, str(bundle_id))
     except ProjectError as error: raise _project_error(error) from error
     except FileNotFoundError as error: raise HTTPException(status_code=404, detail=f"VerificationBundle not found: {bundle_id}") from error
+
+
+@app.get("/api/projects/{session_id}/evidence/verification-bundles/{bundle_id}/download")
+def download_verification_bundle_route(session_id: UUID, bundle_id: UUID) -> Response:
+    from ruflex.application.verification_bundle import load_verified_verification_bundle_bytes
+    try:
+        payload = load_verified_verification_bundle_bytes(service.get(session_id).project.root, str(bundle_id))
+    except ProjectError as error: raise _project_error(error) from error
+    except FileNotFoundError as error: raise HTTPException(status_code=404, detail=f"VerificationBundle not found: {bundle_id}") from error
+    except (ValidationError, ValueError, OSError) as error: raise HTTPException(status_code=409, detail=f"VerificationBundle cannot be downloaded: {error}") from error
+    return Response(content=payload, media_type="application/zip", headers={"Content-Disposition": f'attachment; filename="ruflex-verification-bundle-{bundle_id}.zip"'})
 
 
 @app.post("/api/projects/evidence/verification-bundle-jobs", response_model=Job, status_code=202)

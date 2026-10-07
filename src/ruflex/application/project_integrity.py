@@ -2183,7 +2183,9 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                 bundle = VerificationBundle.model_validate_json(path.read_text(encoding="utf-8"))
                 if path.stem != str(bundle.bundle_id):
                     raise ValueError("VerificationBundle filename does not match its persisted identity.")
-                archive_path = base / "exports" / f"verification-bundle-{bundle.assurance_id}.zip"
+                archive_path = base / "exports" / f"verification-bundle-{bundle.bundle_id}.zip"
+                if not archive_path.is_file():
+                    archive_path = base / "exports" / f"verification-bundle-{bundle.assurance_id}.zip"  # legacy exports
                 if bundle.assurance_id not in assurance_cases or not archive_path.is_file():
                     raise ValueError("VerificationBundle does not resolve to its AssuranceCase and exported archive.")
                 if hashlib.sha256(archive_path.read_bytes()).hexdigest() != bundle.sha256:

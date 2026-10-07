@@ -702,9 +702,30 @@ def test_verification_bundle_validates_portably_and_fails_closed_on_tampering(tm
     bundle_path = Path(exported.json()["path"])
     valid = validate_verification_bundle(bundle_path)
     assert valid.status == "PASS", valid.errors
+    bundle_id = exported.json()["bundle_id"]
+    downloaded = client.get(f"/api/projects/{session_id}/evidence/verification-bundles/{bundle_id}/download")
+    assert downloaded.status_code == 200, downloaded.text
+    assert downloaded.headers["content-type"] == "application/zip"
+    assert downloaded.content == bundle_path.read_bytes()
+    assert hashlib.sha256(downloaded.content).hexdigest() == exported.json()["sha256"]
+    client.post("/api/projects/close", json={"session_id": session_id})
+    reopened = client.post("/api/projects/open", json={"path": str(root), "read_only": True}).json()["session_id"]
+    assert client.get(f"/api/projects/{reopened}/evidence/verification-bundles/{bundle_id}/download").content == downloaded.content
+    assert client.get(f"/api/projects/{reopened}/evidence/verification-bundles/{'0' * 8}-0000-0000-0000-000000000000/download").status_code == 404
     api_valid = client.post("/api/verification-bundles/validate", json={"path": str(bundle_path)})
     assert api_valid.status_code == 200 and api_valid.json()["status"] == "PASS"
     assert validate_bundle(bundle_path).status == "PASS"
+    bundle_path.write_bytes(bundle_path.read_bytes() + b"tampered")
+    rejected = client.get(f"/api/projects/{reopened}/evidence/verification-bundles/{bundle_id}/download")
+    assert rejected.status_code == 409
+    bundle_path.write_bytes(downloaded.content)
+    writable = client.post("/api/projects/open", json={"path": str(root), "read_only": False}).json()["session_id"]
+    second = client.post("/api/projects/evidence/verification-bundles", json={"session_id": writable})
+    assert second.status_code == 201, second.text
+    assert second.json()["bundle_id"] != bundle_id
+    assert second.json()["path"] != str(bundle_path)
+    assert client.get(f"/api/projects/{reopened}/evidence/verification-bundles/{bundle_id}/download").content == downloaded.content
+    assert client.get(f"/api/projects/{writable}/integrity").json()["status"] == "PASS"
     extracted = tmp_path / "fresh-root"; shutil.unpack_archive(bundle_path, extracted, "zip")
     assert validate_verification_bundle(extracted).status == "PASS"
     report_copy = tmp_path / "report-tamper"

@@ -248,6 +248,15 @@ async function requestText(path: string): Promise<string> {
   return response.text();
 }
 
+async function requestBlob(path: string): Promise<Blob> {
+  const response = await fetch(`${apiBase}${path}`);
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw productApiError(response.status, payload);
+  }
+  return response.blob();
+}
+
 export const studioApi = {
   health: () => request<{ status: string }>("/api/health"),
   getModelCatalog: () => request<ModelCatalogEntry[]>("/api/model-catalog"),
@@ -579,6 +588,7 @@ export const studioApi = {
   getAssuranceCase: (sessionId: string, assuranceId: string) => request<AssuranceCase>(`/api/projects/${sessionId}/evidence/assurance-cases/${assuranceId}`),
   exportVerificationBundle: (sessionId: string) => request<{ path: string; sha256: string; entry_count: number }>("/api/projects/evidence/verification-bundles", { session_id: sessionId }),
   getVerificationBundle: (sessionId: string, bundleId: string) => request<VerificationBundle>(`/api/projects/${sessionId}/evidence/verification-bundles/${bundleId}`),
+  downloadVerificationBundle: (sessionId: string, bundleId: string) => requestBlob(`/api/projects/${sessionId}/evidence/verification-bundles/${bundleId}/download`),
   startVerificationBundleJob: (sessionId: string, executionBackendKey = "local_executor") => request<ProductJob>("/api/projects/evidence/verification-bundle-jobs", { session_id: sessionId, execution_backend_key: executionBackendKey }),
   validateVerificationBundle: (path: string) => request<VerificationBundleValidation>("/api/verification-bundles/validate", { path }),
   runMultiSeedStudy: (

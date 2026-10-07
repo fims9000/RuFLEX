@@ -649,7 +649,28 @@ def _declarative_paths(base: Path) -> list[Path]:
 
 def load_verification_bundle_record(root: Path, bundle_id: str) -> VerificationBundle:
     path = Path(root).resolve() / "evidence" / "verification-bundles" / f"{bundle_id}.json"
-    return VerificationBundle.model_validate_json(path.read_text(encoding="utf-8"))
+    record = VerificationBundle.model_validate_json(path.read_text(encoding="utf-8"))
+    if str(record.bundle_id) != bundle_id:
+        raise ValueError("VerificationBundle record identity does not match its filename.")
+    return record
+
+
+def load_verified_verification_bundle_bytes(root: Path, bundle_id: str) -> bytes:
+    """Return only the persisted, inspection-first ZIP bound to this project record."""
+    base = Path(root).resolve()
+    record = load_verification_bundle_record(base, bundle_id)
+    archive = base / "exports" / f"verification-bundle-{record.bundle_id}.zip"
+    if not archive.is_file():
+        archive = base / "exports" / f"verification-bundle-{record.assurance_id}.zip"  # legacy exports
+    payload = archive.read_bytes()
+    if _sha(payload) != record.sha256:
+        raise ValueError("VerificationBundle archive checksum does not match its persisted record.")
+    validation = validate_verification_bundle(archive)
+    if (validation.status != "PASS" or validation.bundle_sha256 != record.sha256
+            or validation.manifest_sha256 != record.manifest_sha256
+            or validation.checked_entries + 2 != record.entry_count):
+        raise ValueError("VerificationBundle archive failed persisted integrity validation.")
+    return payload
 
 
 def export_verification_bundle(root: Path) -> dict:
@@ -671,10 +692,11 @@ def export_verification_bundle(root: Path) -> dict:
     contents["verification-manifest.json"] = manifest_bytes
     contents["verification-manifest.sha256"] = f"{_sha(manifest_bytes)}  verification-manifest.json\n".encode()
     out = base / "exports"; out.mkdir(parents=True, exist_ok=True)
-    bundle = out / f"verification-bundle-{assurance.assurance_id}.zip"
+    object_ = VerificationBundle(assurance_id=assurance.assurance_id, sha256="", entry_count=len(contents), manifest_sha256=_sha(manifest_bytes), excluded=_EXCLUDED)
+    bundle = out / f"verification-bundle-{object_.bundle_id}.zip"
     with zipfile.ZipFile(bundle, "w", zipfile.ZIP_DEFLATED) as archive:
         for name, data in sorted(contents.items()): archive.writestr(name, data)
-    object_ = VerificationBundle(assurance_id=assurance.assurance_id, sha256=_sha(bundle.read_bytes()), entry_count=len(contents), manifest_sha256=_sha(manifest_bytes), excluded=_EXCLUDED)
+    object_.sha256 = _sha(bundle.read_bytes())
     evidence_root = base / "evidence" / "verification-bundles"; evidence_root.mkdir(parents=True, exist_ok=True)
     _atomic_write_text(evidence_root / f"{object_.bundle_id}.json", object_.model_dump_json(indent=2))
     _atomic_write_text(evidence_root / "active-bundle.json", json.dumps({"bundle_id": str(object_.bundle_id), "path": str(bundle)}))

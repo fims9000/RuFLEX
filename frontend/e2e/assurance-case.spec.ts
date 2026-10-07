@@ -14,6 +14,12 @@ test("PRODUCT-10 persists AssuranceCase independent gates without a trust score"
   await page.route("**/api/projects/evidence/verification-bundle-jobs", async (route) => { if (route.request().method() === "POST") bundleJobPosts += 1; await route.continue(); });
   await page.getByRole("button",{name:"Export and validate bundle",exact:true}).evaluate((button) => { button.dispatchEvent(new MouseEvent("click", { bubbles: true })); button.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
   await expect(page.getByTestId("verification-bundle")).toContainText("SHA-256"); await expect(page.getByTestId("verification-bundle")).toContainText("Portable validation"); await expect(page.getByTestId("verification-bundle")).toContainText("PASS");
+  await expect(page.getByTestId("verification-bundle-record")).toContainText("Persisted VerificationBundle");
+  const firstDownloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download verified ZIP" }).click();
+  const firstDownload = await firstDownloadPromise;
+  expect(firstDownload.suggestedFilename()).toMatch(/^ruflex-verification-bundle-[0-9a-f-]+\.zip$/);
+  expect(await firstDownload.failure()).toBeNull();
   expect(bundleJobPosts).toBe(1);
   await page.getByRole("button",{name:"Close",exact:true}).click(); await page.getByLabel("Project path").fill(path); await page.getByRole("button",{name:"Open project",exact:true}).click(); await page.getByRole("button",{name:"E",exact:true}).click(); await expect(page.getByTestId("assurance-case")).toContainText("dataset contract");
   await page.getByRole("button",{name:"P",exact:true}).click();
@@ -23,4 +29,9 @@ test("PRODUCT-10 persists AssuranceCase independent gates without a trust score"
   await page.getByRole("button",{name:"P",exact:true}).click();
   const bundleNode = page.locator(".lineage-verification_bundle").first(); await expect(bundleNode).toBeVisible(); await bundleNode.click({force:true});
   await expect(page.getByTestId("verification-bundle-record")).toContainText("Persisted VerificationBundle");
+  const reopenedDownloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download verified ZIP" }).click();
+  const reopenedDownload = await reopenedDownloadPromise;
+  expect(reopenedDownload.suggestedFilename()).toBe(firstDownload.suggestedFilename());
+  expect(await reopenedDownload.failure()).toBeNull();
 });
