@@ -204,15 +204,16 @@
     "alpha_stability_analysis_exact_run_support_integrity",
     "alpha_stability_analysis_case_recomputation_integrity",
     "alpha_stability_analysis_aggregate_provenance_integrity",
-    "alpha_stability_gate_recomputed_decisions_and_risk_coverage_integrity"
+    "alpha_stability_gate_recomputed_decisions_and_risk_coverage_integrity",
+    "alpha_final_test_freeze_timestamp_reconstruction_integrity"
   ],
-  "active_capability": "alpha_stability_gate_recomputed_decisions_and_risk_coverage_integrity",
+  "active_capability": "alpha_final_test_freeze_timestamp_reconstruction_integrity",
   "active_acceptance": [
-    "Project Integrity recomputes every frozen StabilityGate case decision/reason and all NO_REVIEW, RANDOM_REVIEW, CONFIDENCE_ONLY, and STABILITY_AWARE risk-coverage summaries from the validated StabilityAnalysis.",
-    "Tampered selected-run agreement, disposition, reason, or risk summary fails closed while confidence and random comparators remain deterministic."
+    "FinalTestEvaluation policy_frozen_at equals the exact maximum creation timestamp of its bound run/evaluation/policy objects.",
+    "Every Stability Gate analysis and support run predates gate creation and first test unlock; malformed or late timestamps fail closed."
   ],
   "blockers": [],
-  "next_executable_work": "Audit whether final-test unlock and policy-freeze timestamps are reconstructed exactly from all referenced frozen objects; preserve unrelated article files.",
+  "next_executable_work": "Audit dataset-revision-scoped first-unlock consistency across multiple FinalTestEvaluations; preserve unrelated article files.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -420,6 +421,7 @@
     "alpha_stability_analysis_exact_run_support_integrity": "PASS: Project Integrity rejects duplicate participants in StabilityAnalysis.run_ids and requires schema-v3 run order to match its frozen TrainingStudy. Regression confirms valid gate chain PASS and duplicated participant FAIL.",
     "alpha_stability_analysis_case_recomputation_integrity": "PASS: Project Integrity recomputes per-case probability mappings, class labels, selected/majority agreement, dispersion summaries, validation identity/alignment, and HCIR counts/rate from canonical run predictions and the frozen threshold. A tampered selected-run agreement is rejected; tests/test_project_integrity.py: 14 passed; compileall, task-state JSON parse, and git diff --check passed.",
     "alpha_stability_analysis_aggregate_provenance_integrity": "PASS: Project Integrity recomputes all persisted aggregate metric distributions and binds StabilityAnalysis mode, dataset/artifact, model/task, split/training seeds, and case source identities to canonical TrainingStudy runs. Regression rejects a forged F1 mean and altered training-seed provenance; tests/test_project_integrity.py: 14 passed, compileall and diff checks passed.",
-    "alpha_stability_gate_recomputed_decisions_and_risk_coverage_integrity": "PASS: Project Integrity re-derives ordered gate case reasons/dispositions and all four deterministic risk-coverage rows from frozen analysis cases and policy thresholds. Regression rejects altered selected-run agreement in a case decision and forged no-review risk; tests/test_project_integrity.py: 14 passed, compileall and diff checks passed."
+    "alpha_stability_gate_recomputed_decisions_and_risk_coverage_integrity": "PASS: Project Integrity re-derives ordered gate case reasons/dispositions and all four deterministic risk-coverage rows from frozen analysis cases and policy thresholds. Regression rejects altered selected-run agreement in a case decision and forged no-review risk; tests/test_project_integrity.py: 14 passed, compileall and diff checks passed.",
+    "alpha_final_test_freeze_timestamp_reconstruction_integrity": "PASS: Project Integrity reconstructs policy_frozen_at as the exact maximum creation time of bound objects, requires Stability Analysis/support runs to predate Gate creation, and requires frozen sources to predate first test unlock. Regressions forge late gate/analysis creation and a false frozen timestamp; tests/test_project_integrity.py: 14 passed, compileall and diff checks passed."
   }
 }

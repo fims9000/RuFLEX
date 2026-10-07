@@ -335,6 +335,39 @@ def _stability_gate_evidence_matches(policy: StabilityGatePolicy, analysis: Stud
     return True
 
 
+def _final_test_freeze_timestamps_match(
+    final_test: FinalTestEvaluation,
+    run,
+    evaluation: AnalysisEvaluation | None,
+    threshold: DecisionThresholdPolicy | None,
+    calibration: CalibrationTransform | None,
+    selective_policy: SelectivePredictionPolicy | None,
+    stability_policy: StabilityGatePolicy | None,
+    stability_analysis: StudyStabilityAnalysis | None,
+    stability_runs: list,
+) -> bool:
+    unlock = final_test.dataset_test_unlock_at
+    frozen_at = final_test.policy_frozen_at
+    if unlock is None or frozen_at is None or run is None or evaluation is None:
+        return False
+    source_objects = [run, evaluation, threshold, calibration, selective_policy, stability_policy]
+    source_times = [item.created_at for item in source_objects if item is not None]
+    protected_times = list(source_times)
+    if stability_policy is not None:
+        if stability_analysis is None or stability_policy.frozen_at < stability_policy.created_at:
+            return False
+        if stability_analysis.created_at > stability_policy.created_at:
+            return False
+        if any(item.created_at > stability_policy.created_at for item in stability_runs):
+            return False
+        protected_times.extend([stability_policy.frozen_at, stability_analysis.created_at])
+        protected_times.extend(item.created_at for item in stability_runs)
+    timestamps = [unlock, frozen_at, *protected_times]
+    if any(item.tzinfo is None or item.utcoffset() is None for item in timestamps):
+        return False
+    return frozen_at == max(source_times) and all(item <= unlock for item in protected_times)
+
+
 def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
     """Inspect persisted evidence without reopening or retraining artifacts.
 
@@ -880,6 +913,8 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                     calibration = calibrations.get(final_test.calibration_id) if final_test.calibration_id else None
                     selective_policy = selective_policies.get(final_test.selective_policy_id) if final_test.selective_policy_id else None
                     stability_policy = stability_policies.get(final_test.stability_gate_policy_id) if final_test.stability_gate_policy_id else None
+                    stability_analysis = None if stability_policy is None else stability_analyses.get(stability_policy.stability_analysis_id)
+                    stability_runs = [] if stability_policy is None else [runs_by_id[run_id] for run_id in stability_policy.run_ids if run_id in runs_by_id]
                     source_rows = [int(row.source_row) for row in final_test.prediction_rows if row.source_row is not None]
                     row_identities = [row.row_identity or row_identity(final_test.dataset_fingerprint, int(row.source_row)) for row in final_test.prediction_rows if row.source_row is not None]
                     expected_case_identity = _stable_identity("final-test-cases", {"dataset_fingerprint": final_test.dataset_fingerprint, "row_identities": sorted(row_identities)})
@@ -921,6 +956,7 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                         or not identity_hashes_match
                         or final_test.policy_frozen_at is None
                         or final_test.dataset_test_unlock_at is None
+                        or not _final_test_freeze_timestamps_match(final_test, run, evaluation, threshold, calibration, selective_policy, stability_policy, stability_analysis, stability_runs)
                         or (final_test.policy_frozen_at is not None and final_test.dataset_test_unlock_at is not None and final_test.policy_frozen_at > final_test.dataset_test_unlock_at)
                         or (run is not None and final_test.dataset_test_unlock_at is not None and run.created_at > final_test.dataset_test_unlock_at)
                         or (

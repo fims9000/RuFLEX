@@ -171,8 +171,30 @@ def test_project_integrity_validates_frozen_stability_analysis_and_gate_chain(tm
         assert any(issue["code"] == "FINAL_TEST_PROVENANCE_MISMATCH" for issue in late_run["issues"])
         run_payload["created_at"] = original_run_created_at
         run_path.write_text(json.dumps(run_payload), encoding="utf-8")
+    policy_path = root / "analyses" / "stability-policies" / f"{policy_response.json()['policy_id']}.json"
+    policy_payload = json.loads(policy_path.read_text(encoding="utf-8"))
+    original_policy_created_at = policy_payload["created_at"]
+    policy_payload["created_at"] = "2099-01-01T00:00:00Z"
+    policy_path.write_text(json.dumps(policy_payload), encoding="utf-8")
+    late_gate_creation = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert any(issue["code"] == "FINAL_TEST_PROVENANCE_MISMATCH" for issue in late_gate_creation["issues"])
+    policy_payload["created_at"] = original_policy_created_at
+    policy_path.write_text(json.dumps(policy_payload), encoding="utf-8")
+    original_analysis_created_at = analysis_payload["created_at"]
+    analysis_payload["created_at"] = "2099-01-01T00:00:00Z"
+    analysis_path.write_text(json.dumps(analysis_payload), encoding="utf-8")
+    late_analysis_creation = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert any(issue["code"] == "FINAL_TEST_PROVENANCE_MISMATCH" for issue in late_analysis_creation["issues"])
+    analysis_payload["created_at"] = original_analysis_created_at
+    analysis_path.write_text(json.dumps(analysis_payload), encoding="utf-8")
     final_test_path = root / "analyses" / "final-tests" / f"{final_test.json()['final_test_id']}.json"
     final_test_payload = json.loads(final_test_path.read_text(encoding="utf-8"))
+    original_policy_frozen_at = final_test_payload["policy_frozen_at"]
+    final_test_payload["policy_frozen_at"] = "2000-01-01T00:00:00Z"
+    final_test_path.write_text(json.dumps(final_test_payload), encoding="utf-8")
+    forged_freeze_time = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert any(issue["code"] == "FINAL_TEST_PROVENANCE_MISMATCH" for issue in forged_freeze_time["issues"])
+    final_test_payload["policy_frozen_at"] = original_policy_frozen_at
     original_selected_class = final_test_payload["stability_gate_evidence"]["cases"][0]["selected_run_class"]
     final_test_payload["stability_gate_evidence"]["cases"][0]["selected_run_class"] = 1 - original_selected_class
     final_test_path.write_text(json.dumps(final_test_payload), encoding="utf-8")
