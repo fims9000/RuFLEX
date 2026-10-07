@@ -108,8 +108,19 @@ def test_project_integrity_validates_frozen_stability_analysis_and_gate_chain(tm
 
     policy_path = root / "analyses" / "stability-policies" / f"{policy_response.json()['policy_id']}.json"
     payload = json.loads(policy_path.read_text(encoding="utf-8"))
+    payload["policy_id"] = "00000000-0000-0000-0000-000000000002"
+    policy_path.write_text(json.dumps(payload), encoding="utf-8")
+    mismatched_policy = client.get(f"/api/projects/{session_id}/analyses/stability-policies/{policy_response.json()['policy_id']}")
+    assert mismatched_policy.status_code == 422
+    payload["policy_id"] = policy_response.json()["policy_id"]
     payload["class_threshold_id"] = "00000000-0000-0000-0000-000000000001"
     policy_path.write_text(json.dumps(payload), encoding="utf-8")
+    analysis_path = root / "analyses" / "stability-analyses" / f"{analysis['analysis_id']}.json"
+    analysis_payload = json.loads(analysis_path.read_text(encoding="utf-8"))
+    analysis_payload["analysis_id"] = "00000000-0000-0000-0000-000000000003"
+    analysis_path.write_text(json.dumps(analysis_payload), encoding="utf-8")
+    mismatched_analysis = client.get(f"/api/projects/{session_id}/analyses/stability/{analysis['analysis_id']}")
+    assert mismatched_analysis.status_code == 422
     report = client.get(f"/api/projects/{session_id}/integrity").json()
 
     assert report["status"] == "FAIL"

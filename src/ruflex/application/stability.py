@@ -144,7 +144,16 @@ def create_study_stability_analysis(project_root: Path, study_id: UUID, *, evalu
 
 
 def load_study_stability_analysis(project_root: Path, analysis_id: UUID) -> StudyStabilityAnalysis:
-    return StudyStabilityAnalysis.model_validate_json((_root(project_root, "stability-analyses") / f"{analysis_id}.json").read_text())
+    path = _root(project_root, "stability-analyses") / f"{analysis_id}.json"
+    try:
+        analysis = StudyStabilityAnalysis.model_validate_json(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        raise
+    except (ValueError, OSError) as error:
+        raise TrainingError(f"Persisted Stability Analysis {analysis_id} is malformed or unreadable.") from error
+    if analysis.analysis_id != analysis_id:
+        raise TrainingError("Persisted Stability Analysis identity does not match the requested object ID.")
+    return analysis
 
 
 def list_study_stability_analyses(project_root: Path) -> list[StudyStabilityAnalysis]:
@@ -217,7 +226,16 @@ def create_stability_gate_policy(project_root: Path, analysis_id: UUID, evaluati
 
 
 def load_stability_gate_policy(project_root: Path, policy_id: UUID) -> StabilityGatePolicy:
-    return StabilityGatePolicy.model_validate_json((_root(project_root, "stability-policies") / f"{policy_id}.json").read_text())
+    path = _root(project_root, "stability-policies") / f"{policy_id}.json"
+    try:
+        policy = StabilityGatePolicy.model_validate_json(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        raise
+    except (ValueError, OSError) as error:
+        raise TrainingError(f"Persisted Stability Gate policy {policy_id} is malformed or unreadable.") from error
+    if policy.policy_id != policy_id:
+        raise TrainingError("Persisted Stability Gate policy identity does not match the requested object ID.")
+    return policy
 
 
 def list_stability_gate_policies(project_root: Path) -> list[StabilityGatePolicy]:

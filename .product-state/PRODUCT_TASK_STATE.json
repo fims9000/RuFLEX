@@ -190,12 +190,13 @@
     "alpha_validation_evaluation_project_integrity",
     "alpha_validation_policy_chain_project_integrity",
     "alpha_stability_chain_project_integrity",
-    "alpha_final_test_project_integrity"
+    "alpha_final_test_project_integrity",
+    "alpha_stability_exact_reopen_identity"
   ],
-  "active_capability": "alpha_final_test_project_integrity",
+  "active_capability": "alpha_stability_exact_reopen_identity",
   "active_acceptance": [
-    "Project Integrity validates FinalTestEvaluation against its validation Evaluation, TrainingRun, dataset/model/preprocessing, and frozen threshold/policy references.",
-    "Final-test result identity, test case count, freeze/unlock timestamps, and active pointer must resolve consistently."
+    "Exact Stability Analysis and Gate reads validate requested IDs against immutable object IDs.",
+    "Malformed or mismatched Stability objects return typed integrity errors rather than successful unrelated evidence or generic server failures."
   ],
   "blockers": [],
   "next_executable_work": "Continue resource-aware alpha audit of persisted validation/final-test object provenance and retry boundaries, preserving unrelated article files.",
@@ -392,6 +393,7 @@
     "alpha_validation_evaluation_project_integrity": "PASS: Project Integrity now validates persisted validation Evaluations against their TrainingRun, model, dataset, preprocessing and complete validation predictions, plus active pointer resolution. Tampered run binding reports FAIL; focused integrity/training/stability/runtime suites passed.",
     "alpha_validation_policy_chain_project_integrity": "PASS: Project Integrity resolves calibrations, thresholds and selective policies back to their exact validation Evaluation and each other, and checks active-pointer targets. A complete Evaluation/calibration/threshold/selective chain reopens PASS; focused project-integrity suite passed.",
     "alpha_stability_chain_project_integrity": "PASS: Project Integrity validates Stability Analysis/Gate bindings against the persisted Study, selected Evaluation, exact raw threshold and matching case/run support, including active pointers. Complete chain reports PASS; a corrupted Gate threshold binding reports FAIL; focused regression passed.",
-    "alpha_final_test_project_integrity": "PASS: Project Integrity validates FinalTestEvaluation identity and case count, freeze/unlock timestamps, exact validation Evaluation/run/dataset/model/preprocessing, and frozen threshold/calibration/selective/Stability policy bindings. Full validation-to-Stability-to-final-test chain reports PASS; focused regression passed."
+    "alpha_final_test_project_integrity": "PASS: Project Integrity validates FinalTestEvaluation identity and case count, freeze/unlock timestamps, exact validation Evaluation/run/dataset/model/preprocessing, and frozen threshold/calibration/selective/Stability policy bindings. Full validation-to-Stability-to-final-test chain reports PASS; focused regression passed.",
+    "alpha_stability_exact_reopen_identity": "PASS: Exact Stability Analysis and Gate API reads validate the requested ID against the persisted immutable object and return typed 422 integrity errors for malformed or mismatched objects. Corruption regressions for both IDs pass."
   }
 }

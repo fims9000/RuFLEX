@@ -1759,12 +1759,15 @@ def list_study_stability_analyses_route(session_id: UUID) -> list[StudyStability
 @app.get("/api/projects/{session_id}/analyses/stability/{analysis_id}", response_model=StudyStabilityAnalysis)
 def get_study_stability_analysis_route(session_id: UUID, analysis_id: UUID) -> StudyStabilityAnalysis:
     from ruflex.application.stability import load_study_stability_analysis
+    from ruflex.application.training import TrainingError
     try:
         return load_study_stability_analysis(service.get(session_id).project.root, analysis_id)
     except ProjectError as error:
         raise _project_error(error) from error
     except FileNotFoundError as error:
         raise HTTPException(status_code=404, detail="Study Stability Analysis not found.") from error
+    except (TrainingError, ValueError) as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
 
 
 @app.post("/api/projects/analyses/stability-policies", response_model=StabilityGatePolicy, status_code=201)
@@ -1794,12 +1797,15 @@ def list_stability_gate_policies_route(session_id: UUID) -> list[StabilityGatePo
 @app.get("/api/projects/{session_id}/analyses/stability-policies/{policy_id}", response_model=StabilityGatePolicy)
 def get_stability_gate_policy_route(session_id: UUID, policy_id: UUID) -> StabilityGatePolicy:
     from ruflex.application.stability import load_stability_gate_policy
+    from ruflex.application.training import TrainingError
     try:
         return load_stability_gate_policy(service.get(session_id).project.root, policy_id)
     except ProjectError as error:
         raise _project_error(error) from error
     except FileNotFoundError as error:
         raise HTTPException(status_code=404, detail=f"Stability Gate policy not found: {policy_id}") from error
+    except (TrainingError, ValueError) as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
 
 
 @app.post("/api/projects/analyses/stability-policies/apply", response_model=StabilityGateApplication)
