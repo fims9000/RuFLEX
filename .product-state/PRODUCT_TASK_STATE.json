@@ -214,15 +214,16 @@
     "alpha_validation_threshold_selection_recomputation_integrity",
     "alpha_validation_calibration_output_integrity",
     "alpha_validation_selective_curve_integrity",
-    "alpha_explanation_check_summary_integrity"
+    "alpha_explanation_check_summary_integrity",
+    "alpha_explanation_check_component_integrity"
   ],
-  "active_capability": "alpha_explanation_check_summary_integrity",
+  "active_capability": "alpha_explanation_check_component_integrity",
   "active_acceptance": [
-    "Persisted ExplanationCheck overall status equals the deterministic aggregation of component statuses.",
-    "Persisted ExplanationCheck component names are unique and validator identity bindings are internally consistent."
+    "Contract-derived ExplanationCheck identity and numerical-completeness components match the frozen ExplanationContract and TrainingRun.",
+    "Integrity inspection performs no explainer replay or fitting while validating those deterministic components."
   ],
   "blockers": [],
-  "next_executable_work": "Audit persisted explanation checks against deterministic ExplanationContract identity/completeness facts without replaying external explainers; preserve unrelated article files.",
+  "next_executable_work": "Continue lightweight project-integrity audit for persisted evidence summaries that can be independently recomputed without running models or external explainers; preserve unrelated article files.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -440,6 +441,7 @@
     "alpha_validation_threshold_selection_recomputation_integrity": "PASS: Project Integrity recomputes the 0.01-0.99 frozen validation F1 sweep and deterministic tie-break, then verifies threshold value, objective, selection score, candidate rule, fit identity, metric/confusion summary and ordered per-case decisions. A forged selection_result is rejected; tests/test_project_integrity.py: 14 passed, compileall and diff checks passed.",
     "alpha_validation_calibration_output_integrity": "PASS: Project Integrity binds Platt calibration sample identity/count and every row output to the exact validation Evaluation, recomputes raw/calibrated probabilities from persisted logits and coefficients, and verifies Brier/ECE/bin diagnostics without fitting. A forged Brier-after summary is rejected; tests/test_project_integrity.py: 14 passed, compileall and diff checks passed.",
     "alpha_validation_selective_curve_integrity": "PASS: Project Integrity recomputes selective policy validation fit identity, source split/source kind, and all 10 frozen confidence risk-coverage points from persisted Evaluation/threshold/calibration evidence. Raw and calibrated policies reopen cleanly; forged accepted count and fit identity fail closed; tests/test_project_integrity.py: 14 passed, compileall and diff checks passed.",
-    "alpha_explanation_check_summary_integrity": "PASS: ExplanationCheck overall state is recomputed from component statuses; duplicate component names and inconsistent validator bindings fail closed. Tampered summary status rejected in persisted API project; tests/test_project_integrity.py: 15 passed."
+    "alpha_explanation_check_summary_integrity": "PASS: ExplanationCheck overall state is recomputed from component statuses; duplicate component names and inconsistent validator bindings fail closed. Tampered summary status rejected in persisted API project; tests/test_project_integrity.py: 15 passed.",
+    "alpha_explanation_check_component_integrity": "PASS: Contract-derived ExplanationCheck identity and numerical-completeness results are re-derived from the persisted ExplanationContract/TrainingRun without replaying explainers. Valid check reopen passes; internally consistent forged overall/component statuses are rejected; tests/test_project_integrity.py: 15 passed, compileall/json/diff checks passed."
   }
 }

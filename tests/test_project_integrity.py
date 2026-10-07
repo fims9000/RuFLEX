@@ -533,6 +533,8 @@ def test_project_integrity_rejects_explanation_check_summary_tampering(tmp_path:
     explanation = client.post("/api/projects/evidence/explanations/occlusion", json={"session_id": session_id, "run_id": run["run_id"], "sample": {"temperature": 20.0, "torque": 40.0}}).json()
     checked = client.post("/api/projects/evidence/explanation-checks", json={"session_id": session_id, "explanation_id": explanation["explanation_id"]})
     assert checked.status_code == 201, checked.text
+    initial_report = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert initial_report["status"] == "PASS", initial_report["issues"]
     check_id = checked.json()["check_id"]
     check_path = root / "evidence" / "explanation-checks" / f"{check_id}.json"
     payload = json.loads(check_path.read_text(encoding="utf-8"))
@@ -544,6 +546,14 @@ def test_project_integrity_rejects_explanation_check_summary_tampering(tmp_path:
 
     assert report["status"] == "FAIL"
     assert any(issue["code"] == "EXPLANATION_CHECK_SUMMARY_MISMATCH" for issue in report["issues"])
+    payload["status"] = original_status
+    model_identity = next(item for item in payload["checks"] if item["name"] == "model_identity")
+    model_identity["status"] = "FAIL"
+    payload["status"] = "FAILED"
+    check_path.write_text(json.dumps(payload), encoding="utf-8")
+    forged_component = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert forged_component["status"] == "FAIL"
+    assert any(issue["code"] == "EXPLANATION_CHECK_COMPONENT_MISMATCH" for issue in forged_component["issues"])
 
 
 def test_project_integrity_rejects_tampered_runtime_component_provenance(tmp_path: Path) -> None:

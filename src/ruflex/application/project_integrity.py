@@ -604,6 +604,72 @@ def _selective_policy_fit_identity_matches(
     return policy.fit_sample_identity == identity
 
 
+def _explanation_check_frozen_components_match(
+    check: ExplanationCheck,
+    explanation: ExplanationContract,
+    run,
+) -> bool:
+    """Verify deterministic contract-derived checks without replaying explainers."""
+    items = {item.name: item for item in check.checks}
+    if len(items) != len(check.checks):
+        return False
+    preprocessing_identity = _stable_identity("preprocessing", run.normalization)
+    feature_order_identity = _stable_identity("feature-order", list(run.feature_columns))
+    sample_identity = _stable_identity(
+        "explanation-sample",
+        {"run_id": str(run.run_id), "sample": explanation.sample, "target": explanation.target},
+    )
+    reference_identity = _stable_identity(
+        "explanation-reference",
+        {"run_id": str(run.run_id), "method": explanation.method, "reference_definition": explanation.reference_definition},
+    )
+    expected_statuses = {
+        "model_identity": "PASS" if run.model_artifact_sha256 == explanation.model_artifact_sha256 else "FAIL",
+        "preprocessing_identity": "WARN" if explanation.preprocessing_identity is None else ("PASS" if explanation.preprocessing_identity == preprocessing_identity else "FAIL"),
+        "preprocessing_artifact": "WARN" if explanation.preprocessing_artifact_sha256 is None else ("PASS" if explanation.preprocessing_artifact_sha256 == run.preprocessing_artifact_sha256 else "FAIL"),
+        "feature_order_identity": "WARN" if explanation.feature_order_identity is None else ("PASS" if explanation.feature_order_identity == feature_order_identity else "FAIL"),
+        "sample_target_identity": "WARN" if explanation.sample_identity is None else ("PASS" if explanation.sample_identity == sample_identity and explanation.target == run.target else "FAIL"),
+        "reference_identity": "WARN" if explanation.reference_identity is None else ("PASS" if explanation.reference_identity == reference_identity else "FAIL"),
+        "causal_validity": "N/A",
+    }
+    if explanation.completeness_error is None:
+        expected_statuses["additivity"] = "N/A"
+    else:
+        if explanation.base_value is None:
+            return False
+        recomputed_error = abs(explanation.prediction - (explanation.base_value + sum(item.attribution for item in explanation.attributions)))
+        tolerance = 5e-5 if explanation.family == "tree_shap" else (5e-3 if explanation.family in {"integrated_gradients", "shap"} else 5e-2)
+        if not math.isclose(explanation.completeness_error, recomputed_error, rel_tol=1e-10, abs_tol=1e-12):
+            return False
+        expected_statuses["numerical_completeness"] = "PASS" if recomputed_error <= tolerance else "WARN"
+    identity_failed = any(status == "FAIL" for name, status in expected_statuses.items() if name != "causal_validity")
+    repeatability = items.get("repeatability")
+    if repeatability is None or (identity_failed and repeatability.status != "N/A"):
+        return False
+    if not identity_failed and repeatability.status not in {"PASS", "FAIL"}:
+        return False
+    expected_statuses["repeatability"] = repeatability.status
+    categories = {
+        "model_identity": "provenance_identity",
+        "preprocessing_identity": "provenance_identity",
+        "preprocessing_artifact": "provenance_identity",
+        "feature_order_identity": "provenance_identity",
+        "sample_target_identity": "provenance_identity",
+        "reference_identity": "provenance_identity",
+        "repeatability": "replay_integrity",
+        "additivity": "quantitative_quality",
+        "numerical_completeness": "quantitative_quality",
+        "causal_validity": "claim_boundary",
+    }
+    return all(
+        name in items
+        and items[name].status == status
+        and items[name].category == categories[name]
+        and items[name].validator_key == check.validator_key
+        for name, status in expected_statuses.items()
+    ) and set(items) == set(expected_statuses)
+
+
 def _final_test_freeze_timestamps_match(
     final_test: FinalTestEvaluation,
     run,
@@ -1512,6 +1578,9 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                     or (check.validator_key is not None and any(item.validator_key != check.validator_key for item in check.checks))
                 ):
                     issues.append(ProjectIntegrityIssue(code="EXPLANATION_CHECK_SUMMARY_MISMATCH", status="FAIL", path=relative_path, detail="ExplanationCheck summary status, component uniqueness, or validator binding is inconsistent with its persisted check items."))
+                check_run = runs_by_id.get(check.run_id)
+                if check.schema_version >= 3 and explanation is not None and check_run is not None and not _explanation_check_frozen_components_match(check, explanation, check_run):
+                    issues.append(ProjectIntegrityIssue(code="EXPLANATION_CHECK_COMPONENT_MISMATCH", status="FAIL", path=relative_path, detail="Deterministic ExplanationCheck identity/completeness components do not match their persisted ExplanationContract and TrainingRun."))
                 if check.schema_version >= 3 and not all((check.validator_key, check.validator_version, check.validator_provider)):
                     issues.append(ProjectIntegrityIssue(code="VALIDATOR_RUNTIME_BINDING_MISSING", status="FAIL", path=relative_path, detail="A schema-v3 ExplanationCheck is missing validator runtime provenance."))
                 elif check.schema_version >= 3:
