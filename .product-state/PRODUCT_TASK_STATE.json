@@ -332,7 +332,8 @@
     "alpha_slice_draft_completeness_validation",
     "alpha_stability_map_minority_and_na_truthfulness",
     "alpha_stability_project_session_isolation",
-    "alpha_stability_analysis_study_provenance_guard"
+    "alpha_stability_analysis_study_provenance_guard",
+    "alpha_stability_verified_evidence_callback_boundary"
   ],
   "active_capability": "alpha_master_spec_gap_audit",
   "active_acceptance": [
@@ -340,8 +341,9 @@
     "Select the next concrete, low-resource, end-to-end product gap and implement it without broad refactoring."
   ],
   "blockers": [],
-  "next_executable_work": "Continue the bounded product-gap audit after Stability Analysis provenance guarding. Inspect the next cross-workspace persisted-evidence binding or a launch-to-reopen user path; preserve unrelated docs/article edits and avoid full browser matrices until release QA.",
+  "next_executable_work": "Continue the bounded product-gap audit after Stability Lab callback provenance guarding. Inspect the next cross-workspace persisted-evidence binding or a launch-to-reopen user path; preserve unrelated docs/article edits and defer full browser matrices to release QA.",
   "qa": {
+    "stability_verified_evidence_callback_boundary": "PASS: StabilityLab emits only verified active StudyStabilityAnalysis/StabilityGatePolicy (or null) to parent Studio after saved reads; mismatched persisted evidence cannot populate sibling panels via callbacks. Binding/StabilityLab suites 8 passed, TypeScript/Vite build passed, and real Stability Lab browser route passed with injected provenance mismatch, retry, close/reopen, lineage, Assurance and bundle checks.",
     "stability_analysis_study_provenance_guard": "PASS: Studio binds a saved StudyStabilityAnalysis to the selected Study's exact run set, model/task, randomness protocol, dataset fingerprint and source artifact. A mismatched saved analysis is neither plotted nor used for Gate creation; it displays an integrity warning and permits a read retry, not a duplicate write. Binding/StabilityLab suites 7 passed, TypeScript/Vite build passed, and real Stability Lab browser E2E injected a mismatched persisted read then recovered to the exact saved chain.",
     "stability_project_session_isolation": "PASS: ExperimentWorkspace remounts StabilityLab for each project session, dropping local uncertain-save recovery and case selection instead of carrying them into another project. Focused ExperimentWorkspace/StabilityLab component suites 36 passed, TypeScript/Vite build passed, and real Stability Lab browser E2E passed across close/reopen with lineage, Assurance and bundle evidence.",
     "stability_map_minority_and_na_truthfulness": "PASS: Stability Map now spans selected-run agreement 0..1, so confident minority support (1/20) is visible; undefined agreement is omitted rather than plotted as zero and Case Inspector shows N/A. Risk/coverage view labels its full-coverage and matched-count descriptive operating points accurately. StabilityLab component suite 3 passed including 20-run minority regression, TypeScript/Vite build passed, and real fixed-split Stability Lab browser E2E passed with frozen gate, close/reopen, lineage, Assurance and bundle checks.",

@@ -84,6 +84,9 @@ Target branch: `feature/v1.3-data-governance-runtime`.
   model/task, randomness protocol and dataset/source-artifact identities before
   Studio displays it as active. A mismatch is shown as an integrity problem and
   blocks new analysis writes until the saved read is retried or investigated.
+  The same binding controls what Stability Lab publishes to other Studio
+  workspaces; a malformed saved analysis or gate is not exported as active
+  evidence through component callbacks.
 - Project Integrity, Assurance and portable bundles reject missing or malformed
   manual-FIS comparison rows and mismatched semantic-revision provenance.
   A portable bundle excludes raw dataset rows, so it checks the frozen row's

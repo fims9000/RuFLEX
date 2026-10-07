@@ -44,6 +44,12 @@ export function StabilityLab({ project, study, theme, onAnalysisChange, onPolicy
   onPolicyChangeRef.current = onPolicyChange;
   const activeAnalysis = isActiveStudyStabilityAnalysis(analysis, study) ? analysis : null;
   const activePolicy = isActiveStudyStabilityGate(policy, activeAnalysis, study) ? policy : null;
+  useEffect(() => {
+    if (analysisLoadState !== "loading") onAnalysisChangeRef.current?.(analysisLoadState === "loaded" ? activeAnalysis : null);
+  }, [analysisLoadState, activeAnalysis]);
+  useEffect(() => {
+    if (analysisLoadState !== "loading" && policyLoadState !== "loading") onPolicyChangeRef.current?.(analysisLoadState === "loaded" && policyLoadState === "loaded" ? activePolicy : null);
+  }, [analysisLoadState, policyLoadState, activePolicy]);
   function beginMutation(): boolean {
     if (mutationInFlightRef.current) return false;
     mutationInFlightRef.current = true;
@@ -64,12 +70,10 @@ export function StabilityLab({ project, study, theme, onAnalysisChange, onPolicy
       if (!active) return;
       const latest = items.filter((item) => item.study_id === study?.study_id && item.selected_run_id === study.selected_run_id).at(-1) ?? null;
       setAnalysis(latest);
-      onAnalysisChangeRef.current?.(latest);
       setAnalysisLoadState("loaded");
     }).catch((reason: unknown) => {
       if (!active) return;
       setAnalysis(null);
-      onAnalysisChangeRef.current?.(null);
       setAnalysisLoadError(reason instanceof Error ? reason.message : "Saved StudyStabilityAnalysis could not be verified.");
       setAnalysisLoadState("error");
     });
@@ -77,12 +81,10 @@ export function StabilityLab({ project, study, theme, onAnalysisChange, onPolicy
       if (!active) return;
       const latest = items.filter((item) => item.study_id === study?.study_id && item.selected_run_id === study.selected_run_id).at(-1) ?? null;
       setPolicy(latest);
-      onPolicyChangeRef.current?.(latest);
       setPolicyLoadState("loaded");
     }).catch((reason: unknown) => {
       if (!active) return;
       setPolicy(null);
-      onPolicyChangeRef.current?.(null);
       setPolicyLoadError(reason instanceof Error ? reason.message : "Saved StabilityGatePolicy could not be verified.");
       setPolicyLoadState("error");
     });
@@ -107,7 +109,7 @@ export function StabilityLab({ project, study, theme, onAnalysisChange, onPolicy
       const threshold = await studioApi.selectAnalysisThreshold(project.session_id, evaluation.evaluation_id);
       request = { ...request, thresholdId: threshold.threshold_id };
       const next = await studioApi.createStudyStabilityAnalysis(project.session_id, request.studyId, evaluation.evaluation_id, threshold.threshold_id);
-      setAnalysis(next); onAnalysisChange?.(next); setAnalysisLoadState("loaded"); setCaseId(next.cases[0]?.case_id ?? "");
+      setAnalysis(next); setAnalysisLoadState("loaded"); setCaseId(next.cases[0]?.case_id ?? "");
       setBuildRecoveryRequest(null); setBuildRecoveryError(null); setBuildRecoveryNotFound(false);
     }
     catch (reason) {
@@ -120,7 +122,7 @@ export function StabilityLab({ project, study, theme, onAnalysisChange, onPolicy
   }
 
   function completeAnalysisBuild(next: StudyStabilityAnalysis) {
-    setAnalysis(next); onAnalysisChange?.(next); setAnalysisLoadState("loaded"); setCaseId(next.cases[0]?.case_id ?? "");
+    setAnalysis(next); setAnalysisLoadState("loaded"); setCaseId(next.cases[0]?.case_id ?? "");
     setBuildRecoveryRequest(null); setBuildRecoveryError(null); setBuildRecoveryNotFound(false);
   }
 
@@ -209,7 +211,7 @@ export function StabilityLab({ project, study, theme, onAnalysisChange, onPolicy
 
   async function submitGate(request: { analysisId: string; evaluationId: string }) {
     const next = await studioApi.createStabilityGatePolicy(project.session_id, request.analysisId, request.evaluationId, .9, .8, .15);
-    setPolicy(next); onPolicyChange?.(next); setPolicyLoadState("loaded"); setGateRecoveryRequest(null); setGateRecoveryError(null); setGateRecoveryNotFound(false);
+    setPolicy(next); setPolicyLoadState("loaded"); setGateRecoveryRequest(null); setGateRecoveryError(null); setGateRecoveryNotFound(false);
   }
 
   async function recoverGate() {
@@ -219,7 +221,7 @@ export function StabilityLab({ project, study, theme, onAnalysisChange, onPolicy
       const policies = await studioApi.listStabilityGatePolicies(project.session_id);
       const saved = policies.find((item) => item.stability_analysis_id === gateRecoveryRequest.analysisId && item.evaluation_id === gateRecoveryRequest.evaluationId && item.min_confidence === .9 && item.min_class_agreement === .8 && item.max_probability_std === .15 && item.probability_source === "raw");
       if (!saved) { setGateRecoveryNotFound(true); setGateRecoveryError("No saved gate with this exact analysis and criteria is visible yet. Retry lookup later, or explicitly freeze this same gate."); return; }
-      setPolicy(saved); onPolicyChange?.(saved); setPolicyLoadState("loaded"); setGateRecoveryRequest(null); setGateRecoveryError(null); setGateRecoveryNotFound(false);
+      setPolicy(saved); setPolicyLoadState("loaded"); setGateRecoveryRequest(null); setGateRecoveryError(null); setGateRecoveryNotFound(false);
     } catch (reason) {
       setGateRecoveryError(reason instanceof Error ? reason.message : "Could not recover the exact Stability Gate.");
       setGateRecoveryNotFound(false); setError(reason instanceof Error ? reason.message : String(reason));

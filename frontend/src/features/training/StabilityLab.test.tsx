@@ -33,9 +33,9 @@ const analysis = {
   unstable_agreement_threshold: 0.8, high_confidence_instability_rate: null, high_confidence_case_count: 0, high_confidence_unstable_case_count: 0, warnings: [], scientific_note: "Validation-only evidence.",
 };
 
-function renderStability(loadedAnalysis: typeof analysis | null = null) {
+function renderStability(loadedAnalysis: typeof analysis | null = null, onAnalysisChange = vi.fn(), onPolicyChange = vi.fn()) {
   studioApi.listStudyStabilityAnalyses.mockResolvedValueOnce(loadedAnalysis ? [loadedAnalysis] : []);
-  return render(<StabilityLab project={project as never} study={study as never} theme={"light" as never} />);
+  return render(<StabilityLab project={project as never} study={study as never} theme={"light" as never} onAnalysisChange={onAnalysisChange} onPolicyChange={onPolicyChange} />);
 }
 
 beforeEach(() => {
@@ -49,12 +49,22 @@ beforeEach(() => {
 
 describe("StabilityLab persisted evidence writes", () => {
   it("fails closed on a saved analysis with mismatched dataset provenance", async () => {
-    renderStability({ ...analysis, dataset_fingerprint: "other-dataset" });
+    const onAnalysisChange = vi.fn();
+    const onPolicyChange = vi.fn();
+    renderStability({ ...analysis, dataset_fingerprint: "other-dataset" }, onAnalysisChange, onPolicyChange);
     expect(await screen.findByTestId("stability-analysis-provenance-error")).toHaveTextContent("does not match the selected Study");
+    await waitFor(() => expect(onAnalysisChange).toHaveBeenLastCalledWith(null));
+    await waitFor(() => expect(onPolicyChange).toHaveBeenLastCalledWith(null));
     expect(screen.queryByTestId("stability-map-option")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Create Study Stability Analysis" })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "Create Study Stability Analysis" }));
     expect(studioApi.createAnalysisEvaluation).not.toHaveBeenCalled();
+  });
+
+  it("publishes only a verified study-bound analysis to the parent workspace", async () => {
+    const onAnalysisChange = vi.fn();
+    renderStability(analysis, onAnalysisChange);
+    await waitFor(() => expect(onAnalysisChange).toHaveBeenLastCalledWith(analysis));
   });
 
   it("shows confident minority support below 0.5 and never plots undefined agreement as zero", async () => {
