@@ -16,7 +16,7 @@ from ruflex.application.behavior import _requirement_identity
 from ruflex.domain.behavior import BehaviorRevisionComparison, BehaviorSpec, BehaviorSpecResult
 from ruflex.domain.evidence import ExplanationCheck, ExplanationContract
 from ruflex.domain.project import ProjectIntegrityIssue, ProjectIntegrityReport
-from ruflex.domain.training import AnalysisEvaluation, CalibrationTransform, DecisionThresholdPolicy, StudyJob, TrainingStudy
+from ruflex.domain.training import AnalysisEvaluation, CalibrationTransform, DecisionThresholdPolicy, FinalTestEvaluation, StudyJob, TrainingStudy
 from ruflex.domain.selective import SelectivePredictionPolicy
 from ruflex.domain.stability import StabilityGatePolicy, StudyStabilityAnalysis
 from ruflex.runtime.registry import builtin_runtime_registry
@@ -493,6 +493,59 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                         raise ValueError("Active Stability Gate pointer does not resolve to persisted evidence.")
                 except (KeyError, TypeError, ValueError, OSError, json.JSONDecodeError) as error:
                     issues.append(ProjectIntegrityIssue(code="STABILITY_GATE_ACTIVE_POINTER_INVALID", status="FAIL", path="analyses/stability-policies/active-policy.json", detail=str(error)))
+        final_test_root = base / "analyses" / "final-tests"
+        final_tests: dict[object, FinalTestEvaluation] = {}
+        if final_test_root.exists() and not final_test_root.is_dir():
+            issues.append(ProjectIntegrityIssue(code="FINAL_TEST_EVIDENCE_MALFORMED", status="FAIL", path="analyses/final-tests", detail="FinalTestEvaluation evidence path is not a directory."))
+        elif final_test_root.is_dir():
+            for path in sorted(final_test_root.glob("*.json")):
+                if path.name == "active-final-test.json":
+                    continue
+                checked += 1
+                relative_path = str(path.relative_to(base))
+                try:
+                    final_test = FinalTestEvaluation.model_validate_json(path.read_text(encoding="utf-8"))
+                    if path.stem != str(final_test.final_test_id):
+                        raise ValueError("FinalTestEvaluation filename does not match its persisted identity.")
+                    final_tests[final_test.final_test_id] = final_test
+                    evaluation = evaluations.get(final_test.evaluation_id)
+                    run = runs_by_id.get(final_test.run_id)
+                    threshold = thresholds.get(final_test.threshold_id) if final_test.threshold_id else None
+                    calibration = calibrations.get(final_test.calibration_id) if final_test.calibration_id else None
+                    selective_policy = selective_policies.get(final_test.selective_policy_id) if final_test.selective_policy_id else None
+                    stability_policy = stability_policies.get(final_test.stability_gate_policy_id) if final_test.stability_gate_policy_id else None
+                    if (
+                        evaluation is None
+                        or run is None
+                        or evaluation.run_id != final_test.run_id
+                        or final_test.task != evaluation.task
+                        or final_test.target != evaluation.target
+                        or final_test.model_kind != evaluation.model_kind
+                        or final_test.model_artifact_sha256 != evaluation.model_artifact_sha256
+                        or final_test.dataset_fingerprint != evaluation.dataset_fingerprint
+                        or final_test.dataset_artifact_sha256 != evaluation.dataset_artifact_sha256
+                        or final_test.preprocessing_identity != evaluation.preprocessing_identity
+                        or final_test.preprocessing_artifact_sha256 != evaluation.preprocessing_artifact_sha256
+                        or final_test.test_row_count != len(final_test.prediction_rows)
+                        or final_test.policy_frozen_at is None
+                        or final_test.dataset_test_unlock_at is None
+                        or (final_test.threshold_id is not None and (threshold is None or threshold.evaluation_id != final_test.evaluation_id or threshold.run_id != final_test.run_id or threshold.selected_threshold != final_test.decision_threshold or threshold.probability_source != final_test.probability_source))
+                        or (final_test.calibration_id is not None and (calibration is None or calibration.evaluation_id != final_test.evaluation_id or calibration.run_id != final_test.run_id))
+                        or (final_test.selective_policy_id is not None and (selective_policy is None or selective_policy.evaluation_id != final_test.evaluation_id or selective_policy.run_id != final_test.run_id or selective_policy.class_threshold_id != final_test.threshold_id))
+                        or (final_test.stability_gate_policy_id is not None and (stability_policy is None or stability_policy.evaluation_id != final_test.evaluation_id or stability_policy.selected_run_id != final_test.run_id or stability_policy.class_threshold_id != final_test.threshold_id))
+                    ):
+                        issues.append(ProjectIntegrityIssue(code="FINAL_TEST_PROVENANCE_MISMATCH", status="FAIL", path=relative_path, detail="FinalTestEvaluation does not match its frozen validation Evaluation, model, dataset, threshold, calibration, or selective/stability policy bindings."))
+                except (ValidationError, ValueError, OSError, json.JSONDecodeError) as error:
+                    issues.append(ProjectIntegrityIssue(code="FINAL_TEST_EVIDENCE_MALFORMED", status="FAIL", path=relative_path, detail=str(error)))
+            active_path = final_test_root / "active-final-test.json"
+            if active_path.exists():
+                checked += 1
+                try:
+                    active_id = json.loads(active_path.read_text(encoding="utf-8"))["final_test_id"]
+                    if str(active_id) not in {str(key) for key in final_tests}:
+                        raise ValueError("Active FinalTestEvaluation pointer does not resolve to persisted evidence.")
+                except (KeyError, TypeError, ValueError, OSError, json.JSONDecodeError) as error:
+                    issues.append(ProjectIntegrityIssue(code="FINAL_TEST_ACTIVE_POINTER_INVALID", status="FAIL", path="analyses/final-tests/active-final-test.json", detail=str(error)))
         study_jobs_root = study_root / "jobs"
         if study_jobs_root.exists() and not study_jobs_root.is_dir():
             issues.append(ProjectIntegrityIssue(code="STUDY_JOB_EVIDENCE_MALFORMED", status="FAIL", path="studies/jobs", detail="Persisted StudyJob path is not a directory."))

@@ -102,6 +102,9 @@ def test_project_integrity_validates_frozen_stability_analysis_and_gate_chain(tm
     policy_response = client.post("/api/projects/analyses/stability-policies", json={"session_id": session_id, "analysis_id": analysis["analysis_id"], "evaluation_id": evaluation_id, "min_confidence": .9, "min_class_agreement": .8, "max_probability_std": .15})
     assert policy_response.status_code == 201, policy_response.text
     assert client.get(f"/api/projects/{session_id}/integrity").json()["status"] == "PASS"
+    final_test = client.post("/api/projects/analyses/final-test", json={"session_id": session_id, "evaluation_id": evaluation_id, "threshold_id": threshold_id, "stability_gate_policy_id": policy_response.json()["policy_id"]})
+    assert final_test.status_code == 201, final_test.text
+    assert client.get(f"/api/projects/{session_id}/integrity").json()["status"] == "PASS"
 
     policy_path = root / "analyses" / "stability-policies" / f"{policy_response.json()['policy_id']}.json"
     payload = json.loads(policy_path.read_text(encoding="utf-8"))
