@@ -290,16 +290,17 @@
     "alpha_stability_lab_write_serialization",
     "alpha_explanation_job_submission_mutex",
     "alpha_assurance_bundle_job_submission_mutex",
-    "alpha_evidence_job_cancel_mutex"
+    "alpha_evidence_job_cancel_mutex",
+    "alpha_condition_demo_write_serialization"
   ],
-  "active_capability": "alpha_condition_demo_write_serialization",
+  "active_capability": "alpha_behavior_spec_create_mutex",
   "active_acceptance": [
-    "Condition-monitoring demo run, exact recovery, and explicitly confirmed restart cannot race each other or submit twice before React rerenders.",
-    "The saved request retains its original policy and GeneralizationContract identities.",
-    "Cancellation/recovery errors remain visible and release the guard for a deliberate retry."
+    "Creating/running a BehaviorSpec and exact recovery/restart cannot race or create duplicate specs before React rerenders.",
+    "A created BehaviorSpec is not recreated when only result execution recovery is needed.",
+    "Uncertain creation retains the exact run-bound definition and explicit restart remains a deliberate action."
   ],
   "blockers": [],
-  "next_executable_work": "Inspect runConditionDemo/recoverConditionDemo/explicitlyRestartConditionDemo for duplicate or cross-action races; serialize the route and add a focused delayed-response regression plus smallest relevant browser check, then continue the Alpha audit.",
+  "next_executable_work": "Inspect createAndRunBehavior, recoverBehaviorSpecCreation, explicitlyRestartBehaviorSpecCreation and resumeBehaviorSpecExecution for duplicate/cross-action races; protect create-vs-execute identity and add focused delayed-response tests plus a relevant browser check.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -593,6 +594,7 @@
     "alpha_stability_lab_write_serialization": "PASS: a synchronous shared mutation guard serializes persisted Analysis build/recovery/continuation and Gate freeze/recovery; exact active Analysis/Gate objects are shown as saved and cannot be duplicated. New StabilityLab component tests: 2 passed; focused existing Stability Lab Studio E2E: 1 passed (11.5s); TypeScript project build, state JSON parse and git diff --check passed.",
     "alpha_explanation_job_submission_mutex": "PASS: explanation generation, check-job creation, and exact saved-job resume share a synchronous handler-level mutex; duplicate event dispatch before rerender starts at most one persisted job. EvidenceWorkspace component tests: 2 passed; focused real Studio PRODUCT-05 Playwright E2E: 1 passed, with double synchronous click verification for both generation and validation-check jobs; TypeScript build, state JSON parse and git diff --check passed.",
     "alpha_assurance_bundle_job_submission_mutex": "PASS: AssuranceCase creation, VerificationBundle export and exact evidence-job resume share a synchronous in-flight guard; build/export and resume cannot emit duplicate or cross-action jobs. EvidenceWorkspace component tests: 4 passed; focused AssuranceCase + VerificationBundle Studio Playwright E2E passed (1/1), exercising duplicate synchronous event dispatch for both real persisted jobs; TypeScript project build and git diff --check passed.",
-    "alpha_evidence_job_cancel_mutex": "PASS: queued explanation-job cancellation uses a synchronous cancellation guard and visibly disables the cancel action while its request is unresolved; cancellation remains enabled during ordinary job polling so the user can still cancel queued work. EvidenceWorkspace component tests: 5 passed, including cancellation during polling and duplicate synchronous cancellation dispatch; TypeScript project build and git diff --check passed."
+    "alpha_evidence_job_cancel_mutex": "PASS: queued explanation-job cancellation uses a synchronous cancellation guard and visibly disables the cancel action while its request is unresolved; cancellation remains enabled during ordinary job polling so the user can still cancel queued work. EvidenceWorkspace component tests: 5 passed, including cancellation during polling and duplicate synchronous cancellation dispatch; TypeScript project build and git diff --check passed.",
+    "alpha_condition_demo_write_serialization": "PASS: condition-monitoring demo run, exact saved-request recovery and explicit rerun share a synchronous guard while preserving original policy, telemetry and GeneralizationContract identities. EvidenceWorkspace component tests: 6 passed; focused real Studio PRODUCT-11 Playwright route passed (1/1) with double synchronous event dispatch and exactly one persisted demo POST; TypeScript build and git diff --check passed."
   }
 }

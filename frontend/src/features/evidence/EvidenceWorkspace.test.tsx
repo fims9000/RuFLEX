@@ -7,6 +7,7 @@ const { studioApi } = vi.hoisted(() => ({ studioApi: {
   listBehaviorResults: vi.fn().mockResolvedValue([]),
   listBehaviorRevisionComparisons: vi.fn().mockResolvedValue([]),
   getLatestConditionMonitoringDemo: vi.fn().mockResolvedValue(null),
+  runConditionMonitoringDemo: vi.fn(),
   listPosthocExplanationJobs: vi.fn().mockResolvedValue([]),
   listExplanations: vi.fn().mockResolvedValue([]),
   getPluginCatalog: vi.fn().mockResolvedValue([]),
@@ -35,11 +36,11 @@ import { EvidenceWorkspace } from "./EvidenceWorkspace";
 const project = { session_id: "session", project_id: "project", name: "Test", description: null, root: "/tmp/test", schema_version: 1, read_only: false, modified_at: "2026-01-01T00:00:00Z" };
 const run = { run_id: "run-1", model_kind: "flat_neuro_fuzzy", task: "binary_classification", feature_columns: ["x"], validation_metrics: {}, prediction_preview: [], seed: 7 };
 
-function renderEvidence(assurance: unknown = null) {
+function renderEvidence(assurance: unknown = null, selectivePolicy: unknown = null) {
   return render(<EvidenceWorkspace
     project={project as never} dataset={null} run={run as never} evaluation={null} previousEvaluation={null} treeEvidence={null}
     explanation={null} explanationCheck={null} behaviorSpec={null} lineageBehaviorComparison={null} behaviorResult={null}
-    reproducibility={null} exhaustive={null} assurance={assurance as never} verificationBundleRecord={null} selectivePolicy={null} generalization={null}
+    reproducibility={null} exhaustive={null} assurance={assurance as never} verificationBundleRecord={null} selectivePolicy={selectivePolicy as never} generalization={null}
     theme={"light" as never} onExplanation={vi.fn()} onExplanationCheck={vi.fn()} onBehaviorResult={vi.fn()} onReproducibility={vi.fn()}
     onExhaustive={vi.fn()} onAssurance={vi.fn()}
   />);
@@ -49,6 +50,7 @@ beforeEach(() => {
   studioApi.listBehaviorResults.mockReset().mockResolvedValue([]);
   studioApi.listBehaviorRevisionComparisons.mockReset().mockResolvedValue([]);
   studioApi.getLatestConditionMonitoringDemo.mockReset().mockResolvedValue(null);
+  studioApi.runConditionMonitoringDemo.mockReset();
   studioApi.listPosthocExplanationJobs.mockReset().mockResolvedValue([]);
   studioApi.listExplanations.mockReset().mockResolvedValue([]);
   studioApi.getPluginCatalog.mockReset().mockResolvedValue([]);
@@ -64,6 +66,25 @@ beforeEach(() => {
 });
 
 describe("EvidenceWorkspace persisted explanation jobs", () => {
+  it("serializes condition-monitoring demo submission and retains its exact request after uncertainty", async () => {
+    let rejectDemo!: (error: Error) => void;
+    studioApi.runConditionMonitoringDemo.mockImplementationOnce(() => new Promise((_resolve, reject) => { rejectDemo = reject; }));
+    renderEvidence(null, { policy_id: "frozen-policy" } as never);
+
+    const runDemo = await screen.findByRole("button", { name: "Run telemetry demonstration" });
+    await waitFor(() => expect(runDemo).toBeEnabled());
+    act(() => {
+      runDemo.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      runDemo.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(studioApi.runConditionMonitoringDemo).toHaveBeenCalledTimes(1);
+    expect(studioApi.runConditionMonitoringDemo).toHaveBeenCalledWith("session", { x: 0 }, "frozen-policy", null);
+    expect(runDemo).toBeDisabled();
+    await act(async () => { rejectDemo(new Error("demo response unavailable")); });
+    expect(await screen.findByTestId("condition-demo-recovery")).toHaveTextContent("demo response unavailable");
+    expect(studioApi.runConditionMonitoringDemo).toHaveBeenCalledTimes(1);
+  });
+
   it("serializes AssuranceCase and VerificationBundle submissions across actions", async () => {
     studioApi.startAssuranceCaseJob.mockResolvedValueOnce({ job_id: "assurance-job", kind: "assurance_case", status: "failed", message: "Failed", error: "temporary failure", output: {} });
     renderEvidence({ gates: [], claims: [], unresolved_risks: [] } as never);

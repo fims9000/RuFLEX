@@ -163,6 +163,7 @@ export function EvidenceWorkspace({
   const [comparisonSample, setComparisonSample] = useState<Record<string, string>>(initialSample);
   const [method, setMethod] = useState("occlusion");
   const [busy, setBusy] = useState(false);
+  const conditionDemoActionInFlightRef = useRef(false);
   const explanationJobActionInFlightRef = useRef(false);
   const explanationJobCancelInFlightRef = useRef(false);
   const [cancelingExplanationJob, setCancelingExplanationJob] = useState(false);
@@ -417,6 +418,7 @@ export function EvidenceWorkspace({
   }
 
   async function runConditionDemo() {
+    if (conditionDemoActionInFlightRef.current) return;
     if (!selectivePolicy) { setError("Create a validation-derived selective policy before running the condition-monitoring demo."); return; }
     if (demoRecoveryRequest) { setError("Resolve the saved condition-monitoring request before starting another demonstration."); return; }
     if (demoHydrationStatus !== "none" && demoHydrationStatus !== "available") { setError("Resolve the saved condition-monitoring evidence before starting another run."); return; }
@@ -425,6 +427,7 @@ export function EvidenceWorkspace({
       return;
     }
     const request = { telemetry: numericSample(), policyId: selectivePolicy.policy_id, generalizationContractId: generalization?.contract.contract_id ?? null };
+    conditionDemoActionInFlightRef.current = true;
     setBusy(true); setError(null);
     try { await submitConditionDemo(request); }
     catch (reason) {
@@ -433,7 +436,7 @@ export function EvidenceWorkspace({
       setDemoRecoveryNotFound(false);
       setError(reason instanceof Error ? reason.message : String(reason));
     }
-    finally { setBusy(false); }
+    finally { conditionDemoActionInFlightRef.current = false; setBusy(false); }
   }
 
   async function submitConditionDemo(request: { telemetry: Record<string, number>; policyId: string; generalizationContractId: string | null }) {
@@ -443,8 +446,10 @@ export function EvidenceWorkspace({
   }
 
   async function recoverConditionDemo() {
+    if (conditionDemoActionInFlightRef.current) return;
     const request = demoRecoveryRequest;
     if (!request) return;
+    conditionDemoActionInFlightRef.current = true;
     setBusy(true); setError(null);
     try {
       let result: ConditionMonitoringDemo;
@@ -466,18 +471,20 @@ export function EvidenceWorkspace({
       setDemoRecoveryError(reason instanceof Error ? reason.message : "Could not recover the exact condition-monitoring result.");
       setDemoRecoveryNotFound(false);
       setError(reason instanceof Error ? reason.message : String(reason));
-    } finally { setBusy(false); }
+    } finally { conditionDemoActionInFlightRef.current = false; setBusy(false); }
   }
 
   async function explicitlyRestartConditionDemo() {
+    if (conditionDemoActionInFlightRef.current) return;
     if (!demoRecoveryRequest || !demoRecoveryNotFound) return;
+    conditionDemoActionInFlightRef.current = true;
     setBusy(true); setError(null);
     try { await submitConditionDemo(demoRecoveryRequest); }
     catch (reason) {
       setDemoRecoveryError(reason instanceof Error ? reason.message : "The replacement demonstration could not be confirmed.");
       setDemoRecoveryNotFound(false);
       setError(reason instanceof Error ? reason.message : String(reason));
-    } finally { setBusy(false); }
+    } finally { conditionDemoActionInFlightRef.current = false; setBusy(false); }
   }
 
   async function generate() {

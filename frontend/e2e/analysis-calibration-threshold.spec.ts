@@ -114,6 +114,11 @@ test("PRODUCT-11 runs the safe condition-monitoring telemetry decision route", a
   await page.getByRole("button", { name: /Data.*No dataset/ }).click(); await page.getByLabel("CSV data").fill(trainingCsv()); await page.getByRole("button", { name: "Inspect dataset", exact: true }).click(); await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
   await page.getByRole("button", { name: "S", exact: true }).click(); await page.getByLabel("Training model").selectOption("logistic_regression"); await page.getByRole("button", { name: "Run real training", exact: true }).click(); await expect(page.locator(".run-provenance")).toContainText("model artifact persisted", { timeout: 30_000 });
   await page.getByRole("button", { name: "A", exact: true }).click(); await page.getByRole("button", { name: "Save validation evidence", exact: true }).click(); await page.getByRole("button", { name: /Select F1 threshold \(raw\)/ }).click(); await page.getByRole("button", { name: "Save ACCEPT / REVIEW policy", exact: true }).click();
-  await page.getByRole("button", { name: "E", exact: true }).click(); await page.getByRole("button", { name: "Run telemetry demonstration", exact: true }).click(); await expect(page.getByTestId("condition-monitoring-demo")).toContainText(/ACCEPT|REVIEW|OUT_OF_SCOPE/); await expect(page.getByTestId("condition-monitoring-demo")).toContainText(/no actuator command/i);
+  await page.getByRole("button", { name: "E", exact: true }).click();
+  let demoPostCount = 0;
+  await page.route("**/api/projects/evidence/condition-monitoring-demo", async (route) => { if (route.request().method() === "POST") demoPostCount += 1; await route.continue(); });
+  await page.getByRole("button", { name: "Run telemetry demonstration", exact: true }).evaluate((button) => { button.dispatchEvent(new MouseEvent("click", { bubbles: true })); button.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
+  await expect(page.getByTestId("condition-monitoring-demo")).toContainText(/ACCEPT|REVIEW|OUT_OF_SCOPE/); await expect(page.getByTestId("condition-monitoring-demo")).toContainText(/no actuator command/i);
+  expect(demoPostCount).toBe(1);
   await page.getByRole("button", { name: "Close", exact: true }).click(); await page.getByLabel("Project path").fill(path); await page.getByRole("button", { name: "Open project", exact: true }).click(); await page.getByRole("button", { name: "E", exact: true }).click(); await expect(page.getByTestId("condition-monitoring-demo")).toContainText(/ACCEPT|REVIEW|OUT_OF_SCOPE/);
 });
