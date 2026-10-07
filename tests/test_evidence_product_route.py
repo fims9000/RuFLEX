@@ -767,3 +767,41 @@ def test_assurance_never_passes_malformed_or_failed_behavior_evidence(tmp_path: 
     assert created.status_code == 201
     behavior_gate = next(gate for gate in created.json()["gates"] if gate["key"] == "behavior_specs")
     assert behavior_gate["status"] == "FAIL"
+
+
+def test_verification_bundle_rejects_rechecksummed_comparison_metrics(tmp_path: Path) -> None:
+    import hashlib
+    import json
+    import shutil
+    from ruflex.application.verification_bundle import validate_verification_bundle
+
+    client = TestClient(app)
+    session_id = _project_with_data(client, tmp_path / "comparison-bundle")
+    left = _train(client, session_id, "logistic_regression")
+    right = _train(client, session_id, "logistic_regression")
+    comparison_response = client.post(
+        "/api/projects/analyses/comparisons",
+        json={"session_id": session_id, "run_ids": [left["run_id"], right["run_id"]]},
+    )
+    assert comparison_response.status_code == 201, comparison_response.text
+    assert client.post("/api/projects/evidence/assurance-cases", json={"session_id": session_id}).status_code == 201
+    bundle = client.post("/api/projects/evidence/verification-bundles", json={"session_id": session_id}).json()
+    extracted = tmp_path / "comparison-bundle-extracted"
+    shutil.unpack_archive(bundle["path"], extracted, "zip")
+    comparison_path = extracted / "analyses" / "comparisons" / f"{comparison_response.json()['comparison_id']}.json"
+    comparison = json.loads(comparison_path.read_text(encoding="utf-8"))
+    metric_row = next(row for row in comparison["metric_rows"] if row.get("subject_type") == "training_run")
+    metric_row["f1"] = 0.0 if metric_row["f1"] != 0.0 else 1.0
+    comparison_path.write_text(json.dumps(comparison), encoding="utf-8")
+    manifest_path = extracted / "verification-manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    relative = comparison_path.relative_to(extracted).as_posix()
+    manifest["checksums"][relative] = hashlib.sha256(comparison_path.read_bytes()).hexdigest()
+    manifest_bytes = json.dumps(manifest, indent=2, sort_keys=True).encode()
+    manifest_path.write_bytes(manifest_bytes)
+    (extracted / "verification-manifest.sha256").write_text(
+        f"{hashlib.sha256(manifest_bytes).hexdigest()}  verification-manifest.json\n", encoding="utf-8"
+    )
+    validation = validate_verification_bundle(extracted)
+    assert validation.status == "FAIL"
+    assert any("comparison" in error and "frozen validation runs" in error for error in validation.errors)

@@ -18,7 +18,7 @@ from ruflex.application.datasets import DataAuditReport, DatasetContract, Datase
 from ruflex.domain.assurance import AssuranceCase
 from ruflex.domain.behavior import BehaviorRevisionComparison, BehaviorSpec, BehaviorSpecResult
 from ruflex.domain.evidence import ExplanationCheck, ExplanationContract, ExplanationReproducibilityAnalysis
-from ruflex.application.generalization import GeneralizationContract
+from ruflex.application.generalization import GeneralizationContract, SliceAnalysis
 from ruflex.domain.selective import SelectivePredictionPolicy
 from ruflex.domain.stability import StabilityGatePolicy, StudyStabilityAnalysis
 from ruflex.domain.training import AnalysisComparison, AnalysisEvaluation, CalibrationTransform, DecisionThresholdPolicy, FinalTestEvaluation, TrainingRun, TrainingStudy
@@ -61,6 +61,7 @@ def _model_for_entry(name: str) -> type[BaseModel] | None:
     if name.startswith("analyses/selective-policies/"): return SelectivePredictionPolicy
     if name.startswith("analyses/stability-analyses/"): return StudyStabilityAnalysis
     if name.startswith("analyses/stability-policies/"): return StabilityGatePolicy
+    if name.startswith("analyses/slices/"): return SliceAnalysis
     if name.startswith("analyses/final-tests/"): return FinalTestEvaluation
     if name.startswith("analyses/comparisons/"): return AnalysisComparison
     if name.startswith("objects/protocols/generalization/"): return GeneralizationContract
@@ -117,6 +118,7 @@ def _validate_relationships(objects: list[BaseModel]) -> list[str]:
     calibrations = objects_by_type.get(CalibrationTransform, {})
     thresholds = objects_by_type.get(DecisionThresholdPolicy, {})
     stability_analyses = objects_by_type.get(StudyStabilityAnalysis, {})
+    generalization_contracts = objects_by_type.get(GeneralizationContract, {})
     selective_policies = objects_by_type.get(SelectivePredictionPolicy, {})
     final_tests = objects_by_type.get(FinalTestEvaluation, {})
     from ruflex.application.project_integrity import _stability_analysis_cases_match, _stability_gate_evidence_matches
@@ -250,6 +252,65 @@ def _validate_relationships(objects: list[BaseModel]) -> list[str]:
                 or (object_.schema_version >= 3 and (not all((object_.validator_key, object_.validator_version, object_.validator_provider)) or not _explanation_check_frozen_components_match(object_, explanation, run)))
             ):
                 errors.append(f"Explanation check {object_.check_id} summary or deterministic contract-derived checks do not match its frozen evidence.")
+        elif isinstance(object_, AnalysisComparison):
+            from ruflex.application.project_integrity import _validation_sample_identity
+            compared_runs = [runs.get(str(run_id)) for run_id in object_.run_ids]
+            rows = [row for row in object_.metric_rows if row.get("subject_type") == "training_run"]
+            rows_by_run = {str(row.get("run_id")): row for row in rows}
+            expected_identities = {
+                str(run.run_id): identity
+                for run in compared_runs
+                if isinstance(run, TrainingRun) and (identity := _validation_sample_identity(run)) is not None
+            }
+            if object_.fis_id is not None and object_.validation_alignment == "same_cases" and expected_identities:
+                expected_identities[f"fis:{object_.fis_id}"] = next(iter(expected_identities.values()))
+            expected_alignment = (
+                "unknown" if len(expected_identities) < len(compared_runs)
+                else "same_cases" if len(set(expected_identities.values())) == 1
+                else "mixed_cases"
+            )
+            if (
+                len(set(object_.run_ids)) != len(object_.run_ids)
+                or any(not isinstance(run, TrainingRun) for run in compared_runs)
+                or any(run.task != object_.task or run.target != object_.target or run.evaluation_split != "validation" or run.split.test_status != "LOCKED_NOT_EVALUATED" for run in compared_runs if isinstance(run, TrainingRun))
+                or len({run.dataset_fingerprint for run in compared_runs if isinstance(run, TrainingRun)}) > 1
+                or (object_.dataset_fingerprint is not None and any(run.dataset_fingerprint != object_.dataset_fingerprint for run in compared_runs if isinstance(run, TrainingRun)))
+                or len(rows) != len(object_.run_ids)
+                or len(rows_by_run) != len(rows)
+                or set(rows_by_run) != {str(run_id) for run_id in object_.run_ids}
+                or any(
+                    rows_by_run[str(run.run_id)].get("subject_id") != f"run:{run.run_id}"
+                    or rows_by_run[str(run.run_id)].get("model_kind") != run.model_kind
+                    or any(metric not in rows_by_run[str(run.run_id)] or not isinstance(rows_by_run[str(run.run_id)][metric], (float, int)) or abs(float(rows_by_run[str(run.run_id)][metric]) - float(value)) > 1e-12 for metric, value in run.validation_metrics.items())
+                    for run in compared_runs if isinstance(run, TrainingRun)
+                )
+                or (object_.schema_version >= 2 and object_.validation_sample_identities != expected_identities)
+                or (object_.schema_version >= 2 and object_.validation_alignment != expected_alignment)
+                or (object_.fis_id is None) != (object_.fis_semantic_hash is None)
+            ):
+                errors.append(f"Analysis comparison {object_.comparison_id} does not match its frozen validation runs, metrics, or case identities.")
+        elif isinstance(object_, SliceAnalysis):
+            evaluation = evaluations.get(str(object_.evaluation_id))
+            run = runs.get(str(object_.run_id))
+            scope = generalization_contracts.get(str(object_.generalization_contract_id)) if object_.generalization_contract_id is not None else None
+            definitions = {item.name: item for item in object_.definitions}
+            results = {item.name: item for item in object_.results}
+            if (
+                not isinstance(evaluation, AnalysisEvaluation)
+                or not isinstance(run, TrainingRun)
+                or evaluation.run_id != object_.run_id
+                or evaluation.split != "validation"
+                or evaluation.dataset_fingerprint != object_.dataset_fingerprint
+                or run.dataset_fingerprint != object_.dataset_fingerprint
+                or object_.source_split != "validation"
+                or object_.test_status != "LOCKED_NOT_EVALUATED"
+                or (object_.generalization_contract_id is not None and (not isinstance(scope, GeneralizationContract) or scope.dataset_fingerprint != object_.dataset_fingerprint))
+                or len(definitions) != len(object_.definitions)
+                or len(results) != len(object_.results)
+                or set(definitions) != set(results)
+                or any(result.metric != object_.metric or result.kind != definitions[name].kind or (result.n == 0 and (result.status != "EMPTY" or result.value is not None or result.delta_vs_overall is not None)) or (result.n > 0 and result.value is not None and (result.delta_vs_overall is None or abs(result.delta_vs_overall - (result.value - result.overall_value)) > 1e-12)) for name, result in results.items())
+            ):
+                errors.append(f"Slice analysis {object_.analysis_id} does not match its frozen validation Evaluation, scope contract, definitions, or result arithmetic.")
         elif isinstance(object_, BehaviorRevisionComparison):
             baseline = objects_by_type.get(BehaviorSpecResult, {}).get(str(object_.baseline_result_id))
             candidate = objects_by_type.get(BehaviorSpecResult, {}).get(str(object_.candidate_result_id))
