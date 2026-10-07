@@ -1582,6 +1582,9 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                 active_id = json.loads(active_path.read_text(encoding="utf-8"))["explanation_id"]
                 if str(active_id) not in {str(key) for key in explanations}:
                     raise ValueError("Active explanation pointer does not resolve to a persisted explanation.")
+                latest_explanation = max(explanations.values(), key=lambda item: (item.created_at, str(item.explanation_id)), default=None)
+                if latest_explanation is not None and str(latest_explanation.explanation_id) != str(active_id):
+                    raise ValueError("Active explanation pointer does not identify the latest persisted ExplanationContract.")
             except (KeyError, TypeError, ValueError, OSError, json.JSONDecodeError) as error:
                 issues.append(ProjectIntegrityIssue(code="EXPLANATION_ACTIVE_POINTER_INVALID", status="FAIL", path="evidence/explanations/active-explanation.json", detail=str(error)))
     check_root = base / "evidence" / "explanation-checks"
@@ -1639,6 +1642,9 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                 active_id = json.loads(active_path.read_text(encoding="utf-8"))["check_id"]
                 if str(active_id) not in {str(key) for key in check_ids}:
                     raise ValueError("Active explanation-check pointer does not resolve to persisted evidence.")
+                latest_check = max(checks_by_id.values(), key=lambda item: (item.created_at, str(item.check_id)), default=None)
+                if latest_check is not None and str(latest_check.check_id) != str(active_id):
+                    raise ValueError("Active explanation-check pointer does not identify the latest persisted check.")
             except (KeyError, TypeError, ValueError, OSError, json.JSONDecodeError) as error:
                 issues.append(ProjectIntegrityIssue(code="EXPLANATION_CHECK_ACTIVE_POINTER_INVALID", status="FAIL", path="evidence/explanation-checks/active-check.json", detail=str(error)))
     assurance_cases: dict[object, AssuranceCase] = {}

@@ -222,12 +222,14 @@
     "alpha_evaluation_active_pointer_integrity",
     "alpha_calibration_active_pointer_integrity",
     "alpha_stability_analysis_active_pointer_integrity",
-    "alpha_stability_gate_active_pointer_integrity"
+    "alpha_stability_gate_active_pointer_integrity",
+    "alpha_explanation_active_pointer_integrity",
+    "alpha_explanation_check_active_pointer_integrity"
   ],
-  "active_capability": "alpha_stability_gate_active_pointer_integrity",
+  "active_capability": "alpha_explanation_check_active_pointer_integrity",
   "active_acceptance": [
-    "Active Stability Analysis and Stability Gate pointers resolve to the latest persisted object under deterministic created_at/identity ordering.",
-    "Stale but otherwise valid analysis/policy pointers fail integrity while frozen objects remain individually valid and usable by exact ID."
+    "Active ExplanationContract and ExplanationCheck pointers resolve to the latest persisted evidence under deterministic created_at/identity ordering.",
+    "Stale but otherwise valid pointers fail integrity without invalidating exact-ID references to older evidence."
   ],
   "blockers": [],
   "next_executable_work": "Continue lightweight project-integrity audit for stale active pointers on other persisted analysis/evidence families; preserve unrelated article files.",
@@ -456,6 +458,8 @@
     "alpha_evaluation_active_pointer_integrity": "PASS: Active validation Evaluation pointer must identify the latest persisted run-bound Evaluation; rollback to an older but valid Evaluation fails integrity. Focused project integrity test passes with two real training runs and evaluations.",
     "alpha_calibration_active_pointer_integrity": "PASS: Active CalibrationTransform pointer must identify the latest persisted validation transform; rollback to an older but valid transform fails integrity using two real Evaluation/calibration chains. Focused project integrity test passes.",
     "alpha_stability_analysis_active_pointer_integrity": "PASS: Active StudyStabilityAnalysis pointer must identify the latest persisted analysis; rollback to an older valid analysis is rejected while exact-ID policy binding remains unaffected. Focused stability integrity test passed.",
-    "alpha_stability_gate_active_pointer_integrity": "PASS: Active StabilityGatePolicy pointer must identify the latest persisted gate; rollback to an older valid gate is rejected. Focused stability integrity test passed."
+    "alpha_stability_gate_active_pointer_integrity": "PASS: Active StabilityGatePolicy pointer must identify the latest persisted gate; rollback to an older valid gate is rejected. Focused stability integrity test passed.",
+    "alpha_explanation_active_pointer_integrity": "PASS: Active ExplanationContract pointer must identify the latest persisted contract; stale valid pointer fails integrity using two persisted explanations.",
+    "alpha_explanation_check_active_pointer_integrity": "PASS: Active ExplanationCheck pointer must identify the latest persisted check; stale valid pointer fails integrity using repeated persisted checks."
   }
 }

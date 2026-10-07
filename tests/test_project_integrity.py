@@ -559,6 +559,13 @@ def test_project_integrity_rejects_detached_persisted_explanation_evidence(tmp_p
     assert client.post("/api/projects/dataset/confirm", json={"session_id": session_id, "csv_text": _frame(), "target": "target", "task": "binary_classification", "id_columns": []}).status_code == 200
     run = client.post("/api/projects/training/run", json={"session_id": session_id, "model_kind": "logistic_regression", "seed": 42, "max_epochs": 1, "learning_rate": .01, "batch_size": 16, "patience": 1, "validation_fraction": .2, "test_fraction": .2, "max_rules": 3}).json()
     explanation = client.post("/api/projects/evidence/explanations/occlusion", json={"session_id": session_id, "run_id": run["run_id"], "sample": {"temperature": 20.0, "torque": 40.0}}).json()
+    newer_explanation = client.post("/api/projects/evidence/explanations/occlusion", json={"session_id": session_id, "run_id": run["run_id"], "sample": {"temperature": 21.0, "torque": 43.0}})
+    assert newer_explanation.status_code == 201, newer_explanation.text
+    active_explanation_path = root / "evidence" / "explanations" / "active-explanation.json"
+    active_explanation_path.write_text(json.dumps({"explanation_id": explanation["explanation_id"]}), encoding="utf-8")
+    stale_explanation_pointer = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert any(issue["code"] == "EXPLANATION_ACTIVE_POINTER_INVALID" for issue in stale_explanation_pointer["issues"])
+    active_explanation_path.write_text(json.dumps({"explanation_id": newer_explanation.json()["explanation_id"]}), encoding="utf-8")
     path = root / "evidence" / "explanations" / f"{explanation['explanation_id']}.json"
     payload = json.loads(path.read_text(encoding="utf-8"))
     payload["model_artifact_sha256"] = "0" * 64
@@ -579,7 +586,14 @@ def test_project_integrity_rejects_explanation_check_summary_tampering(tmp_path:
     assert checked.status_code == 201, checked.text
     initial_report = client.get(f"/api/projects/{session_id}/integrity").json()
     assert initial_report["status"] == "PASS", initial_report["issues"]
-    check_id = checked.json()["check_id"]
+    newer_check = client.post("/api/projects/evidence/explanation-checks", json={"session_id": session_id, "explanation_id": explanation["explanation_id"]})
+    assert newer_check.status_code == 201, newer_check.text
+    active_check_path = root / "evidence" / "explanation-checks" / "active-check.json"
+    active_check_path.write_text(json.dumps({"check_id": checked.json()["check_id"]}), encoding="utf-8")
+    stale_check_pointer = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert any(issue["code"] == "EXPLANATION_CHECK_ACTIVE_POINTER_INVALID" for issue in stale_check_pointer["issues"])
+    active_check_path.write_text(json.dumps({"check_id": newer_check.json()["check_id"]}), encoding="utf-8")
+    check_id = newer_check.json()["check_id"]
     check_path = root / "evidence" / "explanation-checks" / f"{check_id}.json"
     payload = json.loads(check_path.read_text(encoding="utf-8"))
     original_status = payload["status"]
