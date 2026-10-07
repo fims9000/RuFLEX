@@ -30,6 +30,31 @@ def test_profile_surfaces_id_duplicates_missing_constant_and_deterministic_audit
     assert contract.role_decisions == {"entity_id": "id", "temperature": "feature", "mode": "feature", "target": "target"}
 
 
+def test_id_candidate_is_excluded_only_when_user_confirms_id_role() -> None:
+    profile = inspect_dataset(_fixture(), source_artifact_sha256="f" * 64)
+    kept_as_feature = build_dataset_contract(profile, target="target", task="binary_classification", id_columns=[])
+    confirmed_as_id = build_dataset_contract(profile, target="target", task="binary_classification", id_columns=["entity_id"])
+
+    assert "entity_id" in kept_as_feature.feature_columns
+    assert kept_as_feature.role_decisions["entity_id"] == "feature"
+    assert "entity_id" not in confirmed_as_id.feature_columns
+    assert confirmed_as_id.role_decisions["entity_id"] == "id"
+
+
+@pytest.mark.parametrize(
+    ("id_columns", "message"),
+    [
+        (["missing_id"], "absent from the dataset"),
+        (["target"], "cannot also be declared as an ID"),
+        (["entity_id", "entity_id"], "must be unique"),
+    ],
+)
+def test_invalid_id_role_declarations_fail_at_contract_confirmation(id_columns: list[str], message: str) -> None:
+    profile = inspect_dataset(_fixture(), source_artifact_sha256="0" * 64)
+    with pytest.raises(DatasetConfirmationError, match=message):
+        build_dataset_contract(profile, target="target", task="binary_classification", id_columns=id_columns)
+
+
 def test_id_candidate_heuristic_requires_explicit_id_token() -> None:
     frame = pd.DataFrame({
         "id": [1, 2], "row_id": [11, 12], "customer_id": [21, 22],

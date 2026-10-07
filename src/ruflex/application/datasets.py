@@ -106,7 +106,12 @@ def build_dataset_contract(profile:DatasetProfile,*,target:str|None,task:Literal
  if not target: raise DatasetConfirmationError('Target requires explicit confirmation.')
  names={x.name for x in profile.columns}
  if target not in names: raise DatasetConfirmationError(f'Target column is absent: {target}')
- ids=id_columns or []; features=[x.name for x in profile.columns if x.name not in {target,*ids} and x.semantic_type!='id']
+ ids=id_columns or []
+ if len(ids)!=len(set(ids)): raise DatasetConfirmationError('ID columns must be unique; remove duplicate column names.')
+ unknown_ids=sorted(set(ids)-names)
+ if unknown_ids: raise DatasetConfirmationError(f'ID columns are absent from the dataset: {", ".join(unknown_ids)}')
+ if target in ids: raise DatasetConfirmationError('The target column cannot also be declared as an ID column.')
+ features=[x.name for x in profile.columns if x.name not in {target,*ids}]
  decisions={name:('target' if name==target else 'id' if name in ids else 'feature') for name in names}
  return DatasetContract(dataset_fingerprint=profile.fingerprint,source_artifact_sha256=profile.source_artifact_sha256,target=target,task=task,feature_columns=features,id_columns=ids,source_format=source_format,role_decisions=decisions)
 def run_data_audit(contract:DatasetContract,frame:pd.DataFrame)->DataAuditReport:
