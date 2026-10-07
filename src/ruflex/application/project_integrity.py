@@ -1672,6 +1672,9 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                 active_id = json.loads(active_path.read_text(encoding="utf-8"))["assurance_id"]
                 if str(active_id) not in {str(key) for key in assurance_cases}:
                     raise ValueError("Active AssuranceCase pointer does not resolve to persisted evidence.")
+                latest_case = max(assurance_cases.values(), key=lambda item: (item.created_at, str(item.assurance_id)), default=None)
+                if latest_case is not None and str(latest_case.assurance_id) != str(active_id):
+                    raise ValueError("Active AssuranceCase pointer does not identify the latest persisted case.")
             except (KeyError, TypeError, ValueError, OSError, json.JSONDecodeError) as error:
                 issues.append(ProjectIntegrityIssue(code="ASSURANCE_ACTIVE_POINTER_INVALID", status="FAIL", path="evidence/assurance/active-case.json", detail=str(error)))
     verification_bundles: dict[object, VerificationBundle] = {}

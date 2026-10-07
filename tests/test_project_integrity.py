@@ -624,6 +624,14 @@ def test_project_integrity_rejects_assurance_claim_detached_from_gate(tmp_path: 
     assurance = client.post("/api/projects/evidence/assurance-cases", json={"session_id": session_id})
     assert assurance.status_code == 201, assurance.text
     case_id = assurance.json()["assurance_id"]
+    newer_assurance = client.post("/api/projects/evidence/assurance-cases", json={"session_id": session_id})
+    assert newer_assurance.status_code == 201, newer_assurance.text
+    active_assurance_path = root / "evidence" / "assurance" / "active-case.json"
+    active_assurance_path.write_text(json.dumps({"assurance_id": case_id}), encoding="utf-8")
+    stale_assurance_pointer = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert any(issue["code"] == "ASSURANCE_ACTIVE_POINTER_INVALID" for issue in stale_assurance_pointer["issues"])
+    active_assurance_path.write_text(json.dumps({"assurance_id": newer_assurance.json()["assurance_id"]}), encoding="utf-8")
+    case_id = newer_assurance.json()["assurance_id"]
     case_path = root / "evidence" / "assurance" / f"{case_id}.json"
     payload = json.loads(case_path.read_text(encoding="utf-8"))
     assert payload["claims"]
