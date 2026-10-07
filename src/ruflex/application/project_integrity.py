@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import json
+import hashlib
 from pathlib import Path
+from uuid import UUID
 
 from pydantic import ValidationError
 
@@ -15,6 +17,8 @@ from ruflex.application.training import _select_study_run, _stable_identity, lis
 from ruflex.application.behavior import _requirement_identity
 from ruflex.domain.behavior import BehaviorRevisionComparison, BehaviorSpec, BehaviorSpecResult
 from ruflex.domain.evidence import ExplanationCheck, ExplanationContract
+from ruflex.domain.assurance import AssuranceCase
+from ruflex.domain.verification import VerificationBundle
 from ruflex.domain.project import ProjectIntegrityIssue, ProjectIntegrityReport
 from ruflex.domain.training import AnalysisEvaluation, CalibrationTransform, DecisionThresholdPolicy, FinalTestEvaluation, StudyJob, TrainingStudy
 from ruflex.domain.selective import SelectivePredictionPolicy
@@ -799,6 +803,7 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
             except (KeyError, TypeError, ValueError, OSError, json.JSONDecodeError) as error:
                 issues.append(ProjectIntegrityIssue(code="EXPLANATION_ACTIVE_POINTER_INVALID", status="FAIL", path="evidence/explanations/active-explanation.json", detail=str(error)))
     check_root = base / "evidence" / "explanation-checks"
+    checks_by_id: dict[object, ExplanationCheck] = {}
     if check_root.exists() and not check_root.is_dir():
         issues.append(ProjectIntegrityIssue(code="EXPLANATION_CHECK_EVIDENCE_MALFORMED", status="FAIL", path="evidence/explanation-checks", detail="Explanation-check evidence path is not a directory."))
     elif check_root.is_dir():
@@ -813,6 +818,7 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                 if path.stem != str(check.check_id):
                     raise ValueError("Explanation check filename does not match its persisted identity.")
                 check_ids.add(check.check_id)
+                checks_by_id[check.check_id] = check
                 explanation = explanations.get(check.explanation_id)
                 if explanation is None:
                     issues.append(ProjectIntegrityIssue(code="EXPLANATION_CHECK_EXPLANATION_MISSING", status="FAIL", path=relative_path, detail="Explanation check references an explanation that is not present."))
@@ -838,25 +844,108 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                     raise ValueError("Active explanation-check pointer does not resolve to persisted evidence.")
             except (KeyError, TypeError, ValueError, OSError, json.JSONDecodeError) as error:
                 issues.append(ProjectIntegrityIssue(code="EXPLANATION_CHECK_ACTIVE_POINTER_INVALID", status="FAIL", path="evidence/explanation-checks/active-check.json", detail=str(error)))
+    assurance_cases: dict[object, AssuranceCase] = {}
+    assurance_root = base / "evidence" / "assurance"
+    if assurance_root.exists() and not assurance_root.is_dir():
+        issues.append(ProjectIntegrityIssue(code="ASSURANCE_EVIDENCE_MALFORMED", status="FAIL", path="evidence/assurance", detail="AssuranceCase evidence path is not a directory."))
+    elif assurance_root.is_dir():
+        for path in sorted(assurance_root.glob("*.json")):
+            if path.name == "active-case.json":
+                continue
+            checked += 1
+            try:
+                case = AssuranceCase.model_validate_json(path.read_text(encoding="utf-8"))
+                if path.stem != str(case.assurance_id):
+                    raise ValueError("AssuranceCase filename does not match its persisted identity.")
+                assurance_cases[case.assurance_id] = case
+            except (ValidationError, ValueError, OSError, json.JSONDecodeError) as error:
+                issues.append(ProjectIntegrityIssue(code="ASSURANCE_EVIDENCE_MALFORMED", status="FAIL", path=str(path.relative_to(base)), detail=str(error)))
+        active_path = assurance_root / "active-case.json"
+        if active_path.exists():
+            checked += 1
+            try:
+                active_id = json.loads(active_path.read_text(encoding="utf-8"))["assurance_id"]
+                if str(active_id) not in {str(key) for key in assurance_cases}:
+                    raise ValueError("Active AssuranceCase pointer does not resolve to persisted evidence.")
+            except (KeyError, TypeError, ValueError, OSError, json.JSONDecodeError) as error:
+                issues.append(ProjectIntegrityIssue(code="ASSURANCE_ACTIVE_POINTER_INVALID", status="FAIL", path="evidence/assurance/active-case.json", detail=str(error)))
+    verification_bundles: dict[object, VerificationBundle] = {}
+    bundle_root = base / "evidence" / "verification-bundles"
+    if bundle_root.exists() and not bundle_root.is_dir():
+        issues.append(ProjectIntegrityIssue(code="VERIFICATION_BUNDLE_EVIDENCE_MALFORMED", status="FAIL", path="evidence/verification-bundles", detail="VerificationBundle evidence path is not a directory."))
+    elif bundle_root.is_dir():
+        for path in sorted(bundle_root.glob("*.json")):
+            if path.name == "active-bundle.json":
+                continue
+            checked += 1
+            try:
+                bundle = VerificationBundle.model_validate_json(path.read_text(encoding="utf-8"))
+                if path.stem != str(bundle.bundle_id):
+                    raise ValueError("VerificationBundle filename does not match its persisted identity.")
+                archive_path = base / "exports" / f"verification-bundle-{bundle.assurance_id}.zip"
+                if bundle.assurance_id not in assurance_cases or not archive_path.is_file():
+                    raise ValueError("VerificationBundle does not resolve to its AssuranceCase and exported archive.")
+                if hashlib.sha256(archive_path.read_bytes()).hexdigest() != bundle.sha256:
+                    raise ValueError("VerificationBundle archive checksum does not match its persisted identity.")
+                verification_bundles[bundle.bundle_id] = bundle
+            except (ValidationError, ValueError, OSError, json.JSONDecodeError) as error:
+                issues.append(ProjectIntegrityIssue(code="VERIFICATION_BUNDLE_EVIDENCE_MALFORMED", status="FAIL", path=str(path.relative_to(base)), detail=str(error)))
+        active_path = bundle_root / "active-bundle.json"
+        if active_path.exists():
+            checked += 1
+            try:
+                active_id = json.loads(active_path.read_text(encoding="utf-8"))["bundle_id"]
+                if str(active_id) not in {str(key) for key in verification_bundles}:
+                    raise ValueError("Active VerificationBundle pointer does not resolve to persisted evidence.")
+            except (KeyError, TypeError, ValueError, OSError, json.JSONDecodeError) as error:
+                issues.append(ProjectIntegrityIssue(code="VERIFICATION_BUNDLE_ACTIVE_POINTER_INVALID", status="FAIL", path="evidence/verification-bundles/active-bundle.json", detail=str(error)))
     try:
         jobs_root = base / "jobs"
         if jobs_root.exists() and not jobs_root.is_dir():
             raise ValueError("Persisted jobs path is not a directory.")
-        jobs = [Job.model_validate_json(path.read_text(encoding="utf-8")) for path in sorted(jobs_root.glob("*.json"))] if jobs_root.is_dir() else []
-        checked += len(jobs)
-        for job in jobs:
-            if job.schema_version < 2:
+        for path in sorted(jobs_root.glob("*.json")) if jobs_root.is_dir() else []:
+            checked += 1
+            relative_path = str(path.relative_to(base))
+            try:
+                job = Job.model_validate_json(path.read_text(encoding="utf-8"))
+                if path.stem != str(job.job_id):
+                    raise ValueError("Persisted Job filename does not match its identity.")
+            except (ValidationError, ValueError, OSError, json.JSONDecodeError) as error:
+                issues.append(ProjectIntegrityIssue(code="JOB_EVIDENCE_MALFORMED", status="FAIL", path=relative_path, detail=str(error)))
                 continue
-            relative_path = f"jobs/{job.job_id}.json"
-            if not all((job.execution_backend_key, job.execution_backend_version, job.execution_backend_provider)):
-                issues.append(ProjectIntegrityIssue(code="JOB_BACKEND_RUNTIME_BINDING_MISSING", status="FAIL", path=relative_path, detail="A schema-v2 job is missing execution backend runtime provenance."))
+            if job.schema_version >= 2:
+                if not all((job.execution_backend_key, job.execution_backend_version, job.execution_backend_provider)):
+                    issues.append(ProjectIntegrityIssue(code="JOB_BACKEND_RUNTIME_BINDING_MISSING", status="FAIL", path=relative_path, detail="A schema-v2 job is missing execution backend runtime provenance."))
+                    continue
+                try:
+                    descriptor = builtin_runtime_registry().resolve_component("execution_backend", job.execution_backend_key, version=job.execution_backend_version)
+                    if descriptor.identity.provider != job.execution_backend_provider:
+                        issues.append(ProjectIntegrityIssue(code="JOB_BACKEND_RUNTIME_PROVIDER_MISMATCH", status="FAIL", path=relative_path, detail="Job backend provider does not match the active frozen descriptor."))
+                except Exception:
+                    issues.append(ProjectIntegrityIssue(code="JOB_BACKEND_RUNTIME_UNAVAILABLE", status="WARN", path=relative_path, detail="Persisted execution backend is unavailable locally; job remains inspectable."))
+            if job.status.value != "succeeded" or job.kind not in {"explanation_generation", "explanation_check", "assurance_case", "verification_bundle_export"}:
                 continue
             try:
-                descriptor = builtin_runtime_registry().resolve_component("execution_backend", job.execution_backend_key, version=job.execution_backend_version)
-                if descriptor.identity.provider != job.execution_backend_provider:
-                    issues.append(ProjectIntegrityIssue(code="JOB_BACKEND_RUNTIME_PROVIDER_MISMATCH", status="FAIL", path=relative_path, detail="Job backend provider does not match the active frozen descriptor."))
-            except Exception:
-                issues.append(ProjectIntegrityIssue(code="JOB_BACKEND_RUNTIME_UNAVAILABLE", status="WARN", path=relative_path, detail="Persisted execution backend is unavailable locally; job remains inspectable."))
+                if job.kind == "explanation_generation":
+                    explanation_id = UUID(job.output["explanation_id"])
+                    explanation = explanations.get(explanation_id)
+                    if explanation is None or explanation.run_id != UUID(job.request["run_id"]) or explanation.explainer_key != job.request["method"]:
+                        raise ValueError("Completed explanation job output does not match its persisted request and ExplanationContract.")
+                elif job.kind == "explanation_check":
+                    check_id = UUID(job.output["check_id"])
+                    check = checks_by_id.get(check_id)
+                    if check is None or check.explanation_id != UUID(job.request["explanation_id"]) or check.validator_key != job.request["validator_key"]:
+                        raise ValueError("Completed explanation-check job output does not match its request and ExplanationCheck.")
+                elif job.kind == "assurance_case":
+                    assurance_id = UUID(job.output["assurance_id"])
+                    if assurance_id not in assurance_cases:
+                        raise ValueError("Completed AssuranceCase job output does not resolve to persisted evidence.")
+                else:
+                    bundle_id = UUID(job.output["bundle_id"])
+                    if bundle_id not in verification_bundles:
+                        raise ValueError("Completed VerificationBundle job output does not resolve to persisted evidence.")
+            except (KeyError, TypeError, ValueError) as error:
+                issues.append(ProjectIntegrityIssue(code="JOB_OUTPUT_PROVENANCE_MISMATCH", status="FAIL", path=relative_path, detail=str(error)))
     except (ValidationError, ValueError, FileNotFoundError) as error:
         issues.append(ProjectIntegrityIssue(code="JOB_EVIDENCE_MALFORMED", status="FAIL", path="jobs", detail=str(error)))
     status = "FAIL" if any(issue.status == "FAIL" for issue in issues) else "WARN" if any(issue.status == "WARN" for issue in issues) else "PASS"

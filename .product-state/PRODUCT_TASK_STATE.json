@@ -196,15 +196,16 @@
     "alpha_study_randomness_protocol_integrity",
     "alpha_final_test_policy_freeze_time_integrity",
     "alpha_final_test_case_and_policy_identity_integrity",
-    "alpha_legacy_study_and_study_job_integrity"
+    "alpha_legacy_study_and_study_job_integrity",
+    "alpha_evidence_job_output_integrity"
   ],
-  "active_capability": "alpha_legacy_study_and_study_job_integrity",
+  "active_capability": "alpha_evidence_job_output_integrity",
   "active_acceptance": [
-    "Legacy TrainingStudy schema v2 with deterministic adapter fallback and omitted training_seeds remains inspectable without rewriting persisted bytes.",
-    "Project Integrity verifies each successful StudyJob seed against its canonical TrainingRun and resolves the completed StudyJob.study_id to the exact TrainingStudy run set."
+    "Persisted AssuranceCase and VerificationBundle records have resolvable identities; bundle archives match their frozen SHA-256.",
+    "Successful evidence jobs resolve their canonical output to the exact persisted Explanation, ExplanationCheck, AssuranceCase, or VerificationBundle; malformed or detached output fails integrity."
   ],
   "blockers": [],
-  "next_executable_work": "Continue a focused alpha audit of persisted evidence-job references and retry recovery; preserve unrelated article files.",
+  "next_executable_work": "Continue focused alpha auditing of persisted object identities and read-only inspection surfaces; preserve unrelated article files.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -404,6 +405,7 @@
     "alpha_study_randomness_protocol_integrity": "PASS: Project Integrity cross-checks Study seed lists, dataset revisions, split seeds/identities, and fixed-vs-varying randomness semantics. A Study relabeled from TRAINING_VARIABILITY to SPLIT_VARIABILITY fails closed.",
     "alpha_final_test_policy_freeze_time_integrity": "PASS: FinalTestEvaluation integrity rejects referenced Evaluation or policy artifacts timestamped after dataset_test_unlock_at and rejects a policy_frozen_at later than unlock. Regression moves a frozen threshold timestamp past unlock and observes FAIL.",
     "alpha_final_test_case_and_policy_identity_integrity": "PASS: Project Integrity recomputes final-test case/sample/policy identities from persisted prediction rows and frozen bindings, verifying complete unique source rows and case identities. Forged test_case_identity produces FAIL.",
-    "alpha_legacy_study_and_study_job_integrity": "PASS: Legacy schema-v2 TrainingStudy remains readable without persistence rewrite; Project Integrity now cross-checks completed StudyJob seed states against canonical TrainingRuns and resolves the bound TrainingStudy/run set. Project-integrity suite: 14 passed."
+    "alpha_legacy_study_and_study_job_integrity": "PASS: Legacy schema-v2 TrainingStudy remains readable without persistence rewrite; Project Integrity now cross-checks completed StudyJob seed states against canonical TrainingRuns and resolves the bound TrainingStudy/run set. Project-integrity suite: 14 passed.",
+    "alpha_evidence_job_output_integrity": "PASS: Project Integrity validates persisted AssuranceCase and VerificationBundle identities, verifies bundle archive SHA-256, and resolves successful evidence-job outputs to canonical objects. Reopen E2E passes; forged ExplanationCheck and VerificationBundle output IDs fail integrity. Focused project-integrity/evidence-job tests passed."
   }
 }

@@ -168,6 +168,15 @@ def test_explanation_job_persists_local_executor_lifecycle_and_reopens(tmp_path:
     assert persisted.status_code == 200
     assert persisted.json()[0]["job_id"] == job["job_id"]
     assert persisted.json()[0]["output"] == job["output"]
+    assert client.get(f"/api/projects/{reopened}/integrity").json()["status"] == "PASS"
+
+    check_job_path = root / "jobs" / f"{check_job['job_id']}.json"
+    persisted_check_job = json.loads(check_job_path.read_text(encoding="utf-8"))
+    persisted_check_job["output"]["check_id"] = "00000000-0000-0000-0000-000000000000"
+    check_job_path.write_text(json.dumps(persisted_check_job), encoding="utf-8")
+    report = client.get(f"/api/projects/{reopened}/integrity").json()
+    assert report["status"] == "FAIL"
+    assert any(issue["code"] == "JOB_OUTPUT_PROVENANCE_MISMATCH" for issue in report["issues"])
 
 
 def test_queued_evidence_job_can_cancel_without_creating_a_canonical_output(tmp_path: Path) -> None:
@@ -518,6 +527,22 @@ def test_assurance_and_bundle_jobs_persist_the_selected_execution_backend(tmp_pa
     )
     assert bundle.status_code == 202, bundle.text
     assert bundle.json()["execution_backend_key"] == "local_executor"
+    bundle_job = bundle.json()
+    for _ in range(100):
+        bundle_job = client.get(f"/api/projects/{session_id}/evidence/explanation-jobs/{bundle_job['job_id']}").json()
+        if bundle_job["status"] not in {"queued", "running"}:
+            break
+        time.sleep(0.02)
+    assert bundle_job["status"] == "succeeded", bundle_job
+    assert client.get(f"/api/projects/{session_id}/integrity").json()["status"] == "PASS"
+
+    bundle_job_path = root / "jobs" / f"{bundle_job['job_id']}.json"
+    persisted_bundle_job = json.loads(bundle_job_path.read_text(encoding="utf-8"))
+    persisted_bundle_job["output"]["bundle_id"] = "00000000-0000-0000-0000-000000000000"
+    bundle_job_path.write_text(json.dumps(persisted_bundle_job), encoding="utf-8")
+    report = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert report["status"] == "FAIL"
+    assert any(issue["code"] == "JOB_OUTPUT_PROVENANCE_MISMATCH" for issue in report["issues"])
 
     unknown = client.post(
         "/api/projects/evidence/assurance-jobs",
