@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import time
 from pathlib import Path
+from uuid import uuid4
 
 import pandas as pd
 from fastapi.testclient import TestClient
@@ -184,6 +186,64 @@ def test_project_integrity_rejects_study_seed_fields_that_contradict_variability
 
     assert report["status"] == "FAIL"
     assert any(issue["code"] == "STUDY_RANDOMNESS_PROVENANCE_MISMATCH" for issue in report["issues"])
+
+
+def test_project_integrity_keeps_legacy_study_schema_readable_without_rewrite(tmp_path: Path) -> None:
+    client = TestClient(app)
+    root = tmp_path / "legacy-study-integrity"
+    session_id = client.post("/api/projects", json={"path": str(root), "name": "Legacy Study integrity"}).json()["session_id"]
+    assert client.post("/api/projects/dataset/confirm", json={"session_id": session_id, "csv_text": _frame(), "target": "target", "task": "binary_classification", "id_columns": []}).status_code == 200
+    created = client.post("/api/projects/training/studies", json={"session_id": session_id, "name": "legacy coupled seeds", "model_kind": "random_forest", "seeds": [43, 47, 53], "randomness_protocol": "LEGACY_COMBINED", "selection_metric": "f1", "max_epochs": 1, "learning_rate": .01, "batch_size": 16, "patience": 1, "validation_fraction": .2, "test_fraction": .2, "max_rules": 3})
+    assert created.status_code == 201, created.text
+    study_path = root / "studies" / f"{created.json()['study_id']}.json"
+    payload = json.loads(study_path.read_text(encoding="utf-8"))
+    payload["schema_version"] = 2
+    payload["training_seeds"] = []
+    for field in ("adapter_key", "adapter_version", "adapter_provider", "runtime_capability_snapshot_hash"):
+        payload.pop(field, None)
+    study_path.write_text(json.dumps(payload), encoding="utf-8")
+    original = study_path.read_bytes()
+
+    report = client.get(f"/api/projects/{session_id}/integrity").json()
+
+    assert study_path.read_bytes() == original
+    assert report["status"] in {"PASS", "WARN"}
+    assert not any(issue["code"] in {"ADAPTER_IDENTITY", "STUDY_RANDOMNESS_PROVENANCE_MISMATCH"} and issue["status"] == "FAIL" for issue in report["issues"])
+
+
+def test_project_integrity_rejects_study_job_detached_from_created_study(tmp_path: Path) -> None:
+    client = TestClient(app)
+    root = tmp_path / "study-job-integrity"
+    session_id = client.post("/api/projects", json={"path": str(root), "name": "StudyJob integrity"}).json()["session_id"]
+    assert client.post("/api/projects/dataset/confirm", json={"session_id": session_id, "csv_text": _frame(), "target": "target", "task": "binary_classification", "id_columns": []}).status_code == 200
+    started = client.post("/api/projects/training/study-jobs", json={"session_id": session_id, "name": "integrity forest", "model_kind": "random_forest", "seeds": [51, 53, 59], "selection_metric": "f1", "max_epochs": 1, "learning_rate": .01, "batch_size": 16, "patience": 1, "validation_fraction": .2, "test_fraction": .2, "max_rules": 3})
+    assert started.status_code == 202, started.text
+    job = started.json()
+    for _ in range(100):
+        job = client.get(f"/api/projects/{session_id}/training/study-jobs/{job['job_id']}").json()
+        if job["status"] not in {"QUEUED", "RUNNING"}:
+            break
+        time.sleep(.05)
+    assert job["status"] == "SUCCEEDED"
+    assert client.get(f"/api/projects/{session_id}/integrity").json()["status"] == "PASS"
+
+    job_path = root / "studies" / "jobs" / f"{job['job_id']}.json"
+    persisted_job = json.loads(job_path.read_text(encoding="utf-8"))
+    payload = dict(persisted_job)
+    payload["study_id"] = str(uuid4())
+    job_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    report = client.get(f"/api/projects/{session_id}/integrity").json()
+
+    assert report["status"] == "FAIL"
+    assert any("TrainingStudy that is not present" in issue["detail"] for issue in report["issues"] if issue["code"] == "ADAPTER_IDENTITY")
+
+    persisted_job["seed_states"][0]["run_id"] = str(uuid4())
+    job_path.write_text(json.dumps(persisted_job), encoding="utf-8")
+    report = client.get(f"/api/projects/{session_id}/integrity").json()
+
+    assert report["status"] == "FAIL"
+    assert any("missing canonical TrainingRun" in issue["detail"] for issue in report["issues"] if issue["code"] == "ADAPTER_IDENTITY")
 
 
 def test_project_integrity_fails_closed_for_unknown_persisted_model_adapter(tmp_path: Path) -> None:

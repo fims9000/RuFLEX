@@ -645,6 +645,54 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                         identity_note = "Exact persisted adapter identity verified"
                     if job.model_kind not in adapter.descriptor.training_model_kinds:
                         raise ValueError("StudyJob adapter does not support its declared model kind.")
+                    completed_run_ids: set[object] = set()
+                    for state in job.seed_states:
+                        if state.status == "SUCCEEDED":
+                            if state.run_id is None:
+                                raise ValueError("A successful StudyJob seed has no TrainingRun identity.")
+                            run = runs_by_id.get(state.run_id)
+                            if run is None:
+                                raise ValueError("A successful StudyJob seed references a missing canonical TrainingRun.")
+                            run_training_seed = int(run.training_seed if run.training_seed is not None else run.seed)
+                            run_split_seed = int(run.split_seed if run.split_seed is not None else run.seed)
+                            expected_training_seed = int(state.training_seed if state.training_seed is not None else state.seed)
+                            expected_split_seed = int(state.split_seed if state.split_seed is not None else state.seed)
+                            run_adapter = resolve_run_adapter(run, registry=registry)
+                            if (
+                                run.model_kind != job.model_kind
+                                or (job.dataset_fingerprint is not None and run.dataset_fingerprint != job.dataset_fingerprint)
+                                or run_training_seed != expected_training_seed
+                                or run_split_seed != expected_split_seed
+                                or run_adapter.descriptor.identity != adapter.descriptor.identity
+                            ):
+                                raise ValueError("A successful StudyJob seed differs from its frozen run, dataset, seed, or adapter binding.")
+                            completed_run_ids.add(run.run_id)
+                        elif state.run_id is not None:
+                            raise ValueError("A non-successful StudyJob seed must not claim a completed TrainingRun.")
+                    if job.study_id is not None:
+                        study = studies_by_id.get(job.study_id)
+                        if study is None:
+                            raise ValueError("StudyJob references a TrainingStudy that is not present.")
+                        study_run_ids = {run.run_id for run in study.seed_runs}
+                        if all((study.adapter_key, study.adapter_version, study.adapter_provider)):
+                            study_adapter_matches = (
+                                study.adapter_key == adapter.descriptor.identity.key
+                                and study.adapter_version == adapter.descriptor.identity.version
+                                and study.adapter_provider == adapter.descriptor.identity.provider
+                            )
+                        elif study.schema_version < 3 and study.seed_runs:
+                            study_adapter_matches = resolve_run_adapter(study.seed_runs[0], registry=registry).descriptor.identity == adapter.descriptor.identity
+                        else:
+                            study_adapter_matches = False
+                        if (
+                            study.model_kind != job.model_kind
+                            or (job.dataset_fingerprint is not None and any(run.dataset_fingerprint != job.dataset_fingerprint for run in study.seed_runs))
+                            or study_run_ids != completed_run_ids
+                            or not study_adapter_matches
+                        ):
+                            raise ValueError("StudyJob does not match its created TrainingStudy and completed seed runs.")
+                    elif job.status == "SUCCEEDED":
+                        raise ValueError("A successful StudyJob is missing its TrainingStudy identity.")
                     issues.append(ProjectIntegrityIssue(code="ADAPTER_IDENTITY", status="PASS", path=relative_path, detail=f"{identity_note}: {adapter.descriptor.identity.key}@{adapter.descriptor.identity.version}."))
                 except Exception as error:
                     issues.append(ProjectIntegrityIssue(code="ADAPTER_IDENTITY", status="FAIL", path=relative_path, detail=f"StudyJob adapter provenance is invalid: {error}"))
