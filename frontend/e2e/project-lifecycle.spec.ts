@@ -335,6 +335,36 @@ test("E2E-08 confirms a dataset contract in Data workspace and preserves it acro
   expect(persisted.status()).toBe(200);
 });
 
+test("serializes DatasetContract confirmation against project persistence and close", async ({ page }) => {
+  await createProject(page, projectPath("dataset-write-serialization"), "Dataset write serialization");
+  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
+
+  let releaseConfirmation!: () => void;
+  let markConfirmationStarted!: () => void;
+  const confirmationGate = new Promise<void>((resolve) => { releaseConfirmation = resolve; });
+  const confirmationStarted = new Promise<void>((resolve) => { markConfirmationStarted = resolve; });
+  let confirmationRequests = 0;
+  await page.route("**/api/projects/dataset/confirm", async (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    confirmationRequests += 1;
+    markConfirmationStarted();
+    await confirmationGate;
+    await route.continue();
+  });
+
+  await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
+  await confirmationStarted;
+  await expect(page.getByRole("button", { name: "Saving dataset…", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Save", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Close", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Import CSV / XLSX", exact: true })).toBeDisabled();
+  expect(confirmationRequests).toBe(1);
+  releaseConfirmation();
+  await expect(page.getByText(/Contract: target/)).toBeVisible();
+  expect(confirmationRequests).toBe(1);
+});
+
 test("E2E-09 declares and freezes the new-entity generalization contract", async ({ page }) => {
   await createProject(page, projectPath("generalization"), "Generalization project");
   await page.getByRole("button", { name: /Data.*No dataset/ }).click();

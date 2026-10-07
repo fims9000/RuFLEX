@@ -265,6 +265,7 @@ export function App() {
   const csvInspectionRequestRef = useRef(0);
   const csvDraftRevisionRef = useRef(0);
   const datasetMutationRequestRef = useRef(0);
+  const datasetMutationInFlightRef = useRef(false);
   const pendingDatasetWriteRef = useRef<PendingDatasetWrite | null>(null);
   const generalizationMutationRequestRef = useRef(0);
   const generalizationMutationInFlightRef = useRef(false);
@@ -1232,7 +1233,7 @@ export function App() {
     }
   }
   async function save() {
-    if (!project || projectWriteInFlightRef.current || generalizationMutationInFlightRef.current) return;
+    if (!project || projectWriteInFlightRef.current || generalizationMutationInFlightRef.current || datasetMutationInFlightRef.current) return;
     const sessionId = project.session_id;
     projectWriteInFlightRef.current = true;
     setProjectWriteOperation("save");
@@ -1253,7 +1254,7 @@ export function App() {
     }
   }
   async function updateDescription() {
-    if (!project || project.read_only || projectWriteInFlightRef.current || generalizationMutationInFlightRef.current) return;
+    if (!project || project.read_only || projectWriteInFlightRef.current || generalizationMutationInFlightRef.current || datasetMutationInFlightRef.current) return;
     const sessionId = project.session_id;
     projectWriteInFlightRef.current = true;
     setProjectWriteOperation("description");
@@ -1276,7 +1277,7 @@ export function App() {
     }
   }
   async function close() {
-    if (projectWriteInFlightRef.current || generalizationMutationInFlightRef.current) return;
+    if (projectWriteInFlightRef.current || generalizationMutationInFlightRef.current || datasetMutationInFlightRef.current) return;
     const requestId = ++projectLifecycleRequestRef.current;
     datasetFileSelectionId.current += 1;
     csvInspectionRequestRef.current += 1;
@@ -1341,7 +1342,8 @@ export function App() {
     }
   }
   async function confirmCsv() {
-    if (!project || confirmingCsvDataset || importingDatasetFile || (datasetStateStatus !== "none" && datasetStateStatus !== "available")) return;
+    if (!project || datasetMutationInFlightRef.current || confirmingCsvDataset || importingDatasetFile || projectWriteInFlightRef.current || generalizationMutationInFlightRef.current || (datasetStateStatus !== "none" && datasetStateStatus !== "available")) return;
+    datasetMutationInFlightRef.current = true;
     const requestId = ++datasetMutationRequestRef.current;
     const sessionId = project.session_id;
     const isCurrent = () => requestId === datasetMutationRequestRef.current && projectSessionRef.current === sessionId;
@@ -1422,6 +1424,7 @@ export function App() {
           : "Dataset confirmation failed",
       );
     } finally {
+      datasetMutationInFlightRef.current = false;
       if (isCurrent()) setConfirmingCsvDataset(false);
     }
   }
@@ -1461,7 +1464,8 @@ export function App() {
     }
   }
   async function importDatasetFile() {
-    if (importingDatasetFile || confirmingCsvDataset || inspectingDatasetFile || !project || !pendingDatasetFile || !pendingDatasetProfile || !target.trim() || (datasetStateStatus !== "none" && datasetStateStatus !== "available")) return;
+    if (datasetMutationInFlightRef.current || projectWriteInFlightRef.current || generalizationMutationInFlightRef.current || importingDatasetFile || confirmingCsvDataset || inspectingDatasetFile || !project || !pendingDatasetFile || !pendingDatasetProfile || !target.trim() || (datasetStateStatus !== "none" && datasetStateStatus !== "available")) return;
+    datasetMutationInFlightRef.current = true;
     const requestId = ++datasetMutationRequestRef.current;
     const sessionId = project.session_id;
     const isCurrent = () => requestId === datasetMutationRequestRef.current && projectSessionRef.current === sessionId;
@@ -1555,11 +1559,12 @@ export function App() {
       setDatasetStateError(reason instanceof Error ? reason.message : "Imported dataset state could not be restored.");
       setError(reason instanceof Error ? reason.message : "Dataset file import failed");
     } finally {
+      datasetMutationInFlightRef.current = false;
       if (isCurrent()) setImportingDatasetFile(false);
     }
   }
   async function createGeneralization() {
-    if (!project || projectWriteInFlightRef.current || generalizationMutationInFlightRef.current) return;
+    if (!project || projectWriteInFlightRef.current || generalizationMutationInFlightRef.current || datasetMutationInFlightRef.current) return;
     generalizationMutationInFlightRef.current = true;
     setGeneralizationMutationOperation("declare");
     const requestId = ++generalizationMutationRequestRef.current;
@@ -1599,7 +1604,7 @@ export function App() {
     }
   }
   async function freezeGeneralization() {
-    if (!project || !generalization || projectWriteInFlightRef.current || generalizationMutationInFlightRef.current) return;
+    if (!project || !generalization || projectWriteInFlightRef.current || generalizationMutationInFlightRef.current || datasetMutationInFlightRef.current) return;
     generalizationMutationInFlightRef.current = true;
     setGeneralizationMutationOperation("freeze");
     const requestId = ++generalizationMutationRequestRef.current;
@@ -1667,7 +1672,7 @@ export function App() {
         <TextInput
           aria-label="Description"
           value={description}
-          disabled={project.read_only || projectWriteOperation !== null || generalizationMutationOperation !== null}
+          disabled={project.read_only || projectWriteOperation !== null || generalizationMutationOperation !== null || confirmingCsvDataset || importingDatasetFile}
           onUpdate={setDescription}
           placeholder="Project description"
         />
@@ -1675,7 +1680,7 @@ export function App() {
       <Button
         view="outlined"
         size="m"
-        disabled={project.read_only || projectWriteOperation !== null || generalizationMutationOperation !== null}
+        disabled={project.read_only || projectWriteOperation !== null || generalizationMutationOperation !== null || confirmingCsvDataset || importingDatasetFile}
         onClick={updateDescription}
         data-ruflex-action="project.description.update"
       >
@@ -1761,8 +1766,8 @@ export function App() {
       projectName={project?.name}
       readOnly={project?.read_only}
       saving={projectWriteOperation === "save"}
-      saveDisabled={projectWriteOperation !== null || generalizationMutationOperation !== null}
-      closeDisabled={projectWriteOperation !== null || generalizationMutationOperation !== null}
+      saveDisabled={projectWriteOperation !== null || generalizationMutationOperation !== null || confirmingCsvDataset || importingDatasetFile}
+      closeDisabled={projectWriteOperation !== null || generalizationMutationOperation !== null || confirmingCsvDataset || importingDatasetFile}
       status={status}
       error={error}
       onSave={save}
@@ -2135,7 +2140,7 @@ export function App() {
               <div className="form-actions">
                 <Button
                   view="outlined"
-                  disabled={project.read_only || generalizationHydrationStatus === "loading" || generalizationHydrationStatus === "error" || generalizationMutationOperation !== null}
+                  disabled={project.read_only || generalizationHydrationStatus === "loading" || generalizationHydrationStatus === "error" || generalizationMutationOperation !== null || confirmingCsvDataset || importingDatasetFile}
                   onClick={createGeneralization}
                   data-ruflex-action="generalization.declare"
                 >
@@ -2146,6 +2151,8 @@ export function App() {
                   disabled={
                     project.read_only ||
                     generalizationMutationOperation !== null ||
+                    confirmingCsvDataset ||
+                    importingDatasetFile ||
                     generalizationHydrationStatus !== "available" ||
                     !generalization?.lint.can_freeze ||
                     !!generalization.contract.frozen_at

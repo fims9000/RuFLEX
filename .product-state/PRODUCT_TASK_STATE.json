@@ -275,13 +275,14 @@
     "alpha_validation_policy_write_serialization",
     "alpha_project_lifecycle_mutation_serialization",
     "alpha_project_persistence_write_serialization",
-    "alpha_generalization_contract_write_serialization"
+    "alpha_generalization_contract_write_serialization",
+    "alpha_dataset_write_serialization"
   ],
-  "active_capability": "alpha_generalization_contract_write_serialization",
+  "active_capability": "alpha_dataset_write_serialization",
   "active_acceptance": [
-    "Generalization declaration and freeze cannot overlap or be submitted twice while a write is active.",
-    "The submitted contract snapshot cannot diverge from editable form values during persistence.",
-    "Stale responses remain isolated to the project session that started the write."
+    "CSV confirmation and file import share a synchronous per-project dataset mutation guard.",
+    "Dataset writes cannot overlap project save, description update, generalization writes, or project close.",
+    "The user receives disabled conflicting actions until the saved DatasetContract is re-read."
   ],
   "blockers": [],
   "next_executable_work": "Inspect the next user-facing alpha workflow for an evidenced reliability/usability gap; use focused, low-resource checks and commit each verified slice locally.",
@@ -563,6 +564,7 @@
     "alpha_validation_policy_write_serialization": "PASS: validation evidence writes, calibration, threshold and selective-policy writes share a synchronous mutual-exclusion guard; final-test opening uses the same guard. Cross-action buttons disable while a write is in flight. Focused PRODUCT-04 Studio E2E passed, holding calibration open and verifying both threshold selection and evaluation revision save remain disabled; TypeScript build and diff check passed.",
     "alpha_project_lifecycle_mutation_serialization": "PASS: create, form-open, and recent-project open share a synchronous in-flight guard; create/open controls and recent project entries are disabled while the request is pending. Focused Studio Playwright E2E passed (1/1), delaying create and recent-open separately and confirming exactly one lifecycle request for each; TypeScript build and git diff --check passed.",
     "alpha_project_persistence_write_serialization": "PASS: project save and project-description update use one synchronous shared write guard; the header displays Saving progress and save/description/close controls disable during either mutation. Focused Studio Playwright E2E passed (1/1) with delayed save and metadata responses, TypeScript build and git diff --check.",
-    "alpha_generalization_contract_write_serialization": "PASS: generalization declaration and freeze share a synchronous in-flight guard with project save/description/close; form fields and conflicting actions disable with progress labels while persistence is pending. Focused delayed declaration/freeze Studio E2E passed, TypeScript project build and git diff --check passed."
+    "alpha_generalization_contract_write_serialization": "PASS: generalization declaration and freeze share a synchronous in-flight guard with project save/description/close; form fields and conflicting actions disable with progress labels while persistence is pending. Focused delayed declaration/freeze Studio E2E passed, TypeScript project build and git diff --check passed.",
+    "alpha_dataset_write_serialization": "PASS: CSV confirmation and file import now use a synchronous shared dataset mutation guard; save, description update, generalization writes and close cannot overlap. Focused delayed-confirmation Studio E2E and generalization write E2E passed (2/2), TypeScript build, product-state JSON parse and git diff --check passed."
   }
 }
