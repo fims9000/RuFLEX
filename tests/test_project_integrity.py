@@ -157,6 +157,17 @@ def test_project_integrity_recomputes_study_selection_from_canonical_runs(tmp_pa
     study_id = created.json()["study_id"]
     study_path = root / "studies" / f"{study_id}.json"
     payload = json.loads(study_path.read_text(encoding="utf-8"))
+    assert client.get(f"/api/projects/{session_id}/integrity").json()["status"] == "PASS"
+    duplicate = json.loads(json.dumps(payload))
+    duplicate["seed_runs"].append(json.loads(json.dumps(payload["seed_runs"][0])))
+    duplicate["training_seeds"].append(duplicate["training_seeds"][0])
+    study_path.write_text(json.dumps(duplicate), encoding="utf-8")
+
+    duplicate_report = client.get(f"/api/projects/{session_id}/integrity").json()
+
+    assert duplicate_report["status"] == "FAIL"
+    assert any(issue["code"] == "STUDY_RUN_SUPPORT_INVALID" for issue in duplicate_report["issues"])
+    study_path.write_text(json.dumps(payload), encoding="utf-8")
     payload["seed_runs"][0]["validation_metrics"]["f1"] = 0.123456
     study_path.write_text(json.dumps(payload), encoding="utf-8")
     (root / "studies" / "active-study.json").write_text(json.dumps({"study_id": "00000000-0000-0000-0000-000000000004"}), encoding="utf-8")

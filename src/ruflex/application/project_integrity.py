@@ -384,6 +384,16 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                 if study_path.stem != str(study.study_id):
                     raise ValueError("TrainingStudy filename does not match its persisted identity.")
                 studies_by_id[study.study_id] = study
+                run_ids = [item.run_id for item in study.seed_runs]
+                seed_pairs = [
+                    (
+                        int(item.split_seed if item.split_seed is not None else item.seed),
+                        int(item.training_seed if item.training_seed is not None else item.seed),
+                    )
+                    for item in study.seed_runs
+                ]
+                if len(set(run_ids)) != len(run_ids) or len(set(seed_pairs)) != len(seed_pairs):
+                    issues.append(ProjectIntegrityIssue(code="STUDY_RUN_SUPPORT_INVALID", status="FAIL", path=relative_path, detail="TrainingStudy contains duplicate TrainingRun identities or duplicate split/training seed pairs."))
                 if not any((study.adapter_key, study.adapter_version, study.adapter_provider)) and study.schema_version < 3:
                     legacy = LEGACY_MODEL_KIND_TO_ADAPTER.get(study.model_kind)
                     if legacy is None:
