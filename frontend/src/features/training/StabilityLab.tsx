@@ -151,7 +151,7 @@ export function StabilityLab({ project, study, theme, onAnalysisChange, onPolicy
       }
       if (!request.thresholdId) {
         let threshold: DecisionThresholdPolicy;
-        try { threshold = await studioApi.getLatestAnalysisThreshold(project.session_id); }
+        try { threshold = await studioApi.getLatestAnalysisThresholdForEvaluation(project.session_id, request.evaluationId!, null); }
         catch (reason) {
           if (reason instanceof ProductApiError && reason.status === 404) {
             setBuildRecoveryNotFound(true); setBuildRecoveryError("The exact Evaluation is recovered, but no threshold is visible yet. Retry lookup later, or explicitly continue this chain."); return;

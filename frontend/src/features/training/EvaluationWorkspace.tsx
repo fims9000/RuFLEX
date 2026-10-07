@@ -362,7 +362,7 @@ export function EvaluationWorkspace({
           if (latest.evaluation_id !== pending.evaluationId) throw new Error("The latest calibration belongs to another Evaluation; no replacement was created.");
           onCalibration(latest); onThreshold(null);
         } else if (pending.kind === "threshold") {
-          const latest = await studioApi.getLatestAnalysisThreshold(project.session_id);
+          const latest = await studioApi.getLatestAnalysisThresholdForEvaluation(project.session_id, pending.evaluationId, pending.calibrationId);
           if (latest.evaluation_id !== pending.evaluationId || latest.calibration_id !== pending.calibrationId) throw new Error("The latest threshold belongs to another Evaluation or calibration; no replacement was created.");
           onThreshold(latest);
         } else {

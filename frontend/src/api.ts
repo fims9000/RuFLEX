@@ -642,6 +642,12 @@ export const studioApi = {
     }),
   getLatestAnalysisThreshold: (sessionId: string) =>
     request<DecisionThresholdPolicy>(`/api/projects/${sessionId}/analyses/thresholds/latest`),
+  getLatestAnalysisThresholdForEvaluation: (sessionId: string, evaluationId: string, calibrationId: string | null) => {
+    const params = calibrationId === null
+      ? "calibration_source=raw"
+      : `calibration_source=calibrated&calibration_id=${encodeURIComponent(calibrationId)}`;
+    return request<DecisionThresholdPolicy>(`/api/projects/${sessionId}/analyses/thresholds/by-evaluation/${evaluationId}/latest?${params}`);
+  },
   getAnalysisThreshold: (sessionId: string, thresholdId: string) =>
     request<DecisionThresholdPolicy>(`/api/projects/${sessionId}/analyses/thresholds/${thresholdId}`),
   evaluateFinalTest: (sessionId: string, evaluationId: string, calibrationId?: string | null, thresholdId?: string | null, selectivePolicyId?: string | null, stabilityGatePolicyId?: string | null) =>

@@ -1611,6 +1611,28 @@ def load_latest_decision_threshold(project_root: Path) -> DecisionThresholdPolic
     return load_decision_threshold(project_root, UUID(pointer["threshold_id"]))
 
 
+def load_latest_validation_threshold_for_evaluation(
+    project_root: Path,
+    evaluation_id: UUID,
+    calibration_id: UUID | None,
+) -> DecisionThresholdPolicy:
+    """Recover immutable threshold evidence by its exact Evaluation/calibration binding."""
+    latest: DecisionThresholdPolicy | None = None
+    for path in _thresholds_root(project_root).glob("*.json"):
+        if path.name == "active-threshold.json":
+            continue
+        policy = DecisionThresholdPolicy.model_validate_json(path.read_text(encoding="utf-8"))
+        if path.stem != str(policy.threshold_id):
+            raise TrainingError(f"Persisted threshold identity does not match its filename: {path.name}.")
+        if policy.evaluation_id != evaluation_id or policy.calibration_id != calibration_id:
+            continue
+        if latest is None or (policy.created_at, str(policy.threshold_id)) > (latest.created_at, str(latest.threshold_id)):
+            latest = policy
+    if latest is None:
+        raise FileNotFoundError(f"No validation threshold exists for Evaluation {evaluation_id} and the requested calibration binding.")
+    return latest
+
+
 def _latest_threshold_for_run(project_root: Path, run_id: UUID) -> DecisionThresholdPolicy | None:
     matches: list[DecisionThresholdPolicy] = []
     for path in _thresholds_root(project_root).glob("*.json"):

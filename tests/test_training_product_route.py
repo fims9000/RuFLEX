@@ -372,6 +372,37 @@ def test_validation_evaluation_recovers_after_active_pointer_write_failure(tmp_p
     assert client.get(f"/api/projects/{session_id}/analyses/evaluations/latest").status_code == 404
 
 
+def test_validation_threshold_recovers_by_evaluation_after_active_pointer_write_failure(tmp_path: Path, monkeypatch) -> None:
+    client = TestClient(app)
+    root = tmp_path / "threshold-recovery"
+    session_id = client.post("/api/projects", json={"path": str(root), "name": "Threshold recovery"}).json()["session_id"]
+    confirmed = client.post("/api/projects/dataset/confirm", json={"session_id": session_id, "csv_text": _binary_frame().to_csv(index=False), "target": "target", "task": "binary_classification", "id_columns": []})
+    assert confirmed.status_code == 200, confirmed.text
+    trained = client.post("/api/projects/training/run", json={"session_id": session_id, "model_kind": "logistic_regression", "seed": 32, "max_epochs": 1, "learning_rate": .01, "batch_size": 16, "patience": 1, "validation_fraction": .2, "test_fraction": .2, "max_rules": 3})
+    assert trained.status_code == 201, trained.text
+    evaluation = client.post("/api/projects/analyses/evaluations", json={"session_id": session_id, "run_id": trained.json()["run_id"]})
+    assert evaluation.status_code == 201, evaluation.text
+
+    original_write = training_application._atomic_write_text
+
+    def fail_active_pointer(path, text):
+        if Path(path).name == "active-threshold.json":
+            raise OSError("simulated active threshold pointer failure")
+        return original_write(path, text)
+
+    monkeypatch.setattr(training_application, "_atomic_write_text", fail_active_pointer)
+    selected = client.post("/api/projects/analyses/thresholds", json={"session_id": session_id, "evaluation_id": evaluation.json()["evaluation_id"], "calibration_id": None, "objective": "f1"})
+    assert selected.status_code == 500
+    assert "look up the exact Evaluation" in selected.json()["detail"]
+
+    recovered = client.get(f"/api/projects/{session_id}/analyses/thresholds/by-evaluation/{evaluation.json()['evaluation_id']}/latest", params={"calibration_source": "raw"})
+    assert recovered.status_code == 200, recovered.text
+    assert recovered.json()["evaluation_id"] == evaluation.json()["evaluation_id"]
+    assert recovered.json()["calibration_id"] is None
+    assert recovered.json()["probability_source"] == "raw"
+    assert client.get(f"/api/projects/{session_id}/analyses/thresholds/latest").status_code == 404
+
+
 def test_validation_comparison_persists_compatible_seed_runs_and_rejects_duplicates(tmp_path: Path) -> None:
     client = TestClient(app)
     root = tmp_path / "comparison"

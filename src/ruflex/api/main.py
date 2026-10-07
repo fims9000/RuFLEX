@@ -1924,8 +1924,10 @@ def select_analysis_threshold(request: SelectAnalysisThresholdRequest) -> Decisi
         raise _project_error(error) from error
     except FileNotFoundError as error:
         raise HTTPException(status_code=404, detail="The selected validation evidence or calibration object does not exist.") from error
-    except (TrainingError, ValueError, OSError) as error:
+    except (TrainingError, ValueError) as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
+    except OSError as error:
+        raise HTTPException(status_code=500, detail="Decision-threshold persistence failed; look up the exact Evaluation before retrying.") from error
 
 
 @app.get("/api/projects/{session_id}/analyses/thresholds/latest", response_model=DecisionThresholdPolicy)
@@ -1937,6 +1939,32 @@ def get_latest_analysis_threshold(session_id: UUID) -> DecisionThresholdPolicy:
         raise _project_error(error) from error
     except FileNotFoundError as error:
         raise HTTPException(status_code=404, detail="No persisted decision-threshold policy exists in this project.") from error
+
+
+@app.get("/api/projects/{session_id}/analyses/thresholds/by-evaluation/{evaluation_id}/latest", response_model=DecisionThresholdPolicy)
+def get_latest_analysis_threshold_for_evaluation(
+    session_id: UUID,
+    evaluation_id: UUID,
+    calibration_source: Literal["raw", "calibrated"],
+    calibration_id: UUID | None = None,
+) -> DecisionThresholdPolicy:
+    from ruflex.application.training import TrainingError, load_latest_validation_threshold_for_evaluation
+    if (calibration_source == "raw" and calibration_id is not None) or (calibration_source == "calibrated" and calibration_id is None):
+        raise HTTPException(status_code=422, detail="Threshold recovery requires an exact raw or calibrated source binding.")
+    try:
+        return load_latest_validation_threshold_for_evaluation(
+            service.get(session_id).project.root,
+            evaluation_id,
+            calibration_id,
+        )
+    except ProjectError as error:
+        raise _project_error(error) from error
+    except FileNotFoundError as error:
+        raise HTTPException(status_code=404, detail="No persisted threshold exists for this exact Evaluation and calibration.") from error
+    except (TrainingError, ValueError) as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    except OSError as error:
+        raise HTTPException(status_code=500, detail="Persisted threshold lookup failed.") from error
 
 
 @app.get("/api/projects/{session_id}/analyses/thresholds/{threshold_id}", response_model=DecisionThresholdPolicy)
