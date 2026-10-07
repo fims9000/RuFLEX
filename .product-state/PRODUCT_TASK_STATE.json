@@ -239,13 +239,14 @@
     "alpha_auxiliary_evidence_reference_integrity",
     "alpha_behavior_spec_result_integrity",
     "alpha_stability_assurance_bundle_semantic_integrity",
-    "alpha_selective_policy_bundle_semantic_integrity"
+    "alpha_selective_policy_bundle_semantic_integrity",
+    "alpha_final_test_bundle_semantic_integrity"
   ],
-  "active_capability": "alpha_selective_policy_bundle_semantic_integrity",
+  "active_capability": "alpha_final_test_bundle_semantic_integrity",
   "active_acceptance": [
-    "VerificationBundle resolves confidence-only SelectivePredictionPolicy to exact validation Evaluation, TrainingRun, threshold and optional CalibrationTransform.",
-    "The frozen confidence fit identity and risk-coverage curve are independently recomputed from validation evidence.",
-    "Raw/calibrated source and calibration/threshold bindings must agree; re-checksummed curve tampering fails closed."
+    "VerificationBundle resolves FinalTestEvaluation to its exact frozen run, validation evaluation, threshold, calibration, selective policy and Stability Gate.",
+    "Final-test source row/case/policy identities and freeze timestamps are verified.",
+    "Final-test metrics and persisted Stability case evidence are independently recomputed; re-checksummed tampering fails closed."
   ],
   "blockers": [],
   "next_executable_work": "Inspect the remaining persisted evidence families for summary fields that can be tampered without semantic revalidation; keep each change narrow and resource-light.",
@@ -491,6 +492,7 @@
     "alpha_auxiliary_evidence_reference_integrity": "PASS: Project Integrity replays TreePathEvidence against the exact frozen tree artifact, binds ExplanationReproducibilityAnalysis run/explanation/case identities, verifies ExpertCorrection FIS and dataset/target provenance, and resolves ExhaustiveLab run/FIS identities. Regressions reject tampered tree prediction, reproducibility references, correction hash, and exhaustive FIS hash. Focused integrity plus four real product routes: 23 passed.",
     "alpha_behavior_spec_result_integrity": "PASS: BehaviorSpec binds exact run/model or FIS semantic revision; persisted BehaviorSpecResult is deterministically replayed from the frozen requirement, and behavior revision comparisons bind their exact artifact/FIS identities. Project Integrity and Assurance now fail on forged result output, stale FIS revision, or corrupted comparison binding. Focused integrity and behavior-route regressions: 23 passed; integrated product journey: 1 passed; compileall and diff check passed.",
     "alpha_stability_assurance_bundle_semantic_integrity": "PASS: Project Integrity and Assurance recompute stability case evidence and frozen gate decisions; VerificationBundle validates analysis/policy provenance and rejects re-checksummed semantic tampering. Fixed deterministic random-review baseline validation to use the product identity protocol. Focused Stability/Integrity tests: 8 passed; compileall and git diff --check passed.",
-    "alpha_selective_policy_bundle_semantic_integrity": "PASS: VerificationBundle now resolves frozen confidence policy to exact validation run/evaluation/threshold/calibration, verifies probability-source consistency, and recomputes the policy fit identity and confidence risk-coverage curve. Re-checksummed curve tampering is rejected; tests/test_stability_lab.py: 7 passed; compileall and git diff --check passed."
+    "alpha_selective_policy_bundle_semantic_integrity": "PASS: VerificationBundle now resolves frozen confidence policy to exact validation run/evaluation/threshold/calibration, verifies probability-source consistency, and recomputes the policy fit identity and confidence risk-coverage curve. Re-checksummed curve tampering is rejected; tests/test_stability_lab.py: 7 passed; compileall and git diff --check passed.",
+    "alpha_final_test_bundle_semantic_integrity": "PASS: VerificationBundle validates final-test frozen-policy bindings, case/sample/policy identities, freeze timestamps, metrics and Stability evidence. A re-checksummed final-test metric tamper is rejected; tests/test_stability_lab.py: 7 passed."
   }
 }

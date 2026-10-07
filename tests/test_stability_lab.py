@@ -136,6 +136,24 @@ def test_training_variability_keeps_split_identity_and_persists_stability_gate(t
     selective_validation = validate_verification_bundle(tampered_selective_bundle)
     assert selective_validation.status == "FAIL"
     assert any("Selective policy" in error and "risk-coverage" in error for error in selective_validation.errors)
+    final_test_entry = f"analyses/final-tests/{final.json()['final_test_id']}.json"
+    final_test_entries = dict(entries)
+    final_test_object = json.loads(final_test_entries[final_test_entry])
+    final_test_object["metrics"]["f1"] = 0.0 if final_test_object["metrics"]["f1"] != 0.0 else 1.0
+    final_test_entries[final_test_entry] = json.dumps(final_test_object, indent=2).encode()
+    final_test_manifest = json.loads(final_test_entries["verification-manifest.json"])
+    final_test_manifest["checksums"][final_test_entry] = hashlib.sha256(final_test_entries[final_test_entry]).hexdigest()
+    final_test_entries["verification-manifest.json"] = json.dumps(final_test_manifest, indent=2, sort_keys=True).encode()
+    final_test_entries["verification-manifest.sha256"] = (
+        f"{hashlib.sha256(final_test_entries['verification-manifest.json']).hexdigest()}  verification-manifest.json\n".encode()
+    )
+    tampered_final_test_bundle = tmp_path / "tampered-final-test-bundle.zip"
+    with zipfile.ZipFile(tampered_final_test_bundle, "w", zipfile.ZIP_DEFLATED) as archive:
+        for name, payload in final_test_entries.items():
+            archive.writestr(name, payload)
+    final_test_validation = validate_verification_bundle(tampered_final_test_bundle)
+    assert final_test_validation.status == "FAIL"
+    assert any("Final-test evaluation" in error and "metrics" in error for error in final_test_validation.errors)
     reopened = client.post("/api/projects/open", json={"path": str(tmp_path / "stability")})
     listed = client.get(f"/api/projects/{reopened.json()['session_id']}/analyses/stability")
     assert listed.status_code == 200 and listed.json()[0]["analysis_id"] == analysis["analysis_id"]

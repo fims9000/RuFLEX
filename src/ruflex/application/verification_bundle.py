@@ -14,7 +14,7 @@ from ruflex.application.behavior import _requirement_identity
 from ruflex.application.evidence import _atomic_write_text
 from ruflex.application.lineage import build_project_lineage
 from ruflex.domain.verification import VerificationBundle, VerificationBundleValidation
-from ruflex.application.datasets import DataAuditReport, DatasetContract, DatasetProfile, LeakageAuditReport, SplitContract, TransformPipelineContract, _transform_pipeline_identity
+from ruflex.application.datasets import DataAuditReport, DatasetContract, DatasetProfile, LeakageAuditReport, SplitContract, TransformPipelineContract, _transform_pipeline_identity, row_identity
 from ruflex.domain.assurance import AssuranceCase
 from ruflex.domain.behavior import BehaviorRevisionComparison, BehaviorSpec, BehaviorSpecResult
 from ruflex.domain.evidence import ExplanationCheck, ExplanationContract, ExplanationReproducibilityAnalysis
@@ -117,6 +117,8 @@ def _validate_relationships(objects: list[BaseModel]) -> list[str]:
     calibrations = objects_by_type.get(CalibrationTransform, {})
     thresholds = objects_by_type.get(DecisionThresholdPolicy, {})
     stability_analyses = objects_by_type.get(StudyStabilityAnalysis, {})
+    selective_policies = objects_by_type.get(SelectivePredictionPolicy, {})
+    final_tests = objects_by_type.get(FinalTestEvaluation, {})
     from ruflex.application.project_integrity import _stability_analysis_cases_match, _stability_gate_evidence_matches
     for object_ in objects:
         if isinstance(object_, SplitContract):
@@ -261,6 +263,67 @@ def _validate_relationships(objects: list[BaseModel]) -> list[str]:
                 or not _stability_gate_evidence_matches(object_, analysis)
             ):
                 errors.append(f"Stability gate {object_.policy_id} does not match its frozen analysis, selected run, validation threshold, or case evidence.")
+        elif isinstance(object_, FinalTestEvaluation):
+            from ruflex.application.project_integrity import (
+                _final_test_freeze_timestamps_match,
+                _final_test_metrics_match,
+                _final_test_stability_evidence_matches,
+                _stable_identity,
+            )
+            evaluation = evaluations.get(str(object_.evaluation_id))
+            run = runs.get(str(object_.run_id))
+            threshold = thresholds.get(str(object_.threshold_id)) if object_.threshold_id is not None else None
+            calibration = calibrations.get(str(object_.calibration_id)) if object_.calibration_id is not None else None
+            selective = selective_policies.get(str(object_.selective_policy_id)) if object_.selective_policy_id is not None else None
+            gate = next((item for item in objects if isinstance(item, StabilityGatePolicy) and item.policy_id == object_.stability_gate_policy_id), None)
+            analysis = stability_analyses.get(str(gate.stability_analysis_id)) if isinstance(gate, StabilityGatePolicy) else None
+            stability_runs = [runs.get(str(run_id)) for run_id in gate.run_ids] if isinstance(gate, StabilityGatePolicy) else []
+            source_rows = [int(row.source_row) for row in object_.prediction_rows if row.source_row is not None]
+            case_ids = [row.row_identity or (row_identity(object_.dataset_fingerprint, int(row.source_row)) if row.source_row is not None else None) for row in object_.prediction_rows]
+            expected_sample_identity = _stable_identity("final-test-samples", {"dataset_fingerprint": object_.dataset_fingerprint, "run_id": str(object_.run_id), "source_rows": sorted(source_rows)})
+            expected_case_identity = _stable_identity("final-test-cases", {"dataset_fingerprint": object_.dataset_fingerprint, "row_identities": sorted(case_ids)}) if all(case_ids) else None
+            if (
+                not isinstance(evaluation, AnalysisEvaluation)
+                or not isinstance(run, TrainingRun)
+                or evaluation.run_id != object_.run_id
+                or evaluation.split != "validation"
+                or object_.task != evaluation.task
+                or object_.target != evaluation.target
+                or object_.model_kind != evaluation.model_kind
+                or object_.model_artifact_sha256 != evaluation.model_artifact_sha256
+                or object_.dataset_fingerprint != evaluation.dataset_fingerprint
+                or object_.dataset_artifact_sha256 != evaluation.dataset_artifact_sha256
+                or object_.preprocessing_identity != evaluation.preprocessing_identity
+                or object_.preprocessing_artifact_sha256 != evaluation.preprocessing_artifact_sha256
+                or object_.test_row_count != len(object_.prediction_rows)
+                or len(set(source_rows)) != len(source_rows)
+                or len(set(case_ids)) != len(case_ids)
+                or any(row.source_row is None or row.row != index for index, row in enumerate(object_.prediction_rows))
+                or object_.test_sample_identity != expected_sample_identity
+                or object_.test_case_identity != expected_case_identity
+                or object_.policy_identity != _stable_identity("final-test-policy", {
+                    "run_id": str(object_.run_id),
+                    "evaluation_id": str(object_.evaluation_id),
+                    "model_artifact": object_.model_artifact_sha256,
+                    "preprocessing": object_.preprocessing_identity,
+                    "calibration_id": None if object_.calibration_id is None else str(object_.calibration_id),
+                    "threshold_id": None if object_.threshold_id is None else str(object_.threshold_id),
+                    "selective_policy_id": None if object_.selective_policy_id is None else str(object_.selective_policy_id),
+                    "stability_gate_policy_id": None if object_.stability_gate_policy_id is None else str(object_.stability_gate_policy_id),
+                })
+                or object_.policy_frozen_at is None
+                or object_.dataset_test_unlock_at is None
+                or object_.policy_frozen_at > object_.dataset_test_unlock_at
+                or (object_.threshold_id is not None and (threshold is None or threshold.evaluation_id != object_.evaluation_id or threshold.run_id != object_.run_id or threshold.selected_threshold != object_.decision_threshold))
+                or (object_.calibration_id is not None and (calibration is None or calibration.evaluation_id != object_.evaluation_id or calibration.run_id != object_.run_id))
+                or (object_.selective_policy_id is not None and (selective is None or selective.evaluation_id != object_.evaluation_id or selective.run_id != object_.run_id or selective.class_threshold_id != object_.threshold_id))
+                or (object_.stability_gate_policy_id is not None and (not isinstance(gate, StabilityGatePolicy) or gate.evaluation_id != object_.evaluation_id or gate.selected_run_id != object_.run_id or gate.class_threshold_id != object_.threshold_id))
+                or any(item is None for item in stability_runs)
+                or not _final_test_freeze_timestamps_match(object_, run, evaluation, threshold, calibration, selective, gate, analysis, stability_runs)
+                or not _final_test_metrics_match(object_, threshold, calibration)
+                or not _final_test_stability_evidence_matches(object_, gate)
+            ):
+                errors.append(f"Final-test evaluation {object_.final_test_id} does not match its frozen model, policy, case identities, metrics, or Stability evidence.")
     return errors
 
 
