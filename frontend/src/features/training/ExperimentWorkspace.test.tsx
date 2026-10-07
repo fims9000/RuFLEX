@@ -436,7 +436,23 @@ describe("ExperimentWorkspace dynamic model controls", () => {
     render(<ExperimentWorkspace project={project} dataset={dataset as never} run={null} study={null} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);
 
     expect(await screen.findByText(/StudyJob error: Fewer than three seed runs succeeded/)).toBeVisible();
-    expect(screen.getByText("Seed 9: adapter runtime unavailable")).toBeVisible();
+    expect(screen.getByText("Split unrecorded / train 9: adapter runtime unavailable")).toBeVisible();
+  });
+
+  it("keeps distinct varying-split failures visible when the training seed is fixed", async () => {
+    studioApi.listStudyJobs.mockResolvedValueOnce([{
+      job_id: "job-split-failed", name: "Split Study", model_kind: "decision_tree", selection_metric: "f1",
+      status: "FAILED", cancel_requested: false, randomness_protocol: "SPLIT_VARIABILITY",
+      seed_states: [
+        { seed: 5, split_seed: 11, training_seed: 5, status: "FAILED", run_id: null, runtime_seconds: null, error: "split 11 unavailable" },
+        { seed: 5, split_seed: 13, training_seed: 5, status: "FAILED", run_id: null, runtime_seconds: null, error: "split 13 unavailable" },
+      ],
+      study_id: null, error: "No complete Study", execution_backend: "LOCAL", execution_backend_key: "local_executor", execution_config: {}, recovery_count: 0, recovery_note: null,
+    }]);
+    render(<ExperimentWorkspace project={project} dataset={dataset as never} run={null} study={null} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);
+
+    expect(await screen.findByText("Split 11 / train 5: split 11 unavailable")).toBeVisible();
+    expect(screen.getByText("Split 13 / train 5: split 13 unavailable")).toBeVisible();
   });
 
   it("does not hide exact tree-path support when the saved capability check fails and retries the same run", async () => {
