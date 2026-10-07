@@ -128,6 +128,9 @@ Target branch: `feature/v1.3-data-governance-runtime`.
   blocked in Studio. New Study selection breaks exact validation-metric ties
   by training seed then split seed; existing frozen selections are not changed.
   `docs/qa/ALPHA_STUDY_SEED_PROVENANCE.md` records the boundary.
+- For split-variability Studies, Studio now takes the fixed fitting seed from
+  the visible training-seed field, not from the split-seed field. Listed Study
+  seeds alone determine the varying split memberships.
 - Studio keeps invalid seed drafts visible and blocks training or split freeze
   until the required values are valid 32-bit non-negative integers. The API
   enforces the same range for new split, single-run and Study requests before

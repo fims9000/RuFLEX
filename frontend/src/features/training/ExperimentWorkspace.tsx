@@ -310,7 +310,9 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
       && identityFields.every((field) => splitContract[field] === (field === selectedIdentityField ? groupColumn || null : null));
   }, [dataset?.contract.dataset_fingerprint, dataset?.contract.source_artifact_sha256, groupColumn, splitContract, splitFamily, splitSeed]);
   const splitContractAlreadyFrozen = Boolean(splitContract && splitSelectionMatchesFrozenContract);
-  const studySplitReady = splitSeed !== null && (studyMode === "TRAINING_VARIABILITY" ? splitSelectionMatchesFrozenContract : splitFamily === "RANDOM");
+  const studySplitReady = studyMode === "TRAINING_VARIABILITY"
+    ? splitSelectionMatchesFrozenContract
+    : splitFamily === "RANDOM" && (studyMode !== "SPLIT_VARIABILITY" || seed !== null);
   useEffect(() => {
     setStudy(restoredStudy);
   }, [restoredStudy?.study_id]);
@@ -693,8 +695,12 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
       return;
     }
     if (splitContractRecovery) return;
-    if (splitSeed === null) {
-      setError("Enter a whole-number base seed from 0 to 4294967295 before starting this Study.");
+    if (studyMode === "TRAINING_VARIABILITY" && splitSeed === null) {
+      setError("Enter a whole-number fixed split seed from 0 to 4294967295 before starting this Study.");
+      return;
+    }
+    if (studyMode === "SPLIT_VARIABILITY" && seed === null) {
+      setError("Enter a whole-number fixed training seed from 0 to 4294967295 before starting this Study.");
       return;
     }
     if (!studySplitReady) {
@@ -719,7 +725,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
     setError(null);
     try {
       const selectionMetric = dataset?.contract.task === "regression" ? "rmse" : "f1";
-      const request: Parameters<typeof studioApi.startStudyJob>[1] = { client_request_id: crypto.randomUUID(), name: `Study ${new Date().toLocaleString()}`, model_kind: trainingModelKind, adapter_key: selectedAdapterKey, seeds, randomness_protocol: studyMode, split_seed: studyMode === "TRAINING_VARIABILITY" ? splitContract?.split_seed ?? splitSeed : null, training_seed: studyMode === "SPLIT_VARIABILITY" ? splitSeed : null, split_contract_id: studyMode === "TRAINING_VARIABILITY" ? splitContract?.split_id ?? null : null, execution_backend_key: executionBackendKey, selection_metric: selectionMetric, normalization, max_epochs: maxEpochs, learning_rate: learningRate, batch_size: batchSize, patience, validation_fraction: validationFraction, test_fraction: testFraction, max_rules: maxRules, n_estimators: nEstimators, max_depth: maxDepth };
+      const request: Parameters<typeof studioApi.startStudyJob>[1] = { client_request_id: crypto.randomUUID(), name: `Study ${new Date().toLocaleString()}`, model_kind: trainingModelKind, adapter_key: selectedAdapterKey, seeds, randomness_protocol: studyMode, split_seed: studyMode === "TRAINING_VARIABILITY" ? splitContract?.split_seed ?? splitSeed : null, training_seed: studyMode === "SPLIT_VARIABILITY" ? seed : null, split_contract_id: studyMode === "TRAINING_VARIABILITY" ? splitContract?.split_id ?? null : null, execution_backend_key: executionBackendKey, selection_metric: selectionMetric, normalization, max_epochs: maxEpochs, learning_rate: learningRate, batch_size: batchSize, patience, validation_fraction: validationFraction, test_fraction: testFraction, max_rules: maxRules, n_estimators: nEstimators, max_depth: maxDepth };
       pendingStudyRequestRef.current = request;
       setPendingStudyRequest(request);
       let job = await studioApi.startStudyJob(project.session_id, request);
@@ -884,7 +890,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
           <strong>Choose how to start</strong>
           <p><strong>Run real training</strong> creates one fitted TrainingRun. Its training seed controls model fitting; the split seed controls row membership, even before an explicit SplitContract is saved.</p>
           <p><strong>Run multi-seed study</strong> executes the distinct seeds listed above under the selected randomness protocol and preserves the per-seed results as a TrainingStudy. It requires at least three seeds.</p>
-          <p>For a fixed-split Study, listed seeds control fitting and this split seed is fixed. For split variability, listed seeds control row membership and this field supplies the fixed training seed. Combined variability uses each listed seed for both.</p>
+          <p>For a fixed-split Study, listed seeds control fitting and the Split seed field is fixed. For split variability, listed seeds control row membership and the Single-run training seed field supplies the fixed training seed. Combined variability uses each listed seed for both.</p>
           <p>Both paths use the declared training/validation workflow; opening this screen or changing settings does not start computation or unlock the test split.</p>
         </section>
         {trainingRecovery && <div className="error" role="alert" data-testid="training-run-recovery"><strong>Training response is uncertain; no second fit was started.</strong><p>{trainingRecovery.error}</p><Button view="outlined" disabled={recoveringTraining} onClick={recoverTrainingRun}>Retry exact TrainingRun lookup</Button>{trainingRecovery.notFound && <Button view="outlined" disabled={recoveringTraining || running || project.read_only || !studyJobStateResolved || activeStudyJob} onClick={explicitlyRepeatTraining}>Explicitly start a new fit with these settings</Button>}</div>}

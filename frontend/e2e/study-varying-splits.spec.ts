@@ -30,7 +30,8 @@ test("a varying-split Study does not reuse a previously frozen fixed SplitContra
   await expect(page.getByRole("button", { name: "Run multi-seed study", exact: true })).toBeDisabled();
   await expect(page.getByText(/Choose RANDOM split family for this Study protocol/)).toBeVisible();
   await page.getByLabel("Split family").selectOption("RANDOM");
-  await page.getByLabel("Split seed").fill("5");
+  await page.getByLabel("Split seed").fill("99");
+  await page.getByLabel("Single-run training seed").fill("5");
   await page.getByLabel("Study seeds").fill("11, 13, 17");
   await expect(page.getByText(/runs do not reuse the project's active SplitContract/)).toBeVisible();
   const submission = page.waitForResponse((response) => response.url().endsWith("/api/projects/training/study-jobs") && response.request().method() === "POST");

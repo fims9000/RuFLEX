@@ -352,7 +352,8 @@
     "alpha_training_seed_input_fail_closed",
     "alpha_uncontracted_split_provenance_copy",
     "alpha_varying_split_failure_identity",
-    "alpha_study_completed_run_resume_binding"
+    "alpha_study_completed_run_resume_binding",
+    "alpha_split_variability_fixed_training_seed_binding"
   ],
   "active_capability": "alpha_master_spec_gap_audit",
   "active_acceptance": [
@@ -360,8 +361,9 @@
     "Select the next concrete, low-resource, end-to-end product gap and implement it without broad refactoring."
   ],
   "blockers": [],
-  "next_executable_work": "Continue the alpha product-gap audit after closing StudyJob declared-seed and completed-run resume binding. Inspect the next concrete persisted Studio workflow gap using focused resource-aware checks; preserve frozen research artifacts and unrelated docs/article edits.",
+  "next_executable_work": "Continue the alpha product-gap audit after correcting split-variability fixed-training-seed Studio binding. Inspect the next concrete persisted Studio workflow gap using focused resource-aware checks; preserve frozen research artifacts and unrelated docs/article edits.",
   "qa": {
+    "split_variability_fixed_training_seed_binding": "PASS: SPLIT_VARIABILITY Study requests use the visible training-seed field as their fixed training_seed; the split-seed field is not repurposed or submitted. Mode-specific readiness checks avoid requiring an irrelevant base split seed for varying-split/combined Studies. The real synthetic Study/reopen browser route sent split seed field 99 but persisted training_seed 5 across three independently varying splits (1/1); ExperimentWorkspace unit 35/35, Vite build and git diff --check passed.",
     "study_completed_run_resume_binding": "PASS: A resumed StudyJob accepts a completed seed only when canonical TrainingRun ID, dataset, model kind, exact split/training seed pair, split provenance, randomness protocol, runtime adapter and content-addressed model artifact match. Legacy states with only seed use that alias in memory without rewriting the run. Duplicate declared seeds are rejected before execution instead of silently deduplicated. Focused training product/seed tests 57/57, compileall and git diff --check passed.",
     "varying_split_failure_identity": "PASS: Failed StudyJob seed rows with one fixed training seed now use stable per-position keys and display both split/training seed identities. A component regression renders two different split failures that previously collided under seed 5; ExperimentWorkspace unit 35/35, Vite build and git diff --check passed. The real varying-split success/reopen route remained covered by the preceding focused browser check.",
     "uncontracted_split_provenance_copy": "PASS: A new explicit-seed run without a persisted SplitContract is no longer called legacy. Studio distinguishes no frozen SplitContract from the TrainingRun's saved split seed/row identity; the first-use synthetic browser route verifies both before and after real training (2/2). No scientific object or persisted schema changed.",
