@@ -137,6 +137,7 @@ export function App() {
   const [datasetStateError, setDatasetStateError] = useState<string | null>(null);
   const [datasetStateReload, setDatasetStateReload] = useState(0);
   const [overviewContextStatus, setOverviewContextStatus] = useState<"idle" | "loading" | "loaded" | "error">("idle");
+  const [overviewContextSessionId, setOverviewContextSessionId] = useState<string | null>(null);
   const [overviewContextError, setOverviewContextError] = useState<string | null>(null);
   const [overviewContextReload, setOverviewContextReload] = useState(0);
   const [pendingDatasetFile, setPendingDatasetFile] = useState<File | null>(null);
@@ -401,6 +402,7 @@ export function App() {
       setDatasetStateStatus("idle");
       setDatasetStateError(null);
       setOverviewContextStatus("idle");
+      setOverviewContextSessionId(null);
       setOverviewContextError(null);
       setFis(null);
       setFisEvaluation(null);
@@ -478,6 +480,7 @@ export function App() {
       return;
     }
     setOverviewContextStatus("loading");
+    setOverviewContextSessionId(project.session_id);
     setOverviewContextError(null);
     setDatasetState(null);
     setDataset(null);
@@ -2300,6 +2303,9 @@ export function App() {
           project={project}
           dataset={datasetState}
           fis={fis}
+          modelContextStatus={overviewContextSessionId === project.session_id ? overviewContextStatus : "loading"}
+          modelContextError={overviewContextError}
+          onRetryModelContext={() => setOverviewContextReload((current) => current + 1)}
           run={trainingRun}
           evaluation={fisEvaluation}
           previousEvaluation={previousFisEvaluation}

@@ -57,6 +57,9 @@ export function EvidenceWorkspace({
   project,
   dataset,
   fis,
+  modelContextStatus = "loaded",
+  modelContextError = null,
+  onRetryModelContext,
   run,
   evaluation,
   previousEvaluation,
@@ -107,6 +110,9 @@ export function EvidenceWorkspace({
   project: ProjectSummary;
   dataset: DatasetState | null;
   fis: FISSpec | null;
+  modelContextStatus?: "idle" | "loading" | "loaded" | "error";
+  modelContextError?: string | null;
+  onRetryModelContext?: () => void;
   run: TrainingRun | null;
   evaluation: FISEvaluation | null;
   previousEvaluation: FISEvaluation | null;
@@ -1173,8 +1179,10 @@ export function EvidenceWorkspace({
         {behaviorSpecResultStatus === "loading" && <p role="status">Loading saved BehaviorSpec result and its exact specification…</p>}
         {behaviorSpecResultStatus === "none" && <p className="property-description" data-testid="behavior-result-empty">No saved BehaviorSpec result is available for this project.</p>}
         {behaviorSpecResultStatus === "error" && <div className="error" role="alert"><strong>Saved BehaviorSpec evidence could not be verified.</strong><p>{behaviorSpecResultError}</p>{onRetryBehaviorSpecResult && <Button view="outlined" onClick={onRetryBehaviorSpecResult}>Retry saved BehaviorSpec</Button>}</div>}
-        {!run && !fis && <EmptyState title="No model revision selected">Select a persisted training run or save a FIS revision to create a BehaviorSpec. Saved requirements remain inspectable below.</EmptyState>}
-        {(run || fis) && <>
+        {(modelContextStatus === "idle" || modelContextStatus === "loading") && <p role="status" data-testid="behavior-model-context-loading">Checking saved FIS and training-run context before creating a requirement…</p>}
+        {modelContextStatus === "error" && <div className="error" role="alert" data-testid="behavior-model-context-error"><strong>Saved model context could not be verified; BehaviorSpec creation is paused.</strong><p>{modelContextError ?? "The project is not assumed to have no model after a failed read."}</p>{onRetryModelContext && <Button view="outlined" onClick={onRetryModelContext}>Retry saved model context</Button>}</div>}
+        {modelContextStatus === "loaded" && !run && !fis && <EmptyState title="No model revision selected">Select a persisted training run or save a FIS revision to create a BehaviorSpec. Saved requirements remain inspectable below.</EmptyState>}
+        {modelContextStatus === "loaded" && (run || fis) && <>
           <label className="field-label">Model source<select aria-label="Behavior model source" value={behaviorSource} disabled={busy || !!behaviorSpecCreationRecoveryRequest} onChange={(event) => setBehaviorSource(event.target.value as "run" | "fis")}><option value="run" disabled={!run}>Training run</option><option value="fis" disabled={!fis}>Saved FIS revision</option></select></label>
           {behaviorSource === "fis" && fis && <><p className="property-description">FIS {fis.name} · exact saved semantic revision {fis.semantic_hash ?? "not saved"}</p>{!fis.semantic_hash && <p className="error" role="alert">Save this FIS revision before creating a BehaviorSpec.</p>}<div className="evidence-sample-grid">{fis.inputs.map((input) => <label className="field-label" key={`behavior-fis-${input.name}`}>Primary {input.name}<input aria-label={`Behavior input ${input.name}`} type="number" min={input.minimum} max={input.maximum} value={fisSample[input.name] ?? ""} disabled={busy || !!behaviorSpecCreationRecoveryRequest} onChange={(event) => setFisSample((current) => ({ ...current, [input.name]: event.target.value }))} /></label>)}</div></>}
           <fieldset disabled={busy || !!behaviorSpecCreationRecoveryRequest} style={{ border: 0, margin: 0, padding: 0 }}>

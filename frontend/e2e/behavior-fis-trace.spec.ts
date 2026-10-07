@@ -142,3 +142,35 @@ test("Studio binds a pairwise FIS requirement to both explicit inputs and its sa
   await page.getByRole("button", { name: "E", exact: true }).click();
   await expect(page.getByTestId("behavior-exact-traces")).toContainText("Persisted exact FIS trace");
 });
+
+test("Evidence authoring treats a failed FIS read as unverified, not empty, and can retry", async ({ page }) => {
+  const path = join(tmpdir(), `ruflex-behavior-fis-read-${Date.now()}`);
+  const api = "http://127.0.0.1:8010/api/projects";
+  const created = await page.request.post(api, { data: { path, name: "FIS read recovery" } });
+  expect(created.ok()).toBeTruthy();
+  const sessionId = (await created.json()).session_id as string;
+  const confirmed = await page.request.post(`${api}/dataset/confirm`, { data: {
+    session_id: sessionId, csv_text: "temperature,target\n10,0\n20,1\n30,1\n40,0\n", target: "target", task: "binary_classification", id_columns: [],
+  } });
+  expect(confirmed.ok()).toBeTruthy();
+  const fisResponse = await page.request.post(`${api}/fis/default`, { data: { session_id: sessionId, name: "Persisted FIS" } });
+  expect(fisResponse.ok()).toBeTruthy();
+  let reads = 0;
+  await page.route("**/fis/active", async (route) => {
+    reads += 1;
+    if (reads === 1) await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Temporary FIS read failure" }) });
+    else await route.continue();
+  });
+
+  await page.goto("/");
+  await page.getByLabel("Project path").fill(path);
+  await page.getByRole("button", { name: "Open project", exact: true }).click();
+  await page.getByRole("button", { name: "E", exact: true }).click();
+  await expect(page.getByTestId("behavior-model-context-error")).toContainText("Temporary FIS read failure");
+  await expect(page.getByText("No model revision selected")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Create and run BehaviorSpec" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Retry saved model context" }).click();
+  await expect(page.getByLabel("Behavior model source")).toHaveValue("fis");
+  await expect(page.getByLabel("Behavior input temperature")).toBeVisible();
+  expect(reads).toBe(2);
+});
