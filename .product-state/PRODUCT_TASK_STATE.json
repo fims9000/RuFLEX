@@ -260,15 +260,17 @@
     "alpha_explorer_assurance_gate_outcomes",
     "alpha_project_overview_study_history_truthfulness",
     "alpha_project_overview_model_truthfulness",
-    "alpha_project_overview_analysis_evidence_navigation_truthfulness"
+    "alpha_project_overview_analysis_evidence_navigation_truthfulness",
+    "alpha_project_saved_study_next_step_truthfulness"
   ],
-  "active_capability": "alpha_project_overview_analysis_evidence_navigation_truthfulness",
+  "active_capability": "alpha_project_saved_study_next_step_truthfulness",
   "active_acceptance": [
-    "The Overview Analyses tile does not equate a missing latest validation Evaluation with absence of all analysis types.",
-    "The Overview Evidence tile does not equate a missing exact FIS trace with absence of all persisted evidence."
+    "Overview never recommends a first model fit until persisted TrainingStudy history is resolved.",
+    "A saved TrainingStudy with no active TrainingRun is surfaced as existing work with a route to inspect it.",
+    "A study-history read error suppresses training advice and offers an explicit retry."
   ],
   "blockers": [],
-  "next_executable_work": "Inspect a low-memory Studio workflow for a concrete alpha usability or recovery defect, then implement, test and commit a bounded slice locally.",
+  "next_executable_work": "Inspect the next focused alpha workflow for an evidenced usability or recovery gap; make a bounded fix with targeted tests and a local commit.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -532,6 +534,7 @@
     "alpha_explorer_assurance_gate_outcomes": "PASS: Project Explorer now summarizes AssuranceCase gates by passed/warning/failed/unavailable counts instead of incorrectly saying passing gates are available. Focused ProjectExplorer unit tests: 2 passed; TypeScript project build (tsc -b) and git diff --check passed. Full frontend build/browser suite not run for this small label correction.",
     "alpha_project_overview_study_history_truthfulness": "PASS: Project Overview Study tile now distinguishes saved TrainingStudy history, individual-run-only state, loading, read failure and verified absence instead of inferring 'No studies' from a missing active TrainingRun. Focused helper tests: 3 passed; TypeScript project build (tsc -b) and git diff --check passed. Browser E2E not run for this contained summary-state fix.",
     "alpha_project_overview_model_truthfulness": "PASS: Project Overview Models tile now distinguishes context loading/failure, saved FIS, native trained model runs and verified absence. Focused projectOverview tests: 5 passed; TypeScript project build (tsc -b) and git diff --check passed. Browser E2E not run for this contained summary-state fix.",
-    "alpha_project_overview_analysis_evidence_navigation_truthfulness": "PASS: Overview no longer labels the absence of a latest validation Evaluation as 'No analyses' or a missing exact FIS trace as 'No evidence'; neutral navigation guidance keeps other saved evidence discoverable. Focused projectOverview tests: 7 passed; TypeScript project build (tsc -b) and git diff --check passed. Browser E2E not run for this copy-only navigation fallback."
+    "alpha_project_overview_analysis_evidence_navigation_truthfulness": "PASS: Overview no longer labels the absence of a latest validation Evaluation as 'No analyses' or a missing exact FIS trace as 'No evidence'; neutral navigation guidance keeps other saved evidence discoverable. Focused projectOverview tests: 7 passed; TypeScript project build (tsc -b) and git diff --check passed. Browser E2E not run for this copy-only navigation fallback.",
+    "alpha_project_saved_study_next_step_truthfulness": "PASS: Overview waits for saved TrainingStudy hydration before recommending a first model fit, routes to a persisted study when present, and suppresses advice with retry when history is unavailable. Focused projectOverview tests: 9 passed; TypeScript project build (tsc -b) and git diff --check passed. Browser E2E not run for this contained next-step guidance change."
   }
 }

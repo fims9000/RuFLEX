@@ -10,7 +10,7 @@ import { ChartSurface } from "../charts/ChartSurface";
 import { chartFixtures } from "../charts/fixtureOptions";
 import { FlowGrammar } from "../flow/FlowGrammar";
 import { ProjectLineage } from "../flow/ProjectLineage";
-import { analysisOverviewLabel, evidenceOverviewLabel, projectModelOverviewLabel, trainingStudyOverviewLabel } from "./projectOverview";
+import { analysisOverviewLabel, evidenceOverviewLabel, projectModelOverviewLabel, projectStudyNextStep, trainingStudyOverviewLabel } from "./projectOverview";
 import {
   ArtifactRecord,
   ProductApiError,
@@ -2306,12 +2306,24 @@ export function App() {
           )}
           {overviewContextStatus === "loaded" && datasetStateStatus === "available" && datasetState && !trainingRun && (
             <section className="quick-start-card" aria-label="Optional next step">
+              {projectStudyNextStep({ status: trainingStudyStatus, hasStudy: Boolean(trainingStudy), hasTrainingRun: Boolean(trainingRun) }) === "TRAIN" && <>
               <div>
                 <span className="eyebrow">OPTIONAL NEXT STEP</span>
                 <h2>Your dataset is ready for a model fit</h2>
                 <p>Open Training to review the model and split settings. Nothing runs until you choose “Run real training”; the held-out test split stays locked.</p>
               </div>
               <Button view="action" onClick={() => setActive("STUDIES")} data-ruflex-action="project.quickstart.training">Open Training</Button>
+              </>}
+              {projectStudyNextStep({ status: trainingStudyStatus, hasStudy: Boolean(trainingStudy), hasTrainingRun: Boolean(trainingRun) }) === "OPEN_SAVED_STUDY" && <>
+                <div>
+                  <span className="eyebrow">SAVED WORK</span>
+                  <h2>Your TrainingStudy is ready to inspect</h2>
+                  <p>{trainingStudy?.name} · {trainingStudy?.seed_runs.length} persisted runs. Open the study to review its selected run and validation evidence; no new fit is started.</p>
+                </div>
+                <Button view="action" onClick={() => setActive("STUDIES")} data-ruflex-action="project.quickstart.study">Open saved study</Button>
+              </>}
+              {projectStudyNextStep({ status: trainingStudyStatus, hasStudy: Boolean(trainingStudy), hasTrainingRun: Boolean(trainingRun) }) === "CHECKING" && <p role="status">Checking saved study history before suggesting a next step…</p>}
+              {projectStudyNextStep({ status: trainingStudyStatus, hasStudy: Boolean(trainingStudy), hasTrainingRun: Boolean(trainingRun) }) === "UNAVAILABLE" && <div role="alert"><strong>Saved study history could not be verified, so no training next step is suggested.</strong><p>{trainingStudyError}</p><Button view="outlined" onClick={() => setTrainingStudyReload((current) => current + 1)}>Retry study history</Button></div>}
             </section>
           )}
           <div className="project-overview-grid">

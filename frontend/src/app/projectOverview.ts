@@ -1,5 +1,18 @@
 export type TrainingStudyOverviewState = "idle" | "loading" | "none" | "available" | "error";
 export type ProjectModelOverviewState = "idle" | "loading" | "loaded" | "error";
+export type ProjectStudyNextStep = "CHECKING" | "UNAVAILABLE" | "TRAIN" | "OPEN_SAVED_STUDY" | "NONE";
+
+export function projectStudyNextStep(input: {
+  status: TrainingStudyOverviewState;
+  hasStudy: boolean;
+  hasTrainingRun: boolean;
+}): ProjectStudyNextStep {
+  if (input.hasTrainingRun) return "NONE";
+  if (input.status === "idle" || input.status === "loading") return "CHECKING";
+  if (input.status === "error") return "UNAVAILABLE";
+  if (input.status === "available") return input.hasStudy ? "OPEN_SAVED_STUDY" : "CHECKING";
+  return input.hasStudy ? "CHECKING" : "TRAIN";
+}
 
 export function analysisOverviewLabel(input: {
   hasValidationEvaluation: boolean;

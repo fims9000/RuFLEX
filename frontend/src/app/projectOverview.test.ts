@@ -1,5 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { analysisOverviewLabel, evidenceOverviewLabel, projectModelOverviewLabel, trainingStudyOverviewLabel } from "./projectOverview";
+import { analysisOverviewLabel, evidenceOverviewLabel, projectModelOverviewLabel, projectStudyNextStep, trainingStudyOverviewLabel } from "./projectOverview";
+
+describe("projectStudyNextStep", () => {
+  it("waits for persisted study hydration before recommending a first fit", () => {
+    expect(projectStudyNextStep({ status: "loading", hasStudy: false, hasTrainingRun: false })).toBe("CHECKING");
+    expect(projectStudyNextStep({ status: "error", hasStudy: false, hasTrainingRun: false })).toBe("UNAVAILABLE");
+  });
+
+  it("routes to a saved study instead of recommending another first fit", () => {
+    expect(projectStudyNextStep({ status: "available", hasStudy: true, hasTrainingRun: false })).toBe("OPEN_SAVED_STUDY");
+    expect(projectStudyNextStep({ status: "none", hasStudy: false, hasTrainingRun: false })).toBe("TRAIN");
+  });
+});
 
 describe("analysisOverviewLabel", () => {
   it("does not infer that all analysis types are absent from a missing latest Evaluation", () => {
