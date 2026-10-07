@@ -611,6 +611,16 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                         or final_test.policy_frozen_at is None
                         or final_test.dataset_test_unlock_at is None
                         or (final_test.policy_frozen_at is not None and final_test.dataset_test_unlock_at is not None and final_test.policy_frozen_at > final_test.dataset_test_unlock_at)
+                        or (run is not None and final_test.dataset_test_unlock_at is not None and run.created_at > final_test.dataset_test_unlock_at)
+                        or (
+                            stability_policy is not None
+                            and final_test.dataset_test_unlock_at is not None
+                            and any(
+                                runs_by_id.get(run_id) is None
+                                or runs_by_id[run_id].created_at > final_test.dataset_test_unlock_at
+                                for run_id in stability_policy.run_ids
+                            )
+                        )
                         or (evaluation is not None and final_test.dataset_test_unlock_at is not None and evaluation.created_at > final_test.dataset_test_unlock_at)
                         or (threshold is not None and final_test.dataset_test_unlock_at is not None and threshold.created_at > final_test.dataset_test_unlock_at)
                         or (calibration is not None and final_test.dataset_test_unlock_at is not None and calibration.created_at > final_test.dataset_test_unlock_at)

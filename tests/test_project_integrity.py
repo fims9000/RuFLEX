@@ -116,6 +116,17 @@ def test_project_integrity_validates_frozen_stability_analysis_and_gate_chain(tm
     assert any(issue["code"] == "FINAL_TEST_PROVENANCE_MISMATCH" for issue in post_unlock_policy["issues"])
     threshold_payload["created_at"] = original_threshold_created_at
     threshold_path.write_text(json.dumps(threshold_payload), encoding="utf-8")
+    supporting_run_ids = [item["run_id"] for item in study["seed_runs"]]
+    for run_id in (study["selected_run_id"], next(value for value in supporting_run_ids if value != study["selected_run_id"])):
+        run_path = root / "runs" / f"{run_id}.json"
+        run_payload = json.loads(run_path.read_text(encoding="utf-8"))
+        original_run_created_at = run_payload["created_at"]
+        run_payload["created_at"] = "2099-01-01T00:00:00Z"
+        run_path.write_text(json.dumps(run_payload), encoding="utf-8")
+        late_run = client.get(f"/api/projects/{session_id}/integrity").json()
+        assert any(issue["code"] == "FINAL_TEST_PROVENANCE_MISMATCH" for issue in late_run["issues"])
+        run_payload["created_at"] = original_run_created_at
+        run_path.write_text(json.dumps(run_payload), encoding="utf-8")
     final_test_path = root / "analyses" / "final-tests" / f"{final_test.json()['final_test_id']}.json"
     final_test_payload = json.loads(final_test_path.read_text(encoding="utf-8"))
     original_test_case_identity = final_test_payload["test_case_identity"]

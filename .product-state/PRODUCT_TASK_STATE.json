@@ -198,15 +198,16 @@
     "alpha_final_test_case_and_policy_identity_integrity",
     "alpha_legacy_study_and_study_job_integrity",
     "alpha_evidence_job_output_integrity",
-    "alpha_study_duplicate_run_integrity"
+    "alpha_study_duplicate_run_integrity",
+    "alpha_final_test_all_stability_run_freeze_time_integrity"
   ],
-  "active_capability": "alpha_study_duplicate_run_integrity",
+  "active_capability": "alpha_final_test_all_stability_run_freeze_time_integrity",
   "active_acceptance": [
-    "A TrainingStudy cannot count the same TrainingRun or split/training seed pair multiple times as independent fit support.",
-    "Duplicate run IDs and duplicate seed pairs fail Project Integrity while an unmodified valid three-run Study remains PASS."
+    "The selected run and every frozen cross-run Stability Gate participant must predate the dataset final-test unlock.",
+    "Tampering either the selected run or a non-selected stability-support run timestamp past unlock makes Project Integrity FAIL."
   ],
   "blockers": [],
-  "next_executable_work": "Continue focused alpha auditing of persisted object identities and read-only inspection surfaces; preserve unrelated article files.",
+  "next_executable_work": "Continue focused alpha audit of post-unlock evidence immutability and read-only integrity behavior; preserve unrelated article files.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -408,6 +409,7 @@
     "alpha_final_test_case_and_policy_identity_integrity": "PASS: Project Integrity recomputes final-test case/sample/policy identities from persisted prediction rows and frozen bindings, verifying complete unique source rows and case identities. Forged test_case_identity produces FAIL.",
     "alpha_legacy_study_and_study_job_integrity": "PASS: Legacy schema-v2 TrainingStudy remains readable without persistence rewrite; Project Integrity now cross-checks completed StudyJob seed states against canonical TrainingRuns and resolves the bound TrainingStudy/run set. Project-integrity suite: 14 passed.",
     "alpha_evidence_job_output_integrity": "PASS: Project Integrity validates persisted AssuranceCase and VerificationBundle identities, verifies bundle archive SHA-256, and resolves successful evidence-job outputs to canonical objects. Reopen E2E passes; forged ExplanationCheck and VerificationBundle output IDs fail integrity. Focused project-integrity/evidence-job tests passed.",
-    "alpha_study_duplicate_run_integrity": "PASS: Project Integrity rejects repeated TrainingRun identities or duplicate split/training seed pairs inside a persisted Study. Regression confirms valid Study PASS and duplicated support FAIL; focused integrity/evidence-job tests: 16 passed."
+    "alpha_study_duplicate_run_integrity": "PASS: Project Integrity rejects repeated TrainingRun identities or duplicate split/training seed pairs inside a persisted Study. Regression confirms valid Study PASS and duplicated support FAIL; focused integrity/evidence-job tests: 16 passed.",
+    "alpha_final_test_all_stability_run_freeze_time_integrity": "PASS: Project Integrity now verifies that the selected TrainingRun and every run used by the frozen Stability Gate predate final-test unlock. Regression moves selected and non-selected supporting run timestamps past unlock and observes FINAL_TEST_PROVENANCE_MISMATCH; focused end-to-end integrity test passed."
   }
 }
