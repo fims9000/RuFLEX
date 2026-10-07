@@ -100,6 +100,127 @@ def _final_test_stability_evidence_matches(final_test: FinalTestEvaluation, poli
     )
 
 
+def _stability_analysis_cases_match(
+    analysis: StudyStabilityAnalysis,
+    study: TrainingStudy | None,
+    evaluation: AnalysisEvaluation | None,
+    threshold: DecisionThresholdPolicy | None,
+) -> bool:
+    if study is None or analysis.case_count != len(analysis.cases):
+        return False
+    if analysis.applicability != "APPLICABLE" or analysis.validation_alignment_status != "EXACT_MATCH":
+        return not analysis.cases and analysis.case_count == 0 and analysis.high_confidence_case_count == 0 and analysis.high_confidence_unstable_case_count == 0 and analysis.high_confidence_instability_rate is None
+    if not analysis.cases or len({case.case_id for case in analysis.cases}) != len(analysis.cases) or analysis.case_support_requirement > len(analysis.run_ids):
+        return False
+    expected_case_ids: set[str] | None = None
+    run_rows: dict[str, dict[str, object]] = {}
+    for run in study.seed_runs:
+        rows: dict[str, object] = {}
+        for row in run.prediction_preview:
+            key = row.row_identity or (f"source:{row.source_row}" if row.source_row is not None else f"row:{row.row}")
+            if key in rows:
+                return False
+            rows[key] = row
+        if expected_case_ids is None:
+            expected_case_ids = set(rows)
+        elif expected_case_ids != set(rows):
+            return False
+        run_rows[str(run.run_id)] = rows
+    if expected_case_ids is None or {case.case_id for case in analysis.cases} != expected_case_ids:
+        return False
+    evaluation_rows: dict[str, object] = {}
+    if evaluation is not None:
+        for row in evaluation.prediction_preview:
+            key = row.row_identity or (f"source:{row.source_row}" if row.source_row is not None else f"row:{row.row}")
+            if key in evaluation_rows:
+                return False
+            evaluation_rows[key] = row
+        if set(evaluation_rows) != expected_case_ids:
+            return False
+    if (threshold is None) != (analysis.decision_threshold is None) or (threshold is None) != (analysis.class_threshold_id is None) or (threshold is not None and evaluation is None):
+        return False
+    if threshold is not None and (threshold.selected_threshold != analysis.decision_threshold or threshold.threshold_id != analysis.class_threshold_id):
+        return False
+
+    high_confidence: list[object] = []
+    unstable: list[object] = []
+    for case in analysis.cases:
+        if case.run_support_count != len(analysis.run_ids) or case.run_support_fraction != 1.0 or set(case.run_probabilities) != {str(run_id) for run_id in analysis.run_ids}:
+            return False
+        actual_values: list[float] = []
+        expected_labels: dict[str, int] = {}
+        for run_id in analysis.run_ids:
+            row = run_rows.get(str(run_id), {}).get(case.case_id)
+            if row is None:
+                return False
+            value = float(row.probability) if row.probability is not None else 1.0 / (1.0 + math.exp(-max(min(float(row.prediction), 60.0), -60.0)))
+            if not math.isclose(case.run_probabilities[str(run_id)], value, rel_tol=1e-12, abs_tol=1e-12):
+                return False
+            actual_values.append(value)
+            if threshold is not None:
+                expected_labels[str(run_id)] = int(value >= threshold.selected_threshold)
+        if case.run_labels != expected_labels:
+            return False
+        mean = sum(actual_values) / len(actual_values)
+        std = math.sqrt(sum((value - mean) ** 2 for value in actual_values) / len(actual_values))
+        selected_probability = case.run_probabilities[str(analysis.selected_run_id)]
+        selected_row = run_rows[str(analysis.selected_run_id)][case.case_id]
+        if (
+            not math.isclose(case.selected_run_probability, selected_probability, rel_tol=1e-12, abs_tol=1e-12)
+            or not math.isclose(case.mean_probability, mean, rel_tol=1e-12, abs_tol=1e-12)
+            or not math.isclose(case.std_probability, std, rel_tol=1e-12, abs_tol=1e-12)
+            or not math.isclose(case.min_probability, min(actual_values), rel_tol=1e-12, abs_tol=1e-12)
+            or not math.isclose(case.max_probability, max(actual_values), rel_tol=1e-12, abs_tol=1e-12)
+            or not math.isclose(case.probability_range, max(actual_values) - min(actual_values), rel_tol=1e-12, abs_tol=1e-12)
+            or case.target != int(selected_row.target >= 0.5)
+        ):
+            return False
+        if evaluation is not None:
+            selected_row = evaluation_rows[case.case_id]
+            if (
+                case.source_row != selected_row.source_row
+                or case.row_identity != selected_row.row_identity
+                or case.target != int(selected_row.target >= 0.5)
+            ):
+                return False
+        if threshold is None:
+            if any(value is not None for value in (case.selected_run_class, case.majority_class, case.majority_class_agreement, case.selected_run_agreement, case.positive_vote_fraction, case.vote_entropy)):
+                return False
+            continue
+        positive_fraction = sum(expected_labels.values()) / len(expected_labels)
+        majority_class = int(positive_fraction >= 0.5)
+        selected_label = expected_labels[str(analysis.selected_run_id)]
+        selected_agreement = sum(label == selected_label for label in expected_labels.values()) / len(expected_labels)
+        majority_agreement = max(positive_fraction, 1.0 - positive_fraction)
+        entropy = None if positive_fraction in {0.0, 1.0} else -(positive_fraction * math.log2(positive_fraction) + (1.0 - positive_fraction) * math.log2(1.0 - positive_fraction))
+        if (
+            case.selected_run_class != selected_label
+            or case.majority_class != majority_class
+            or case.majority_class_agreement != majority_agreement
+            or case.selected_run_agreement != selected_agreement
+            or case.positive_vote_fraction != positive_fraction
+            or case.vote_entropy != entropy
+        ):
+            return False
+        if max(selected_probability, 1.0 - selected_probability) >= analysis.high_confidence_threshold:
+            high_confidence.append(case)
+            if selected_agreement < analysis.unstable_agreement_threshold:
+                unstable.append(case)
+    identity_payload = json.dumps({"prefix": "validation-cases", "payload": sorted(expected_case_ids)}, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    expected_case_identity = hashlib.sha256(identity_payload).hexdigest()
+    return (
+        (threshold is None and analysis.high_confidence_case_count == 0 and analysis.high_confidence_unstable_case_count == 0 and analysis.high_confidence_instability_rate is None)
+        or (
+            analysis.evaluation_id is not None
+            and evaluation is not None
+            and analysis.evaluation_case_identity == expected_case_identity
+            and analysis.high_confidence_case_count == len(high_confidence)
+            and analysis.high_confidence_unstable_case_count == len(unstable)
+            and analysis.high_confidence_instability_rate == (None if not high_confidence else len(unstable) / len(high_confidence))
+        )
+    )
+
+
 def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
     """Inspect persisted evidence without reopening or retraining artifacts.
 
@@ -561,6 +682,7 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                         or any(run.dataset_fingerprint != analysis.dataset_fingerprint for run in study.seed_runs)
                         or (analysis.evaluation_id is not None and (analysis.evaluation_id not in evaluations or evaluations[analysis.evaluation_id].run_id != analysis.selected_run_id))
                         or (analysis.class_threshold_id is not None and (threshold is None or threshold.evaluation_id != analysis.evaluation_id or threshold.run_id != analysis.selected_run_id or threshold.selected_threshold != analysis.decision_threshold))
+                        or not _stability_analysis_cases_match(analysis, study, evaluations.get(analysis.evaluation_id) if analysis.evaluation_id else None, threshold)
                     ):
                         issues.append(ProjectIntegrityIssue(code="STABILITY_ANALYSIS_PROVENANCE_MISMATCH", status="FAIL", path=relative_path, detail="Stability Analysis does not resolve to its exact TrainingStudy, run set, selected Evaluation, or validation threshold."))
                 except (ValidationError, ValueError, OSError, json.JSONDecodeError) as error:

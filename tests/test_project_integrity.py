@@ -113,6 +113,14 @@ def test_project_integrity_validates_frozen_stability_analysis_and_gate_chain(tm
     assert any(issue["code"] == "STABILITY_ANALYSIS_PROVENANCE_MISMATCH" for issue in duplicate_support["issues"])
     analysis_payload["run_ids"] = original_run_ids
     analysis_path.write_text(json.dumps(analysis_payload), encoding="utf-8")
+    analysis_payload = json.loads(analysis_path.read_text(encoding="utf-8"))
+    original_agreement = analysis_payload["cases"][0]["selected_run_agreement"]
+    analysis_payload["cases"][0]["selected_run_agreement"] = 0.0 if original_agreement > 0.0 else 1.0
+    analysis_path.write_text(json.dumps(analysis_payload), encoding="utf-8")
+    corrupted_case_summary = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert any(issue["code"] == "STABILITY_ANALYSIS_PROVENANCE_MISMATCH" for issue in corrupted_case_summary["issues"])
+    analysis_payload["cases"][0]["selected_run_agreement"] = original_agreement
+    analysis_path.write_text(json.dumps(analysis_payload), encoding="utf-8")
     final_test = client.post("/api/projects/analyses/final-test", json={"session_id": session_id, "evaluation_id": evaluation_id, "threshold_id": threshold_id, "stability_gate_policy_id": policy_response.json()["policy_id"]})
     assert final_test.status_code == 201, final_test.text
     assert client.get(f"/api/projects/{session_id}/integrity").json()["status"] == "PASS"
