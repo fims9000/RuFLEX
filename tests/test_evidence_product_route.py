@@ -495,6 +495,10 @@ def test_cross_run_explanation_reproducibility_persists_and_rejects_incompatible
     analysis_path.write_text(json.dumps(analysis_payload), encoding="utf-8")
     corrupted_analysis = inspect_project_integrity(root)
     assert any(issue.code == "EXPLANATION_REPRODUCIBILITY_PROVENANCE_MISMATCH" for issue in corrupted_analysis.issues)
+    corrupted_assurance = client.post("/api/projects/evidence/assurance-cases", json={"session_id": session_id})
+    assert corrupted_assurance.status_code == 201, corrupted_assurance.text
+    repro_gate = next(gate for gate in corrupted_assurance.json()["gates"] if gate["key"] == "explanation_reproducibility")
+    assert repro_gate["status"] == "FAIL"
     analysis_payload["explanation_ids"] = original_explanation_ids
     analysis_path.write_text(json.dumps(analysis_payload), encoding="utf-8")
     assert client.post("/api/projects/close", json={"session_id": session_id}).status_code == 204
