@@ -76,6 +76,21 @@ def test_project_integrity_rejects_validation_evaluation_detached_from_frozen_ru
     selective = client.post("/api/projects/analyses/selective-policies", json={"session_id": session_id, "evaluation_id": evaluation_id, "confidence_cutoff": .7, "calibration_id": None, "threshold_id": threshold.json()["threshold_id"]})
     assert selective.status_code == 201, selective.text
     assert client.get(f"/api/projects/{session_id}/integrity").json()["status"] == "PASS"
+    selective_path = root / "analyses" / "selective-policies" / f"{selective.json()['policy_id']}.json"
+    selective_payload = json.loads(selective_path.read_text(encoding="utf-8"))
+    original_selective_count = selective_payload["risk_coverage"][0]["accepted_count"]
+    selective_payload["risk_coverage"][0]["accepted_count"] = original_selective_count + 1
+    selective_path.write_text(json.dumps(selective_payload), encoding="utf-8")
+    forged_selective_curve = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert any(issue["code"] == "SELECTIVE_POLICY_PROVENANCE_MISMATCH" for issue in forged_selective_curve["issues"])
+    selective_payload["risk_coverage"][0]["accepted_count"] = original_selective_count
+    original_fit_identity = selective_payload["fit_sample_identity"]
+    selective_payload["fit_sample_identity"] = "forged-validation-identity"
+    selective_path.write_text(json.dumps(selective_payload), encoding="utf-8")
+    forged_selective_identity = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert any(issue["code"] == "SELECTIVE_POLICY_PROVENANCE_MISMATCH" for issue in forged_selective_identity["issues"])
+    selective_payload["fit_sample_identity"] = original_fit_identity
+    selective_path.write_text(json.dumps(selective_payload), encoding="utf-8")
     path = root / "analyses" / "evaluations" / f"{evaluation_id}.json"
     payload = json.loads(path.read_text(encoding="utf-8"))
     payload["model_artifact_sha256"] = "0" * 64

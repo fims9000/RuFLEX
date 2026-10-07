@@ -523,6 +523,87 @@ def _stability_gate_evidence_matches(policy: StabilityGatePolicy, analysis: Stud
     return True
 
 
+def _selective_policy_risk_coverage_matches(
+    policy: SelectivePredictionPolicy,
+    evaluation: AnalysisEvaluation,
+    threshold: DecisionThresholdPolicy,
+    calibration: CalibrationTransform | None,
+) -> bool:
+    """Recompute the frozen confidence curve from validation evidence only."""
+    rows = evaluation.prediction_preview
+    if not rows:
+        return False
+    if policy.calibration_id is None:
+        probabilities = np.asarray([
+            row.probability if row.probability is not None
+            else 1.0 / (1.0 + math.exp(-max(min(float(row.prediction), 60.0), -60.0)))
+            for row in rows
+        ], dtype=float)
+    else:
+        if calibration is None or calibration.evaluation_id != evaluation.evaluation_id:
+            return False
+        calibrated_by_row = {item.row: item.calibrated_probability for item in calibration.predictions}
+        if len(calibrated_by_row) != len(calibration.predictions) or any(row.row not in calibrated_by_row for row in rows):
+            return False
+        probabilities = np.asarray([calibrated_by_row[row.row] for row in rows], dtype=float)
+    targets = np.asarray([int(row.target >= 0.5) for row in rows], dtype=int)
+    labels = (probabilities >= threshold.selected_threshold).astype(int)
+    confidences = np.maximum(probabilities, 1.0 - probabilities)
+    expected_cutoffs = np.round(np.arange(0.5, 1.0, 0.05), 2)
+    if len(policy.risk_coverage) != len(expected_cutoffs):
+        return False
+    for actual, cutoff in zip(policy.risk_coverage, expected_cutoffs, strict=True):
+        accepted = confidences >= cutoff
+        accepted_count = int(accepted.sum())
+        accepted_risk = None if accepted_count == 0 else float(np.mean(labels[accepted] != targets[accepted]))
+        if (
+            not math.isclose(actual.confidence_cutoff, float(cutoff), rel_tol=0.0, abs_tol=1e-12)
+            or actual.accepted_count != accepted_count
+            or not math.isclose(actual.coverage, accepted_count / len(rows), rel_tol=1e-12, abs_tol=1e-12)
+            or (actual.accepted_risk is None) != (accepted_risk is None)
+            or (accepted_risk is not None and not math.isclose(actual.accepted_risk, accepted_risk, rel_tol=1e-12, abs_tol=1e-12))
+        ):
+            return False
+    return True
+
+
+def _selective_policy_fit_identity_matches(
+    policy: SelectivePredictionPolicy,
+    evaluation: AnalysisEvaluation,
+    threshold: DecisionThresholdPolicy,
+    calibration: CalibrationTransform | None,
+) -> bool:
+    rows = evaluation.prediction_preview
+    if calibration is None:
+        probabilities = [
+            row.probability if row.probability is not None
+            else float(1.0 / (1.0 + np.exp(-row.prediction)))
+            for row in rows
+        ]
+    else:
+        by_row = {item.row: item.calibrated_probability for item in calibration.predictions}
+        if len(by_row) != len(calibration.predictions) or any(row.row not in by_row for row in rows):
+            return False
+        probabilities = [float(by_row[row.row]) for row in rows]
+    cases = [
+        {
+            "validation_row": int(row.row),
+            "source_row": row.source_row,
+            "target": int(row.target >= 0.5),
+            "probability": float(probability),
+        }
+        for row, probability in zip(rows, probabilities, strict=True)
+    ]
+    identity = hashlib.sha256(json.dumps({
+        "dataset": evaluation.dataset_fingerprint,
+        "evaluation": str(evaluation.evaluation_id),
+        "threshold": str(threshold.threshold_id),
+        "calibration": None if calibration is None else str(calibration.calibration_id),
+        "cases": cases,
+    }, sort_keys=True).encode()).hexdigest()
+    return policy.fit_sample_identity == identity
+
+
 def _final_test_freeze_timestamps_match(
     final_test: FinalTestEvaluation,
     run,
@@ -816,8 +897,12 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                     or threshold.selected_threshold != policy.class_threshold
                     or threshold.calibration_id != policy.calibration_id
                     or (policy.calibration_id is not None and (calibration is None or calibration.evaluation_id != policy.evaluation_id))
+                    or policy.source_split != "validation"
+                    or policy.probability_source != ("raw" if policy.calibration_id is None else "calibrated")
+                    or not _selective_policy_fit_identity_matches(policy, evaluation, threshold, calibration)
+                    or not _selective_policy_risk_coverage_matches(policy, evaluation, threshold, calibration)
                 ):
-                    issues.append(ProjectIntegrityIssue(code="SELECTIVE_POLICY_PROVENANCE_MISMATCH", status="FAIL", path=relative_path, detail="Selective policy does not match its exact validation Evaluation, threshold, or calibration binding."))
+                    issues.append(ProjectIntegrityIssue(code="SELECTIVE_POLICY_PROVENANCE_MISMATCH", status="FAIL", path=relative_path, detail="Selective policy does not match its exact validation cases, threshold/calibration binding, or recomputed confidence risk–coverage evidence."))
             except (ValidationError, ValueError, OSError, json.JSONDecodeError) as error:
                 issues.append(ProjectIntegrityIssue(code="SELECTIVE_POLICY_EVIDENCE_MALFORMED", status="FAIL", path=relative_path, detail=str(error)))
         active_path = selective_root / "active-policy.json"
