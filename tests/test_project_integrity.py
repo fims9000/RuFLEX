@@ -140,6 +140,13 @@ def test_project_integrity_validates_frozen_stability_analysis_and_gate_chain(tm
     study_response = client.post("/api/projects/training/studies", json={"session_id": session_id, "name": "fixed split", "model_kind": "random_forest", "seeds": [11, 13, 17], "randomness_protocol": "TRAINING_VARIABILITY", "split_seed": 42, "selection_metric": "f1", "max_epochs": 1, "learning_rate": .01, "batch_size": 16, "patience": 1, "validation_fraction": .2, "test_fraction": .2, "max_rules": 3})
     assert study_response.status_code == 201, study_response.text
     study = study_response.json()
+    newer_study_response = client.post("/api/projects/training/studies", json={"session_id": session_id, "name": "second fixed split", "model_kind": "random_forest", "seeds": [31, 37, 41], "randomness_protocol": "TRAINING_VARIABILITY", "split_seed": 42, "selection_metric": "f1", "max_epochs": 1, "learning_rate": .01, "batch_size": 16, "patience": 1, "validation_fraction": .2, "test_fraction": .2, "max_rules": 3})
+    assert newer_study_response.status_code == 201, newer_study_response.text
+    active_study_path = root / "studies" / "active-study.json"
+    active_study_path.write_text(json.dumps({"study_id": study["study_id"]}), encoding="utf-8")
+    stale_study_pointer = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert any(issue["code"] == "STUDY_ACTIVE_POINTER_INVALID" for issue in stale_study_pointer["issues"])
+    active_study_path.write_text(json.dumps({"study_id": newer_study_response.json()["study_id"]}), encoding="utf-8")
     evaluation_response = client.post("/api/projects/analyses/evaluations", json={"session_id": session_id, "run_id": study["selected_run_id"]})
     assert evaluation_response.status_code == 201, evaluation_response.text
     evaluation_id = evaluation_response.json()["evaluation_id"]

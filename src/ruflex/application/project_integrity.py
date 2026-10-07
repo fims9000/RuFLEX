@@ -1173,6 +1173,9 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                 active_study_id = json.loads(active_study_path.read_text(encoding="utf-8"))["study_id"]
                 if str(active_study_id) not in {str(key) for key in studies_by_id}:
                     raise ValueError("Active TrainingStudy pointer does not resolve to persisted evidence.")
+                latest_study = max(studies_by_id.values(), key=lambda item: (item.created_at, str(item.study_id)), default=None)
+                if latest_study is not None and str(latest_study.study_id) != str(active_study_id):
+                    raise ValueError("Active TrainingStudy pointer does not identify the latest persisted study.")
             except (KeyError, TypeError, ValueError, OSError, json.JSONDecodeError) as error:
                 issues.append(ProjectIntegrityIssue(code="STUDY_ACTIVE_POINTER_INVALID", status="FAIL", path="studies/active-study.json", detail=str(error)))
         stability_root = base / "analyses" / "stability-analyses"

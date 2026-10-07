@@ -226,12 +226,13 @@
     "alpha_explanation_active_pointer_integrity",
     "alpha_explanation_check_active_pointer_integrity",
     "alpha_assurance_active_pointer_integrity",
-    "alpha_verification_bundle_active_pointer_integrity"
+    "alpha_verification_bundle_active_pointer_integrity",
+    "alpha_training_study_active_pointer_integrity"
   ],
-  "active_capability": "alpha_verification_bundle_active_pointer_integrity",
+  "active_capability": "alpha_training_study_active_pointer_integrity",
   "active_acceptance": [
-    "The active VerificationBundle pointer resolves to the latest persisted bundle under deterministic created_at/identity ordering.",
-    "Stale but valid bundle pointers fail integrity after reference and archive checksum checks."
+    "The active TrainingStudy pointer resolves to the latest persisted study under deterministic created_at/identity ordering.",
+    "A stale but otherwise valid study pointer fails integrity while exact Study IDs and their runs remain usable."
   ],
   "blockers": [],
   "next_executable_work": "Continue lightweight project-integrity audit for stale active pointers on other persisted analysis/evidence families; preserve unrelated article files.",
@@ -464,6 +465,7 @@
     "alpha_explanation_active_pointer_integrity": "PASS: Active ExplanationContract pointer must identify the latest persisted contract; stale valid pointer fails integrity using two persisted explanations.",
     "alpha_explanation_check_active_pointer_integrity": "PASS: Active ExplanationCheck pointer must identify the latest persisted check; stale valid pointer fails integrity using repeated persisted checks.",
     "alpha_assurance_active_pointer_integrity": "PASS: Active AssuranceCase pointer must identify the latest persisted claim/gate snapshot; stale valid pointer fails integrity using two generated Assurance cases.",
-    "alpha_verification_bundle_active_pointer_integrity": "PASS: Active VerificationBundle pointer must identify the latest persisted bundle after verifying linked AssuranceCase and archive SHA; stale valid bundle pointer fails integrity in a temporary project."
+    "alpha_verification_bundle_active_pointer_integrity": "PASS: Active VerificationBundle pointer must identify the latest persisted bundle after verifying linked AssuranceCase and archive SHA; stale valid bundle pointer fails integrity in a temporary project.",
+    "alpha_training_study_active_pointer_integrity": "PASS: Active TrainingStudy pointer must identify the latest persisted study; rollback to the earlier fully valid study fails integrity using two real 3-run fixed-split studies."
   }
 }
