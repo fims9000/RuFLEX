@@ -196,6 +196,32 @@ test("Studio does not carry ID and exclusion roles into a different selected fil
   await expect(page.getByRole("combobox", { name: "Role for leak_hint" })).toHaveValue("feature");
 });
 
+test("Studio keeps the edited CSV draft separate from an inspected file", async ({ page }) => {
+  const path = projectPath();
+  await page.goto("/");
+  await page.getByLabel("Project path").fill(path);
+  await page.getByLabel("Project name").fill("Source switch");
+  await page.getByRole("button", { name: "Create project", exact: true }).click();
+  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+
+  await page.getByLabel("Dataset CSV or XLSX file").setInputFiles({
+    name: "selected.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from("record_id,target\na,0\nb,1\n"),
+  });
+  await expect(page.getByLabel("Selected file schema preview")).toContainText("selected.csv");
+  await page.getByRole("combobox", { name: "Role for target" }).selectOption("target");
+  await expect(page.getByRole("button", { name: "Confirm target and import file", exact: true })).toBeEnabled();
+
+  await page.getByLabel("CSV data").fill("temperature,outcome\n10,0\n20,1\n");
+  await expect(page.getByLabel("Selected file schema preview")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Confirm target and import file", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("textbox", { name: "Target" })).toHaveValue("");
+  await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
+  await expect(page.getByRole("combobox", { name: "Role for outcome" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Confirm dataset contract", exact: true })).toBeDisabled();
+});
+
 test("Studio excludes an ordinary feature without assigning it an ID role and reopens the frozen choice", async ({ page }) => {
   const path = projectPath();
   await page.goto("/");

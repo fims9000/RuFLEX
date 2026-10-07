@@ -1350,6 +1350,16 @@ export function App() {
   function updateCsvText(value: string) {
     csvInspectionRequestRef.current += 1;
     csvDraftRevisionRef.current += 1;
+    if (pendingDatasetFile) {
+      datasetFileSelectionId.current += 1;
+      setPendingDatasetFile(null);
+      setPendingDatasetProfile(null);
+      setInspectingDatasetFile(false);
+      setTarget("");
+      setIdColumns("");
+      setExcludedColumns("");
+      setStatus("CSV changed; file selection cleared. Inspect the CSV before confirming");
+    }
     setCsvText(value);
     if (profile) {
       setProfile(null);
@@ -1481,6 +1491,8 @@ export function App() {
     setInspectingDatasetFile(false);
     setError(null);
     if (!project || !file || (datasetStateStatus !== "none" && datasetStateStatus !== "available")) return;
+    csvInspectionRequestRef.current += 1;
+    setProfile(null);
     setTarget("");
     setIdColumns("");
     setExcludedColumns("");
