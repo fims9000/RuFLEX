@@ -146,6 +146,9 @@ Target branch: `feature/v1.3-data-governance-runtime`.
 - Study selection metrics are checked against the dataset task before any
   synchronous fit or asynchronous StudyJob begins; an incompatible persisted
   job also fails before resume rather than spending compute on unusable runs.
+- Training API requests reject validation/test fractions that leave no TRAIN
+  share before project access, returning a serializable typed validation error
+  rather than starting an unusable fit.
 - Project Integrity, Assurance and portable bundles reject missing or malformed
   manual-FIS comparison rows and mismatched semantic-revision provenance.
   A portable bundle excludes raw dataset rows, so it checks the frozen row's

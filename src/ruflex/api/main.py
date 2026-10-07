@@ -12,9 +12,10 @@ import yaml
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse, PlainTextResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic import ValidationError
 
 from uuid import UUID
@@ -262,6 +263,12 @@ class TrainModelRequest(SessionRequest):
     n_estimators: int | None = Field(default=None, ge=1, le=5000)
     max_depth: int | None = Field(default=None, ge=1, le=1000)
 
+    @model_validator(mode="after")
+    def validate_split_fractions(self) -> "TrainModelRequest":
+        if self.validation_fraction + self.test_fraction >= 1.0:
+            raise ValueError("validation_fraction + test_fraction must leave a non-empty TRAIN fraction.")
+        return self
+
 
 class MultiSeedStudyRequest(TrainModelRequest):
     client_request_id: UUID | None = None
@@ -491,7 +498,7 @@ async def product_http_exception_handler(_: Request, error: HTTPException) -> JS
 async def product_request_validation_handler(_: Request, error: RequestValidationError) -> JSONResponse:
     return JSONResponse(
         status_code=422,
-        content={"code": "REQUEST_INVALID", "detail": error.errors()},
+        content={"code": "REQUEST_INVALID", "detail": jsonable_encoder(error.errors(), custom_encoder={Exception: str})},
     )
 
 
