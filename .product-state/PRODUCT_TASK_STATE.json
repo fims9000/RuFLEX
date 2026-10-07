@@ -271,12 +271,13 @@
     "alpha_fis_save_duplicate_guard",
     "alpha_matlab_fis_import_duplicate_guard",
     "alpha_fis_unsaved_revision_evaluation_guard",
-    "alpha_fis_concurrent_save_draft_preservation"
+    "alpha_fis_concurrent_save_draft_preservation",
+    "alpha_validation_policy_write_serialization"
   ],
-  "active_capability": "alpha_fis_concurrent_save_draft_preservation",
+  "active_capability": "alpha_validation_policy_write_serialization",
   "active_acceptance": [
-    "If the user edits the FIS while a save request is pending, the completed request persists only its captured snapshot and cannot overwrite the newer draft.",
-    "The newer draft remains visibly unsaved and can be saved as a follow-up revision."
+    "Validation Evaluation creation, calibration fitting, threshold selection, selective-policy creation, and final-test opening cannot overlap as concurrent writes.",
+    "UI controls communicate mutual exclusion, while a synchronous guard rejects cross-action races before submission."
   ],
   "blockers": [],
   "next_executable_work": "Inspect the next user-facing alpha workflow for an evidenced reliability/usability gap; use focused, low-resource checks and commit each verified slice locally.",
@@ -554,6 +555,7 @@
     "alpha_fis_save_duplicate_guard": "PASS: FIS revision save now guards synchronously against duplicate writes, shows Saving progress and stays disabled through exact persistence or recovery. TypeScript build and a delayed-route Studio E2E passed; both default creation and FIS save each issued exactly one request.",
     "alpha_matlab_fis_import_duplicate_guard": "PASS: MATLAB FIS initial import now synchronously locks duplicate submissions, disables the import controls and displays progress until the response resolves; the shared retry path also respects the in-flight guard. TypeScript build and focused import Playwright suite passed (2/2), including the uncertain-response recovery route and delayed duplicate-write guard.",
     "alpha_fis_unsaved_revision_evaluation_guard": "PASS: semantic edits clear the working FIS hash so prior traces no longer match; Evaluate and MATLAB export are disabled until Save FIS persists a new revision, and both handlers reject unsaved revisions before API submission/download. Focused FIS helper/parser tests: 3 passed; tsc -b passed; focused real Studio Playwright E2E passed (1/1), verifying stale output hiding, save-before-evaluate/export, and invalid-input no-submit behavior.",
-    "alpha_fis_concurrent_save_draft_preservation": "PASS: an edit made during an in-flight save remains an unsaved draft while the submitted snapshot is persisted; parent FIS hydration and revision-history retry do not replace that draft, and a subsequent save persists it. Focused Studio Playwright E2E passed (1/1) for history retry plus concurrent save, stale-evaluation E2E passed (1/1), TypeScript project build and git diff --check."
+    "alpha_fis_concurrent_save_draft_preservation": "PASS: an edit made during an in-flight save remains an unsaved draft while the submitted snapshot is persisted; parent FIS hydration and revision-history retry do not replace that draft, and a subsequent save persists it. Focused Studio Playwright E2E passed (1/1) for history retry plus concurrent save, stale-evaluation E2E passed (1/1), TypeScript project build and git diff --check.",
+    "alpha_validation_policy_write_serialization": "PASS: validation evidence writes, calibration, threshold and selective-policy writes share a synchronous mutual-exclusion guard; final-test opening uses the same guard. Cross-action buttons disable while a write is in flight. Focused PRODUCT-04 Studio E2E passed, holding calibration open and verifying both threshold selection and evaluation revision save remain disabled; TypeScript build and diff check passed."
   }
 }

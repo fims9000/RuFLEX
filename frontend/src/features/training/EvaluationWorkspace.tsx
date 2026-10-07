@@ -1,5 +1,5 @@
 import { EChartsOption } from "echarts";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   AnalysisComparison,
   AnalysisEvaluation,
@@ -196,6 +196,7 @@ export function EvaluationWorkspace({
   onSliceAnalysis,
   onSelectivePolicy,
 }: Props) {
+  const validationMutationInFlightRef = useRef(false);
   const [saving, setSaving] = useState(false);
   const [evaluationRecoveryRunId, setEvaluationRecoveryRunId] = useState<string | null>(null);
   const [evaluationRecoveryError, setEvaluationRecoveryError] = useState<string | null>(null);
@@ -230,6 +231,16 @@ export function EvaluationWorkspace({
   const [sliceRows, setSliceRows] = useState("");
   const [sliceMetric, setSliceMetric] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  function beginValidationMutation(): boolean {
+    if (validationMutationInFlightRef.current) return false;
+    validationMutationInFlightRef.current = true;
+    return true;
+  }
+
+  function endValidationMutation(): void {
+    validationMutationInFlightRef.current = false;
+  }
 
   const runId = run?.run_id ?? null;
   const activeEvaluation = evaluation && runId && evaluation.run_id === runId ? evaluation : null;
@@ -269,6 +280,7 @@ export function EvaluationWorkspace({
   const evaluationStateKnown = evaluationStatus === "none" || evaluationStatus === "available";
   const validationPoliciesKnown = validationPolicyEvidenceStatus === "available";
   const datasetIdentityKnown = datasetHydrationStatus === "available" && dataset !== null;
+  const validationMutationBusy = saving || calibrating || thresholding || selectingReview;
 
   const option = useMemo(() => {
     if (!run) return null;
@@ -307,6 +319,7 @@ export function EvaluationWorkspace({
   }
 
   async function saveEvaluation() {
+    if (policyRecovery || !beginValidationMutation()) return;
     setSaving(true);
     setError(null);
     try {
@@ -314,6 +327,7 @@ export function EvaluationWorkspace({
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Could not save validation evaluation");
     } finally {
+      endValidationMutation();
       setSaving(false);
     }
   }
@@ -344,11 +358,11 @@ export function EvaluationWorkspace({
   }
 
   async function explicitlyCreateEvaluation() {
-    if (!evaluationRecoveryRunId || !evaluationRecoveryNotFound) return;
+    if (!evaluationRecoveryRunId || !evaluationRecoveryNotFound || !beginValidationMutation()) return;
     setSaving(true); setError(null);
     try { await createEvaluationForRun(evaluationRecoveryRunId); }
     catch (reason) { setError(reason instanceof Error ? reason.message : "Could not create the explicitly requested validation Evaluation."); }
-    finally { setSaving(false); }
+    finally { endValidationMutation(); setSaving(false); }
   }
 
   async function recoverValidationPolicyWrite() {
@@ -386,7 +400,7 @@ export function EvaluationWorkspace({
 
   async function explicitlyRepeatValidationPolicyWrite() {
     const pending = policyRecovery;
-    if (!pending?.notFound) return;
+    if (!pending?.notFound || !beginValidationMutation()) return;
     setRecoveringPolicy(true); setError(null);
     try {
       if (pending.kind === "calibration") {
@@ -401,11 +415,11 @@ export function EvaluationWorkspace({
     } catch (reason) {
       const message = reason instanceof Error ? reason.message : "The explicitly repeated validation policy could not be confirmed.";
       setPolicyRecovery({ ...pending, notFound: false, error: message }); setError(message);
-    } finally { setRecoveringPolicy(false); }
+    } finally { endValidationMutation(); setRecoveringPolicy(false); }
   }
 
   async function fitCalibration() {
-    if (policyRecovery) return;
+    if (policyRecovery || !beginValidationMutation()) return;
     setCalibrating(true);
     setError(null);
     try {
@@ -421,12 +435,13 @@ export function EvaluationWorkspace({
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Could not fit validation calibration");
     } finally {
+      endValidationMutation();
       setCalibrating(false);
     }
   }
 
   async function selectThreshold() {
-    if (policyRecovery) return;
+    if (policyRecovery || !beginValidationMutation()) return;
     setThresholding(true);
     setError(null);
     try {
@@ -445,12 +460,13 @@ export function EvaluationWorkspace({
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Could not select validation decision threshold");
     } finally {
+      endValidationMutation();
       setThresholding(false);
     }
   }
 
   async function selectReviewPolicy() {
-    if (policyRecovery) return;
+    if (policyRecovery || !beginValidationMutation()) return;
     setSelectingReview(true);
     setError(null);
     try {
@@ -466,6 +482,7 @@ export function EvaluationWorkspace({
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Could not select validation review policy");
     } finally {
+      endValidationMutation();
       setSelectingReview(false);
     }
   }
@@ -486,6 +503,10 @@ export function EvaluationWorkspace({
     }
     if (run!.task === "binary_classification" && !activeThreshold) {
       setError("Select and persist the validation decision threshold before final-test evaluation.");
+      return;
+    }
+    if (!beginValidationMutation()) {
+      setError("Wait for the current validation evidence or policy write to finish before opening the final test.");
       return;
     }
     setFinalTesting(true);
@@ -514,6 +535,7 @@ export function EvaluationWorkspace({
       setFinalTestRecovery({ ...request, error: reason instanceof Error ? reason.message : "Final-test response was uncertain. Do not resubmit this request." });
       setError(reason instanceof Error ? reason.message : "Could not evaluate frozen final-test split");
     } finally {
+      endValidationMutation();
       setFinalTesting(false);
     }
   }
@@ -706,9 +728,9 @@ export function EvaluationWorkspace({
       <div className="toolbar-actions">
         <StatusBadge tone={activeFinalTest || datasetTestBoundaryOpened ? "danger" : "warning"}>{activeFinalTest ? "final test evaluated" : datasetTestBoundaryOpened ? "dataset final-test boundary opened" : finalTestBoundaryKnown ? "final test locked" : "final-test status unverified"}</StatusBadge>
         {study && <Button view="outlined" disabled={comparing || !!comparisonRecovery || project.read_only || !["none", "available"].includes(comparisonHydrationStatus)} onClick={saveStudyComparison} data-ruflex-action="comparison.study.create">{comparing ? "Comparing…" : "Compare study seeds"}</Button>}
-        <Button view="outlined" disabled={saving || !!finalTestRecovery || !!evaluationRecoveryRunId || project.read_only || !evaluationStateKnown} onClick={saveEvaluation} data-ruflex-action="evaluation.save">{saving ? "Saving…" : activeEvaluation ? "Save evaluation revision" : "Save validation evidence"}</Button>
-        {run.task === "binary_classification" && <Button view="outlined" disabled={calibrating || !!finalTestRecovery || !!policyRecovery || !!evaluationRecoveryRunId || project.read_only || datasetTestBoundaryOpened || !datasetIdentityKnown || !finalTestBoundaryKnown || !evaluationStateKnown || !validationPoliciesKnown} onClick={fitCalibration} data-ruflex-action="calibration.fit">{calibrating ? "Fitting…" : activeCalibration ? "Refit calibration" : "Fit validation calibration"}</Button>}
-        {run.task === "binary_classification" && <Button view="action" disabled={thresholding || !!finalTestRecovery || !!policyRecovery || !!evaluationRecoveryRunId || project.read_only || datasetTestBoundaryOpened || !datasetIdentityKnown || !finalTestBoundaryKnown || !evaluationStateKnown || !validationPoliciesKnown} onClick={selectThreshold} data-ruflex-action="threshold.select">{thresholding ? "Selecting…" : activeThreshold ? "Reselect threshold" : `Select F1 threshold (${activeCalibration ? "calibrated" : "raw"})`}</Button>}
+        <Button view="outlined" disabled={validationMutationBusy || !!finalTestRecovery || !!evaluationRecoveryRunId || project.read_only || !evaluationStateKnown} onClick={saveEvaluation} data-ruflex-action="evaluation.save">{saving ? "Saving…" : activeEvaluation ? "Save evaluation revision" : "Save validation evidence"}</Button>
+        {run.task === "binary_classification" && <Button view="outlined" disabled={validationMutationBusy || !!finalTestRecovery || !!policyRecovery || !!evaluationRecoveryRunId || project.read_only || datasetTestBoundaryOpened || !datasetIdentityKnown || !finalTestBoundaryKnown || !evaluationStateKnown || !validationPoliciesKnown} onClick={fitCalibration} data-ruflex-action="calibration.fit">{calibrating ? "Fitting…" : activeCalibration ? "Refit calibration" : "Fit validation calibration"}</Button>}
+        {run.task === "binary_classification" && <Button view="action" disabled={validationMutationBusy || !!finalTestRecovery || !!policyRecovery || !!evaluationRecoveryRunId || project.read_only || datasetTestBoundaryOpened || !datasetIdentityKnown || !finalTestBoundaryKnown || !evaluationStateKnown || !validationPoliciesKnown} onClick={selectThreshold} data-ruflex-action="threshold.select">{thresholding ? "Selecting…" : activeThreshold ? "Reselect threshold" : `Select F1 threshold (${activeCalibration ? "calibrated" : "raw"})`}</Button>}
       </div>
     </div>
 
@@ -767,7 +789,7 @@ export function EvaluationWorkspace({
       <span className="eyebrow">SELECTIVE PREDICTION · VALIDATION ONLY</span><h3>Accept confident cases; route the rest to review</h3>
       <p>This confidence cutoff is independent of the class threshold. It tunes ACCEPT / REVIEW coverage on validation evidence and never opens the final test.</p>
       <label className="field-label">Confidence cutoff<input aria-label="Selective confidence cutoff" type="number" min="0.5" max="1" step="0.05" value={selectiveCutoff} onChange={(event) => setSelectiveCutoff(event.target.value)} /></label>
-      <Button view="action" disabled={selectingReview || !!finalTestRecovery || !!policyRecovery || !!evaluationRecoveryRunId || project.read_only || datasetTestBoundaryOpened || !datasetIdentityKnown || !finalTestBoundaryKnown || !evaluationStateKnown || !validationPoliciesKnown || !activeThreshold} onClick={selectReviewPolicy} data-ruflex-action="selective_policy.create">{selectingReview ? "Selecting…" : "Save ACCEPT / REVIEW policy"}</Button>
+      <Button view="action" disabled={validationMutationBusy || !!finalTestRecovery || !!policyRecovery || !!evaluationRecoveryRunId || project.read_only || datasetTestBoundaryOpened || !datasetIdentityKnown || !finalTestBoundaryKnown || !evaluationStateKnown || !validationPoliciesKnown || !activeThreshold} onClick={selectReviewPolicy} data-ruflex-action="selective_policy.create">{selectingReview ? "Selecting…" : "Save ACCEPT / REVIEW policy"}</Button>
       {!activeThreshold && <small>Select the validation class threshold first; accepted risk uses that exact threshold, never an implicit 0.50.</small>}
       {selectivePolicy && !activeSelectivePolicy && <p className="property-description" role="status">A saved selective policy belongs to a different run, Evaluation or threshold and is not shown or applied here.</p>}
       {activeSelectivePolicy && <><p><StatusBadge tone="warning">REVIEW BELOW {activeSelectivePolicy.confidence_cutoff.toFixed(2)}</StatusBadge> ACCEPT at or above cutoff · class threshold {activeSelectivePolicy.class_threshold.toFixed(2)} · {activeSelectivePolicy.probability_source} probability.</p><small className="mono">threshold {activeSelectivePolicy.class_threshold_id.slice(0, 12)} · validation cases {activeSelectivePolicy.fit_sample_identity.slice(0, 24)}…</small><div className="data-table-wrap"><table className="data-table"><thead><tr><th>confidence</th><th>coverage</th><th>accepted risk</th><th>accepted</th></tr></thead><tbody>{activeSelectivePolicy.risk_coverage.map((point) => <tr key={point.confidence_cutoff}><td>{point.confidence_cutoff.toFixed(2)}</td><td>{(point.coverage * 100).toFixed(1)}%</td><td>{point.accepted_risk === null ? "—" : `${(point.accepted_risk * 100).toFixed(1)}%`}</td><td>{point.accepted_count}</td></tr>)}</tbody></table></div><small>{activeSelectivePolicy.scientific_note}</small></>}
@@ -799,7 +821,7 @@ export function EvaluationWorkspace({
       </> : <>
         {datasetTestBoundaryOpened ? <><p>The first test access for this dataset has already occurred. This run has no persisted FinalTestEvaluation. Only policies frozen before the recorded boundary and reconstructing the same holdout rows remain eligible.</p><small className="mono">Dataset test gate opened {new Date(datasetTestBoundaryAt!).toLocaleString()}</small></> : <p>Validation remains the only evidence used for model selection, probability calibration and threshold selection. The first final-test access freezes the dataset-level eligibility boundary. Additional pre-specified policies may be evaluated only if they were already frozen and reconstruct the same holdout rows.</p>}{stabilityGatePolicy && !activeStabilityGatePolicy && <small role="status">The saved Stability Gate is bound to a different run, Evaluation, threshold or dataset and will not be applied here.</small>}{activeStabilityGatePolicy && <small>Stability Gate {activeStabilityGatePolicy.policy_id.slice(0, 12)} is validation-derived and will be bound to this final-test evidence; it is not fitted on final-test data.</small>}
         <label className="final-test-confirm"><input type="checkbox" checked={finalTestConfirmed} onChange={(event) => setFinalTestConfirmed(event.target.checked)} />{datasetTestBoundaryOpened ? "I confirm this policy was frozen before the recorded dataset-level test boundary; final-test results will not be used for retuning." : "I confirm this policy was frozen before final-test access; final-test results will not be used to retune or create another eligible policy."}</label>
-      <Button view="action" disabled={project.read_only || finalTesting || !!finalTestRecovery || !!policyRecovery || !!evaluationRecoveryRunId || !datasetIdentityKnown || !finalTestBoundaryKnown || !activeEvaluation || !finalTestConfirmed || !validationPoliciesKnown || (run.task === "binary_classification" && !activeThreshold)} onClick={evaluateFinalTest} data-ruflex-action="final_test.execute">{finalTesting ? "Evaluating final test…" : "Evaluate frozen final test"}</Button>
+      <Button view="action" disabled={project.read_only || finalTesting || validationMutationBusy || !!finalTestRecovery || !!policyRecovery || !!evaluationRecoveryRunId || !datasetIdentityKnown || !finalTestBoundaryKnown || !activeEvaluation || !finalTestConfirmed || !validationPoliciesKnown || (run.task === "binary_classification" && !activeThreshold)} onClick={evaluateFinalTest} data-ruflex-action="final_test.execute">{finalTesting ? "Evaluating final test…" : "Evaluate frozen final test"}</Button>
         {run.task === "binary_classification" && !activeThreshold && <small>Select a validation-derived decision threshold first. Calibration is optional; a calibrated threshold automatically requires its persisted calibration transform.</small>}
       </>}
     </section>

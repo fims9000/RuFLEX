@@ -20,6 +20,14 @@ function trainingCsv(): string {
 test("PRODUCT-04 persists validation calibration and decision-threshold provenance", async ({ page }) => {
   test.setTimeout(60_000);
   const path = projectPath();
+  let releaseCalibration: () => void = () => {};
+  let calibrationStarted: () => void = () => {};
+  const calibrationStartedPromise = new Promise<void>((resolve) => { calibrationStarted = resolve; });
+  await page.route("**/api/projects/analyses/calibrations", async (route) => {
+    calibrationStarted();
+    await new Promise<void>((resolve) => { releaseCalibration = resolve; });
+    await route.continue();
+  });
 
   await page.goto("/");
   await page.getByLabel("Project path").fill(path);
@@ -41,6 +49,10 @@ test("PRODUCT-04 persists validation calibration and decision-threshold provenan
   await expect(page.getByText(/validation rows persisted/)).toBeVisible();
 
   await page.getByRole("button", { name: "Fit validation calibration", exact: true }).click();
+  await calibrationStartedPromise;
+  await expect(page.getByRole("button", { name: /Select F1 threshold \(raw\)/ })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Save evaluation revision", exact: true })).toBeDisabled();
+  releaseCalibration();
   await expect(page.getByText("Brier calibrated", { exact: true })).toBeVisible();
   await expect(page.getByText(/Platt transform/)).toBeVisible();
 
