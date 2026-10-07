@@ -85,3 +85,42 @@ test("a late inline CSV inspection cannot reintroduce roles after file selection
     releaseCsv();
   }
 });
+
+test("a late file inspection cannot replace the active inline CSV draft", async ({ page }) => {
+  const path = join(tmpdir(), `ruflex-file-csv-race-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  await page.goto("/");
+  await page.getByLabel("Project path").fill(path);
+  await page.getByLabel("Project name").fill("Reverse inspection race");
+  await page.getByRole("button", { name: "Create project", exact: true }).click();
+  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+
+  let releaseFile!: () => void;
+  let markFileStarted!: () => void;
+  const fileGate = new Promise<void>((resolve) => { releaseFile = resolve; });
+  const fileStarted = new Promise<void>((resolve) => { markFileStarted = resolve; });
+  await page.route("**/api/projects/dataset/import/inspect", async (route) => {
+    markFileStarted();
+    await fileGate;
+    await route.continue();
+  });
+
+  await page.getByLabel("Dataset CSV or XLSX file").setInputFiles({
+    name: "stale.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from("stale_id,stale_target\na,0\nb,1\n"),
+  });
+  await fileStarted;
+  await page.getByLabel("CSV data").fill("temperature,outcome\n10,0\n20,1\n");
+  await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
+  await expect(page.getByRole("combobox", { name: "Role for outcome" })).toBeVisible();
+  try {
+    const staleResponse = page.waitForResponse((response) => response.url().endsWith("/api/projects/dataset/import/inspect"));
+    releaseFile();
+    await staleResponse;
+    await expect(page.getByLabel("Selected file schema preview")).toHaveCount(0);
+    await expect(page.getByRole("combobox", { name: "Role for outcome" })).toBeVisible();
+    await expect(page.getByRole("combobox", { name: "Role for stale_id" })).toHaveCount(0);
+  } finally {
+    releaseFile();
+  }
+});
