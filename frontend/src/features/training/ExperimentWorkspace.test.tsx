@@ -579,6 +579,45 @@ describe("ExperimentWorkspace dynamic model controls", () => {
     fireEvent.change(seeds, { target: { value: "42, 43, 43" } });
     expect(await screen.findByRole("alert")).toHaveTextContent("Each Study seed must be distinct");
     expect(startStudy).toBeDisabled();
+
+    for (const draft of ["-1, 2, 3", "1, 2, 4294967296"]) {
+      fireEvent.change(seeds, { target: { value: draft } });
+      expect(await screen.findByRole("alert")).toHaveTextContent("0 to 4294967295");
+      expect(startStudy).toBeDisabled();
+    }
+  });
+
+  it("keeps blank, fractional, negative and out-of-range seed drafts invalid until corrected", async () => {
+    render(<ExperimentWorkspace project={project} dataset={dataset as never} run={null} study={null} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);
+    const trainingSeed = screen.getByLabelText("Single-run training seed");
+    const splitSeed = screen.getByLabelText("Split seed");
+    const singleRun = screen.getByRole("button", { name: "Run real training" });
+    const freeze = screen.getByRole("button", { name: "Freeze RANDOM SplitContract" });
+    const study = screen.getByRole("button", { name: "Run multi-seed study" });
+    await waitFor(() => expect(singleRun).toBeEnabled());
+
+    for (const draft of ["", "-1", "1.5", "4294967296"]) {
+      fireEvent.change(trainingSeed, { target: { value: draft } });
+      expect(trainingSeed).toHaveValue(draft);
+      expect(trainingSeed).toHaveAttribute("aria-invalid", "true");
+      expect(singleRun).toBeDisabled();
+      fireEvent.change(trainingSeed, { target: { value: "7" } });
+      expect(trainingSeed).toHaveAttribute("aria-invalid", "false");
+
+      fireEvent.change(splitSeed, { target: { value: draft } });
+      expect(splitSeed).toHaveValue(draft);
+      expect(splitSeed).toHaveAttribute("aria-invalid", "true");
+      expect(singleRun).toBeDisabled();
+      expect(freeze).toBeDisabled();
+      expect(study).toBeDisabled();
+      fireEvent.change(splitSeed, { target: { value: "42" } });
+      expect(splitSeed).toHaveAttribute("aria-invalid", "false");
+    }
+    expect(singleRun).toBeEnabled();
+    expect(study).toBeEnabled();
+    expect(studioApi.runTraining).not.toHaveBeenCalled();
+    expect(studioApi.createSplitContract).not.toHaveBeenCalled();
+    expect(studioApi.startStudyJob).not.toHaveBeenCalled();
   });
 
   it("applies adapter and API numeric bounds before either training action is enabled", async () => {

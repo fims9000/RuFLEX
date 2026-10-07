@@ -24,3 +24,10 @@ selection uses lowest training seed, then lowest split seed. Existing frozen
 selected-run identities remain unchanged. This deterministic product rule is
 regression-tested in both input orders; no A01/S03 research artifacts were
 recomputed or reinterpreted.
+
+The Studio seed inputs now retain invalid drafts instead of interpreting an
+empty string as zero. Single-run training, split freeze, and Study submission
+are disabled while their required seed is blank, fractional, negative, or
+outside the common NumPy/scikit-learn 32-bit seed range. API request schemas
+enforce the same `0..4294967295` bound before any project operation. Existing
+persisted objects are not migrated.

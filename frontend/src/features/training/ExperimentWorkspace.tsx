@@ -97,12 +97,21 @@ function NumberField({ label, value, min, max, step = 1, disabled, onChange }: {
   }} /></label>;
 }
 
+const MAX_SEED = 0xffffffff;
+
+function parseSeed(value: string): number | null {
+  const trimmed = value.trim();
+  if (!/^\d+$/.test(trimmed)) return null;
+  const seed = Number(trimmed);
+  return Number.isSafeInteger(seed) && seed <= MAX_SEED ? seed : null;
+}
+
 function parseStudySeeds(value: string): { seeds: number[]; error: string | null } {
   const tokens = value.split(",").map((token) => token.trim());
-  if (tokens.some((token) => !/^-?\d+$/.test(token) || !Number.isSafeInteger(Number(token)))) {
-    return { seeds: [], error: "Use comma-separated whole-number seeds; invalid entries are not ignored." };
+  if (tokens.some((token) => parseSeed(token) === null)) {
+    return { seeds: [], error: "Use comma-separated whole-number seeds from 0 to 4294967295; invalid entries are not ignored." };
   }
-  const seeds = tokens.map(Number);
+  const seeds = tokens.map((token) => parseSeed(token)!);
   if (new Set(seeds).size !== seeds.length) return { seeds: [], error: "Each Study seed must be distinct." };
   if (seeds.length < 3) return { seeds: [], error: "Enter at least three distinct seeds to start a multi-seed Study." };
   if (seeds.length > 32) return { seeds: [], error: "A multi-seed Study accepts at most 32 seeds." };
@@ -207,7 +216,8 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
   onStabilityAnalysisChange?: (analysis: StudyStabilityAnalysis | null) => void;
   onStabilityGatePolicyChange?: (policy: StabilityGatePolicy | null) => void;
 }) {
-  const [seed, setSeed] = useState(42);
+  const [seedText, setSeedText] = useState("42");
+  const seed = parseSeed(seedText);
   const [modelKind, setModelKind] = useState("flat_neuro_fuzzy");
   const [maxEpochs, setMaxEpochs] = useState(20);
   const [learningRate, setLearningRate] = useState(0.01);
@@ -218,7 +228,8 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
   const [maxDepth, setMaxDepth] = useState<number | null>(null);
   const [seedList, setSeedList] = useState("42, 43, 44");
   const [studyMode, setStudyMode] = useState<"TRAINING_VARIABILITY" | "SPLIT_VARIABILITY" | "COMBINED_VARIABILITY">("TRAINING_VARIABILITY");
-  const [splitSeed, setSplitSeed] = useState(42);
+  const [splitSeedText, setSplitSeedText] = useState("42");
+  const splitSeed = parseSeed(splitSeedText);
   const [splitFamily, setSplitFamily] = useState<SplitContract["family"]>("RANDOM");
   const [groupColumn, setGroupColumn] = useState("");
   const [rigorProfile, setRigorProfile] = useState<"EXPLORATORY" | "CONFIRMATORY" | "HIGH_ASSURANCE_LIKE">("CONFIRMATORY");
@@ -284,6 +295,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
   const validationFraction = splitContract?.validation_fraction ?? 0.2;
   const testFraction = splitContract?.test_fraction ?? 0.2;
   const splitSelectionMatchesFrozenContract = useMemo(() => {
+    if (splitSeed === null) return false;
     if (!splitContract) return splitFamily === "RANDOM";
     const identityFields = ["group_column", "time_column", "site_column", "device_column", "spatial_column", "regime_column"] as const;
     const selectedIdentityField = {
@@ -298,7 +310,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
       && identityFields.every((field) => splitContract[field] === (field === selectedIdentityField ? groupColumn || null : null));
   }, [dataset?.contract.dataset_fingerprint, dataset?.contract.source_artifact_sha256, groupColumn, splitContract, splitFamily, splitSeed]);
   const splitContractAlreadyFrozen = Boolean(splitContract && splitSelectionMatchesFrozenContract);
-  const studySplitReady = studyMode === "TRAINING_VARIABILITY" ? splitSelectionMatchesFrozenContract : splitFamily === "RANDOM";
+  const studySplitReady = splitSeed !== null && (studyMode === "TRAINING_VARIABILITY" ? splitSelectionMatchesFrozenContract : splitFamily === "RANDOM");
   useEffect(() => {
     setStudy(restoredStudy);
   }, [restoredStudy?.study_id]);
@@ -377,7 +389,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
       if (!active) return;
       const current = contracts.at(-1) ?? null;
       setSplitContract(current);
-      if (current) { setSplitFamily(current.family); setGroupColumn(current.group_column ?? current.time_column ?? current.site_column ?? current.device_column ?? current.spatial_column ?? current.regime_column ?? ""); setSplitSeed(current.split_seed); }
+      if (current) { setSplitFamily(current.family); setGroupColumn(current.group_column ?? current.time_column ?? current.site_column ?? current.device_column ?? current.spatial_column ?? current.regime_column ?? ""); setSplitSeedText(String(current.split_seed)); }
       setSplitEvidenceStatus("loaded");
     }).catch((reason) => {
       if (!active) return;
@@ -516,6 +528,10 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
       setError("A persisted StudyJob is still active. Resume or inspect that exact job before starting another fit.");
       return;
     }
+    if (seed === null || splitSeed === null) {
+      setError("Enter valid whole-number split and training seeds (0–4294967295) before fitting.");
+      return;
+    }
     if (!splitSelectionMatchesFrozenContract) {
       setError("Freeze a SplitContract matching the currently selected split family, identity column and seed before fitting.");
       return;
@@ -586,6 +602,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
     if (splitContractRecovery || running || splitContractMutationInFlightRef.current || singleTrainingInFlightRef.current) return;
     if (splitContractAlreadyFrozen) return;
     if (!dataset) { setError("Confirm a DatasetContract before freezing split provenance."); return; }
+    if (splitSeed === null) { setError("Enter a whole-number split seed from 0 to 4294967295 before freezing the split."); return; }
     splitContractMutationInFlightRef.current = true;
     setSplitContractMutationInFlight(true);
     setRunning(true); setError(null);
@@ -676,6 +693,10 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
       return;
     }
     if (splitContractRecovery) return;
+    if (splitSeed === null) {
+      setError("Enter a whole-number base seed from 0 to 4294967295 before starting this Study.");
+      return;
+    }
     if (!studySplitReady) {
       setError(studyMode === "TRAINING_VARIABILITY" ? "Freeze a SplitContract matching the selected split settings before starting this fixed-split Study." : "Split and combined variability Studies require RANDOM split family; their listed seeds define the varying splits.");
       return;
@@ -831,8 +852,8 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
         <div className="training-config-grid">
           <label className="field-label">Model<select aria-label="Training model" value={modelKind} disabled={running || project.read_only || !compatibleModels.length} onChange={(event) => setModelKind(event.target.value)}>{compatibleModels.map((entry) => <option key={entry.key} value={entry.key === "linear" ? (datasetTask === "regression" ? "linear_regression" : "logistic_regression") : entry.training_model_kinds[0]}>{entry.display_name}</option>)}</select></label>
           <label className="field-label">Scaling<select aria-label="Training normalization" value={normalization} disabled={running || project.read_only || activeStudyJob} onChange={(event) => setNormalization(event.target.value as "none" | "standard" | "minmax")}><option value="standard">Standard (TRAIN only)</option><option value="minmax">Min–max (TRAIN only)</option><option value="none">None</option></select></label>
-          <NumberField label="Single-run training seed" value={seed} step={1} disabled={running || project.read_only} onChange={setSeed} />
-          <NumberField label="Split seed" value={splitSeed} step={1} disabled={running || project.read_only} onChange={setSplitSeed} />
+          <label className="field-label">Single-run training seed<input type="text" inputMode="numeric" value={seedText} aria-invalid={seed === null} aria-describedby="seed-input-help" disabled={running || project.read_only} onChange={(event) => setSeedText(event.target.value)} /></label>
+          <label className="field-label">Split seed<input type="text" inputMode="numeric" value={splitSeedText} aria-invalid={splitSeed === null} aria-describedby="seed-input-help" disabled={running || project.read_only} onChange={(event) => setSplitSeedText(event.target.value)} /></label>
           <label className="field-label">Split family<select aria-label="Split family" value={splitFamily} disabled={running || project.read_only} onChange={(event) => setSplitFamily(event.target.value as SplitContract["family"])}><option value="RANDOM">Random holdout</option><option value="GROUP">Group holdout</option><option value="TEMPORAL">Temporal holdout</option><option value="SITE_HOLDOUT">Site holdout</option><option value="DEVICE_HOLDOUT">Device holdout</option><option value="SPATIAL">Spatial-block holdout</option><option value="REGIME">Regime holdout</option></select></label>
           {splitFamily !== "RANDOM" && <label className="field-label">{splitFamily === "TEMPORAL" ? "Time" : "Declared identity"}<select aria-label="Split identity column" value={groupColumn} disabled={running || project.read_only} onChange={(event) => setGroupColumn(event.target.value)}><option value="">Choose column</option>{dataset.profile.columns.map((column) => <option key={column.name} value={column.name}>{column.name}</option>)}</select></label>}
           <label className="field-label">Rigor profile<select aria-label="Rigor profile" value={rigorProfile} disabled={running || project.read_only} onChange={(event) => setRigorProfile(event.target.value as typeof rigorProfile)}><option value="EXPLORATORY">Exploratory</option><option value="CONFIRMATORY">Confirmatory</option><option value="HIGH_ASSURANCE_LIKE">High-assurance-like</option></select></label>
@@ -847,6 +868,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
           <label className="field-label">Study randomness protocol<select aria-label="Study randomness protocol" value={studyMode} disabled={running || project.read_only} onChange={(event) => setStudyMode(event.target.value as typeof studyMode)}><option value="TRAINING_VARIABILITY">Training variability (fixed split)</option><option value="SPLIT_VARIABILITY">Split variability (fixed training seed)</option><option value="COMBINED_VARIABILITY">Combined variability</option></select></label>
           <label className="field-label">Study execution backend<select aria-label="Study execution backend" value={executionBackendKey} disabled={running || project.read_only || executionBackendStatus !== "loaded" || !executionBackends.length} onChange={(event) => setExecutionBackendKey(event.target.value)}>{executionBackends.map((backend) => <option key={backend.identity.key} value={backend.identity.key}>{backend.identity.key} · {backend.identity.provider}</option>)}</select></label>
         </div>
+        <p id="seed-input-help" className={seed === null || splitSeed === null ? "error" : "property-description"} role={seed === null || splitSeed === null ? "alert" : undefined}>Both seed fields require whole numbers from 0 to 4294967295. Blank, fractional and negative values are not submitted.</p>
         {executionBackendStatus === "loading" && <p role="status">Checking available Study execution backends…</p>}
         {executionBackendStatus === "error" && <div className="error" role="alert" data-testid="execution-backend-catalog-error"><strong>Could not verify Study execution backends.</strong> {executionBackendError} <Button view="outlined" size="s" onClick={() => setExecutionBackendReload((current) => current + 1)}>Retry backend check</Button></div>}
         {executionBackendStatus === "loaded" && executionBackends.length === 0 && <p role="status">No Study execution backend is currently available.</p>}
@@ -857,7 +879,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
         {!splitSelectionMatchesFrozenContract && !splitContractRecovery && <p className="error" role="status">The selected split settings do not match a frozen SplitContract. Single-run training and fixed-split Studies require a matching contract; varying-split Studies use their declared RANDOM seeds instead.</p>}
         {studyMode !== "TRAINING_VARIABILITY" && <p className="info-message" role="status">This Study varies RANDOM split membership. Its runs do not reuse the project's active SplitContract; that frozen contract remains available for single runs and fixed-split Studies. Case-level Stability agreement is not claimed for unmatched validation rows.</p>}
         {studyMode !== "TRAINING_VARIABILITY" && splitFamily !== "RANDOM" && <p className="error" role="status">Choose RANDOM split family for this Study protocol; declared group, temporal and holdout contracts cannot be silently applied to varying random splits.</p>}
-        <Button view="outlined" disabled={running || !!splitContractRecovery || project.read_only || splitEvidenceStatus !== "loaded" || splitContractAlreadyFrozen} onClick={freezeSplitContract} data-ruflex-action="split.freeze">{splitContractMutationInFlight ? "Freezing split…" : splitContractAlreadyFrozen ? "SplitContract frozen" : `Freeze ${splitFamily} SplitContract`}</Button>
+        <Button view="outlined" disabled={running || !!splitContractRecovery || project.read_only || splitEvidenceStatus !== "loaded" || splitContractAlreadyFrozen || splitSeed === null} onClick={freezeSplitContract} data-ruflex-action="split.freeze">{splitContractMutationInFlight ? "Freezing split…" : splitContractAlreadyFrozen ? "SplitContract frozen" : `Freeze ${splitFamily} SplitContract`}</Button>
         <section className="info-message" aria-label="Training choices">
           <strong>Choose how to start</strong>
           <p><strong>Run real training</strong> creates one fitted TrainingRun. Its training seed controls model fitting; the split seed controls row membership, even before an explicit SplitContract is saved.</p>
@@ -866,8 +888,8 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
           <p>Both paths use the declared training/validation workflow; opening this screen or changing settings does not start computation or unlock the test split.</p>
         </section>
         {trainingRecovery && <div className="error" role="alert" data-testid="training-run-recovery"><strong>Training response is uncertain; no second fit was started.</strong><p>{trainingRecovery.error}</p><Button view="outlined" disabled={recoveringTraining} onClick={recoverTrainingRun}>Retry exact TrainingRun lookup</Button>{trainingRecovery.notFound && <Button view="outlined" disabled={recoveringTraining || running || project.read_only || !studyJobStateResolved || activeStudyJob} onClick={explicitlyRepeatTraining}>Explicitly start a new fit with these settings</Button>}</div>}
-        <Button view="action" disabled={running || !!trainingRecovery || !!splitContractRecovery || !studyJobStateResolved || activeStudyJob || !splitSelectionMatchesFrozenContract || project.read_only || splitEvidenceStatus !== "loaded" || catalogStatus !== "loaded" || !selectedModel || parameterErrors.length > 0} onClick={train} data-ruflex-action="training.run">{running ? "Training…" : "Run real training"}</Button>
-        <p id="study-seeds-help" className={studySeedValidation.error ? "error" : "property-description"} role={studySeedValidation.error ? "alert" : undefined}>{studySeedValidation.error ?? "Enter 3–32 distinct whole-number seeds, separated by commas."}</p>
+        <Button view="action" disabled={running || !!trainingRecovery || !!splitContractRecovery || !studyJobStateResolved || activeStudyJob || seed === null || splitSeed === null || !splitSelectionMatchesFrozenContract || project.read_only || splitEvidenceStatus !== "loaded" || catalogStatus !== "loaded" || !selectedModel || parameterErrors.length > 0} onClick={train} data-ruflex-action="training.run">{running ? "Training…" : "Run real training"}</Button>
+        <p id="study-seeds-help" className={studySeedValidation.error ? "error" : "property-description"} role={studySeedValidation.error ? "alert" : undefined}>{studySeedValidation.error ?? "Enter 3–32 distinct whole-number seeds from 0 to 4294967295, separated by commas."}</p>
         {parameterErrors.length > 0 && <div className="error" role="alert">Review model settings before training: {parameterErrors.join(" ")}</div>}
         <Button view="outlined" disabled={running || project.read_only || (!pendingStudyRequest && (!!(studyJob && ["QUEUED", "RUNNING"].includes(studyJob.status)) || !!trainingRecovery || !!splitContractRecovery || !studySplitReady || splitEvidenceStatus !== "loaded" || catalogStatus !== "loaded" || !selectedModel || Boolean(studySeedValidation.error) || parameterErrors.length > 0 || (studyHydrationStatus !== "none" && studyHydrationStatus !== "available") || studyJobsStatus !== "loaded" || executionBackendStatus !== "loaded" || !executionBackends.some((backend) => backend.identity.key === executionBackendKey)))} onClick={trainStudy} data-ruflex-action="study.start">{running ? "Training…" : pendingStudyRequest ? "Retry same Study request" : "Run multi-seed study"}</Button>
         {pendingStudyRequest && !running && <p role="status">Study submission status is uncertain. Retry uses the same request ID and frozen configuration; it will recover the existing job or safely report a mismatch.</p>}

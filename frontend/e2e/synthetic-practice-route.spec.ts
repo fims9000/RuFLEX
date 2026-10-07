@@ -42,7 +42,14 @@ test("a first-time user can persist synthetic evidence and apply a frozen final-
   expect(await page.locator(".training-config-grid select").evaluateAll((selects) => selects.every((select) => select.getBoundingClientRect().right <= select.parentElement!.getBoundingClientRect().right + 1))).toBeTruthy();
   await page.setViewportSize({ width: 1180, height: 720 });
   await page.getByLabel("Training model").selectOption("logistic_regression");
+  await page.getByLabel("Single-run training seed").fill("");
+  await expect(page.getByLabel("Single-run training seed")).toHaveAttribute("aria-invalid", "true");
+  await expect(page.getByRole("button", { name: "Run real training", exact: true })).toBeDisabled();
   await page.getByLabel("Single-run training seed").fill("7");
+  await page.getByLabel("Split seed").fill("1.5");
+  await expect(page.getByRole("button", { name: "Run real training", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Freeze RANDOM SplitContract", exact: true })).toBeDisabled();
+  await page.getByLabel("Split seed").fill("42");
   await expect(page.getByRole("region", { name: "Training choices" })).toContainText("the split seed controls row membership");
   const response = page.waitForResponse((item) => item.url().endsWith("/api/projects/training/run") && item.request().method() === "POST");
   await page.getByRole("button", { name: "Run real training", exact: true }).click();

@@ -18,7 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from pydantic import ValidationError
 
 from uuid import UUID
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from ruflex.application.projects import ProjectError, ProjectReadOnlyError, ProjectService
 from ruflex.application.artifacts import ArtifactMetadata, ArtifactRecord, ArtifactRef, ArtifactStore
@@ -48,6 +48,8 @@ from ruflex.application.workspace_sessions import WorkspaceSession, WorkspaceSes
 from ruflex.domain.project import ProjectIntegrityReport, ProjectSummary
 from ruflex.domain.lineage import LineageGraph
 from ruflex.application.lineage import build_project_lineage
+
+Seed = Annotated[int, Field(ge=0, le=4_294_967_295)]
 
 
 class CreateProjectRequest(BaseModel):
@@ -123,7 +125,7 @@ class DatasetConfirmation(BaseModel):
 
 class CreateSplitContractRequest(SessionRequest):
     family: Literal["RANDOM", "GROUP", "TEMPORAL", "SITE_HOLDOUT", "DEVICE_HOLDOUT", "SPATIAL", "REGIME"]
-    split_seed: int = 42
+    split_seed: Seed = 42
     validation_fraction: float = Field(default=.2, gt=0., lt=1.)
     test_fraction: float = Field(default=.2, ge=0., lt=1.)
     group_column: str | None = None
@@ -244,9 +246,9 @@ class ResponseSurfaceRequest(SessionRequest):
 class TrainModelRequest(SessionRequest):
     model_kind: str = Field(default="flat_neuro_fuzzy", pattern=r"^[a-z][a-z0-9_]{2,80}$")
     adapter_key: str | None = Field(default=None, pattern=r"^[a-z][a-z0-9_]{2,80}$")
-    seed: int = 42
-    split_seed: int | None = None
-    training_seed: int | None = None
+    seed: Seed = 42
+    split_seed: Seed | None = None
+    training_seed: Seed | None = None
     split_contract_id: UUID | None = None
     rigor_profile: Literal["EXPLORATORY", "CONFIRMATORY", "HIGH_ASSURANCE_LIKE"] = "CONFIRMATORY"
     normalization: Literal["none", "standard", "minmax"] = "standard"
@@ -264,7 +266,7 @@ class TrainModelRequest(SessionRequest):
 class MultiSeedStudyRequest(TrainModelRequest):
     client_request_id: UUID | None = None
     name: str = Field(default="Multi-seed study", min_length=1, max_length=200)
-    seeds: list[int] = Field(min_length=3, max_length=32)
+    seeds: list[Seed] = Field(min_length=3, max_length=32)
     selection_metric: str = Field(default="f1")
     randomness_protocol: Literal["LEGACY_COMBINED", "TRAINING_VARIABILITY", "SPLIT_VARIABILITY", "COMBINED_VARIABILITY"] = "LEGACY_COMBINED"
     execution_backend_key: str = Field(default="local_executor", pattern=r"^[a-z][a-z0-9_]{2,80}$")
