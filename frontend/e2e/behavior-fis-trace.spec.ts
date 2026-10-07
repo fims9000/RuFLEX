@@ -69,8 +69,16 @@ test("Studio authors an exact FIS-bound requirement and recovers a lost creation
   await page.getByRole("button", { name: "E", exact: true }).click();
   await expect(page.getByLabel("Behavior model source")).toHaveValue("fis");
   await expect(page.getByText(`FIS ${fis.name} · exact saved semantic revision ${fis.semantic_hash}`)).toBeVisible();
+  await page.getByLabel("Behavior input temperature").fill("");
+  await page.getByRole("button", { name: "Create and run BehaviorSpec" }).click();
+  await expect(page.getByRole("alert").filter({ hasText: "temperature must be a finite number" })).toBeVisible();
+  expect(writes).toBe(0);
   await page.getByLabel("Behavior input temperature").fill("25");
   await page.getByRole("textbox", { name: "Name", exact: true }).fill("Studio FIS range");
+  await page.getByLabel("Behavior minimum").fill("");
+  await page.getByRole("button", { name: "Create and run BehaviorSpec" }).click();
+  await expect(page.getByRole("alert").filter({ hasText: "Behavior minimum must be a finite number" })).toBeVisible();
+  expect(writes).toBe(0);
   await page.getByLabel("Behavior minimum").fill("2");
   await page.getByLabel("Behavior maximum").fill("3");
   await page.getByRole("button", { name: "Create and run BehaviorSpec" }).click();

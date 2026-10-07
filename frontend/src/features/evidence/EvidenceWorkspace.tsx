@@ -419,8 +419,9 @@ export function EvidenceWorkspace({
     if (!run) throw new Error("Select a trained model run first.");
     const result: Record<string, number> = {};
     for (const feature of run.feature_columns) {
-      const value = Number(sample[feature]);
-      if (!Number.isFinite(value)) throw new Error(`${feature} must be a finite number.`);
+      const draft = sample[feature];
+      const value = Number(draft);
+      if (draft == null || draft.trim() === "" || !Number.isFinite(value)) throw new Error(`${feature} must be a finite number.`);
       result[feature] = value;
     }
     return result;
@@ -430,8 +431,9 @@ export function EvidenceWorkspace({
     if (!run) throw new Error("Select a trained model run first.");
     const result: Record<string, number> = {};
     for (const feature of run.feature_columns) {
-      const value = Number(comparisonSample[feature]);
-      if (!Number.isFinite(value)) throw new Error(`Comparison ${feature} must be a finite number.`);
+      const draft = comparisonSample[feature];
+      const value = Number(draft);
+      if (draft == null || draft.trim() === "" || !Number.isFinite(value)) throw new Error(`Comparison ${feature} must be a finite number.`);
       result[feature] = value;
     }
     return result;
@@ -449,6 +451,12 @@ export function EvidenceWorkspace({
       result[input.name] = value;
     }
     return result;
+  }
+
+  function numericBehaviorBound(draft: string, label: string) {
+    const value = Number(draft);
+    if (draft.trim() === "" || !Number.isFinite(value)) throw new Error(`${label} must be a finite number.`);
+    return value;
   }
 
   async function runConditionDemo() {
@@ -645,16 +653,21 @@ export function EvidenceWorkspace({
       const pairKinds = ["monotonic_pair", "invariance_pair", "symmetry_pair", "bounded_perturbation", "categorical_invariance", "required_order", "batch_regression_suite"];
       const rangeKinds = ["output_range", "regression_case", "domain_constraint", "forbidden_region", "batch_regression_suite"];
       const pair = pairKinds.includes(behaviorKind) ? (behaviorSource === "fis" ? numericFisBehaviorSample(fisComparisonSample, true) : numericComparisonSample()) : null;
+      const lower = rangeKinds.includes(behaviorKind) ? numericBehaviorBound(minimum, "Behavior minimum") : null;
+      const upper = rangeKinds.includes(behaviorKind) ? numericBehaviorBound(maximum, "Behavior maximum") : null;
+      if (lower !== null && upper !== null && lower > upper) throw new Error("Behavior minimum must not exceed maximum.");
+      const delta = behaviorKind === "bounded_perturbation" ? numericBehaviorBound(maximumDelta, "Behavior maximum delta") : null;
+      if (delta !== null && delta < 0) throw new Error("Behavior maximum delta must be nonnegative.");
       request = { payload: {
         run_id: behaviorSource === "run" ? run!.run_id : null,
         fis_id: behaviorSource === "fis" ? fis!.fis_id : null,
         fis_semantic_hash: behaviorSource === "fis" ? fis!.semantic_hash : null,
         name: behaviorName, kind: behaviorKind, sample: numeric, comparison_sample: pair,
-        minimum: rangeKinds.includes(behaviorKind) ? Number(minimum) : null,
-        maximum: rangeKinds.includes(behaviorKind) ? Number(maximum) : null,
+        minimum: lower,
+        maximum: upper,
         expected_direction: ["monotonic_pair", "required_order"].includes(behaviorKind) ? direction : null,
-        maximum_delta: behaviorKind === "bounded_perturbation" ? Number(maximumDelta) : null,
-        cases: behaviorKind === "batch_regression_suite" ? [{ name: "primary", sample: numeric, minimum: Number(minimum), maximum: Number(maximum) }, { name: "comparison", sample: pair ?? numeric, minimum: Number(minimum), maximum: Number(maximum) }] : [],
+        maximum_delta: delta,
+        cases: behaviorKind === "batch_regression_suite" ? [{ name: "primary", sample: numeric, minimum: lower, maximum: upper }, { name: "comparison", sample: pair ?? numeric, minimum: lower, maximum: upper }] : [],
         tolerance: 1e-9, rationale: "Persisted engineering behavior requirement.",
       } };
       const created = await studioApi.createBehaviorSpec(project.session_id, request.payload);
