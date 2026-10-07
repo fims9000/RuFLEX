@@ -182,3 +182,35 @@ test("PRODUCT-06 persists revision-bound BehaviorSpec evidence through reopen", 
   await expect(page.getByTestId("behavior-revision-comparison").last()).toContainText("PASS TO PASS");
   await expect(page.getByTestId("behavior-revision-comparison").last()).toContainText(`Baseline ${baselineResultId.slice(0, 12)} · candidate ${candidateResultId.slice(0, 12)}`);
 });
+
+test("failed BehaviorSpec exposes its persisted counterexample after reopen", async ({ page }) => {
+  const path = projectPath();
+  await page.goto("/");
+  await page.getByLabel("Project path").fill(path);
+  await page.getByLabel("Project name").fill("Behavior counterexample");
+  await page.getByRole("button", { name: "Create project", exact: true }).click();
+  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByLabel("CSV data").fill(trainingCsv());
+  await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
+  await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
+  await page.getByRole("button", { name: "S", exact: true }).click();
+  await page.getByLabel("Training model").selectOption("logistic_regression");
+  await page.getByRole("button", { name: "Run real training", exact: true }).click();
+  await expect(page.locator(".run-provenance")).toContainText("model artifact persisted", { timeout: 30_000 });
+  await page.getByRole("button", { name: "E", exact: true }).click();
+  await page.getByLabel("Behavior minimum").fill("2");
+  await page.getByLabel("Behavior maximum").fill("3");
+  await page.getByLabel("Name", { exact: true }).fill("Impossible probability range");
+  await page.getByRole("button", { name: "Create and run BehaviorSpec", exact: true }).click();
+  await expect(page.getByTestId("behavior-result")).toContainText("FAIL");
+  const counterexample = page.getByTestId("behavior-counterexample");
+  await expect(counterexample).toContainText("Expected: output in [2, 3]");
+  await expect(counterexample).toContainText("Observed output:");
+  await expect(counterexample).toContainText("temperature");
+  await expect(counterexample).toContainText("model artifact");
+  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await page.getByLabel("Project path").fill(path);
+  await page.getByRole("button", { name: "Open project", exact: true }).click();
+  await page.getByRole("button", { name: "E", exact: true }).click();
+  await expect(page.getByTestId("behavior-counterexample")).toContainText("Expected: output in [2, 3]");
+});
