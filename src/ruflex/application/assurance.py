@@ -313,8 +313,20 @@ def create_assurance_case(root: Path) -> AssuranceCase:
         gates.append(_gate(key, evidence_status, [f"{identity_name}:{getattr(item, identity_field)}" for item in typed], evidence_risk))
     explanations_root = base / "evidence" / "explanations"; explanations = _objects(explanations_root, ExplanationContract)
     checks_root = base / "evidence" / "explanation-checks"; checks = _objects(checks_root, ExplanationCheck)
-    check_by_explanation = {x.explanation_id: x for x in checks}
-    if _has_malformed_object(explanations_root, ExplanationContract) or _has_malformed_object(checks_root, ExplanationCheck):
+    check_by_explanation = {}
+    for check in sorted(checks, key=lambda item: (item.created_at, str(item.check_id))):
+        check_by_explanation[check.explanation_id] = check
+    explanation_integrity_codes = {
+        "EXPLANATION_MODEL_MISMATCH", "EXPLANATION_PREPROCESSING_MISMATCH",
+        "EXPLANATION_SAMPLE_SCHEMA_MISMATCH", "EXPLANATION_ATTRIBUTION_SCHEMA_MISMATCH",
+        "EXPLANATION_TARGET_MISMATCH", "EXPLANATION_CHECK_EVIDENCE_MALFORMED",
+        "EXPLANATION_CHECK_EXPLANATION_MISSING", "EXPLANATION_CHECK_RUN_MISMATCH",
+        "EXPLANATION_CHECK_SUMMARY_MISMATCH", "EXPLANATION_CHECK_COMPONENT_MISMATCH",
+        "VALIDATOR_RUNTIME_BINDING_MISSING", "VALIDATOR_RUNTIME_PROVIDER_MISMATCH",
+    }
+    explanation_integrity_failed = any(issue.code in explanation_integrity_codes for issue in project_integrity.issues)
+    validator_runtime_unavailable = any(issue.code == "VALIDATOR_RUNTIME_UNAVAILABLE" for issue in project_integrity.issues)
+    if _has_malformed_object(explanations_root, ExplanationContract) or _has_malformed_object(checks_root, ExplanationCheck) or explanation_integrity_failed:
         gates.append(_gate("explanation_checks", "FAIL", [], "Malformed explanation or check evidence prevents a PASS claim."))
     elif not explanations:
         gates.append(_gate("explanation_checks", "NOT_AVAILABLE", [], "No valid ExplanationContract exists."))
@@ -322,6 +334,8 @@ def create_assurance_case(root: Path) -> AssuranceCase:
         gates.append(_gate("explanation_checks", "WARN", [f"explanation:{x.explanation_id}" for x in explanations], "One or more explanations have no persisted check."))
     elif any(check_by_explanation[x.explanation_id].status == "FAILED" for x in explanations):
         gates.append(_gate("explanation_checks", "FAIL", [f"check:{check_by_explanation[x.explanation_id].check_id}" for x in explanations], "A persisted ExplanationCheck failed."))
+    elif validator_runtime_unavailable or any(check_by_explanation[x.explanation_id].status == "WARNING" for x in explanations):
+        gates.append(_gate("explanation_checks", "WARN", [f"check:{check_by_explanation[x.explanation_id].check_id}" for x in explanations], "One or more persisted ExplanationChecks report warnings; available checks do not establish causal or universal explanation correctness."))
     else:
         gates.append(_gate("explanation_checks", "PASS", [f"check:{check_by_explanation[x.explanation_id].check_id}" for x in explanations]))
     reproducibility_root = base / "evidence" / "explanation-reproducibility"; reproducibility = _objects(reproducibility_root, ExplanationReproducibilityAnalysis)

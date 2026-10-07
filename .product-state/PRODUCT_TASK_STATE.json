@@ -255,16 +255,17 @@
     "alpha_final_test_assurance_integrity",
     "alpha_assurance_project_integrity_gate",
     "alpha_slice_assurance_semantics",
-    "alpha_auxiliary_assurance_evidence_gates"
+    "alpha_auxiliary_assurance_evidence_gates",
+    "alpha_explanation_assurance_status_semantics"
   ],
-  "active_capability": "alpha_auxiliary_assurance_evidence_gates",
+  "active_capability": "alpha_explanation_assurance_status_semantics",
   "active_acceptance": [
     "VerificationBundle parses TreePathEvidence and checks its exact frozen Decision Tree run, model artifact identity and ordered feature schema.",
     "Portable validation explicitly warns that exact path replay cannot be completed because executable/model artifacts are excluded from the inspection-first archive.",
     "A valid tree-path bundle remains PASS with this limitation visible."
   ],
   "blockers": [],
-  "next_executable_work": "Audit explanation-check Assurance summaries against actual typed check components and assess whether current project workflow is missing a user-facing capability integration.",
+  "next_executable_work": "Choose the next low-memory alpha product gap from TASK_STATE and implement one user-visible workflow slice, then verify and commit it.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -523,6 +524,7 @@
     "alpha_final_test_assurance_integrity": "PASS: Assurance final_test gate now delegates final-test boundary/provenance/metric/case/timestamp and duplicate/pointer integrity checks to the canonical project-integrity validators; malformed or mismatched final evidence cannot be summarized as PASS. A persisted final-test policy-identity tamper makes the Assurance gate FAIL; focused stability gate and integrated workflow tests passed.",
     "alpha_assurance_project_integrity_gate": "PASS: AssuranceCase now includes project_integrity status/evidence from canonical inspect_project_integrity, preserving PASS/WARN/FAIL instead of upgrading WARN. Malformed persisted behavior evidence makes the global integrity gate FAIL. Focused malformed-evidence, final-test stability and integrated journey tests passed.",
     "alpha_slice_assurance_semantics": "PASS: Slice evidence Assurance gate now resolves exact run/evaluation/generalization bindings, enforces validation-only frozen status, unique declared/result names, metric/kind identity and delta arithmetic (including EMPTY and undefined WARN cases). Tampered evaluation reference makes the slice gate FAIL. Focused slice and full integrated product journey tests passed.",
-    "alpha_auxiliary_assurance_evidence_gates": "PASS: Assurance now exposes explicit analysis_comparisons, tree_path_evidence and expert_correction gates backed by typed records plus their canonical project-integrity provenance checks. The full integrated route asserts valid comparison/tree gates; tampered correction FIS binding fails its gate. Four focused integrated/evidence/slice/correction tests passed with compileall."
+    "alpha_auxiliary_assurance_evidence_gates": "PASS: Assurance now exposes explicit analysis_comparisons, tree_path_evidence and expert_correction gates backed by typed records plus their canonical project-integrity provenance checks. The full integrated route asserts valid comparison/tree gates; tampered correction FIS binding fails its gate. Four focused integrated/evidence/slice/correction tests passed with compileall.",
+    "alpha_explanation_assurance_status_semantics": "PASS: Assurance explanation_checks gate now fails on typed contract/check integrity issues, reports WARNING checks or unavailable validator runtime as WARN, and only reports PASS when persisted checks are clean. Latest check per explanation is used deterministically. Integrated, malformed-evidence and native explanation route tests passed."
   }
 }
