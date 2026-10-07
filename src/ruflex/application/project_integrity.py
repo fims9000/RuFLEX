@@ -1500,6 +1500,18 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                     issues.append(ProjectIntegrityIssue(code="EXPLANATION_CHECK_EXPLANATION_MISSING", status="FAIL", path=relative_path, detail="Explanation check references an explanation that is not present."))
                 elif check.run_id != explanation.run_id:
                     issues.append(ProjectIntegrityIssue(code="EXPLANATION_CHECK_RUN_MISMATCH", status="FAIL", path=relative_path, detail="Explanation check run identity does not match its explanation."))
+                expected_status = (
+                    "FAILED" if any(item.status == "FAIL" for item in check.checks)
+                    else "WARNING" if any(item.status == "WARN" for item in check.checks)
+                    else "PASSED_AVAILABLE_CHECKS"
+                )
+                check_names = [item.name for item in check.checks]
+                if (
+                    check.status != expected_status
+                    or len(check_names) != len(set(check_names))
+                    or (check.validator_key is not None and any(item.validator_key != check.validator_key for item in check.checks))
+                ):
+                    issues.append(ProjectIntegrityIssue(code="EXPLANATION_CHECK_SUMMARY_MISMATCH", status="FAIL", path=relative_path, detail="ExplanationCheck summary status, component uniqueness, or validator binding is inconsistent with its persisted check items."))
                 if check.schema_version >= 3 and not all((check.validator_key, check.validator_version, check.validator_provider)):
                     issues.append(ProjectIntegrityIssue(code="VALIDATOR_RUNTIME_BINDING_MISSING", status="FAIL", path=relative_path, detail="A schema-v3 ExplanationCheck is missing validator runtime provenance."))
                 elif check.schema_version >= 3:

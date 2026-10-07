@@ -213,15 +213,16 @@
     "alpha_final_test_threshold_calibration_binding_integrity",
     "alpha_validation_threshold_selection_recomputation_integrity",
     "alpha_validation_calibration_output_integrity",
-    "alpha_validation_selective_curve_integrity"
+    "alpha_validation_selective_curve_integrity",
+    "alpha_explanation_check_summary_integrity"
   ],
-  "active_capability": "alpha_validation_selective_curve_integrity",
+  "active_capability": "alpha_explanation_check_summary_integrity",
   "active_acceptance": [
-    "SelectivePredictionPolicy source split and probability source are consistent with its validation Evaluation and calibration binding.",
-    "Persisted fit-sample identity and every confidence risk-coverage point are recomputed from exact validation rows and frozen threshold without fitting or selecting new policy parameters."
+    "Persisted ExplanationCheck overall status equals the deterministic aggregation of component statuses.",
+    "Persisted ExplanationCheck component names are unique and validator identity bindings are internally consistent."
   ],
   "blockers": [],
-  "next_executable_work": "Continue auditing other persisted project evidence for identity/summary fields that are schema-valid but not recomputed on reopen; preserve unrelated article files.",
+  "next_executable_work": "Audit persisted explanation checks against deterministic ExplanationContract identity/completeness facts without replaying external explainers; preserve unrelated article files.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -438,6 +439,7 @@
     "alpha_final_test_threshold_calibration_binding_integrity": "PASS: FinalTestEvaluation must bind the exact calibration referenced by its threshold; binary evaluation without a threshold and regression with classification policies fail closed. Regression attaches a valid but non-threshold calibration, recomputes calibrated row values and policy identity, and still observes FINAL_TEST_PROVENANCE_MISMATCH; tests/test_project_integrity.py: 14 passed, compileall and diff checks passed.",
     "alpha_validation_threshold_selection_recomputation_integrity": "PASS: Project Integrity recomputes the 0.01-0.99 frozen validation F1 sweep and deterministic tie-break, then verifies threshold value, objective, selection score, candidate rule, fit identity, metric/confusion summary and ordered per-case decisions. A forged selection_result is rejected; tests/test_project_integrity.py: 14 passed, compileall and diff checks passed.",
     "alpha_validation_calibration_output_integrity": "PASS: Project Integrity binds Platt calibration sample identity/count and every row output to the exact validation Evaluation, recomputes raw/calibrated probabilities from persisted logits and coefficients, and verifies Brier/ECE/bin diagnostics without fitting. A forged Brier-after summary is rejected; tests/test_project_integrity.py: 14 passed, compileall and diff checks passed.",
-    "alpha_validation_selective_curve_integrity": "PASS: Project Integrity recomputes selective policy validation fit identity, source split/source kind, and all 10 frozen confidence risk-coverage points from persisted Evaluation/threshold/calibration evidence. Raw and calibrated policies reopen cleanly; forged accepted count and fit identity fail closed; tests/test_project_integrity.py: 14 passed, compileall and diff checks passed."
+    "alpha_validation_selective_curve_integrity": "PASS: Project Integrity recomputes selective policy validation fit identity, source split/source kind, and all 10 frozen confidence risk-coverage points from persisted Evaluation/threshold/calibration evidence. Raw and calibrated policies reopen cleanly; forged accepted count and fit identity fail closed; tests/test_project_integrity.py: 14 passed, compileall and diff checks passed.",
+    "alpha_explanation_check_summary_integrity": "PASS: ExplanationCheck overall state is recomputed from component statuses; duplicate component names and inconsistent validator bindings fail closed. Tampered summary status rejected in persisted API project; tests/test_project_integrity.py: 15 passed."
   }
 }
