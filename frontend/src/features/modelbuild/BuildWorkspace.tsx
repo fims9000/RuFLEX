@@ -377,7 +377,7 @@ export function BuildWorkspace({
   const importMatlabFisInFlightRef = useRef(false);
   const [fisSaveRecovery, setFisSaveRecovery] = useState<{ spec: FISSpec; error: string; notFound: boolean } | null>(null);
   const [recoveringFisSave, setRecoveringFisSave] = useState(false);
-  const [expertRefitRecovery, setExpertRefitRecovery] = useState<{ fisId: string; sourceHash: string; lockedRuleIds: string[]; sourceExplanationId: string | null; requestedAt: number; error: string; notFound: boolean } | null>(null);
+  const [expertRefitRecovery, setExpertRefitRecovery] = useState<{ fisId: string; sourceHash: string; sourceSpec: FISSpec; lockedRuleIds: string[]; sourceExplanationId: string | null; requestedAt: number; error: string; notFound: boolean } | null>(null);
   const [recoveringExpertRefit, setRecoveringExpertRefit] = useState(false);
   const expertCorrectionActionInFlightRef = useRef(false);
   const [surface, setSurface] = useState<ResponseSurface | null>(null);
@@ -572,6 +572,23 @@ export function BuildWorkspace({
     setEditorHistory(nextHistory);
     setHistoryIndex(nextHistory.length - 1);
   };
+  function adoptPersistedFisUnlessDraftChanged(result: FISSpec, baseline: FISSpec): boolean {
+    const latestWorking = workingRef.current;
+    const newerDraftExists = Boolean(latestWorking && (
+      latestWorking.fis_id !== baseline.fis_id ||
+      canonicalJson(fisSemanticPayload(latestWorking)) !== canonicalJson(fisSemanticPayload(baseline))
+    ));
+    if (newerDraftExists) {
+      if (result.semantic_hash) {
+        preserveDraftOnHydrationHashRef.current = result.semantic_hash;
+        preserveDraftOnHydrationFisIdRef.current = latestWorking?.fis_id ?? null;
+      }
+      return true;
+    }
+    workingRef.current = result;
+    setWorking(result);
+    return false;
+  }
   function undo() {
     if (historyIndex <= 0) return;
     const prior = cloneFis(editorHistory[historyIndex - 1]);
@@ -1082,6 +1099,7 @@ export function BuildWorkspace({
         // Persist the user's current expert edits first so the correction is fitted
         // from exactly the visible canonical FIS revision.
         saved = await studioApi.saveFis(project.session_id, source);
+        adoptPersistedFisUnlessDraftChanged(saved, source);
       } catch (reason) {
         setFisSaveRecovery({ spec: source, error: reason instanceof Error ? reason.message : "Source FIS save response was uncertain.", notFound: false });
         setError(reason instanceof Error ? reason.message : "Source FIS save failed");
@@ -1094,9 +1112,11 @@ export function BuildWorkspace({
           lockedRuleIds,
           sourceExplanation,
         );
-        setWorking(result.fis);
-        setEditorHistory((history) => [...history.slice(0, historyIndex + 1), cloneFis(result.fis)]);
-        setHistoryIndex((index) => index + 1);
+        const newerDraftExists = adoptPersistedFisUnlessDraftChanged(result.fis, saved);
+        if (!newerDraftExists) {
+          setEditorHistory((history) => [...history.slice(0, historyIndex + 1), cloneFis(result.fis)]);
+          setHistoryIndex((index) => index + 1);
+        }
         setExpertCorrection(result.correction);
         setExpertCorrectionLoadStatus("available");
         setExpertCorrectionLoadError(null);
@@ -1104,11 +1124,11 @@ export function BuildWorkspace({
         setRevisions(await studioApi.getFisRevisions(project.session_id));
         publishFisChange(result.fis);
         setExpertRefitRecovery(null);
-        setMessage(
-          `TRAIN-only expert correction fitted ${result.correction.fitted_rule_ids.length} rule consequent(s): RMSE ${result.correction.train_rmse_before.toFixed(4)} → ${result.correction.train_rmse_after.toFixed(4)}. Final test stayed locked.`,
-        );
+        setMessage(newerDraftExists
+          ? `TRAIN-only expert correction was persisted for its frozen source; newer editor changes remain unsaved. Save again to activate your draft. Final test stayed locked.`
+          : `TRAIN-only expert correction fitted ${result.correction.fitted_rule_ids.length} rule consequent(s): RMSE ${result.correction.train_rmse_before.toFixed(4)} → ${result.correction.train_rmse_after.toFixed(4)}. Final test stayed locked.`);
       } catch (reason) {
-        if (saved.semantic_hash) setExpertRefitRecovery({ fisId: saved.fis_id, sourceHash: saved.semantic_hash, lockedRuleIds, sourceExplanationId: sourceExplanation, requestedAt, error: reason instanceof Error ? reason.message : "Expert correction response was uncertain.", notFound: false });
+        if (saved.semantic_hash) setExpertRefitRecovery({ fisId: saved.fis_id, sourceHash: saved.semantic_hash, sourceSpec: saved, lockedRuleIds, sourceExplanationId: sourceExplanation, requestedAt, error: reason instanceof Error ? reason.message : "Expert correction response was uncertain.", notFound: false });
         setError(reason instanceof Error ? reason.message : "Expert correction failed");
       }
     } finally {
@@ -1128,9 +1148,12 @@ export function BuildWorkspace({
       const createdAt = Date.parse(correction.created_at);
       const exact = correction.fis_id === pending.fisId && correction.source_semantic_hash === pending.sourceHash && correction.source_explanation_id === pending.sourceExplanationId && canonicalJson(locked) === canonicalJson(pending.lockedRuleIds) && Number.isFinite(createdAt) && createdAt >= pending.requestedAt - 10_000 && active.fis_id === pending.fisId && active.semantic_hash === correction.result_semantic_hash;
       if (exact) {
-        setWorking(active); setEditorHistory((history) => [...history.slice(0, historyIndex + 1), cloneFis(active)]); setHistoryIndex((index) => index + 1);
+        const newerDraftExists = adoptPersistedFisUnlessDraftChanged(active, pending.sourceSpec);
+        if (!newerDraftExists) {
+          setWorking(active); setEditorHistory((history) => [...history.slice(0, historyIndex + 1), cloneFis(active)]); setHistoryIndex((index) => index + 1);
+        }
         setExpertCorrection(correction); setExpertCorrectionLoadStatus("available"); setExpertCorrectionLoadError(null); publishExpertCorrection(correction);
-        setRevisions(await studioApi.getFisRevisions(project.session_id)); publishFisChange(active); setMessage("Recovered the exact TRAIN-only expert correction after the response was lost."); setExpertRefitRecovery(null);
+        setRevisions(await studioApi.getFisRevisions(project.session_id)); publishFisChange(active); setMessage(newerDraftExists ? "Recovered the exact TRAIN-only expert correction; newer editor changes remain unsaved. Save again to activate your draft." : "Recovered the exact TRAIN-only expert correction after the response was lost."); setExpertRefitRecovery(null);
       } else {
         const safeToRetry = active.fis_id === pending.fisId && active.semantic_hash === pending.sourceHash;
         setExpertRefitRecovery({ ...pending, notFound: safeToRetry, error: safeToRetry ? "No matching correction is persisted and the original FIS is still active; an explicit exact retry is safe." : "Persisted FIS state changed, but no matching correction receipt was found. Refusing to fit again." });
@@ -1159,9 +1182,12 @@ export function BuildWorkspace({
         return;
       }
       const result = await studioApi.refitSugenoConsequents(project.session_id, pending.lockedRuleIds, pending.sourceExplanationId);
-      setWorking(result.fis); setEditorHistory((history) => [...history.slice(0, historyIndex + 1), cloneFis(result.fis)]); setHistoryIndex((index) => index + 1);
+      const newerDraftExists = adoptPersistedFisUnlessDraftChanged(result.fis, pending.sourceSpec);
+      if (!newerDraftExists) {
+        setWorking(result.fis); setEditorHistory((history) => [...history.slice(0, historyIndex + 1), cloneFis(result.fis)]); setHistoryIndex((index) => index + 1);
+      }
       setExpertCorrection(result.correction); setExpertCorrectionLoadStatus("available"); setExpertCorrectionLoadError(null); publishExpertCorrection(result.correction);
-      setRevisions(await studioApi.getFisRevisions(project.session_id)); publishFisChange(result.fis); setMessage("The exact TRAIN-only expert correction retry completed."); setExpertRefitRecovery(null);
+      setRevisions(await studioApi.getFisRevisions(project.session_id)); publishFisChange(result.fis); setMessage(newerDraftExists ? "The exact TRAIN-only expert correction retry completed; newer editor changes remain unsaved. Save again to activate your draft." : "The exact TRAIN-only expert correction retry completed."); setExpertRefitRecovery(null);
     } catch (reason) {
       setExpertRefitRecovery({ ...pending, notFound: false, error: reason instanceof Error ? reason.message : "The explicit exact correction retry was uncertain." });
     } finally { expertCorrectionActionInFlightRef.current = false; setRecoveringExpertRefit(false); }

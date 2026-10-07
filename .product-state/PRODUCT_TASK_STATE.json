@@ -297,16 +297,20 @@
     "alpha_explanation_reproducibility_write_serialization",
     "alpha_exhaustive_lab_write_mutex",
     "alpha_expert_correction_action_mutex",
-    "alpha_fis_evaluation_recovery_mutex"
+    "alpha_fis_evaluation_recovery_mutex",
+    "alpha_fis_save_recovery_mutex",
+    "alpha_fis_import_retry_duplicate_dispatch",
+    "alpha_fis_async_result_draft_preservation",
+    "alpha_fis_expert_refit_draft_preservation"
   ],
-  "active_capability": "alpha_fis_save_recovery_mutex",
+  "active_capability": "alpha_fis_diagnostics_stale_response_guard",
   "active_acceptance": [
-    "FIS save, exact active-revision recovery, and exact unchanged-snapshot repeat share a synchronous handler guard.",
-    "Repeat requires identical current working semantics and sends at most one save before React rerenders.",
-    "Editor draft preservation and recovery truthfulness remain intact."
+    "Overlapping FIS diagnostics are bound to the exact FIS snapshot that requested them; only the latest request may publish results or errors.",
+    "An older diagnostic response must not replace current-snapshot diagnostics or clear the active loading state.",
+    "Existing one-request diagnostics behavior remains unchanged."
   ],
   "blockers": [],
-  "next_executable_work": "Inspect BuildWorkspace save/recoverFisSave/explicitlyRepeatFisSave races; share a synchronous persistence guard and verify draft preservation plus lost-response recovery with the existing focused Golden Route.",
+  "next_executable_work": "Add a monotonic diagnostics request identity to refreshDiagnostics and a focused test that releases overlapping requests out of order; preserve latest diagnostics/error state.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -607,6 +611,10 @@
     "alpha_explanation_reproducibility_write_serialization": "PASS: reproducibility analysis creation, exact-set lookup recovery, and explicitly confirmed retry share a synchronous action guard; the handler snapshots selected explanation IDs before submission. EvidenceWorkspace component tests: 9 passed; focused PRODUCT-08 real Studio E2E passed (1/1), synchronous duplicate dispatch produced exactly one comparison POST and persisted evidence reopened through lineage; TypeScript build and diff check passed.",
     "alpha_exhaustive_lab_write_mutex": "PASS: Exhaustive Lab exact-tree/FIS analysis, request lookup, and explicit retry share a synchronous guard while retaining the frozen request identity. EvidenceWorkspace component tests: 10 passed; focused PRODUCT-09 Studio E2E passed (1/1) with duplicate synchronous click dispatch and one persisted exhaustive request, followed by reopen/lineage checks; TypeScript build and diff check passed.",
     "alpha_expert_correction_action_mutex": "PASS: TRAIN-only expert-consequent refit, exact correction recovery and explicit exact retry share one synchronous guard; source FIS/locked rules/explanation reference remain frozen and the UI reports fitting state. Focused PRODUCT-13 browser E2E passed (1/1) with two synchronous click events, one persisted correction, exact uncertain-response recovery and no second fit; TypeScript build and diff check passed.",
-    "alpha_fis_evaluation_recovery_mutex": "PASS: exact FIS inference, exact trace lookup and confirmed identical-input repeat share the inference ref; regular inference is also disabled while recovery runs. PRODUCT-01 Golden Route E2E passed (1/1) with two synchronous inference events, one persisted trace, exact recovery and trace inspection; TypeScript build and diff check passed."
+    "alpha_fis_evaluation_recovery_mutex": "PASS: exact FIS inference, exact trace lookup and confirmed identical-input repeat share the inference ref; regular inference is also disabled while recovery runs. PRODUCT-01 Golden Route E2E passed (1/1) with two synchronous inference events, one persisted trace, exact recovery and trace inspection; TypeScript build and diff check passed.",
+    "alpha_fis_save_recovery_mutex": "PASS: FIS save, active-revision lookup and explicit exact retry share a synchronous guard; exact retry preserves edits made during the request. Concurrent-edit retry E2E and PRODUCT-01 Golden Route E2E passed, TypeScript build passed, and git diff --check passed. Local commit 62af981.",
+    "alpha_fis_import_retry_duplicate_dispatch": "PASS: a lost MATLAB FIS import response followed by two synchronous exact-retry events emits only one retry POST; source provenance/reopen route and duplicate-import guard both pass (2 focused Playwright E2E tests). Existing production synchronous in-flight ref is sufficient; no runtime code change was needed.",
+    "alpha_fis_async_result_draft_preservation": "PASS: asynchronous MATLAB FIS import now compares current editor state to the submitted baseline and preserves newer edits across active-FIS hydration; the UI truthfully says the imported revision was persisted and the draft is unsaved. E2E confirms the next save carries the exact later Resolution value, with a distinct imported FIS identity. Focused import/save/golden-route E2E 6/6, TypeScript build and git diff --check passed. Local commit 2dbcd3f.",
+    "alpha_fis_expert_refit_draft_preservation": "PASS: TRAIN-only expert correction results and exact recovery/retry are bound to the saved source snapshot; intervening Sugeno edits remain unsaved and are not overwritten. E2E verifies recovery after persisted lost response and normal refit concurrency, then verifies the next FIS save contains the exact user-entered consequent. Expert recovery E2E 2/2 passed."
   }
 }
