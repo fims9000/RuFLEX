@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 import time
 from pathlib import Path
 from uuid import uuid4
@@ -9,6 +10,7 @@ import pandas as pd
 from fastapi.testclient import TestClient
 
 from ruflex.api.main import app
+from ruflex.application.training import _stable_identity
 from ruflex.sdk.studio import open_studio_project
 
 
@@ -103,6 +105,8 @@ def test_project_integrity_validates_frozen_stability_analysis_and_gate_chain(tm
     analysis = analysis_response.json()
     policy_response = client.post("/api/projects/analyses/stability-policies", json={"session_id": session_id, "analysis_id": analysis["analysis_id"], "evaluation_id": evaluation_id, "min_confidence": .9, "min_class_agreement": .8, "max_probability_std": .15})
     assert policy_response.status_code == 201, policy_response.text
+    calibration_response = client.post("/api/projects/analyses/calibrations", json={"session_id": session_id, "evaluation_id": evaluation_id})
+    assert calibration_response.status_code == 201, calibration_response.text
     assert client.get(f"/api/projects/{session_id}/integrity").json()["status"] == "PASS"
     analysis_path = root / "analyses" / "stability-analyses" / f"{analysis['analysis_id']}.json"
     analysis_payload = json.loads(analysis_path.read_text(encoding="utf-8"))
@@ -189,6 +193,32 @@ def test_project_integrity_validates_frozen_stability_analysis_and_gate_chain(tm
     analysis_path.write_text(json.dumps(analysis_payload), encoding="utf-8")
     final_test_path = root / "analyses" / "final-tests" / f"{final_test.json()['final_test_id']}.json"
     final_test_payload = json.loads(final_test_path.read_text(encoding="utf-8"))
+    original_policy_identity = final_test_payload["policy_identity"]
+    original_calibrated_probabilities = [row["calibrated_probability"] for row in final_test_payload["prediction_rows"]]
+    calibration_id = calibration_response.json()["calibration_id"]
+    calibration_payload = json.loads((root / "analyses" / "calibrations" / f"{calibration_id}.json").read_text(encoding="utf-8"))
+    final_test_payload["calibration_id"] = calibration_id
+    for row in final_test_payload["prediction_rows"]:
+        calibrated_logit = calibration_payload["coefficient"] * row["prediction"] + calibration_payload["intercept"]
+        row["calibrated_probability"] = 1.0 / (1.0 + math.exp(-max(min(calibrated_logit, 60.0), -60.0)))
+    final_test_payload["policy_identity"] = _stable_identity("final-test-policy", {
+        "run_id": final_test_payload["run_id"],
+        "evaluation_id": final_test_payload["evaluation_id"],
+        "model_artifact": final_test_payload["model_artifact_sha256"],
+        "preprocessing": final_test_payload["preprocessing_identity"],
+        "calibration_id": calibration_id,
+        "threshold_id": final_test_payload["threshold_id"],
+        "selective_policy_id": final_test_payload["selective_policy_id"],
+        "stability_gate_policy_id": final_test_payload["stability_gate_policy_id"],
+    })
+    final_test_path.write_text(json.dumps(final_test_payload), encoding="utf-8")
+    mismatched_calibration_binding = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert any(issue["code"] == "FINAL_TEST_PROVENANCE_MISMATCH" for issue in mismatched_calibration_binding["issues"])
+    final_test_payload["calibration_id"] = None
+    final_test_payload["policy_identity"] = original_policy_identity
+    for row, calibrated_probability in zip(final_test_payload["prediction_rows"], original_calibrated_probabilities, strict=True):
+        row["calibrated_probability"] = calibrated_probability
+    final_test_path.write_text(json.dumps(final_test_payload), encoding="utf-8")
     duplicate_final_test = json.loads(json.dumps(final_test_payload))
     duplicate_final_test_id = str(uuid4())
     duplicate_final_test["final_test_id"] = duplicate_final_test_id
