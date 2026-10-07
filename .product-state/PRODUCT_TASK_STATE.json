@@ -317,7 +317,8 @@
     "alpha_behavior_spec_numeric_draft_validation",
     "alpha_behavior_fis_pairwise_revision_regression",
     "alpha_behavior_spec_uncertain_draft_lock",
-    "alpha_behavior_model_context_hydration_truthfulness"
+    "alpha_behavior_model_context_hydration_truthfulness",
+    "alpha_fis_model_context_hydration_truthfulness"
   ],
   "active_capability": "alpha_master_spec_gap_audit",
   "active_acceptance": [
@@ -325,8 +326,9 @@
     "Select the next concrete, low-resource, end-to-end product gap and implement it without broad refactoring."
   ],
   "blockers": [],
-  "next_executable_work": "Continue the bounded alpha product gap audit. Inspect whether FIS/model state from an earlier project can appear in non-Evidence Studio surfaces during a direct project switch before the new project's model-context read completes; fail closed without discarding an unsaved FIS draft on ordinary same-project hydration retry. Preserve unrelated docs/article edits.",
+  "next_executable_work": "Continue the bounded alpha product gap audit. Inspect the adjacent Analysis workspace for a saved-FIS read failure that could be mistaken for no FIS when creating evaluation evidence; use existing model-context status/retry without changing final-test or scientific evaluation semantics. Preserve unrelated docs/article edits.",
   "qa": {
+    "fis_model_context_hydration_truthfulness": "PASS: Models no longer offers default FIS creation or MATLAB import when the active-FIS read failed; it shows a recoverable error instead of a false empty state. Evidence uses the same session-bound context status. Real browser test confirms failure, no create route, retry and restored FIS editor; 4 FIS Behavior browser tests and 11 adjacent save/import browser tests passed, plus TypeScript/Vite build. Existing same-project draft preservation remains covered by the concurrent-save suite.",
     "behavior_model_context_hydration_truthfulness": "PASS: Evidence authoring now distinguishes loading, failed and truly empty saved-model reads; a failed active-FIS GET pauses creation, exposes retry, and no longer claims no model revision exists. Session-bound context status prevents an earlier project's successful read from enabling new-project BehaviorSpec authoring before the new read resolves. Focused Evidence FIS browser tests 4/4, adjacent run-bound Evidence and concurrent FIS-save browser tests 8/8, TypeScript/Vite build and diff check passed.",
     "behavior_spec_uncertain_draft_lock": "PASS: Name, type, range and pairwise BehaviorSpec form controls are disabled while create/run is pending or an uncertain creation must be resolved; source and FIS input controls were already locked. The recovery still uses its exact submitted payload and FIS semantic hash. TypeScript/Vite build and three focused FIS browser tests passed, including disabled-control assertions during lost-response recovery.",
     "behavior_fis_pairwise_revision_regression": "PASS: Real Studio browser test creates a pairwise FIS-bound BehaviorSpec with separate primary/comparison inputs and exact saved semantic hash, persists both exact traces, and reopens the project. Lost-response recovery also remains bound to the original FIS semantic hash after a newer FIS revision is saved externally. Focused FIS browser suite 3/3 passed; no product scientific semantics changed.",

@@ -332,6 +332,9 @@ export function BuildWorkspace({
   onRetryEvaluation = () => undefined,
   theme,
   fis,
+  modelContextStatus = "loaded",
+  modelContextError = null,
+  onRetryModelContext,
   sourceExplanationId,
   selectedExpertCorrectionId,
   onExpertCorrection,
@@ -347,6 +350,9 @@ export function BuildWorkspace({
   onRetryEvaluation?: () => void;
   theme: StudioTheme;
   fis: FISSpec | null;
+  modelContextStatus?: "idle" | "loading" | "loaded" | "error";
+  modelContextError?: string | null;
+  onRetryModelContext?: () => void;
   sourceExplanationId?: string | null;
   selectedExpertCorrectionId?: string | null;
   onExpertCorrection?: (correction: ExpertCorrectionRevision | null) => void;
@@ -1361,6 +1367,10 @@ export function BuildWorkspace({
       responseSurfaceRequestRef.current += 1;
     };
   }, [working, surfaceAxes, runInputs]);
+  if (modelContextStatus === "idle" || modelContextStatus === "loading")
+    return <section className="feature-workspace"><p role="status" data-testid="fis-model-context-loading">Checking saved FIS and training-run context before enabling model editing…</p></section>;
+  if (modelContextStatus === "error")
+    return <section className="feature-workspace"><div className="error" role="alert" data-testid="fis-model-context-error"><strong>Saved model context could not be verified; FIS editing and creation are paused.</strong><p>{modelContextError ?? "The project is not assumed to have no FIS after a failed read."}</p>{onRetryModelContext && <Button view="outlined" onClick={onRetryModelContext}>Retry saved model context</Button>}</div></section>;
   if (!working)
     return (
       <section className="feature-workspace">

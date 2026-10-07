@@ -32,6 +32,8 @@ Target branch: `feature/v1.3-data-governance-runtime`.
 - Studio authoring of BehaviorSpecs against either a persisted TrainingRun or
   an exact saved FIS semantic revision, with explicit FIS inputs, uncertain
   creation recovery and close/reopen inspection.
+- Failed saved-model reads are distinguished from an empty project in the
+  Models and Evidence workspaces; both pause writes and offer a retry.
 
 ## Boundaries
 

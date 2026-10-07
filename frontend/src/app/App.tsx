@@ -2260,6 +2260,9 @@ export function App() {
           onRetryEvaluation={() => setFisEvaluationReload((current) => current + 1)}
           theme={theme}
           fis={fis}
+          modelContextStatus={overviewContextSessionId === project.session_id ? overviewContextStatus : "loading"}
+          modelContextError={overviewContextError}
+          onRetryModelContext={() => setOverviewContextReload((current) => current + 1)}
           sourceExplanationId={explanation?.explanation_id ?? null}
           selectedExpertCorrectionId={selectedExpertCorrectionId}
           onExpertCorrection={bindProjectSession(project.session_id, setExpertCorrection)}

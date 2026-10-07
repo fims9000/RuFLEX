@@ -143,7 +143,7 @@ test("Studio binds a pairwise FIS requirement to both explicit inputs and its sa
   await expect(page.getByTestId("behavior-exact-traces")).toContainText("Persisted exact FIS trace");
 });
 
-test("Evidence authoring treats a failed FIS read as unverified, not empty, and can retry", async ({ page }) => {
+test("Models and Evidence treat a failed FIS read as unverified, not empty, and can retry", async ({ page }) => {
   const path = join(tmpdir(), `ruflex-behavior-fis-read-${Date.now()}`);
   const api = "http://127.0.0.1:8010/api/projects";
   const created = await page.request.post(api, { data: { path, name: "FIS read recovery" } });
@@ -165,6 +165,10 @@ test("Evidence authoring treats a failed FIS read as unverified, not empty, and 
   await page.goto("/");
   await page.getByLabel("Project path").fill(path);
   await page.getByRole("button", { name: "Open project", exact: true }).click();
+  await page.getByRole("button", { name: "M", exact: true }).click();
+  await expect(page.getByTestId("fis-model-context-error")).toContainText("Temporary FIS read failure");
+  await expect(page.getByText("No FIS model")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Create FIS from dataset" })).toHaveCount(0);
   await page.getByRole("button", { name: "E", exact: true }).click();
   await expect(page.getByTestId("behavior-model-context-error")).toContainText("Temporary FIS read failure");
   await expect(page.getByText("No model revision selected")).toHaveCount(0);
@@ -172,5 +176,8 @@ test("Evidence authoring treats a failed FIS read as unverified, not empty, and 
   await page.getByRole("button", { name: "Retry saved model context" }).click();
   await expect(page.getByLabel("Behavior model source")).toHaveValue("fis");
   await expect(page.getByLabel("Behavior input temperature")).toBeVisible();
+  await page.getByRole("button", { name: "M", exact: true }).click();
+  await expect(page.getByTestId("fis-model-context-error")).toHaveCount(0);
+  await expect(page.getByText("No FIS model")).toHaveCount(0);
   expect(reads).toBe(2);
 });
