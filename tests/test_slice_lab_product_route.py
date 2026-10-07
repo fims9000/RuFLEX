@@ -124,6 +124,10 @@ def test_slice_lab_uses_original_validation_source_rows_and_persists_all_slice_k
     analysis_path.write_text(json.dumps(analysis_payload), encoding="utf-8")
     corrupted_slice = inspect_project_integrity(root)
     assert any(issue.code == "SLICE_ANALYSIS_PROVENANCE_MISMATCH" for issue in corrupted_slice.issues)
+    assurance = client.post("/api/projects/evidence/assurance-cases", json={"session_id": session_id})
+    assert assurance.status_code == 201, assurance.text
+    slice_gate = next(gate for gate in assurance.json()["gates"] if gate["key"] == "slice_evidence")
+    assert slice_gate["status"] == "FAIL"
     analysis_payload["evaluation_id"] = original_evaluation_id
     analysis_path.write_text(json.dumps(analysis_payload), encoding="utf-8")
 

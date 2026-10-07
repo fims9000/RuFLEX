@@ -255,7 +255,41 @@ def create_assurance_case(root: Path) -> AssuranceCase:
     else:
         gates.append(_gate("generalization_contract", "PASS" if frozen else ("NOT_AVAILABLE" if not contracts else "WARN"), [f"generalization:{x.contract_id}" for x in frozen], None if frozen else "No frozen GeneralizationContract exists."))
     slices_root = base / "analyses" / "slices"; slices = _objects(slices_root, SliceAnalysis)
-    slice_ok = slices and all(x.evaluation_id in evaluation_ids for x in slices)
+    runs_by_id = {item.run_id: item for item in runs}
+    contracts_by_id = {item.contract_id: item for item in contracts}
+
+    def slice_matches(item: SliceAnalysis) -> bool:
+        evaluation = evaluation_by_id.get(item.evaluation_id)
+        run = runs_by_id.get(item.run_id)
+        scope = contracts_by_id.get(item.generalization_contract_id) if item.generalization_contract_id is not None else None
+        definitions = {definition.name: definition for definition in item.definitions}
+        results_by_name = {result.name: result for result in item.results}
+        return bool(
+            evaluation is not None
+            and run is not None
+            and evaluation.run_id == item.run_id
+            and evaluation.split == "validation"
+            and evaluation.dataset_fingerprint == item.dataset_fingerprint
+            and run.dataset_fingerprint == item.dataset_fingerprint
+            and item.source_split == "validation"
+            and item.test_status == "LOCKED_NOT_EVALUATED"
+            and (item.generalization_contract_id is None or (scope is not None and scope.dataset_fingerprint == item.dataset_fingerprint))
+            and len(definitions) == len(item.definitions)
+            and len(results_by_name) == len(item.results)
+            and set(definitions) == set(results_by_name)
+            and all(
+                result.metric == item.metric
+                and result.kind == definitions[name].kind
+                and (
+                    (result.n == 0 and result.status == "EMPTY" and result.value is None and result.delta_vs_overall is None)
+                    or (result.n > 0 and result.value is None and result.status == "WARN" and result.delta_vs_overall is None)
+                    or (result.n > 0 and result.value is not None and result.delta_vs_overall is not None and abs(result.delta_vs_overall - (result.value - result.overall_value)) <= 1e-12)
+                )
+                for name, result in results_by_name.items()
+            )
+        )
+
+    slice_ok = bool(slices) and all(slice_matches(item) for item in slices)
     status, risk = _evidence_status(present=bool(slices), valid=bool(slice_ok), malformed=_has_malformed_object(slices_root, SliceAnalysis), unavailable="Slice evidence is absent.", invalid="Slice evidence is not linked to validation evidence.")
     gates.append(_gate("slice_evidence", status, [f"slice:{x.analysis_id}" for x in slices], risk))
     explanations_root = base / "evidence" / "explanations"; explanations = _objects(explanations_root, ExplanationContract)
