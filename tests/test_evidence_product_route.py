@@ -875,6 +875,8 @@ def test_assurance_never_passes_malformed_or_failed_behavior_evidence(tmp_path: 
     assert created.status_code == 201
     behavior_gate = next(gate for gate in created.json()["gates"] if gate["key"] == "behavior_specs")
     assert behavior_gate["status"] == "FAIL"
+    integrity_gate = next(gate for gate in created.json()["gates"] if gate["key"] == "project_integrity")
+    assert integrity_gate["status"] == "FAIL"
 
 
 def test_verification_bundle_rejects_rechecksummed_comparison_metrics(tmp_path: Path) -> None:
