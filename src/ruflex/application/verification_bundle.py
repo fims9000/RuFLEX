@@ -17,6 +17,7 @@ from ruflex.domain.verification import VerificationBundle, VerificationBundleVal
 from ruflex.application.datasets import DataAuditReport, DatasetContract, DatasetProfile, LeakageAuditReport, SplitContract, TransformPipelineContract, _transform_pipeline_identity, row_identity
 from ruflex.domain.assurance import AssuranceCase
 from ruflex.domain.behavior import BehaviorRevisionComparison, BehaviorSpec, BehaviorSpecResult
+from ruflex.domain.demo import ConditionMonitoringDemo
 from ruflex.domain.evidence import ExplanationCheck, ExplanationContract, ExplanationReproducibilityAnalysis
 from ruflex.domain.expert_correction import ExpertCorrectionRevision
 from ruflex.domain.exhaustive import ExhaustiveLabResult
@@ -34,7 +35,7 @@ _EVIDENCE_DIRS = (
     "evidence/tree-paths", "evidence/assurance", "evidence/condition-monitoring-demo", "analyses/expert-corrections",
 )
 _DECLARATIVE_MODEL_DIRS = ("models/fis",)
-_POINTERS = {"active-training-run.json", "active-study.json", "active-evaluation.json", "active-calibration.json", "active-threshold.json", "active-policy.json", "active-slice-analysis.json", "active-final-test.json", "active-comparison.json", "active-explanation.json", "active-check.json", "active-analysis.json", "active-spec.json", "active-result.json", "active-case.json", "active-correction.json", "active-bundle.json", "latest.json"}
+_POINTERS = {"active-training-run.json", "active-study.json", "active-evaluation.json", "active-calibration.json", "active-threshold.json", "active-policy.json", "active-slice-analysis.json", "active-final-test.json", "active-comparison.json", "active-explanation.json", "active-check.json", "active-analysis.json", "active-spec.json", "active-result.json", "active-case.json", "active-correction.json", "active-demo.json", "active-bundle.json", "latest.json"}
 _EXCLUDED = ["raw datasets", "pickle/joblib", "untrusted executable code", "credentials", "node_modules", "caches", "temporary build products"]
 
 
@@ -74,6 +75,7 @@ def _model_for_entry(name: str) -> type[BaseModel] | None:
     if name.startswith("evidence/tree-paths/"): return TreePathEvidence
     if name.startswith("analyses/expert-corrections/"): return ExpertCorrectionRevision
     if name.startswith("evidence/exhaustive-lab/"): return ExhaustiveLabResult
+    if name.startswith("evidence/condition-monitoring-demo/"): return ConditionMonitoringDemo
     if name.startswith("models/fis/") and name.endswith(".json"): return FISSpec
     if name.startswith("evidence/behavior-specs/comparison-"): return BehaviorRevisionComparison
     if name.startswith("evidence/behavior-specs/result-"): return BehaviorSpecResult
@@ -107,7 +109,7 @@ def _validate_relationships(objects: list[BaseModel]) -> list[str]:
     objects_by_type: dict[type[BaseModel], dict[str, BaseModel]] = {}
     for object_ in objects:
         identifier_field = {
-            DatasetContract: "dataset_fingerprint", SplitContract: "split_id", TransformPipelineContract: "pipeline_id", LeakageAuditReport: "audit_id", TrainingRun: "run_id", TrainingStudy: "study_id", AnalysisEvaluation: "evaluation_id", CalibrationTransform: "calibration_id", DecisionThresholdPolicy: "threshold_id", SelectivePredictionPolicy: "policy_id", StudyStabilityAnalysis: "analysis_id", StabilityGatePolicy: "policy_id", FinalTestEvaluation: "final_test_id", ExplanationContract: "explanation_id", ExplanationCheck: "check_id", ExplanationReproducibilityAnalysis: "analysis_id", TreePathEvidence: "evidence_id", ExpertCorrectionRevision: "correction_id", ExhaustiveLabResult: "result_id", FISSpec: "fis_id", BehaviorSpec: "spec_id", BehaviorSpecResult: "result_id", BehaviorRevisionComparison: "comparison_id", AssuranceCase: "assurance_id",
+            DatasetContract: "dataset_fingerprint", SplitContract: "split_id", TransformPipelineContract: "pipeline_id", LeakageAuditReport: "audit_id", TrainingRun: "run_id", TrainingStudy: "study_id", AnalysisEvaluation: "evaluation_id", CalibrationTransform: "calibration_id", DecisionThresholdPolicy: "threshold_id", SelectivePredictionPolicy: "policy_id", StudyStabilityAnalysis: "analysis_id", StabilityGatePolicy: "policy_id", FinalTestEvaluation: "final_test_id", ExplanationContract: "explanation_id", ExplanationCheck: "check_id", ExplanationReproducibilityAnalysis: "analysis_id", TreePathEvidence: "evidence_id", ExpertCorrectionRevision: "correction_id", ExhaustiveLabResult: "result_id", ConditionMonitoringDemo: "demo_id", FISSpec: "fis_id", BehaviorSpec: "spec_id", BehaviorSpecResult: "result_id", BehaviorRevisionComparison: "comparison_id", AssuranceCase: "assurance_id",
         }.get(type(object_))
         identifier = getattr(object_, identifier_field) if identifier_field else None
         if identifier is not None:
@@ -385,6 +387,39 @@ def _validate_relationships(objects: list[BaseModel]) -> list[str]:
                 invalid = object_.fis_semantic_hash not in known_hashes or object_.run_id is not None
             if invalid or object_.state_count != len(object_.paths) or object_.state_estimate < object_.state_count:
                 errors.append(f"Exhaustive Lab result {object_.result_id} has broken finite-state or model provenance.")
+        elif isinstance(object_, ConditionMonitoringDemo):
+            policy = selective_policies.get(str(object_.policy_id))
+            run = runs.get(str(policy.run_id)) if isinstance(policy, SelectivePredictionPolicy) else None
+            threshold = thresholds.get(str(policy.class_threshold_id)) if isinstance(policy, SelectivePredictionPolicy) else None
+            explanation = objects_by_type.get(ExplanationContract, {}).get(str(object_.explanation_id)) if object_.explanation_id is not None else None
+            check = objects_by_type.get(ExplanationCheck, {}).get(str(object_.explanation_check_id)) if object_.explanation_check_id is not None else None
+            scope = generalization_contracts.get(str(object_.generalization_contract_id)) if object_.generalization_contract_id is not None else None
+            expected_label = int(object_.probability >= threshold.selected_threshold) if isinstance(threshold, DecisionThresholdPolicy) else None
+            expected_confidence = max(object_.probability, 1.0 - object_.probability)
+            expected_decision = None
+            if isinstance(policy, SelectivePredictionPolicy):
+                expected_decision = "ACCEPT" if object_.confidence >= policy.confidence_cutoff else "REVIEW"
+            if object_.scope_disposition == "BLOCK":
+                expected_decision = "OUT_OF_SCOPE"
+            elif object_.scope_disposition == "REVIEW":
+                expected_decision = "REVIEW"
+            if (
+                not isinstance(policy, SelectivePredictionPolicy)
+                or not isinstance(run, TrainingRun)
+                or not isinstance(threshold, DecisionThresholdPolicy)
+                or (object_.generalization_contract_id is not None and (not isinstance(scope, GeneralizationContract) or scope.dataset_fingerprint != run.dataset_fingerprint))
+                or abs(object_.confidence - expected_confidence) > 1e-12
+                or object_.predicted_class != expected_label
+                or object_.decision != expected_decision
+                or object_.scope_disposition not in {"ALLOW", "BLOCK", "REVIEW", "NOT_EVALUATED"}
+                or (object_.explanation_id is not None and (not isinstance(explanation, ExplanationContract) or explanation.run_id != policy.run_id))
+                or (object_.explanation_check_id is not None and (not isinstance(check, ExplanationCheck) or check.explanation_id != object_.explanation_id or check.run_id != policy.run_id))
+                or (object_.assurance_id is not None and not exists(AssuranceCase, object_.assurance_id))
+                or object_.verification_bundle_sha256 is None
+                or len(object_.verification_bundle_sha256) != 64
+                or any(character not in "0123456789abcdef" for character in object_.verification_bundle_sha256)
+            ):
+                errors.append(f"Condition-monitoring demo {object_.demo_id} has broken policy, prediction, scope, explanation, Assurance, or bundle provenance.")
         elif isinstance(object_, BehaviorRevisionComparison):
             baseline = objects_by_type.get(BehaviorSpecResult, {}).get(str(object_.baseline_result_id))
             candidate = objects_by_type.get(BehaviorSpecResult, {}).get(str(object_.candidate_result_id))
@@ -554,6 +589,8 @@ def validate_verification_bundle(path: Path | str) -> VerificationBundleValidati
         warnings.append("TreePathEvidence run/hash/feature bindings were checked, but exact path replay is unavailable because model artifacts are excluded from the inspection-first bundle.")
     if any(isinstance(item, ExplanationReproducibilityAnalysis) for item in objects):
         warnings.append("ExplanationReproducibilityAnalysis run, explanation, and case bindings were checked; aggregate agreement values are not independently recomputed by the portable bundle validator.")
+    if any(isinstance(item, ConditionMonitoringDemo) for item in objects):
+        warnings.append("ConditionMonitoringDemo policy and decision arithmetic were checked, but model inference cannot be replayed because executable/model artifacts are excluded from the inspection-first bundle.")
     assurance_objects = {str(item.assurance_id): item for item in objects if isinstance(item, AssuranceCase)}
     if not assurance_objects:
         warnings.append("No typed AssuranceCase object was found in the bundle.")

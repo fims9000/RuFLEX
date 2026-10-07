@@ -546,6 +546,57 @@ def test_exhaustive_lab_persists_exact_tree_structure_and_declared_fis_grid(tmp_
     assert any(issue.code == "EXHAUSTIVE_RESULT_PROVENANCE_MISMATCH" for issue in report.issues)
 
 
+def test_condition_monitoring_demo_bundle_checks_policy_and_linked_evidence(tmp_path: Path) -> None:
+    import hashlib
+    import shutil
+    from ruflex.application.verification_bundle import validate_verification_bundle
+
+    client = TestClient(app)
+    root = tmp_path / "condition-demo-bundle"
+    session_id = _project_with_data(client, root)
+    run = _train(client, session_id, "logistic_regression")
+    evaluation = client.post("/api/projects/analyses/evaluations", json={"session_id": session_id, "run_id": run["run_id"]})
+    assert evaluation.status_code == 201, evaluation.text
+    threshold = client.post("/api/projects/analyses/thresholds", json={"session_id": session_id, "evaluation_id": evaluation.json()["evaluation_id"]})
+    assert threshold.status_code == 201, threshold.text
+    policy = client.post(
+        "/api/projects/analyses/selective-policies",
+        json={"session_id": session_id, "evaluation_id": evaluation.json()["evaluation_id"], "confidence_cutoff": 0.5, "threshold_id": threshold.json()["threshold_id"]},
+    )
+    assert policy.status_code == 201, policy.text
+    demo = client.post(
+        "/api/projects/evidence/condition-monitoring-demo",
+        json={"session_id": session_id, "policy_id": policy.json()["policy_id"], "telemetry": {"temperature": 25.0, "torque": 48.0, "vibration": 0.6}},
+    )
+    assert demo.status_code == 201, demo.text
+    reopened = client.post("/api/projects/close", json={"session_id": session_id})
+    assert reopened.status_code == 204
+    session_id = client.post("/api/projects/open", json={"path": str(root), "read_only": False}).json()["session_id"]
+    latest = client.get(f"/api/projects/{session_id}/evidence/condition-monitoring-demo/latest")
+    assert latest.status_code == 200 and latest.json()["demo_id"] == demo.json()["demo_id"]
+    assert client.post("/api/projects/evidence/assurance-cases", json={"session_id": session_id}).status_code == 201
+    bundle = client.post("/api/projects/evidence/verification-bundles", json={"session_id": session_id})
+    assert bundle.status_code == 201, bundle.text
+    portable = validate_verification_bundle(Path(bundle.json()["path"]))
+    assert portable.status == "PASS", portable.errors
+    extracted = tmp_path / "condition-demo-extracted"
+    shutil.unpack_archive(bundle.json()["path"], extracted, "zip")
+    demo_path = extracted / "evidence" / "condition-monitoring-demo" / f"{demo.json()['demo_id']}.json"
+    changed = json.loads(demo_path.read_text(encoding="utf-8"))
+    changed["probability"] = 0.01 if changed["probability"] > 0.5 else 0.99
+    demo_path.write_text(json.dumps(changed), encoding="utf-8")
+    manifest_path = extracted / "verification-manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    relative = demo_path.relative_to(extracted).as_posix()
+    manifest["checksums"][relative] = hashlib.sha256(demo_path.read_bytes()).hexdigest()
+    manifest_bytes = json.dumps(manifest, indent=2, sort_keys=True).encode()
+    manifest_path.write_bytes(manifest_bytes)
+    (extracted / "verification-manifest.sha256").write_text(f"{hashlib.sha256(manifest_bytes).hexdigest()}  verification-manifest.json\n", encoding="utf-8")
+    invalid = validate_verification_bundle(extracted)
+    assert invalid.status == "FAIL"
+    assert any("Condition-monitoring demo" in error for error in invalid.errors), invalid.errors
+
+
 def test_assurance_case_is_persisted_independent_gate_evidence(tmp_path: Path) -> None:
     client = TestClient(app); root = tmp_path / "assurance"; session_id = _project_with_data(client, root)
     fis = client.post("/api/projects/fis/default", json={"session_id": session_id, "name": "bundle centroid fis"})
