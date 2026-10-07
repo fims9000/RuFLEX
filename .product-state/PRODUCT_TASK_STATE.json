@@ -205,15 +205,16 @@
     "alpha_stability_analysis_case_recomputation_integrity",
     "alpha_stability_analysis_aggregate_provenance_integrity",
     "alpha_stability_gate_recomputed_decisions_and_risk_coverage_integrity",
-    "alpha_final_test_freeze_timestamp_reconstruction_integrity"
+    "alpha_final_test_freeze_timestamp_reconstruction_integrity",
+    "alpha_dataset_revision_first_unlock_consistency_integrity"
   ],
-  "active_capability": "alpha_final_test_freeze_timestamp_reconstruction_integrity",
+  "active_capability": "alpha_dataset_revision_first_unlock_consistency_integrity",
   "active_acceptance": [
-    "FinalTestEvaluation policy_frozen_at equals the exact maximum creation timestamp of its bound run/evaluation/policy objects.",
-    "Every Stability Gate analysis and support run predates gate creation and first test unlock; malformed or late timestamps fail closed."
+    "All FinalTestEvaluations for one dataset fingerprint share a single immutable dataset_test_unlock_at.",
+    "The unlock timestamp is timezone-aware and no later than every persisted evaluation creation time for that dataset revision."
   ],
   "blockers": [],
-  "next_executable_work": "Audit dataset-revision-scoped first-unlock consistency across multiple FinalTestEvaluations; preserve unrelated article files.",
+  "next_executable_work": "Continue the focused integrity audit on final-test policy/output aggregation and recovery boundaries; preserve unrelated article files.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -422,6 +423,7 @@
     "alpha_stability_analysis_case_recomputation_integrity": "PASS: Project Integrity recomputes per-case probability mappings, class labels, selected/majority agreement, dispersion summaries, validation identity/alignment, and HCIR counts/rate from canonical run predictions and the frozen threshold. A tampered selected-run agreement is rejected; tests/test_project_integrity.py: 14 passed; compileall, task-state JSON parse, and git diff --check passed.",
     "alpha_stability_analysis_aggregate_provenance_integrity": "PASS: Project Integrity recomputes all persisted aggregate metric distributions and binds StabilityAnalysis mode, dataset/artifact, model/task, split/training seeds, and case source identities to canonical TrainingStudy runs. Regression rejects a forged F1 mean and altered training-seed provenance; tests/test_project_integrity.py: 14 passed, compileall and diff checks passed.",
     "alpha_stability_gate_recomputed_decisions_and_risk_coverage_integrity": "PASS: Project Integrity re-derives ordered gate case reasons/dispositions and all four deterministic risk-coverage rows from frozen analysis cases and policy thresholds. Regression rejects altered selected-run agreement in a case decision and forged no-review risk; tests/test_project_integrity.py: 14 passed, compileall and diff checks passed.",
-    "alpha_final_test_freeze_timestamp_reconstruction_integrity": "PASS: Project Integrity reconstructs policy_frozen_at as the exact maximum creation time of bound objects, requires Stability Analysis/support runs to predate Gate creation, and requires frozen sources to predate first test unlock. Regressions forge late gate/analysis creation and a false frozen timestamp; tests/test_project_integrity.py: 14 passed, compileall and diff checks passed."
+    "alpha_final_test_freeze_timestamp_reconstruction_integrity": "PASS: Project Integrity reconstructs policy_frozen_at as the exact maximum creation time of bound objects, requires Stability Analysis/support runs to predate Gate creation, and requires frozen sources to predate first test unlock. Regressions forge late gate/analysis creation and a false frozen timestamp; tests/test_project_integrity.py: 14 passed, compileall and diff checks passed.",
+    "alpha_dataset_revision_first_unlock_consistency_integrity": "PASS: Project Integrity requires all FinalTestEvaluations for one dataset revision to retain the same timezone-aware first-unlock timestamp and rejects unlock times later than evaluation creation. Regression adds a second persisted evaluation with a forged revision unlock; tests/test_project_integrity.py: 14 passed, compileall and diff checks passed."
   }
 }

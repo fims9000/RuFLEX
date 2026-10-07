@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import hashlib
 import math
+from datetime import datetime
 from pathlib import Path
 from uuid import UUID
 
@@ -982,6 +983,17 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                         issues.append(ProjectIntegrityIssue(code="FINAL_TEST_PROVENANCE_MISMATCH", status="FAIL", path=relative_path, detail="FinalTestEvaluation does not match its frozen validation Evaluation, model, dataset, threshold, calibration, or selective/stability policy bindings."))
                 except (ValidationError, ValueError, OSError, json.JSONDecodeError) as error:
                     issues.append(ProjectIntegrityIssue(code="FINAL_TEST_EVIDENCE_MALFORMED", status="FAIL", path=relative_path, detail=str(error)))
+            unlocks_by_dataset: dict[str, list[datetime]] = {}
+            for final_test in final_tests.values():
+                unlock = final_test.dataset_test_unlock_at
+                if unlock is None:
+                    continue
+                unlocks_by_dataset.setdefault(final_test.dataset_fingerprint, []).append(unlock)
+                if final_test.created_at.tzinfo is None or unlock.tzinfo is None or unlock > final_test.created_at:
+                    issues.append(ProjectIntegrityIssue(code="DATASET_TEST_UNLOCK_INCONSISTENT", status="FAIL", path=f"analyses/final-tests/{final_test.final_test_id}.json", detail="Dataset first-test unlock must be timezone-aware and no later than the persisted evaluation creation time."))
+            for dataset_fingerprint, unlocks in unlocks_by_dataset.items():
+                if len(set(unlocks)) > 1:
+                    issues.append(ProjectIntegrityIssue(code="DATASET_TEST_UNLOCK_INCONSISTENT", status="FAIL", path="analyses/final-tests", detail=f"FinalTestEvaluations for dataset revision {dataset_fingerprint} do not share one immutable first-test unlock timestamp."))
             active_path = final_test_root / "active-final-test.json"
             if active_path.exists():
                 checked += 1

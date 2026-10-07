@@ -189,6 +189,15 @@ def test_project_integrity_validates_frozen_stability_analysis_and_gate_chain(tm
     analysis_path.write_text(json.dumps(analysis_payload), encoding="utf-8")
     final_test_path = root / "analyses" / "final-tests" / f"{final_test.json()['final_test_id']}.json"
     final_test_payload = json.loads(final_test_path.read_text(encoding="utf-8"))
+    duplicate_final_test = json.loads(json.dumps(final_test_payload))
+    duplicate_final_test_id = str(uuid4())
+    duplicate_final_test["final_test_id"] = duplicate_final_test_id
+    duplicate_final_test["dataset_test_unlock_at"] = "2000-01-01T00:00:00Z"
+    duplicate_final_test_path = root / "analyses" / "final-tests" / f"{duplicate_final_test_id}.json"
+    duplicate_final_test_path.write_text(json.dumps(duplicate_final_test), encoding="utf-8")
+    inconsistent_unlock = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert any(issue["code"] == "DATASET_TEST_UNLOCK_INCONSISTENT" for issue in inconsistent_unlock["issues"])
+    duplicate_final_test_path.unlink()
     original_policy_frozen_at = final_test_payload["policy_frozen_at"]
     final_test_payload["policy_frozen_at"] = "2000-01-01T00:00:00Z"
     final_test_path.write_text(json.dumps(final_test_payload), encoding="utf-8")
