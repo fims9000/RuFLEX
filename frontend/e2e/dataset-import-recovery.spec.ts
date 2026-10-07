@@ -141,3 +141,41 @@ test("a saved editable CSV contract is restored when its response is lost", asyn
   await expect(page.getByText(/Contract: target/)).toBeVisible();
   expect(confirmationRequests).toBe(1);
 });
+
+test("a lost CSV confirmation and failed recovery read reconcile on the next dataset retry", async ({ page }) => {
+  let confirmationRequests = 0;
+  let confirmationCommitted = false;
+  let failedRecoveryRead = false;
+  await page.route("**/api/projects/*/dataset", async (route) => {
+    if (confirmationCommitted && !failedRecoveryRead) {
+      failedRecoveryRead = true;
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "CSV recovery read temporarily unavailable" }) });
+      return;
+    }
+    await route.continue();
+  });
+  await page.route("**/api/projects/dataset/confirm", async (route) => {
+    confirmationRequests += 1;
+    const response = await route.fetch();
+    expect(response.ok()).toBeTruthy();
+    confirmationCommitted = true;
+    await route.abort("connectionreset");
+  });
+
+  const projectPath = join(tmpdir(), `ruflex-csv-double-recovery-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  await page.goto("/");
+  await page.getByLabel("Project path").fill(projectPath);
+  await page.getByLabel("Project name").fill("CSV double recovery");
+  await page.getByRole("button", { name: "Create project", exact: true }).click();
+  await page.getByRole("button", { name: "Review or import data", exact: true }).click();
+  await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
+  await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
+
+  const error = page.getByRole("alert").filter({ hasText: "Could not verify persisted dataset state" });
+  await expect(error).toBeVisible();
+  expect(failedRecoveryRead).toBe(true);
+  await error.getByRole("button", { name: "Retry dataset check", exact: true }).click();
+  await expect(page.getByText(/Contract: target/)).toBeVisible();
+  await expect(page.getByText(/saved CSV DatasetContract matches the pending request/)).toBeVisible();
+  expect(confirmationRequests).toBe(1);
+});
