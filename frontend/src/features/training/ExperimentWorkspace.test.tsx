@@ -100,13 +100,18 @@ describe("ExperimentWorkspace dynamic model controls", () => {
   it("blocks fitting when visible split settings no longer match the frozen contract", async () => {
     studioApi.listSplitContracts.mockResolvedValueOnce([{
       split_id: "split-group", dataset_fingerprint: "fingerprint", dataset_artifact_sha256: "a".repeat(64),
-      family: "GROUP", split_seed: 7, validation_fraction: 0.2, test_fraction: 0.2,
+      family: "GROUP", split_seed: 7, validation_fraction: 0.25, test_fraction: 0.25,
       group_column: "x", time_column: null, site_column: null, device_column: null, spatial_column: null, regime_column: null,
     }]);
+    studioApi.runTraining.mockResolvedValueOnce({} as never);
     render(<ExperimentWorkspace project={project} dataset={dataset as never} run={null} study={null} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);
 
     const runButton = await screen.findByRole("button", { name: "Run real training" });
     await waitFor(() => expect(runButton).toBeEnabled());
+    expect(screen.getByText("50% train · 25% validation · 25% locked test")).toBeVisible();
+    fireEvent.change(screen.getByLabelText("Split family"), { target: { value: "RANDOM" } });
+    expect(runButton).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Split family"), { target: { value: "GROUP" } });
     fireEvent.change(screen.getByLabelText("Study split seed"), { target: { value: "8" } });
     expect(runButton).toBeDisabled();
     expect(screen.getByText(/no legacy RANDOM fallback will be used/)).toBeVisible();
@@ -115,6 +120,10 @@ describe("ExperimentWorkspace dynamic model controls", () => {
 
     fireEvent.change(screen.getByLabelText("Study split seed"), { target: { value: "7" } });
     await waitFor(() => expect(runButton).toBeEnabled());
+    fireEvent.click(runButton);
+    await waitFor(() => expect(studioApi.runTraining).toHaveBeenCalledTimes(1));
+    expect(studioApi.runTraining.mock.calls[0][1].validation_fraction).toBe(0.25);
+    expect(studioApi.runTraining.mock.calls[0][1].test_fraction).toBe(0.25);
   });
 
   it("keeps single-run training validation errors editable and reserves recovery for uncertain writes", async () => {
