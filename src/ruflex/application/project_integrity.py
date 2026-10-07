@@ -265,6 +265,76 @@ def _stability_analysis_cases_match(
     )
 
 
+def _stability_gate_evidence_matches(policy: StabilityGatePolicy, analysis: StudyStabilityAnalysis) -> bool:
+    if (
+        policy.run_ids != analysis.run_ids
+        or policy.required_run_support != analysis.case_support_requirement
+        or policy.analysis_schema_version != analysis.schema_version
+        or policy.fit_sample_identity != analysis.evaluation_case_identity
+        or len(policy.decisions) != len(analysis.cases)
+        or [decision.case_id for decision in policy.decisions] != [case.case_id for case in analysis.cases]
+    ):
+        return False
+    accepted = []
+    for case, decision in zip(analysis.cases, policy.decisions, strict=True):
+        if case.selected_run_class is None or case.selected_run_agreement is None or case.majority_class_agreement is None:
+            return False
+        confidence = max(case.selected_run_probability, 1.0 - case.selected_run_probability)
+        reasons: list[str] = []
+        if confidence < policy.min_confidence:
+            reasons.append("LOW_CONFIDENCE")
+        if case.selected_run_agreement < policy.min_class_agreement:
+            reasons.append("RUN_DISAGREEMENT")
+        if case.std_probability > policy.max_probability_std:
+            reasons.append("HIGH_DISPERSION")
+        if case.run_support_count < policy.required_run_support:
+            reasons.append("INSUFFICIENT_RUN_SUPPORT")
+        disposition = "REVIEW" if reasons else "ACCEPT"
+        if (
+            decision.reasons != reasons
+            or decision.disposition != disposition
+            or decision.run_support_count != case.run_support_count
+            or not math.isclose(decision.selected_run_probability, case.selected_run_probability, rel_tol=1e-12, abs_tol=1e-12)
+            or not math.isclose(decision.confidence, confidence, rel_tol=1e-12, abs_tol=1e-12)
+            or not math.isclose(decision.majority_class_agreement, case.majority_class_agreement, rel_tol=1e-12, abs_tol=1e-12)
+            or not math.isclose(decision.selected_run_agreement, case.selected_run_agreement, rel_tol=1e-12, abs_tol=1e-12)
+            or not math.isclose(decision.probability_std, case.std_probability, rel_tol=1e-12, abs_tol=1e-12)
+        ):
+            return False
+        if disposition == "ACCEPT":
+            accepted.append(case)
+    case_count = len(analysis.cases)
+    if not case_count:
+        return False
+    accepted_count = len(accepted)
+    ranked_confidence = sorted(analysis.cases, key=lambda case: max(case.selected_run_probability, 1.0 - case.selected_run_probability), reverse=True)
+    confidence_only = ranked_confidence[:accepted_count]
+    random_selected = sorted(analysis.cases, key=lambda case: _stable_identity("stability-random-baseline-v1", case.case_id))[:accepted_count]
+
+    def accepted_risk(cases: list[object]) -> float | None:
+        if not cases:
+            return None
+        return sum(case.selected_run_class != case.target for case in cases) / len(cases)
+
+    expected_comparisons = [
+        ("NO_REVIEW", case_count, accepted_risk(analysis.cases), 1.0),
+        ("RANDOM_REVIEW", len(random_selected), accepted_risk(random_selected), accepted_count / case_count),
+        ("CONFIDENCE_ONLY", len(confidence_only), accepted_risk(confidence_only), accepted_count / case_count),
+        ("STABILITY_AWARE", accepted_count, accepted_risk(accepted), accepted_count / case_count),
+    ]
+    if len(policy.risk_coverage) != len(expected_comparisons):
+        return False
+    for actual, (name, count, risk, coverage) in zip(policy.risk_coverage, expected_comparisons, strict=True):
+        if (
+            actual.policy != name
+            or actual.accepted_count != count
+            or actual.accepted_risk != risk
+            or not math.isclose(actual.coverage, coverage, rel_tol=1e-12, abs_tol=1e-12)
+        ):
+            return False
+    return True
+
+
 def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
     """Inspect persisted evidence without reopening or retraining artifacts.
 
@@ -775,7 +845,7 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                         or policy.class_threshold_id != analysis.class_threshold_id
                         or policy.decision_threshold != threshold.selected_threshold
                         or evaluation.run_id != policy.selected_run_id
-                        or {item.case_id for item in policy.decisions} != {item.case_id for item in analysis.cases}
+                        or not _stability_gate_evidence_matches(policy, analysis)
                     ):
                         issues.append(ProjectIntegrityIssue(code="STABILITY_GATE_PROVENANCE_MISMATCH", status="FAIL", path=relative_path, detail="Stability Gate does not match its frozen Analysis, selected validation Evaluation, raw threshold, run support, or case evidence."))
                 except (ValidationError, ValueError, OSError, json.JSONDecodeError) as error:

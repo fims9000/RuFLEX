@@ -133,6 +133,21 @@ def test_project_integrity_validates_frozen_stability_analysis_and_gate_chain(tm
     assert any(issue["code"] == "STABILITY_ANALYSIS_PROVENANCE_MISMATCH" for issue in corrupted_seed_summary["issues"])
     analysis_payload["training_seeds"] = original_training_seeds
     analysis_path.write_text(json.dumps(analysis_payload), encoding="utf-8")
+    policy_path = root / "analyses" / "stability-policies" / f"{policy_response.json()['policy_id']}.json"
+    policy_payload = json.loads(policy_path.read_text(encoding="utf-8"))
+    original_decision_agreement = policy_payload["decisions"][0]["selected_run_agreement"]
+    policy_payload["decisions"][0]["selected_run_agreement"] = 0.0 if original_decision_agreement > 0.0 else 1.0
+    policy_path.write_text(json.dumps(policy_payload), encoding="utf-8")
+    corrupted_decision = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert any(issue["code"] == "STABILITY_GATE_PROVENANCE_MISMATCH" for issue in corrupted_decision["issues"])
+    policy_payload["decisions"][0]["selected_run_agreement"] = original_decision_agreement
+    original_no_review_risk = policy_payload["risk_coverage"][0]["accepted_risk"]
+    policy_payload["risk_coverage"][0]["accepted_risk"] = 0.0 if original_no_review_risk > 0.0 else 1.0
+    policy_path.write_text(json.dumps(policy_payload), encoding="utf-8")
+    corrupted_risk = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert any(issue["code"] == "STABILITY_GATE_PROVENANCE_MISMATCH" for issue in corrupted_risk["issues"])
+    policy_payload["risk_coverage"][0]["accepted_risk"] = original_no_review_risk
+    policy_path.write_text(json.dumps(policy_payload), encoding="utf-8")
     final_test = client.post("/api/projects/analyses/final-test", json={"session_id": session_id, "evaluation_id": evaluation_id, "threshold_id": threshold_id, "stability_gate_policy_id": policy_response.json()["policy_id"]})
     assert final_test.status_code == 201, final_test.text
     assert client.get(f"/api/projects/{session_id}/integrity").json()["status"] == "PASS"
