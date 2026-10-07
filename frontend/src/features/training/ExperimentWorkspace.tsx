@@ -485,7 +485,12 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
     try {
       onRun(await studioApi.runTraining(project.session_id, config)); setTrainingRecovery(null);
     } catch (reason) {
-      setTrainingRecovery({ config, requestedAt, error: reason instanceof Error ? reason.message : "Training result response was uncertain.", notFound: false });
+      const definitiveValidationRejection = reason instanceof ProductApiError
+        && reason.status === 422
+        && reason.code === "VALIDATION_FAILED";
+      if (!definitiveValidationRejection) {
+        setTrainingRecovery({ config, requestedAt, error: reason instanceof Error ? reason.message : "Training result response was uncertain.", notFound: false });
+      }
       setError(reason instanceof Error ? reason.message : "Training failed");
     } finally {
       setRunning(false);
@@ -634,6 +639,13 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
       setPendingStudyRequest(null);
       await observeStudy(job);
     } catch (reason) {
+      const definitiveValidationRejection = reason instanceof ProductApiError
+        && reason.status === 422
+        && reason.code === "VALIDATION_FAILED";
+      if (definitiveValidationRejection) {
+        pendingStudyRequestRef.current = null;
+        setPendingStudyRequest(null);
+      }
       setError(reason instanceof Error ? reason.message : "Multi-seed study failed");
     } finally {
       setRunning(false);

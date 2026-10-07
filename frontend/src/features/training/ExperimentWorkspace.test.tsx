@@ -27,6 +27,7 @@ const { studioApi } = vi.hoisted(() => ({ studioApi: {
   getRuntimeBackends: vi.fn().mockResolvedValue([{ identity: { key: "local_executor", version: "1", provider: "ruflex.builtin", kind: "execution_backend" }, supports_cancel: true, supports_resume: true }]),
   listStudyJobs: vi.fn().mockResolvedValue([]),
   startStudyJob: vi.fn(),
+  runTraining: vi.fn(),
   getStudyJob: vi.fn(),
   resumeStudyJob: vi.fn(),
   getLatestTrainingStudy: vi.fn(),
@@ -65,6 +66,7 @@ beforeEach(() => {
   studioApi.resumeStudyJob.mockReset();
   studioApi.getLatestTrainingStudy.mockReset();
   studioApi.startStudyJob.mockReset();
+  studioApi.runTraining.mockReset();
 });
 
 describe("ExperimentWorkspace dynamic model controls", () => {
@@ -87,6 +89,39 @@ describe("ExperimentWorkspace dynamic model controls", () => {
     fireEvent.click(screen.getByRole("button", { name: "Freeze RANDOM SplitContract" }));
     await waitFor(() => expect(studioApi.createSplitContract).toHaveBeenCalledTimes(2));
     expect(screen.queryByTestId("split-contract-recovery")).not.toBeInTheDocument();
+  });
+
+  it("keeps single-run training validation errors editable and reserves recovery for uncertain writes", async () => {
+    studioApi.runTraining.mockRejectedValueOnce(new ProductApiError({ code: "VALIDATION_FAILED", status: 422, detail: "Configured estimator parameter is invalid." }));
+    render(<ExperimentWorkspace project={project} dataset={dataset as never} run={null} study={null} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);
+
+    const runButton = await screen.findByRole("button", { name: "Run real training" });
+    await waitFor(() => expect(runButton).toBeEnabled());
+    fireEvent.click(runButton);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Configured estimator parameter is invalid.");
+    expect(screen.queryByTestId("training-run-recovery")).not.toBeInTheDocument();
+    expect(runButton).toBeEnabled();
+  });
+
+  it("clears a rejected Study request so corrected parameters create a new request", async () => {
+    studioApi.startStudyJob
+      .mockRejectedValueOnce(new ProductApiError({ code: "VALIDATION_FAILED", status: 422, detail: "Study configuration is invalid." }))
+      .mockRejectedValueOnce(new ProductApiError({ code: "VALIDATION_FAILED", status: 422, detail: "Study configuration is invalid." }));
+    render(<ExperimentWorkspace project={project} dataset={dataset as never} run={null} study={null} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);
+
+    const studyButton = await screen.findByRole("button", { name: "Run multi-seed study" });
+    await waitFor(() => expect(studyButton).toBeEnabled());
+    fireEvent.click(studyButton);
+    expect(await screen.findByRole("alert")).toHaveTextContent("Study configuration is invalid.");
+    expect(screen.queryByText(/Retry uses the same request ID/)).not.toBeInTheDocument();
+    expect(studyButton).toBeEnabled();
+
+    fireEvent.change(screen.getByLabelText("Learning rate"), { target: { value: "0.02" } });
+    fireEvent.click(studyButton);
+    await waitFor(() => expect(studioApi.startStudyJob).toHaveBeenCalledTimes(2));
+    expect(studioApi.startStudyJob.mock.calls[1][1].client_request_id).not.toBe(studioApi.startStudyJob.mock.calls[0][1].client_request_id);
+    expect(studioApi.startStudyJob.mock.calls[1][1].learning_rate).toBe(0.02);
   });
 
   it("retries an uncertain Study submission with the exact same request identity and configuration", async () => {
