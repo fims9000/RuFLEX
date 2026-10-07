@@ -905,6 +905,9 @@ def test_final_test_requires_frozen_validation_policy_and_persists_separate_evid
     )
     assert corrupted_reopen.status_code == 422
     assert "unreadable" in corrupted_reopen.text.lower()
+    exact_corrupt_read = client.get(f"/api/projects/{session_id}/analyses/final-test/{final_test['final_test_id']}")
+    assert exact_corrupt_read.status_code == 422
+    assert "malformed" in exact_corrupt_read.text.lower()
 
     # The immutable TrainingRun remains explicitly validation-oriented; final-test
     # evidence exists only in its separate, explicit analysis object.

@@ -2068,9 +2068,12 @@ def evaluate_final_test(
 
 
 def load_final_test_evaluation(project_root: Path, final_test_id: UUID) -> FinalTestEvaluation:
-    return FinalTestEvaluation.model_validate_json(
+    result = FinalTestEvaluation.model_validate_json(
         _final_test_path(project_root, final_test_id).read_text(encoding="utf-8")
     )
+    if result.final_test_id != final_test_id:
+        raise TrainingError("Persisted final-test identity does not match the requested object ID.")
+    return result
 
 
 def load_latest_final_test_evaluation(project_root: Path) -> FinalTestEvaluation:

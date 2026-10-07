@@ -2117,20 +2117,24 @@ def evaluate_analysis_final_test(request: EvaluateFinalTestRequest) -> FinalTest
 
 @app.get("/api/projects/{session_id}/analyses/final-test/latest", response_model=FinalTestEvaluation)
 def get_latest_analysis_final_test(session_id: UUID) -> FinalTestEvaluation:
-    from ruflex.application.training import load_latest_final_test_evaluation
+    from ruflex.application.training import TrainingError, load_latest_final_test_evaluation
     try:
         return load_latest_final_test_evaluation(service.get(session_id).project.root)
-    except (FileNotFoundError, ValueError) as error:
+    except FileNotFoundError as error:
         raise HTTPException(status_code=404, detail="No final-test evaluation exists in this project.") from error
+    except (TrainingError, ValueError) as error:
+        raise HTTPException(status_code=422, detail="Persisted final-test evidence is malformed or has mismatched identity.") from error
 
 
 @app.get("/api/projects/{session_id}/analyses/final-test/{final_test_id}", response_model=FinalTestEvaluation)
 def get_analysis_final_test(session_id: UUID, final_test_id: UUID) -> FinalTestEvaluation:
-    from ruflex.application.training import load_final_test_evaluation
+    from ruflex.application.training import TrainingError, load_final_test_evaluation
     try:
         return load_final_test_evaluation(service.get(session_id).project.root, final_test_id)
-    except (FileNotFoundError, ValueError) as error:
+    except FileNotFoundError as error:
         raise HTTPException(status_code=404, detail=f"Final-test evaluation not found: {final_test_id}") from error
+    except (TrainingError, ValueError) as error:
+        raise HTTPException(status_code=422, detail="Persisted final-test evidence is malformed or has mismatched identity.") from error
 
 
 @app.post("/api/projects/analyses/comparisons", response_model=AnalysisComparison, status_code=201)
