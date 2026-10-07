@@ -42,7 +42,7 @@ test("PRODUCT-01 persists data, builds an editable FIS, runs it and exposes exac
     }
     return route.continue();
   });
-  await page.getByRole("button", { name: "Save FIS", exact: true }).click();
+  await page.getByRole("button", { name: "Save FIS", exact: true }).evaluate((button) => { button.dispatchEvent(new MouseEvent("click", { bubbles: true })); button.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
   const saveRecovery = page.getByTestId("fis-save-recovery");
   await expect(saveRecovery).toContainText("FIS save response lost after persistence");
   await page.getByRole("button", { name: "Retry exact FIS revision lookup", exact: true }).click();

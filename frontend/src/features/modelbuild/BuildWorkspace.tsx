@@ -1004,8 +1004,10 @@ export function BuildWorkspace({
     }
   }
   async function recoverFisSave() {
+    if (saveFisInFlightRef.current) return;
     const pending = fisSaveRecovery;
     if (!pending) return;
+    saveFisInFlightRef.current = true;
     setRecoveringFisSave(true); setError(null);
     try {
       const active = await studioApi.getActiveFis(project.session_id);
@@ -1018,22 +1020,31 @@ export function BuildWorkspace({
       }
     } catch (reason) {
       setFisSaveRecovery({ ...pending, notFound: false, error: reason instanceof Error ? reason.message : "The saved FIS revision could not be verified." });
-    } finally { setRecoveringFisSave(false); }
+    } finally { saveFisInFlightRef.current = false; setRecoveringFisSave(false); }
   }
   async function explicitlyRepeatFisSave() {
+    if (saveFisInFlightRef.current) return;
     const pending = fisSaveRecovery;
     if (!pending?.notFound || !working || project.read_only || canonicalJson(fisSemanticPayload(working)) !== canonicalJson(fisSemanticPayload(pending.spec))) return;
+    saveFisInFlightRef.current = true;
     setRecoveringFisSave(true); setError(null);
     try {
       const saved = await studioApi.saveFis(project.session_id, pending.spec);
-      setWorking(saved); setRevisions(await studioApi.getFisRevisions(project.session_id)); publishFisChange(saved);
-      setMessage("The exact FIS save was safely repeated and resolved to its persisted semantic revision."); setFisSaveRecovery(null);
+      const latestWorking = workingRef.current;
+      const newerDraftExists = Boolean(latestWorking && canonicalJson(fisSemanticPayload(latestWorking)) !== canonicalJson(fisSemanticPayload(pending.spec)));
+      if (!newerDraftExists) setWorking(saved);
+      else if (saved.semantic_hash) preserveDraftOnHydrationHashRef.current = saved.semantic_hash;
+      setRevisions(await studioApi.getFisRevisions(project.session_id)); publishFisChange(saved);
+      setMessage(newerDraftExists
+        ? "The exact FIS snapshot was safely repeated; newer editor changes remain unsaved. Save again to make them active."
+        : "The exact FIS save was safely repeated and resolved to its persisted semantic revision.");
+      setFisSaveRecovery(null);
     } catch (reason) {
       setFisSaveRecovery({ ...pending, notFound: false, error: reason instanceof Error ? reason.message : "The explicitly repeated FIS save response was uncertain." });
-    } finally { setRecoveringFisSave(false); }
+    } finally { saveFisInFlightRef.current = false; setRecoveringFisSave(false); }
   }
   function restorePendingFisSaveSnapshot() {
-    if (!fisSaveRecovery) return;
+    if (saveFisInFlightRef.current || !fisSaveRecovery) return;
     const restored = cloneFis(fisSaveRecovery.spec);
     setWorking(restored); setEditorHistory([cloneFis(restored)]); setHistoryIndex(0);
     setMessage("Restored the exact FIS snapshot from the uncertain save; verify its persisted identity before retrying.");
@@ -1374,8 +1385,8 @@ export function BuildWorkspace({
               <option value="sugeno">Type-1 Sugeno</option>
             </select>
           </label>
-          <Button view="outlined" disabled={project.read_only || !!fisImportRecovery || !!fisSaveRecovery || savingFis} onClick={save} data-ruflex-action="fis.save_revision">
-            {savingFis ? "Saving FIS…" : "Save FIS"}
+          <Button view="outlined" disabled={project.read_only || !!fisImportRecovery || !!fisSaveRecovery || savingFis || recoveringFisSave} onClick={save} data-ruflex-action="fis.save_revision">
+            {savingFis ? "Saving FIS…" : recoveringFisSave ? "Resolving FIS save…" : "Save FIS"}
           </Button>
           <input
             ref={importInputRef}
