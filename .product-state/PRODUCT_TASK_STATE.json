@@ -268,15 +268,16 @@
     "alpha_fis_surface_input_validation",
     "alpha_fis_duplicate_inference_guard",
     "alpha_fis_creation_duplicate_guard",
-    "alpha_fis_save_duplicate_guard"
+    "alpha_fis_save_duplicate_guard",
+    "alpha_matlab_fis_import_duplicate_guard"
   ],
-  "active_capability": "alpha_fis_save_duplicate_guard",
+  "active_capability": "alpha_matlab_fis_import_duplicate_guard",
   "active_acceptance": [
-    "FIS revision persistence allows only one active save request.",
-    "The Save control shows progress and remains disabled until exact persistence succeeds or enters recovery."
+    "MATLAB FIS import permits only one initial import request while source parsing and persistence are active.",
+    "Import and recovery controls communicate in-flight state and cannot issue duplicate writes."
   ],
   "blockers": [],
-  "next_executable_work": "Inspect the next low-memory alpha workflow for a verified usability or duplicate-write risk, then fix, test and commit locally.",
+  "next_executable_work": "Inspect a next user-facing alpha workflow for an evidenced reliability/usability gap; work in one bounded, low-resource slice and commit locally.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -548,6 +549,7 @@
     "alpha_fis_surface_input_validation": "PASS: Response-surface generation now rejects invalid fixed-input drafts locally instead of converting blanks to zero or sending non-finite values. Parser tests passed, TypeScript build and git diff --check passed, and focused Studio Playwright E2E confirmed invalid drafts submit no surface request while corrected input refreshes the chart (1/1).",
     "alpha_fis_duplicate_inference_guard": "PASS: Evaluate now locks synchronously while an FIS inference is in flight, disables repeated submissions and displays progress; the guard releases in finally for both success and failure. Focused unit tests, TypeScript build and a delayed-request Studio double-click E2E passed (1/1) with exactly one persisted inference request.",
     "alpha_fis_creation_duplicate_guard": "PASS: Default FIS creation now uses a synchronous in-flight guard, disables the action with progress feedback, and releases after success or failure. TypeScript build and delayed-response Studio Playwright E2E passed (1/1) with a single create request.",
-    "alpha_fis_save_duplicate_guard": "PASS: FIS revision save now guards synchronously against duplicate writes, shows Saving progress and stays disabled through exact persistence or recovery. TypeScript build and a delayed-route Studio E2E passed; both default creation and FIS save each issued exactly one request."
+    "alpha_fis_save_duplicate_guard": "PASS: FIS revision save now guards synchronously against duplicate writes, shows Saving progress and stays disabled through exact persistence or recovery. TypeScript build and a delayed-route Studio E2E passed; both default creation and FIS save each issued exactly one request.",
+    "alpha_matlab_fis_import_duplicate_guard": "PASS: MATLAB FIS initial import now synchronously locks duplicate submissions, disables the import controls and displays progress until the response resolves; the shared retry path also respects the in-flight guard. TypeScript build and focused import Playwright suite passed (2/2), including the uncertain-response recovery route and delayed duplicate-write guard."
   }
 }

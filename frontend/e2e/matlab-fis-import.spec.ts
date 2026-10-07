@@ -71,3 +71,23 @@ test("PRODUCT-12 preserves imported MATLAB FIS source provenance", async ({ page
   await expect(page.getByText(/Opened lineage object: tipper · revision/)).toBeVisible();
   await expect(page.getByRole("heading", { name: "tipper", exact: true })).toBeVisible();
 });
+
+test("MATLAB FIS import disables duplicate submissions while the import is in flight", async ({ page }) => {
+  const path = join(tmpdir(), `ruflex-fis-import-guard-${Date.now()}`);
+  let importRequests = 0;
+  await page.route("**/api/projects/fis/import/matlab", async (route) => {
+    importRequests += 1;
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    await route.continue();
+  });
+  await page.goto("/");
+  await page.getByLabel("Project path").fill(path);
+  await page.getByLabel("Project name").fill("FIS import guard");
+  await page.getByRole("button", { name: "Create project", exact: true }).click();
+  await page.getByRole("button", { name: "M", exact: true }).click();
+  await page.getByLabel("MATLAB FIS file").setInputFiles({ name: "tipper.fis", mimeType: "text/plain", buffer: Buffer.from(matlabFis) });
+  await expect(page.getByRole("button", { name: "Importing MATLAB FIS…", exact: true })).toBeDisabled();
+  expect(importRequests).toBe(1);
+  await expect(page.getByRole("heading", { name: "tipper", exact: true })).toBeVisible();
+  expect(importRequests).toBe(1);
+});

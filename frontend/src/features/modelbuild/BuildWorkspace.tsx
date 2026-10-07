@@ -369,6 +369,8 @@ export function BuildWorkspace({
   const [recoveringFisEvaluation, setRecoveringFisEvaluation] = useState(false);
   const [fisImportRecovery, setFisImportRecovery] = useState<{ source: string; error: string } | null>(null);
   const [retryingFisImport, setRetryingFisImport] = useState(false);
+  const [importingMatlabFis, setImportingMatlabFis] = useState(false);
+  const importMatlabFisInFlightRef = useRef(false);
   const [fisSaveRecovery, setFisSaveRecovery] = useState<{ spec: FISSpec; error: string; notFound: boolean } | null>(null);
   const [recoveringFisSave, setRecoveringFisSave] = useState(false);
   const [expertRefitRecovery, setExpertRefitRecovery] = useState<{ fisId: string; sourceHash: string; lockedRuleIds: string[]; sourceExplanationId: string | null; requestedAt: number; error: string; notFound: boolean } | null>(null);
@@ -576,6 +578,9 @@ export function BuildWorkspace({
     await submitMatlabImport(await file.text());
   }
   async function submitMatlabImport(source: string) {
+    if (importMatlabFisInFlightRef.current) return;
+    importMatlabFisInFlightRef.current = true;
+    setImportingMatlabFis(true);
     setError(null);
     try {
       const result = await studioApi.importMatlabFis(project.session_id, source);
@@ -594,6 +599,9 @@ export function BuildWorkspace({
       setError(
         reason instanceof Error ? reason.message : "MATLAB FIS import failed",
       );
+    } finally {
+      importMatlabFisInFlightRef.current = false;
+      setImportingMatlabFis(false);
     }
   }
   async function retrySameMatlabImport() {
@@ -1223,14 +1231,14 @@ export function BuildWorkspace({
           />
           <Button
             view="outlined"
-            disabled={project.read_only || !!fisImportRecovery}
+            disabled={project.read_only || !!fisImportRecovery || importingMatlabFis}
             onClick={() => importInputRef.current?.click()}
             data-ruflex-action="fis.import"
           >
-            Import MATLAB .fis
+            {importingMatlabFis ? "Importing MATLAB FIS…" : "Import MATLAB .fis"}
           </Button>
         </div>
-        {fisImportRecovery && <div className="error" role="alert" data-testid="fis-import-recovery"><strong>MATLAB FIS import response is uncertain.</strong><p>{fisImportRecovery.error} The exact source is retained; retrying it will not create a duplicate imported revision.</p><Button view="outlined" disabled={retryingFisImport} onClick={retrySameMatlabImport}>Retry exact MATLAB FIS import</Button></div>}
+        {fisImportRecovery && <div className="error" role="alert" data-testid="fis-import-recovery"><strong>MATLAB FIS import response is uncertain.</strong><p>{fisImportRecovery.error} The exact source is retained; retrying it will not create a duplicate imported revision.</p><Button view="outlined" disabled={retryingFisImport || importingMatlabFis} onClick={retrySameMatlabImport}>Retry exact MATLAB FIS import</Button></div>}
         {compatibilityIssues.length > 0 && (
           <section className="compatibility-report">
             <span className="eyebrow">MATLAB FIS COMPATIBILITY</span>
@@ -1318,11 +1326,11 @@ export function BuildWorkspace({
           />
           <Button
             view="outlined"
-            disabled={project.read_only || !!fisImportRecovery || !!fisSaveRecovery}
+            disabled={project.read_only || !!fisImportRecovery || !!fisSaveRecovery || importingMatlabFis}
             onClick={() => importInputRef.current?.click()}
             data-ruflex-action="fis.import"
           >
-            Import MATLAB .fis
+            {importingMatlabFis ? "Importing MATLAB FIS…" : "Import MATLAB .fis"}
           </Button>
           <Button view="outlined" onClick={exportMatlabFile} data-ruflex-action="fis.export">
             Export MATLAB .fis
@@ -1332,7 +1340,7 @@ export function BuildWorkspace({
           </Button>
         </div>
         {fisSaveRecovery && <div className="error" role="alert" data-testid="fis-save-recovery"><strong>FIS save response is uncertain; the exact revision has not been resubmitted.</strong><p>{fisSaveRecovery.error}</p><Button view="outlined" disabled={recoveringFisSave} onClick={recoverFisSave}>Retry exact FIS revision lookup</Button>{fisSaveRecovery.notFound && working && canonicalJson(fisSemanticPayload(working)) !== canonicalJson(fisSemanticPayload(fisSaveRecovery.spec)) && <Button view="outlined" disabled={recoveringFisSave} onClick={restorePendingFisSaveSnapshot}>Restore exact pending FIS copy</Button>}{fisSaveRecovery.notFound && <Button view="outlined" disabled={recoveringFisSave || project.read_only || !working || canonicalJson(fisSemanticPayload(working)) !== canonicalJson(fisSemanticPayload(fisSaveRecovery.spec))} onClick={explicitlyRepeatFisSave}>Explicitly repeat unchanged FIS save</Button>}</div>}
-        {fisImportRecovery && <div className="error" role="alert" data-testid="fis-import-recovery"><strong>MATLAB FIS import response is uncertain.</strong><p>{fisImportRecovery.error} The exact source is retained; retrying it will not create a duplicate imported revision.</p><Button view="outlined" disabled={retryingFisImport} onClick={retrySameMatlabImport}>Retry exact MATLAB FIS import</Button></div>}
+        {fisImportRecovery && <div className="error" role="alert" data-testid="fis-import-recovery"><strong>MATLAB FIS import response is uncertain.</strong><p>{fisImportRecovery.error} The exact source is retained; retrying it will not create a duplicate imported revision.</p><Button view="outlined" disabled={retryingFisImport || importingMatlabFis} onClick={retrySameMatlabImport}>Retry exact MATLAB FIS import</Button></div>}
       </div>
       <div className="designer-grid">
         <aside className="variable-list">
