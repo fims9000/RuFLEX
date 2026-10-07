@@ -1834,11 +1834,13 @@ def create_analysis_evaluation(request: CreateAnalysisEvaluationRequest) -> Anal
 
 @app.get("/api/projects/{session_id}/analyses/evaluations/latest", response_model=AnalysisEvaluation)
 def get_latest_analysis_evaluation(session_id: UUID) -> AnalysisEvaluation:
-    from ruflex.application.training import load_latest_validation_evaluation
+    from ruflex.application.training import TrainingError, load_latest_validation_evaluation
     try:
         return load_latest_validation_evaluation(service.get(session_id).project.root)
     except ProjectError as error:
         raise _project_error(error) from error
+    except TrainingError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
     except FileNotFoundError as error:
         raise HTTPException(status_code=404, detail="No persisted analysis evaluation exists in this project.") from error
 
@@ -1860,13 +1862,15 @@ def get_latest_analysis_evaluation_for_run(session_id: UUID, run_id: UUID) -> An
 
 @app.get("/api/projects/{session_id}/analyses/evaluations/{evaluation_id}", response_model=AnalysisEvaluation)
 def get_analysis_evaluation(session_id: UUID, evaluation_id: UUID) -> AnalysisEvaluation:
-    from ruflex.application.training import load_validation_evaluation
+    from ruflex.application.training import TrainingError, load_validation_evaluation
     try:
         return load_validation_evaluation(service.get(session_id).project.root, evaluation_id)
     except (ProjectError, FileNotFoundError, ValueError) as error:
         if isinstance(error, ProjectError):
             raise _project_error(error) from error
         raise HTTPException(status_code=404, detail=f"Evaluation not found: {evaluation_id}") from error
+    except TrainingError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
 
 
 @app.post("/api/projects/analyses/calibrations", response_model=CalibrationTransform, status_code=201)

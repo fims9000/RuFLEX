@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 import time
 
@@ -454,6 +455,35 @@ def test_validation_evaluation_recovers_after_active_pointer_write_failure(tmp_p
     assert recovered.json()["run_id"] == trained.json()["run_id"]
     assert recovered.json()["test_status"] == "LOCKED_NOT_EVALUATED"
     assert client.get(f"/api/projects/{session_id}/analyses/evaluations/latest").status_code == 404
+
+
+def test_validation_evaluation_reopen_fails_closed_on_identity_or_pointer_corruption(tmp_path: Path) -> None:
+    client = TestClient(app)
+    root = tmp_path / "evaluation-integrity"
+    session_id = client.post("/api/projects", json={"path": str(root), "name": "Evaluation integrity"}).json()["session_id"]
+    confirmed = client.post("/api/projects/dataset/confirm", json={"session_id": session_id, "csv_text": _binary_frame().to_csv(index=False), "target": "target", "task": "binary_classification", "id_columns": []})
+    assert confirmed.status_code == 200, confirmed.text
+    trained = client.post("/api/projects/training/run", json={"session_id": session_id, "model_kind": "logistic_regression", "seed": 43, "max_epochs": 1, "learning_rate": .01, "batch_size": 16, "patience": 1, "validation_fraction": .2, "test_fraction": .2, "max_rules": 3})
+    assert trained.status_code == 201, trained.text
+    created = client.post("/api/projects/analyses/evaluations", json={"session_id": session_id, "run_id": trained.json()["run_id"]})
+    assert created.status_code == 201, created.text
+    evaluation = created.json()
+    path = root / "analyses" / "evaluations" / f"{evaluation['evaluation_id']}.json"
+
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["evaluation_id"] = "00000000-0000-0000-0000-000000000001"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    exact = client.get(f"/api/projects/{session_id}/analyses/evaluations/{evaluation['evaluation_id']}")
+    assert exact.status_code == 422
+    assert "does not match" in exact.text
+    latest = client.get(f"/api/projects/{session_id}/analyses/evaluations/latest")
+    assert latest.status_code == 422
+    assert "does not match" in latest.text
+
+    (root / "analyses" / "evaluations" / "active-evaluation.json").write_text("{ malformed", encoding="utf-8")
+    malformed_pointer = client.get(f"/api/projects/{session_id}/analyses/evaluations/latest")
+    assert malformed_pointer.status_code == 422
+    assert "pointer is malformed" in malformed_pointer.text
 
 
 def test_validation_threshold_recovers_by_evaluation_after_active_pointer_write_failure(tmp_path: Path, monkeypatch) -> None:

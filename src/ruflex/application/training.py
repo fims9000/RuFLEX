@@ -1470,14 +1470,28 @@ def create_validation_evaluation(project_root: Path, run_id: UUID) -> AnalysisEv
 
 
 def load_validation_evaluation(project_root: Path, evaluation_id: UUID) -> AnalysisEvaluation:
-    return AnalysisEvaluation.model_validate_json(
-        _evaluation_path(project_root, evaluation_id).read_text(encoding="utf-8")
-    )
+    path = _evaluation_path(project_root, evaluation_id)
+    try:
+        evaluation = AnalysisEvaluation.model_validate_json(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        raise
+    except (ValueError, OSError) as error:
+        raise TrainingError(f"Persisted validation Evaluation {evaluation_id} is malformed or unreadable.") from error
+    if evaluation.evaluation_id != evaluation_id:
+        raise TrainingError("Persisted validation Evaluation identity does not match the requested object ID.")
+    return evaluation
 
 
 def load_latest_validation_evaluation(project_root: Path) -> AnalysisEvaluation:
-    pointer = json.loads((_evaluations_root(project_root) / "active-evaluation.json").read_text(encoding="utf-8"))
-    return load_validation_evaluation(project_root, UUID(pointer["evaluation_id"]))
+    pointer_path = _evaluations_root(project_root) / "active-evaluation.json"
+    try:
+        pointer = json.loads(pointer_path.read_text(encoding="utf-8"))
+        evaluation_id = UUID(pointer["evaluation_id"])
+    except FileNotFoundError:
+        raise
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        raise TrainingError("The persisted latest validation Evaluation pointer is malformed; refusing to infer the active object.") from error
+    return load_validation_evaluation(project_root, evaluation_id)
 
 
 def load_latest_validation_evaluation_for_run(project_root: Path, run_id: UUID) -> AnalysisEvaluation:
