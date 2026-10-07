@@ -251,16 +251,17 @@
     "alpha_condition_demo_bundle_provenance",
     "alpha_reproducibility_assurance_provenance",
     "alpha_verification_bundle_assurance_report_integrity",
-    "alpha_exhaustive_assurance_provenance"
+    "alpha_exhaustive_assurance_provenance",
+    "alpha_final_test_assurance_integrity"
   ],
-  "active_capability": "alpha_exhaustive_assurance_provenance",
+  "active_capability": "alpha_final_test_assurance_integrity",
   "active_acceptance": [
     "VerificationBundle parses TreePathEvidence and checks its exact frozen Decision Tree run, model artifact identity and ordered feature schema.",
     "Portable validation explicitly warns that exact path replay cannot be completed because executable/model artifacts are excluded from the inspection-first archive.",
     "A valid tree-path bundle remains PASS with this limitation visible."
   ],
   "blockers": [],
-  "next_executable_work": "Audit final-test Assurance and project-level evidence gates for reference integrity before advancing to the next product capability.",
+  "next_executable_work": "Review remaining Assurance gates and project integrity boundary behavior; then move to the next dependency-ready alpha product workflow.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -515,6 +516,7 @@
     "alpha_condition_demo_bundle_provenance": "PASS: ConditionMonitoringDemo is now typed in portable bundles; its frozen selective policy/run/threshold, prediction/confidence/disposition arithmetic, optional scope/explanation/check, AssuranceCase and bundle reference are validated. active-demo pointer is excluded from Pydantic object parsing. Real API route creates the demo, closes/reopens the project, and validates an exported bundle; re-checksummed probability corruption is rejected. Five focused evidence/reopen journey tests passed; compileall and diff check passed.",
     "alpha_reproducibility_assurance_provenance": "PASS: Assurance cross-run reproducibility gate now resolves every run and ExplanationContract, requires full run coverage, compatible dataset/task/target/method/reference, aligned unique validation case identities, and the exact pairwise run set. Tampered dangling explanation reference now makes the Assurance gate FAIL; five focused evidence, reopen and integrated journey tests plus compileall passed.",
     "alpha_verification_bundle_assurance_report_integrity": "PASS: Portable bundle validator now fails closed without a typed manifest-bound AssuranceCase, verifies the frozen inspection-first exclusion declaration, and recomputes report.md from the Assurance gate summary. Regression re-checksums tampered report and missing-Assurance bundles and confirms rejection; focused bundle, demo, reproducibility, and integrated-route tests passed.",
-    "alpha_exhaustive_assurance_provenance": "PASS: Assurance exhaustive_lab gate resolves every tree result to a persisted Decision Tree TrainingRun and every FIS-grid result to a persisted FIS semantic revision; it checks exactness label, grid dimensions/state estimate and path count. Rechecksummed/mutated FIS provenance causes the Assurance gate to FAIL. Four focused evidence, bundle, reopen and integrated-route tests passed with compileall and diff check."
+    "alpha_exhaustive_assurance_provenance": "PASS: Assurance exhaustive_lab gate resolves every tree result to a persisted Decision Tree TrainingRun and every FIS-grid result to a persisted FIS semantic revision; it checks exactness label, grid dimensions/state estimate and path count. Rechecksummed/mutated FIS provenance causes the Assurance gate to FAIL. Four focused evidence, bundle, reopen and integrated-route tests passed with compileall and diff check.",
+    "alpha_final_test_assurance_integrity": "PASS: Assurance final_test gate now delegates final-test boundary/provenance/metric/case/timestamp and duplicate/pointer integrity checks to the canonical project-integrity validators; malformed or mismatched final evidence cannot be summarized as PASS. A persisted final-test policy-identity tamper makes the Assurance gate FAIL; focused stability gate and integrated workflow tests passed."
   }
 }

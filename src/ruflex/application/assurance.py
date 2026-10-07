@@ -392,8 +392,18 @@ def create_assurance_case(root: Path) -> AssuranceCase:
     status, risk = _evidence_status(present=bool(exhaustive), valid=bool(exhaustive_ok), malformed=_has_malformed_object(exhaustive_root, ExhaustiveLabResult), unavailable="Exhaustive evidence is absent.", invalid="Exhaustive evidence has an invalid exactness label.")
     gates.append(_gate("exhaustive_lab", status, [f"exhaustive:{x.result_id}" for x in exhaustive], risk))
     final_root = base / "analyses" / "final-tests"; final_tests = _objects(final_root, FinalTestEvaluation)
-    final_ok = final_tests and all(x.status == "FINAL_TEST_EVALUATED" and x.policy_frozen_at is not None for x in final_tests)
-    status, risk = _evidence_status(present=bool(final_tests), valid=bool(final_ok), malformed=_has_malformed_object(final_root, FinalTestEvaluation), unavailable="Final-test evidence is absent.", invalid="Final-test evidence is not tied to a frozen policy.")
+    from ruflex.application.project_integrity import inspect_project_integrity
+    final_test_integrity_codes = {
+        "FINAL_TEST_EVIDENCE_MALFORMED",
+        "FINAL_TEST_PROVENANCE_MISMATCH",
+        "FINAL_TEST_DUPLICATE_POLICY_EVIDENCE",
+        "FINAL_TEST_ACTIVE_POINTER_INVALID",
+        "DATASET_TEST_UNLOCK_INCONSISTENT",
+    }
+    integrity = inspect_project_integrity(base)
+    final_integrity_ok = not any(issue.code in final_test_integrity_codes for issue in integrity.issues)
+    final_ok = bool(final_tests) and all(x.status == "FINAL_TEST_EVALUATED" and x.policy_frozen_at is not None for x in final_tests) and final_integrity_ok
+    status, risk = _evidence_status(present=bool(final_tests), valid=bool(final_ok), malformed=_has_malformed_object(final_root, FinalTestEvaluation), unavailable="Final-test evidence is absent.", invalid="Final-test evidence does not resolve to its frozen model, validation policy, case identities, metrics, timestamps, or Stability evidence.")
     gates.append(_gate("final_test", status, [f"final-test:{x.final_test_id}" for x in final_tests], risk))
     claims = [
         AssuranceClaim(

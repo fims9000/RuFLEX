@@ -225,6 +225,17 @@ def test_training_variability_keeps_split_identity_and_persists_stability_gate(t
     invalid_assurance = client.post("/api/projects/evidence/assurance-cases", json={"session_id": session_id})
     invalid_gates = {gate["key"]: gate for gate in invalid_assurance.json()["gates"]}
     assert invalid_gates["stability_gate_policy"]["status"] == "FAIL"
+    policy_path.write_text(original_policy, encoding="utf-8")
+    final_test_path = tmp_path / "stability" / "analyses" / "final-tests" / f"{final.json()['final_test_id']}.json"
+    original_final_test = final_test_path.read_text(encoding="utf-8")
+    tampered_final_test = json.loads(original_final_test)
+    tampered_final_test["policy_identity"] = "forged-policy-identity"
+    final_test_path.write_text(json.dumps(tampered_final_test), encoding="utf-8")
+    final_assurance = client.post("/api/projects/evidence/assurance-cases", json={"session_id": session_id})
+    assert final_assurance.status_code == 201, final_assurance.text
+    final_gates = {gate["key"]: gate for gate in final_assurance.json()["gates"]}
+    assert final_gates["final_test"]["status"] == "FAIL"
+    final_test_path.write_text(original_final_test, encoding="utf-8")
 
 
 def test_confident_selected_run_minority_uses_selected_run_agreement() -> None:
