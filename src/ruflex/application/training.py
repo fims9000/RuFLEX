@@ -1816,8 +1816,10 @@ def evaluate_final_test(
             continue
         try:
             prior = FinalTestEvaluation.model_validate_json(path.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            continue
+        except (OSError, ValueError) as error:
+            raise TrainingError(f"Persisted final-test evidence is unreadable; refusing to reopen the holdout boundary: {path.name}.") from error
+        if path.stem != str(prior.final_test_id):
+            raise TrainingError(f"Persisted final-test identity does not match its filename: {path.name}.")
         if prior.dataset_fingerprint != run.dataset_fingerprint:
             continue
         same_policy = (

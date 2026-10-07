@@ -177,12 +177,13 @@
     "alpha_validation_threshold_exact_evaluation_recovery",
     "alpha_calibration_selective_exact_binding_recovery",
     "alpha_validation_policy_post_test_lock",
-    "alpha_post_test_training_lock"
+    "alpha_post_test_training_lock",
+    "alpha_final_test_corrupt_evidence_fail_closed"
   ],
-  "active_capability": "alpha_post_test_training_lock",
+  "active_capability": "alpha_final_test_corrupt_evidence_fail_closed",
   "active_acceptance": [
-    "Once final-test evidence exists, new TrainingRuns are rejected before dataset reconstruction, preprocessing, or model fitting through native, adapter-driven, and direct adapter entry points.",
-    "Existing frozen runs and policies remain loadable/applicable; an API regression proves a late fit is rejected after final-test evidence is written."
+    "During a repeated/follow-up final-test request, any malformed immutable final-test record or filename/object-ID mismatch blocks the route rather than being silently skipped.",
+    "The failure remains closed even if the active latest pointer is absent or stale; only valid persisted final-test objects can participate in idempotency or same-case comparison."
   ],
   "blockers": [],
   "next_executable_work": "Continue resource-aware alpha audit of persisted validation/final-test object provenance and retry boundaries, preserving unrelated article files.",
@@ -366,6 +367,7 @@
     "alpha_validation_threshold_exact_evaluation_recovery": "PASS: DecisionThreshold persistence OSErrors now return HTTP 500 with recovery guidance; a new by-Evaluation lookup resolves immutable threshold evidence by exact Evaluation and raw/calibrated identity. EvaluationWorkspace and StabilityLab use the exact-Evaluation API instead of the mutable global pointer. Regression simulates threshold pointer failure after file persistence and verifies recovery without an active pointer; all 20 training product-route tests, frontend unit suite (17 tests), TypeScript/Vite build, Stability Lab E2E, compileall, and git diff --check passed.",
     "alpha_calibration_selective_exact_binding_recovery": "PASS: Calibration and SelectivePredictionPolicy persistence failures now return HTTP 500 after immutable writes; exact-recovery APIs scan immutable records by Evaluation or Evaluation/cutoff/calibration/threshold, validate object filename identity, and do not rely on global active pointers. Studio retry uses the exact bindings. Backend product-route suite 21 passed; EvaluationWorkspace unit 16 passed; TypeScript/Vite build, compileall and git diff --check passed.",
     "alpha_validation_policy_post_test_lock": "PASS: Calibration and decision-threshold fitting/selection now refuse before reading validation evidence or writing artifacts when any final-test result exists. Regression extends the final-test route through late calibration and threshold attempts, both rejected; all 21 training product-route tests, compileall and git diff --check passed.",
-    "alpha_post_test_training_lock": "PASS: Native single-run, legacy tree/forest/boosting/neuro-fuzzy entry points and generic runtime adapter fitting now share the final-test evidence gate and reject before loading the dataset or fitting. Study, queued StudyJob, resume, and delayed worker paths also check the same gate. Regressions verify late calibration, threshold, single fit, Study, and StudyJob are rejected after final-test evidence; training product-route suite 21 passed, generic runtime training/final-test tests 26 passed, compileall and git diff --check passed."
+    "alpha_post_test_training_lock": "PASS: Native single-run, legacy tree/forest/boosting/neuro-fuzzy entry points and generic runtime adapter fitting now share the final-test evidence gate and reject before loading the dataset or fitting. Study, queued StudyJob, resume, and delayed worker paths also check the same gate. Regressions verify late calibration, threshold, single fit, Study, and StudyJob are rejected after final-test evidence; training product-route suite 21 passed, generic runtime training/final-test tests 26 passed, compileall and git diff --check passed.",
+    "alpha_final_test_corrupt_evidence_fail_closed": "PASS: evaluate_final_test now rejects unreadable or filename-mismatched immutable FinalTestEvaluation records instead of silently skipping them. API regression corrupts an existing persisted result and confirms follow-up evaluation is refused; focused final-test test, compileall and diff check passed."
   }
 }

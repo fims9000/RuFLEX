@@ -890,6 +890,22 @@ def test_final_test_requires_frozen_validation_policy_and_persists_separate_evid
     assert late_study_job.status_code == 422
     assert "Final-test evidence already exists" in late_study_job.text
 
+    # A damaged immutable holdout record must fail closed, not be skipped and
+    # treated as permission to perform another final-test opening.
+    final_test_path = root / "analyses" / "final-tests" / f"{final_test['final_test_id']}.json"
+    final_test_path.write_text("{ malformed", encoding="utf-8")
+    corrupted_reopen = client.post(
+        "/api/projects/analyses/final-test",
+        json={
+            "session_id": session_id,
+            "evaluation_id": evaluation["evaluation_id"],
+            "calibration_id": calibration["calibration_id"],
+            "threshold_id": threshold["threshold_id"],
+        },
+    )
+    assert corrupted_reopen.status_code == 422
+    assert "unreadable" in corrupted_reopen.text.lower()
+
     # The immutable TrainingRun remains explicitly validation-oriented; final-test
     # evidence exists only in its separate, explicit analysis object.
     run_after = client.get(f"/api/projects/{session_id}/training/runs/{run['run_id']}").json()
