@@ -235,6 +235,60 @@ def _threshold_evidence_matches(
     return True
 
 
+def _calibration_evidence_matches(calibration: CalibrationTransform, evaluation: AnalysisEvaluation | None) -> bool:
+    if evaluation is None or evaluation.task != "binary_classification" or evaluation.split != "validation" or not evaluation.prediction_preview:
+        return False
+    rows = evaluation.prediction_preview
+    if calibration.run_id != evaluation.run_id or calibration.source_split != "validation" or calibration.test_status != "LOCKED_NOT_EVALUATED" or calibration.method != "platt_scaling" or calibration.input_kind != "model_logit" or calibration.fit_sample_count != len(rows) or len(calibration.predictions) != len(rows):
+        return False
+    targets = np.asarray([int(row.target >= 0.5) for row in rows], dtype=int)
+    logits = np.asarray([float(row.prediction) for row in rows], dtype=float)
+    expected_identity = _stable_identity(
+        "validation-calibration",
+        {"evaluation_id": str(evaluation.evaluation_id), "run_id": str(evaluation.run_id), "targets": targets.tolist(), "logits": logits.tolist()},
+    )
+    raw_probabilities = np.asarray([
+        float(row.probability) if row.probability is not None
+        else float(1.0 / (1.0 + np.exp(-np.clip(row.prediction, -60.0, 60.0))))
+        for row in rows
+    ], dtype=float)
+    calibrated_probabilities = 1.0 / (1.0 + np.exp(-np.clip(calibration.coefficient * logits + calibration.intercept, -60.0, 60.0)))
+    expected_before_bins = _calibration_bins_from_probabilities(targets, raw_probabilities)
+    expected_after_bins = _calibration_bins_from_probabilities(targets, calibrated_probabilities)
+    if calibration.fit_sample_identity != expected_identity:
+        return False
+    for row, record, target, raw_probability, calibrated_probability in zip(rows, calibration.predictions, targets, raw_probabilities, calibrated_probabilities, strict=True):
+        if (
+            row.row != record.row
+            or row.source_row != record.source_row
+            or row.row_identity != record.row_identity
+            or record.target != row.target
+            or record.target != int(target)
+            or not math.isclose(record.raw_probability, float(raw_probability), rel_tol=1e-12, abs_tol=1e-12)
+            or not math.isclose(record.calibrated_probability, float(calibrated_probability), rel_tol=1e-12, abs_tol=1e-12)
+        ):
+            return False
+    expected_brier_before = float(np.mean((raw_probabilities - targets) ** 2))
+    expected_brier_after = float(np.mean((calibrated_probabilities - targets) ** 2))
+    expected_ece_before = _ece_from_bins(expected_before_bins, len(rows))
+    expected_ece_after = _ece_from_bins(expected_after_bins, len(rows))
+    bins_match = len(calibration.calibration_bins) == len(expected_after_bins) and all(
+        actual.lower == expected.lower
+        and actual.upper == expected.upper
+        and actual.count == expected.count
+        and math.isclose(actual.mean_probability, expected.mean_probability, rel_tol=1e-12, abs_tol=1e-12)
+        and math.isclose(actual.observed_positive_rate, expected.observed_positive_rate, rel_tol=1e-12, abs_tol=1e-12)
+        for actual, expected in zip(calibration.calibration_bins, expected_after_bins, strict=True)
+    )
+    return (
+        math.isclose(calibration.brier_before, expected_brier_before, rel_tol=1e-12, abs_tol=1e-12)
+        and math.isclose(calibration.brier_after, expected_brier_after, rel_tol=1e-12, abs_tol=1e-12)
+        and math.isclose(calibration.ece_before, expected_ece_before, rel_tol=1e-12, abs_tol=1e-12)
+        and math.isclose(calibration.ece_after, expected_ece_after, rel_tol=1e-12, abs_tol=1e-12)
+        and bins_match
+    )
+
+
 def _stability_analysis_cases_match(
     analysis: StudyStabilityAnalysis,
     study: TrainingStudy | None,
@@ -684,6 +738,8 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                 evaluation = evaluations.get(calibration.evaluation_id)
                 if evaluation is None or evaluation.run_id != calibration.run_id or evaluation.split != "validation":
                     issues.append(ProjectIntegrityIssue(code="CALIBRATION_PROVENANCE_MISMATCH", status="FAIL", path=relative_path, detail="Calibration does not resolve to its exact validation Evaluation and TrainingRun."))
+                elif not _calibration_evidence_matches(calibration, evaluation):
+                    issues.append(ProjectIntegrityIssue(code="CALIBRATION_PROVENANCE_MISMATCH", status="FAIL", path=relative_path, detail="Calibration predictions, validation identities, fit sample identity, or descriptive metrics do not match the exact Evaluation and persisted transform."))
             except (ValidationError, ValueError, OSError, json.JSONDecodeError) as error:
                 issues.append(ProjectIntegrityIssue(code="CALIBRATION_EVIDENCE_MALFORMED", status="FAIL", path=relative_path, detail=str(error)))
         active_path = calibration_root / "active-calibration.json"

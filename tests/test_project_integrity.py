@@ -46,7 +46,8 @@ def test_project_integrity_survives_reopen_and_reports_missing_frozen_model_arti
     assert client.post("/api/projects/dataset/confirm", json={"session_id": session_id, "csv_text": _frame(), "target": "target", "task": "binary_classification", "id_columns": []}).status_code == 200
     trained = client.post("/api/projects/training/run", json={"session_id": session_id, "model_kind": "logistic_regression", "seed": 42, "max_epochs": 1, "learning_rate": .01, "batch_size": 16, "patience": 1, "validation_fraction": .2, "test_fraction": .2, "max_rules": 3})
     assert trained.status_code == 201, trained.text
-    assert client.get(f"/api/projects/{session_id}/integrity").json()["status"] == "PASS"
+    initial_integrity = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert initial_integrity["status"] == "PASS", initial_integrity["issues"]
     assert client.post("/api/projects/close", json={"session_id": session_id}).status_code == 204
     reopened = client.post("/api/projects/open", json={"path": str(root), "read_only": True}).json()["session_id"]
     assert client.get(f"/api/projects/{reopened}/integrity").json()["status"] == "PASS"
@@ -107,7 +108,18 @@ def test_project_integrity_validates_frozen_stability_analysis_and_gate_chain(tm
     assert policy_response.status_code == 201, policy_response.text
     calibration_response = client.post("/api/projects/analyses/calibrations", json={"session_id": session_id, "evaluation_id": evaluation_id})
     assert calibration_response.status_code == 201, calibration_response.text
-    assert client.get(f"/api/projects/{session_id}/integrity").json()["status"] == "PASS"
+    initial_integrity = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert initial_integrity["status"] == "PASS", initial_integrity["issues"]
+    calibration_id_for_audit = calibration_response.json()["calibration_id"]
+    calibration_path = root / "analyses" / "calibrations" / f"{calibration_id_for_audit}.json"
+    calibration_payload = json.loads(calibration_path.read_text(encoding="utf-8"))
+    original_brier_after = calibration_payload["brier_after"]
+    calibration_payload["brier_after"] = 0.0 if original_brier_after > 0.0 else 1.0
+    calibration_path.write_text(json.dumps(calibration_payload), encoding="utf-8")
+    forged_calibration_metrics = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert any(issue["code"] == "CALIBRATION_PROVENANCE_MISMATCH" for issue in forged_calibration_metrics["issues"])
+    calibration_payload["brier_after"] = original_brier_after
+    calibration_path.write_text(json.dumps(calibration_payload), encoding="utf-8")
     threshold_path = root / "analyses" / "thresholds" / f"{threshold_id}.json"
     threshold_payload = json.loads(threshold_path.read_text(encoding="utf-8"))
     original_selection_result = threshold_payload["selection_result"]

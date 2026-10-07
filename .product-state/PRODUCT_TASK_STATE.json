@@ -211,15 +211,16 @@
     "alpha_final_test_duplicate_and_latest_pointer_integrity",
     "alpha_final_test_canonical_row_order_identity_integrity",
     "alpha_final_test_threshold_calibration_binding_integrity",
-    "alpha_validation_threshold_selection_recomputation_integrity"
+    "alpha_validation_threshold_selection_recomputation_integrity",
+    "alpha_validation_calibration_output_integrity"
   ],
-  "active_capability": "alpha_validation_threshold_selection_recomputation_integrity",
+  "active_capability": "alpha_validation_calibration_output_integrity",
   "active_acceptance": [
-    "DecisionThresholdPolicy selected threshold, F1 selection result, decisions, metrics, confusion, candidate rule, and fit-sample identity are independently recomputed from exact validation Evaluation evidence.",
-    "Calibrated threshold inputs must align row-by-row with the bound validation calibration; tampering selection evidence fails closed."
+    "CalibrationTransform fit sample identity and ordered row outputs bind exactly to one validation Evaluation.",
+    "Persisted calibrated probabilities, Brier/ECE diagnostics, and reliability bins are recomputed from the frozen transform and validation rows without fitting a new calibrator."
   ],
   "blockers": [],
-  "next_executable_work": "Run focused policy-chain tests, then continue with calibration-transform numerical replay and integrity; preserve unrelated article files.",
+  "next_executable_work": "Run focused calibration and threshold chains; then continue auditing selective-policy per-case decisions and accepted-risk summaries; preserve unrelated article files.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -434,6 +435,7 @@
     "alpha_final_test_duplicate_and_latest_pointer_integrity": "PASS: Project Integrity rejects duplicate result objects for the same dataset-revision/policy identity and requires the active final-test pointer to reference a newest persisted object. Regression synthesizes a duplicate with a later timestamp and observes duplicate-policy plus stale-pointer issues; forged revision unlock is also rejected. Project-integrity suite: 14 passed; compileall and diff checks passed.",
     "alpha_final_test_canonical_row_order_identity_integrity": "PASS: Project Integrity requires final-test prediction rows to retain their canonical zero-based row order and source-row-derived identity. Regression changes one persisted row index without changing metrics or case hashes and is rejected; tests/test_project_integrity.py: 14 passed, compileall and diff checks passed.",
     "alpha_final_test_threshold_calibration_binding_integrity": "PASS: FinalTestEvaluation must bind the exact calibration referenced by its threshold; binary evaluation without a threshold and regression with classification policies fail closed. Regression attaches a valid but non-threshold calibration, recomputes calibrated row values and policy identity, and still observes FINAL_TEST_PROVENANCE_MISMATCH; tests/test_project_integrity.py: 14 passed, compileall and diff checks passed.",
-    "alpha_validation_threshold_selection_recomputation_integrity": "PASS: Project Integrity recomputes the 0.01-0.99 frozen validation F1 sweep and deterministic tie-break, then verifies threshold value, objective, selection score, candidate rule, fit identity, metric/confusion summary and ordered per-case decisions. A forged selection_result is rejected; tests/test_project_integrity.py: 14 passed, compileall and diff checks passed."
+    "alpha_validation_threshold_selection_recomputation_integrity": "PASS: Project Integrity recomputes the 0.01-0.99 frozen validation F1 sweep and deterministic tie-break, then verifies threshold value, objective, selection score, candidate rule, fit identity, metric/confusion summary and ordered per-case decisions. A forged selection_result is rejected; tests/test_project_integrity.py: 14 passed, compileall and diff checks passed.",
+    "alpha_validation_calibration_output_integrity": "PASS: Project Integrity binds Platt calibration sample identity/count and every row output to the exact validation Evaluation, recomputes raw/calibrated probabilities from persisted logits and coefficients, and verifies Brier/ECE/bin diagnostics without fitting. A forged Brier-after summary is rejected; tests/test_project_integrity.py: 14 passed, compileall and diff checks passed."
   }
 }
