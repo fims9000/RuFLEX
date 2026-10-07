@@ -64,6 +64,13 @@ def test_project_integrity_rejects_validation_evaluation_detached_from_frozen_ru
     evaluation = client.post("/api/projects/analyses/evaluations", json={"session_id": session_id, "run_id": trained.json()["run_id"]})
     assert evaluation.status_code == 201, evaluation.text
     evaluation_id = evaluation.json()["evaluation_id"]
+    calibration = client.post("/api/projects/analyses/calibrations", json={"session_id": session_id, "evaluation_id": evaluation_id})
+    assert calibration.status_code == 201, calibration.text
+    threshold = client.post("/api/projects/analyses/thresholds", json={"session_id": session_id, "evaluation_id": evaluation_id, "calibration_id": None, "objective": "f1"})
+    assert threshold.status_code == 201, threshold.text
+    selective = client.post("/api/projects/analyses/selective-policies", json={"session_id": session_id, "evaluation_id": evaluation_id, "confidence_cutoff": .7, "calibration_id": None, "threshold_id": threshold.json()["threshold_id"]})
+    assert selective.status_code == 201, selective.text
+    assert client.get(f"/api/projects/{session_id}/integrity").json()["status"] == "PASS"
     path = root / "analyses" / "evaluations" / f"{evaluation_id}.json"
     payload = json.loads(path.read_text(encoding="utf-8"))
     payload["model_artifact_sha256"] = "0" * 64

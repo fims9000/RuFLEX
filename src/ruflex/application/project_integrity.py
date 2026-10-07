@@ -16,7 +16,8 @@ from ruflex.application.behavior import _requirement_identity
 from ruflex.domain.behavior import BehaviorRevisionComparison, BehaviorSpec, BehaviorSpecResult
 from ruflex.domain.evidence import ExplanationCheck, ExplanationContract
 from ruflex.domain.project import ProjectIntegrityIssue, ProjectIntegrityReport
-from ruflex.domain.training import AnalysisEvaluation, StudyJob, TrainingStudy
+from ruflex.domain.training import AnalysisEvaluation, CalibrationTransform, DecisionThresholdPolicy, StudyJob, TrainingStudy
+from ruflex.domain.selective import SelectivePredictionPolicy
 from ruflex.runtime.registry import builtin_runtime_registry
 from ruflex.runtime.compatibility import resolve_run_adapter
 from ruflex.runtime.compatibility import LEGACY_MODEL_KIND_TO_ADAPTER
@@ -186,6 +187,112 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                     raise ValueError("Active validation Evaluation pointer does not resolve to persisted evidence.")
             except (KeyError, TypeError, ValueError, OSError, json.JSONDecodeError) as error:
                 issues.append(ProjectIntegrityIssue(code="VALIDATION_EVALUATION_ACTIVE_POINTER_INVALID", status="FAIL", path="analyses/evaluations/active-evaluation.json", detail=str(error)))
+    calibration_root = base / "analyses" / "calibrations"
+    calibrations: dict[object, CalibrationTransform] = {}
+    if calibration_root.exists() and not calibration_root.is_dir():
+        issues.append(ProjectIntegrityIssue(code="CALIBRATION_EVIDENCE_MALFORMED", status="FAIL", path="analyses/calibrations", detail="Calibration evidence path is not a directory."))
+    elif calibration_root.is_dir():
+        for path in sorted(calibration_root.glob("*.json")):
+            if path.name == "active-calibration.json":
+                continue
+            checked += 1
+            relative_path = str(path.relative_to(base))
+            try:
+                calibration = CalibrationTransform.model_validate_json(path.read_text(encoding="utf-8"))
+                if path.stem != str(calibration.calibration_id):
+                    raise ValueError("Calibration filename does not match its persisted identity.")
+                calibrations[calibration.calibration_id] = calibration
+                evaluation = evaluations.get(calibration.evaluation_id)
+                if evaluation is None or evaluation.run_id != calibration.run_id or evaluation.split != "validation":
+                    issues.append(ProjectIntegrityIssue(code="CALIBRATION_PROVENANCE_MISMATCH", status="FAIL", path=relative_path, detail="Calibration does not resolve to its exact validation Evaluation and TrainingRun."))
+            except (ValidationError, ValueError, OSError, json.JSONDecodeError) as error:
+                issues.append(ProjectIntegrityIssue(code="CALIBRATION_EVIDENCE_MALFORMED", status="FAIL", path=relative_path, detail=str(error)))
+        active_path = calibration_root / "active-calibration.json"
+        if active_path.exists():
+            checked += 1
+            try:
+                active_id = json.loads(active_path.read_text(encoding="utf-8"))["calibration_id"]
+                if str(active_id) not in {str(key) for key in calibrations}:
+                    raise ValueError("Active calibration pointer does not resolve to persisted evidence.")
+            except (KeyError, TypeError, ValueError, OSError, json.JSONDecodeError) as error:
+                issues.append(ProjectIntegrityIssue(code="CALIBRATION_ACTIVE_POINTER_INVALID", status="FAIL", path="analyses/calibrations/active-calibration.json", detail=str(error)))
+    threshold_root = base / "analyses" / "thresholds"
+    thresholds: dict[object, DecisionThresholdPolicy] = {}
+    if threshold_root.exists() and not threshold_root.is_dir():
+        issues.append(ProjectIntegrityIssue(code="DECISION_THRESHOLD_EVIDENCE_MALFORMED", status="FAIL", path="analyses/thresholds", detail="Decision-threshold evidence path is not a directory."))
+    elif threshold_root.is_dir():
+        for path in sorted(threshold_root.glob("*.json")):
+            if path.name == "active-threshold.json":
+                continue
+            checked += 1
+            relative_path = str(path.relative_to(base))
+            try:
+                threshold = DecisionThresholdPolicy.model_validate_json(path.read_text(encoding="utf-8"))
+                if path.stem != str(threshold.threshold_id):
+                    raise ValueError("Decision-threshold filename does not match its persisted identity.")
+                thresholds[threshold.threshold_id] = threshold
+                evaluation = evaluations.get(threshold.evaluation_id)
+                calibration = calibrations.get(threshold.calibration_id) if threshold.calibration_id else None
+                if (
+                    evaluation is None
+                    or evaluation.run_id != threshold.run_id
+                    or (threshold.calibration_id is not None and (calibration is None or calibration.evaluation_id != threshold.evaluation_id))
+                    or (threshold.probability_source == "raw" and threshold.calibration_id is not None)
+                    or (threshold.probability_source == "calibrated" and threshold.calibration_id is None)
+                    or len(threshold.decisions) != evaluation.validation_row_count
+                ):
+                    issues.append(ProjectIntegrityIssue(code="DECISION_THRESHOLD_PROVENANCE_MISMATCH", status="FAIL", path=relative_path, detail="Decision threshold does not match its exact validation Evaluation, calibration, probability source, or case support."))
+            except (ValidationError, ValueError, OSError, json.JSONDecodeError) as error:
+                issues.append(ProjectIntegrityIssue(code="DECISION_THRESHOLD_EVIDENCE_MALFORMED", status="FAIL", path=relative_path, detail=str(error)))
+        active_path = threshold_root / "active-threshold.json"
+        if active_path.exists():
+            checked += 1
+            try:
+                active_id = json.loads(active_path.read_text(encoding="utf-8"))["threshold_id"]
+                if str(active_id) not in {str(key) for key in thresholds}:
+                    raise ValueError("Active decision-threshold pointer does not resolve to persisted evidence.")
+            except (KeyError, TypeError, ValueError, OSError, json.JSONDecodeError) as error:
+                issues.append(ProjectIntegrityIssue(code="DECISION_THRESHOLD_ACTIVE_POINTER_INVALID", status="FAIL", path="analyses/thresholds/active-threshold.json", detail=str(error)))
+    selective_root = base / "analyses" / "selective-policies"
+    selective_policies: dict[object, SelectivePredictionPolicy] = {}
+    if selective_root.exists() and not selective_root.is_dir():
+        issues.append(ProjectIntegrityIssue(code="SELECTIVE_POLICY_EVIDENCE_MALFORMED", status="FAIL", path="analyses/selective-policies", detail="Selective-policy evidence path is not a directory."))
+    elif selective_root.is_dir():
+        for path in sorted(selective_root.glob("*.json")):
+            if path.name == "active-policy.json":
+                continue
+            checked += 1
+            relative_path = str(path.relative_to(base))
+            try:
+                policy = SelectivePredictionPolicy.model_validate_json(path.read_text(encoding="utf-8"))
+                if path.stem != str(policy.policy_id):
+                    raise ValueError("Selective-policy filename does not match its persisted identity.")
+                selective_policies[policy.policy_id] = policy
+                evaluation = evaluations.get(policy.evaluation_id)
+                threshold = thresholds.get(policy.class_threshold_id)
+                calibration = calibrations.get(policy.calibration_id) if policy.calibration_id else None
+                if (
+                    evaluation is None
+                    or threshold is None
+                    or evaluation.run_id != policy.run_id
+                    or threshold.evaluation_id != policy.evaluation_id
+                    or threshold.run_id != policy.run_id
+                    or threshold.selected_threshold != policy.class_threshold
+                    or threshold.calibration_id != policy.calibration_id
+                    or (policy.calibration_id is not None and (calibration is None or calibration.evaluation_id != policy.evaluation_id))
+                ):
+                    issues.append(ProjectIntegrityIssue(code="SELECTIVE_POLICY_PROVENANCE_MISMATCH", status="FAIL", path=relative_path, detail="Selective policy does not match its exact validation Evaluation, threshold, or calibration binding."))
+            except (ValidationError, ValueError, OSError, json.JSONDecodeError) as error:
+                issues.append(ProjectIntegrityIssue(code="SELECTIVE_POLICY_EVIDENCE_MALFORMED", status="FAIL", path=relative_path, detail=str(error)))
+        active_path = selective_root / "active-policy.json"
+        if active_path.exists():
+            checked += 1
+            try:
+                active_id = json.loads(active_path.read_text(encoding="utf-8"))["policy_id"]
+                if str(active_id) not in {str(key) for key in selective_policies}:
+                    raise ValueError("Active selective-policy pointer does not resolve to persisted evidence.")
+            except (KeyError, TypeError, ValueError, OSError, json.JSONDecodeError) as error:
+                issues.append(ProjectIntegrityIssue(code="SELECTIVE_POLICY_ACTIVE_POINTER_INVALID", status="FAIL", path="analyses/selective-policies/active-policy.json", detail=str(error)))
     for run in runs:
         run_path = f"runs/{run.run_id}.json"
         try:
