@@ -333,7 +333,8 @@
     "alpha_stability_map_minority_and_na_truthfulness",
     "alpha_stability_project_session_isolation",
     "alpha_stability_analysis_study_provenance_guard",
-    "alpha_stability_verified_evidence_callback_boundary"
+    "alpha_stability_verified_evidence_callback_boundary",
+    "alpha_launcher_custom_port_browser_connectivity"
   ],
   "active_capability": "alpha_master_spec_gap_audit",
   "active_acceptance": [
@@ -341,8 +342,9 @@
     "Select the next concrete, low-resource, end-to-end product gap and implement it without broad refactoring."
   ],
   "blockers": [],
-  "next_executable_work": "Continue the bounded product-gap audit after Stability Lab callback provenance guarding. Inspect the next cross-workspace persisted-evidence binding or a launch-to-reopen user path; preserve unrelated docs/article edits and defer full browser matrices to release QA.",
+  "next_executable_work": "Continue the alpha product-gap audit after live launcher create/reopen verification. Probe one complete local user path beyond an empty project, prioritizing dataset import and first model from the actual launcher; keep tests focused and preserve unrelated docs/article edits.",
   "qa": {
+    "launcher_custom_port_browser_connectivity": "PASS: A live run_studio.sh with API 18110 and Studio 15110 originally failed browser CORS and disabled project creation. API now admits only the selected local Studio port in addition to default local ports; launcher explicitly binds that port for the API child. Focused CORS/project tests 3 passed; live headless browser created, closed and reopened an empty project through the launcher on 15110/18110; API process was stopped through launcher cleanup. No broad browser matrix was run.",
     "stability_verified_evidence_callback_boundary": "PASS: StabilityLab emits only verified active StudyStabilityAnalysis/StabilityGatePolicy (or null) to parent Studio after saved reads; mismatched persisted evidence cannot populate sibling panels via callbacks. Binding/StabilityLab suites 8 passed, TypeScript/Vite build passed, and real Stability Lab browser route passed with injected provenance mismatch, retry, close/reopen, lineage, Assurance and bundle checks.",
     "stability_analysis_study_provenance_guard": "PASS: Studio binds a saved StudyStabilityAnalysis to the selected Study's exact run set, model/task, randomness protocol, dataset fingerprint and source artifact. A mismatched saved analysis is neither plotted nor used for Gate creation; it displays an integrity warning and permits a read retry, not a duplicate write. Binding/StabilityLab suites 7 passed, TypeScript/Vite build passed, and real Stability Lab browser E2E injected a mismatched persisted read then recovered to the exact saved chain.",
     "stability_project_session_isolation": "PASS: ExperimentWorkspace remounts StabilityLab for each project session, dropping local uncertain-save recovery and case selection instead of carrying them into another project. Focused ExperimentWorkspace/StabilityLab component suites 36 passed, TypeScript/Vite build passed, and real Stability Lab browser E2E passed across close/reopen with lineage, Assurance and bundle evidence.",

@@ -87,6 +87,10 @@ Target branch: `feature/v1.3-data-governance-runtime`.
   The same binding controls what Stability Lab publishes to other Studio
   workspaces; a malformed saved analysis or gate is not exported as active
   evidence through component callbacks.
+- The one-command local Studio launcher now permits browser requests from its
+  selected loopback Studio port as well as the built-in development ports.
+  A live non-default-port launcher run created, closed and reopened a project;
+  unrelated web origins remain outside the API CORS allowlist.
 - Project Integrity, Assurance and portable bundles reject missing or malformed
   manual-FIS comparison rows and mismatched semantic-revision provenance.
   A portable bundle excludes raw dataset rows, so it checks the frozen row's

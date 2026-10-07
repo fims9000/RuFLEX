@@ -65,7 +65,7 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 
 cd "$ROOT"
-PYTHONPATH="$ROOT/src${PYTHONPATH:+:$PYTHONPATH}" "$PYTHON_BIN" -m uvicorn ruflex.api.main:app --host 127.0.0.1 --port "$API_PORT" &
+RUFLEX_STUDIO_PORT="$STUDIO_PORT" PYTHONPATH="$ROOT/src${PYTHONPATH:+:$PYTHONPATH}" "$PYTHON_BIN" -m uvicorn ruflex.api.main:app --host 127.0.0.1 --port "$API_PORT" &
 API_PID=$!
 
 cd "$ROOT/frontend"

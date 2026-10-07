@@ -176,6 +176,9 @@ free, prints actionable errors when prerequisites are missing, and stops only
 the child processes it started when you press Ctrl-C. It never installs
 packages implicitly. Defaults are API port `8010` and Studio port `5173`; set
 `RUFLEX_PYTHON`, `RUFLEX_API_PORT` or `RUFLEX_STUDIO_PORT` to override them.
+The API permits browser requests only from the built-in local Studio ports and
+the selected `RUFLEX_STUDIO_PORT`; changing that port does not open CORS to
+other hosts.
 
 You can also run the two services in separate terminals. Start the API from
 the repository root:

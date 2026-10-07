@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from io import BytesIO, StringIO
+import os
 import base64
 import zipfile
 import hashlib
@@ -412,15 +413,20 @@ class CreateSliceAnalysisRequest(SessionRequest):
     definitions: list[SliceDefinition] = Field(min_length=1)
 
 
+def _studio_cors_origins(studio_port: str | None = None) -> list[str]:
+    origins = [f"http://{host}:{port}" for port in (5173, 5174) for host in ("localhost", "127.0.0.1")]
+    selected_port = os.environ.get("RUFLEX_STUDIO_PORT") if studio_port is None else studio_port
+    if selected_port:
+        if not selected_port.isascii() or not selected_port.isdecimal() or not 0 < int(selected_port) < 65536:
+            raise RuntimeError("RUFLEX_STUDIO_PORT must be a valid local TCP port.")
+        origins.extend(f"http://{host}:{int(selected_port)}" for host in ("localhost", "127.0.0.1"))
+    return list(dict.fromkeys(origins))
+
+
 app = FastAPI(title="RuFLEX Studio API", version="0.1.0")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:5174",
-        "http://127.0.0.1:5174",
-    ],
+    allow_origins=_studio_cors_origins(),
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )

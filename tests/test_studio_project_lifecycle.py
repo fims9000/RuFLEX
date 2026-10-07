@@ -11,7 +11,7 @@ import pytest
 import yaml
 from fastapi.testclient import TestClient
 
-from ruflex.api.main import app
+from ruflex.api.main import _studio_cors_origins, app
 from ruflex.application.projects import ProjectReadOnlyError, ProjectService, ProjectValidationError, UnsupportedProjectSchemaError
 from ruflex.domain.project import PROJECT_DIRECTORY_NAMES
 
@@ -66,6 +66,29 @@ def test_api_create_and_open_lifecycle(tmp_path: Path) -> None:
     assert open_response.status_code == 200
     assert create_response.json()["project_id"] == open_response.json()["project_id"]
     assert client.get("/api/health").json()["status"] == "ok"
+
+
+def test_studio_cors_allows_only_declared_local_ports() -> None:
+    origins = _studio_cors_origins("15110")
+    assert "http://127.0.0.1:15110" in origins
+    assert "http://localhost:15110" in origins
+    assert "http://127.0.0.1:5173" in origins
+    assert "http://evil.example:15110" not in origins
+    assert "http://127.0.0.1:15111" not in origins
+    assert len(origins) == len(set(origins))
+    for invalid in ("0", "65536", "-1", "15110abc", "١٥١١٠"):
+        with pytest.raises(RuntimeError, match="valid local TCP port"):
+            _studio_cors_origins(invalid)
+
+
+def test_default_studio_cors_preflight_rejects_unlisted_origin() -> None:
+    client = TestClient(app)
+    allowed = client.options("/api/projects", headers={"Origin": "http://127.0.0.1:5173", "Access-Control-Request-Method": "POST"})
+    denied = client.options("/api/projects", headers={"Origin": "http://evil.example:15110", "Access-Control-Request-Method": "POST"})
+    assert allowed.status_code == 200
+    assert allowed.headers["access-control-allow-origin"] == "http://127.0.0.1:5173"
+    assert denied.status_code == 400
+    assert "access-control-allow-origin" not in denied.headers
 
 
 def test_api_read_only_session_rejects_all_mutations(tmp_path: Path) -> None:
