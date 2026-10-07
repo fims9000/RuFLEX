@@ -289,16 +289,17 @@
     "alpha_training_study_cross_action_mutex",
     "alpha_stability_lab_write_serialization",
     "alpha_explanation_job_submission_mutex",
-    "alpha_assurance_bundle_job_submission_mutex"
+    "alpha_assurance_bundle_job_submission_mutex",
+    "alpha_evidence_job_cancel_mutex"
   ],
-  "active_capability": "alpha_evidence_job_cancel_mutex",
+  "active_capability": "alpha_condition_demo_write_serialization",
   "active_acceptance": [
-    "Queued explanation-job cancellation shares the handler-level mutex with generation, validation-check submission, and exact resume.",
-    "Repeated cancellation dispatch before React rerender sends at most one cancellation request.",
-    "Cancellation is not allowed to race an unresolved explanation/check submission or exact resume."
+    "Condition-monitoring demo run, exact recovery, and explicitly confirmed restart cannot race each other or submit twice before React rerenders.",
+    "The saved request retains its original policy and GeneralizationContract identities.",
+    "Cancellation/recovery errors remain visible and release the guard for a deliberate retry."
   ],
   "blockers": [],
-  "next_executable_work": "Inspect EvidenceWorkspace queued ExplanationJob cancel behavior and serialize it with generation/check/resume; then continue auditing remaining user-visible Alpha workflows for concrete duplicate or uncertain-write gaps.",
+  "next_executable_work": "Inspect runConditionDemo/recoverConditionDemo/explicitlyRestartConditionDemo for duplicate or cross-action races; serialize the route and add a focused delayed-response regression plus smallest relevant browser check, then continue the Alpha audit.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -591,6 +592,7 @@
     "alpha_training_study_cross_action_mutex": "PASS: cross-action race tests cover both orders of single TrainingRun vs multi-seed Study submission; the first action holds its synchronous ref and the competing path sends no request. ExperimentWorkspace unit suite, TypeScript build, state JSON parse and diff check passed.",
     "alpha_stability_lab_write_serialization": "PASS: a synchronous shared mutation guard serializes persisted Analysis build/recovery/continuation and Gate freeze/recovery; exact active Analysis/Gate objects are shown as saved and cannot be duplicated. New StabilityLab component tests: 2 passed; focused existing Stability Lab Studio E2E: 1 passed (11.5s); TypeScript project build, state JSON parse and git diff --check passed.",
     "alpha_explanation_job_submission_mutex": "PASS: explanation generation, check-job creation, and exact saved-job resume share a synchronous handler-level mutex; duplicate event dispatch before rerender starts at most one persisted job. EvidenceWorkspace component tests: 2 passed; focused real Studio PRODUCT-05 Playwright E2E: 1 passed, with double synchronous click verification for both generation and validation-check jobs; TypeScript build, state JSON parse and git diff --check passed.",
-    "alpha_assurance_bundle_job_submission_mutex": "PASS: AssuranceCase creation, VerificationBundle export and exact evidence-job resume share a synchronous in-flight guard; build/export and resume cannot emit duplicate or cross-action jobs. EvidenceWorkspace component tests: 4 passed; focused AssuranceCase + VerificationBundle Studio Playwright E2E passed (1/1), exercising duplicate synchronous event dispatch for both real persisted jobs; TypeScript project build and git diff --check passed."
+    "alpha_assurance_bundle_job_submission_mutex": "PASS: AssuranceCase creation, VerificationBundle export and exact evidence-job resume share a synchronous in-flight guard; build/export and resume cannot emit duplicate or cross-action jobs. EvidenceWorkspace component tests: 4 passed; focused AssuranceCase + VerificationBundle Studio Playwright E2E passed (1/1), exercising duplicate synchronous event dispatch for both real persisted jobs; TypeScript project build and git diff --check passed.",
+    "alpha_evidence_job_cancel_mutex": "PASS: queued explanation-job cancellation uses a synchronous cancellation guard and visibly disables the cancel action while its request is unresolved; cancellation remains enabled during ordinary job polling so the user can still cancel queued work. EvidenceWorkspace component tests: 5 passed, including cancellation during polling and duplicate synchronous cancellation dispatch; TypeScript project build and git diff --check passed."
   }
 }

@@ -16,6 +16,7 @@ const { studioApi } = vi.hoisted(() => ({ studioApi: {
   getTrainingRunCapabilities: vi.fn().mockResolvedValue({ decisions: [{ capability: "occlusion", status: "AVAILABLE", detail: "native method" }] }),
   startAssuranceCaseJob: vi.fn(),
   startVerificationBundleJob: vi.fn(),
+  cancelEvidenceJob: vi.fn(),
   startPosthocExplanationJob: vi.fn(),
   getPosthocExplanationJob: vi.fn(),
 } }));
@@ -57,6 +58,7 @@ beforeEach(() => {
   studioApi.getTrainingRunCapabilities.mockReset().mockResolvedValue({ decisions: [{ capability: "occlusion", status: "AVAILABLE", detail: "native method" }] });
   studioApi.startAssuranceCaseJob.mockReset();
   studioApi.startVerificationBundleJob.mockReset();
+  studioApi.cancelEvidenceJob.mockReset();
   studioApi.getPosthocExplanationJob.mockReset();
   studioApi.startPosthocExplanationJob.mockReset();
 });
@@ -109,6 +111,35 @@ describe("EvidenceWorkspace persisted explanation jobs", () => {
     });
     await waitFor(() => expect(studioApi.getPosthocExplanationJob).toHaveBeenCalledTimes(1));
     expect(studioApi.startPosthocExplanationJob).not.toHaveBeenCalled();
+  });
+
+  it("allows queued-job cancellation during polling but submits cancellation only once", async () => {
+    const queuedJob = { job_id: "job-cancel", kind: "explanation_generation", status: "queued", message: "Queued", error: null, output: {} };
+    const cancelledJob = { ...queuedJob, status: "cancelled", message: "Cancellation requested" };
+    let finishStatus!: (value: never) => void;
+    let finishCancellation!: (value: never) => void;
+    studioApi.startPosthocExplanationJob.mockResolvedValueOnce(queuedJob as never);
+    studioApi.getPosthocExplanationJob.mockImplementationOnce(() => new Promise((resolve) => { finishStatus = resolve as (value: never) => void; }));
+    studioApi.cancelEvidenceJob.mockImplementationOnce(() => new Promise((resolve) => { finishCancellation = resolve as (value: never) => void; }));
+    renderEvidence();
+
+    const generate = await screen.findByRole("button", { name: "Generate explanation" });
+    await act(async () => { generate.click(); });
+    await waitFor(() => expect(studioApi.getPosthocExplanationJob).toHaveBeenCalledTimes(1));
+    const cancel = await screen.findByRole("button", { name: "Cancel queued job" });
+    expect(cancel).toBeEnabled();
+    act(() => {
+      cancel.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      cancel.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(studioApi.cancelEvidenceJob).toHaveBeenCalledTimes(1);
+    expect(cancel).toBeDisabled();
+    await act(async () => {
+      finishCancellation(cancelledJob as never);
+      finishStatus(cancelledJob as never);
+    });
+    await waitFor(() => expect(screen.getByTestId("explanation-job")).toHaveTextContent("CANCELLED"));
+    expect(studioApi.cancelEvidenceJob).toHaveBeenCalledTimes(1);
   });
 
   it("synchronously rejects duplicate explanation generation before React rerenders", async () => {

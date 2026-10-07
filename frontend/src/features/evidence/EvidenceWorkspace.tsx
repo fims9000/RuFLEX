@@ -164,6 +164,8 @@ export function EvidenceWorkspace({
   const [method, setMethod] = useState("occlusion");
   const [busy, setBusy] = useState(false);
   const explanationJobActionInFlightRef = useRef(false);
+  const explanationJobCancelInFlightRef = useRef(false);
+  const [cancelingExplanationJob, setCancelingExplanationJob] = useState(false);
   const evidenceOperationActionInFlightRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [behaviorKind, setBehaviorKind] = useState<BehaviorSpec["kind"]>("output_range");
@@ -579,10 +581,16 @@ export function EvidenceWorkspace({
     }
   }
   async function cancelQueuedJob() {
-    if (!explanationJob || explanationJob.status !== "queued") return;
+    if (explanationJobCancelInFlightRef.current || !explanationJob || explanationJob.status !== "queued") return;
+    explanationJobCancelInFlightRef.current = true;
+    setCancelingExplanationJob(true);
     setError(null);
     try { setExplanationJob(await studioApi.cancelEvidenceJob(project.session_id, explanationJob.job_id)); }
     catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
+    finally {
+      explanationJobCancelInFlightRef.current = false;
+      setCancelingExplanationJob(false);
+    }
   }
 
   async function createAndRunBehavior() {
@@ -1002,7 +1010,7 @@ export function EvidenceWorkspace({
             {explanationJobHydrationStatus === "loading" && <p role="status" data-testid="explanation-job-loading">Loading saved explanation job…</p>}
             {explanationJobHydrationStatus === "none" && <p className="property-description" data-testid="explanation-job-empty">No saved explanation job is available.</p>}
             {explanationJobHydrationStatus === "error" && <div className="error" role="alert" data-testid="explanation-job-hydration-error"><strong>Saved explanation job could not be verified; starting another operation is paused.</strong><p>{explanationJobHydrationError}</p><Button view="outlined" onClick={() => setExplanationJobHydrationReload((current) => current + 1)}>Retry saved explanation job</Button></div>}
-            {explanationJob && <div className="property-description" data-testid="explanation-job"><StatusBadge tone={explanationJob.status === "succeeded" ? "success" : explanationJob.status === "failed" ? "danger" : "warning"}>{explanationJob.status.toUpperCase()}</StatusBadge> {explanationJob.execution_backend_key ?? "frozen execution backend"} · {explanationJob.message ?? "Persisted operation"} · job {explanationJob.job_id.slice(0, 12)}{explanationJob.error && ` · ${explanationJob.error}`}{explanationJob.status === "queued" && <Button view="flat" size="s" onClick={cancelQueuedJob} data-ruflex-action="explanation.cancel">Cancel queued job</Button>}</div>}
+            {explanationJob && <div className="property-description" data-testid="explanation-job"><StatusBadge tone={explanationJob.status === "succeeded" ? "success" : explanationJob.status === "failed" ? "danger" : "warning"}>{explanationJob.status.toUpperCase()}</StatusBadge> {explanationJob.execution_backend_key ?? "frozen execution backend"} · {explanationJob.message ?? "Persisted operation"} · job {explanationJob.job_id.slice(0, 12)}{explanationJob.error && ` · ${explanationJob.error}`}{explanationJob.status === "queued" && <Button view="flat" size="s" disabled={cancelingExplanationJob} onClick={cancelQueuedJob} data-ruflex-action="explanation.cancel">{cancelingExplanationJob ? "Cancelling…" : "Cancel queued job"}</Button>}</div>}
             {explanationJob && (["queued", "running"].includes(explanationJob.status) || !!explanationJobPollError) && <div className={explanationJobPollError ? "error" : "property-description"} role={explanationJobPollError ? "alert" : "status"} data-testid="explanation-job-resume">{explanationJobPollError ? <><strong>{explanationJob.status === "succeeded" ? "Saved job output needs recovery." : "Saved job status needs recovery."}</strong><p>{explanationJobPollError}</p></> : <span>This saved job is still active. New explanation/check jobs are paused to prevent duplicate work.</span>}<Button view="outlined" disabled={busy} onClick={resumeExplanationJob}>{explanationJob.status === "succeeded" ? "Recover saved job result" : "Resume saved job"}</Button></div>}
           </>
         )}
