@@ -119,6 +119,11 @@ def test_project_integrity_rejects_validation_evaluation_detached_from_frozen_ru
     stale_evaluation_pointer = client.get(f"/api/projects/{session_id}/integrity").json()
     assert any(issue["code"] == "VALIDATION_EVALUATION_ACTIVE_POINTER_INVALID" for issue in stale_evaluation_pointer["issues"])
     active_evaluation_path.write_text(json.dumps({"evaluation_id": second_evaluation.json()["evaluation_id"]}), encoding="utf-8")
+    active_evaluation_contents = active_evaluation_path.read_text(encoding="utf-8")
+    active_evaluation_path.unlink()
+    missing_evaluation_pointer = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert any(issue["code"] == "VALIDATION_EVALUATION_ACTIVE_POINTER_INVALID" for issue in missing_evaluation_pointer["issues"])
+    active_evaluation_path.write_text(active_evaluation_contents, encoding="utf-8")
     second_calibration = client.post("/api/projects/analyses/calibrations", json={"session_id": session_id, "evaluation_id": second_evaluation.json()["evaluation_id"]})
     assert second_calibration.status_code == 201, second_calibration.text
     active_calibration_path = root / "analyses" / "calibrations" / "active-calibration.json"

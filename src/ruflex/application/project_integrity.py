@@ -692,6 +692,17 @@ def _assurance_claim_graph_matches(case: AssuranceCase) -> bool:
     )
 
 
+def _require_active_pointer(objects, pointer_path: Path, relative_path: str, code: str, label: str) -> ProjectIntegrityIssue | None:
+    if objects and not pointer_path.exists():
+        return ProjectIntegrityIssue(
+            code=code,
+            status="FAIL",
+            path=relative_path,
+            detail=f"Persisted {label} exist but the active pointer required by latest-object hydration is missing.",
+        )
+    return None
+
+
 def _final_test_freeze_timestamps_match(
     final_test: FinalTestEvaluation,
     run,
@@ -895,6 +906,9 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
             except (ValidationError, ValueError, OSError, json.JSONDecodeError) as error:
                 issues.append(ProjectIntegrityIssue(code="VALIDATION_EVALUATION_EVIDENCE_MALFORMED", status="FAIL", path=relative_path, detail=str(error)))
         active_path = evaluation_root / "active-evaluation.json"
+        missing_pointer = _require_active_pointer(evaluations, active_path, "analyses/evaluations/active-evaluation.json", "VALIDATION_EVALUATION_ACTIVE_POINTER_INVALID", "validation Evaluations")
+        if missing_pointer is not None:
+            checked += 1; issues.append(missing_pointer)
         if active_path.exists():
             checked += 1
             try:
@@ -929,6 +943,9 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
             except (ValidationError, ValueError, OSError, json.JSONDecodeError) as error:
                 issues.append(ProjectIntegrityIssue(code="CALIBRATION_EVIDENCE_MALFORMED", status="FAIL", path=relative_path, detail=str(error)))
         active_path = calibration_root / "active-calibration.json"
+        missing_pointer = _require_active_pointer(calibrations, active_path, "analyses/calibrations/active-calibration.json", "CALIBRATION_ACTIVE_POINTER_INVALID", "calibration transforms")
+        if missing_pointer is not None:
+            checked += 1; issues.append(missing_pointer)
         if active_path.exists():
             checked += 1
             try:
@@ -970,6 +987,9 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
             except (ValidationError, ValueError, OSError, json.JSONDecodeError) as error:
                 issues.append(ProjectIntegrityIssue(code="DECISION_THRESHOLD_EVIDENCE_MALFORMED", status="FAIL", path=relative_path, detail=str(error)))
         active_path = threshold_root / "active-threshold.json"
+        missing_pointer = _require_active_pointer(thresholds, active_path, "analyses/thresholds/active-threshold.json", "DECISION_THRESHOLD_ACTIVE_POINTER_INVALID", "decision thresholds")
+        if missing_pointer is not None:
+            checked += 1; issues.append(missing_pointer)
         if active_path.exists():
             checked += 1
             try:
@@ -1017,6 +1037,9 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
             except (ValidationError, ValueError, OSError, json.JSONDecodeError) as error:
                 issues.append(ProjectIntegrityIssue(code="SELECTIVE_POLICY_EVIDENCE_MALFORMED", status="FAIL", path=relative_path, detail=str(error)))
         active_path = selective_root / "active-policy.json"
+        missing_pointer = _require_active_pointer(selective_policies, active_path, "analyses/selective-policies/active-policy.json", "SELECTIVE_POLICY_ACTIVE_POINTER_INVALID", "selective policies")
+        if missing_pointer is not None:
+            checked += 1; issues.append(missing_pointer)
         if active_path.exists():
             checked += 1
             try:
@@ -1181,6 +1204,9 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
             except Exception as error:
                 issues.append(ProjectIntegrityIssue(code="ADAPTER_IDENTITY", status="FAIL", path=relative_path, detail=f"TrainingStudy adapter provenance is invalid: {error}"))
         active_study_path = study_root / "active-study.json"
+        missing_pointer = _require_active_pointer(studies_by_id, active_study_path, "studies/active-study.json", "STUDY_ACTIVE_POINTER_INVALID", "TrainingStudies")
+        if missing_pointer is not None:
+            checked += 1; issues.append(missing_pointer)
         if active_study_path.exists():
             checked += 1
             try:
@@ -1228,6 +1254,9 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                 except (ValidationError, ValueError, OSError, json.JSONDecodeError) as error:
                     issues.append(ProjectIntegrityIssue(code="STABILITY_ANALYSIS_EVIDENCE_MALFORMED", status="FAIL", path=relative_path, detail=str(error)))
             active_path = stability_root / "active-analysis.json"
+            missing_pointer = _require_active_pointer(stability_analyses, active_path, "analyses/stability-analyses/active-analysis.json", "STABILITY_ANALYSIS_ACTIVE_POINTER_INVALID", "Stability Analyses")
+            if missing_pointer is not None:
+                checked += 1; issues.append(missing_pointer)
             if active_path.exists():
                 checked += 1
                 try:
@@ -1280,6 +1309,9 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                 except (ValidationError, ValueError, OSError, json.JSONDecodeError) as error:
                     issues.append(ProjectIntegrityIssue(code="STABILITY_GATE_EVIDENCE_MALFORMED", status="FAIL", path=relative_path, detail=str(error)))
             active_path = stability_policy_root / "active-policy.json"
+            missing_pointer = _require_active_pointer(stability_policies, active_path, "analyses/stability-policies/active-policy.json", "STABILITY_GATE_ACTIVE_POINTER_INVALID", "Stability Gate policies")
+            if missing_pointer is not None:
+                checked += 1; issues.append(missing_pointer)
             if active_path.exists():
                 checked += 1
                 try:
@@ -1410,6 +1442,9 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                     issues.append(ProjectIntegrityIssue(code="FINAL_TEST_DUPLICATE_POLICY_EVIDENCE", status="FAIL", path=f"analyses/final-tests/{final_test.final_test_id}.json", detail="The same frozen final-test policy has multiple persisted result objects; the canonical executor should return the existing evaluation instead."))
                 policy_identities.add(identity)
             active_path = final_test_root / "active-final-test.json"
+            missing_pointer = _require_active_pointer(final_tests, active_path, "analyses/final-tests/active-final-test.json", "FINAL_TEST_ACTIVE_POINTER_INVALID", "FinalTestEvaluations")
+            if missing_pointer is not None:
+                checked += 1; issues.append(missing_pointer)
             if active_path.exists():
                 checked += 1
                 try:
@@ -1593,6 +1628,9 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
             except (ValidationError, ValueError, OSError, json.JSONDecodeError) as error:
                 issues.append(ProjectIntegrityIssue(code="EXPLANATION_EVIDENCE_MALFORMED", status="FAIL", path=relative_path, detail=str(error)))
         active_path = explanation_root / "active-explanation.json"
+        missing_pointer = _require_active_pointer(explanations, active_path, "evidence/explanations/active-explanation.json", "EXPLANATION_ACTIVE_POINTER_INVALID", "ExplanationContracts")
+        if missing_pointer is not None:
+            checked += 1; issues.append(missing_pointer)
         if active_path.exists():
             checked += 1
             try:
@@ -1653,6 +1691,9 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
             except (ValidationError, ValueError, OSError, json.JSONDecodeError) as error:
                 issues.append(ProjectIntegrityIssue(code="EXPLANATION_CHECK_EVIDENCE_MALFORMED", status="FAIL", path=relative_path, detail=str(error)))
         active_path = check_root / "active-check.json"
+        missing_pointer = _require_active_pointer(checks_by_id, active_path, "evidence/explanation-checks/active-check.json", "EXPLANATION_CHECK_ACTIVE_POINTER_INVALID", "ExplanationChecks")
+        if missing_pointer is not None:
+            checked += 1; issues.append(missing_pointer)
         if active_path.exists():
             checked += 1
             try:
@@ -1683,6 +1724,9 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
             except (ValidationError, ValueError, OSError, json.JSONDecodeError) as error:
                 issues.append(ProjectIntegrityIssue(code="ASSURANCE_EVIDENCE_MALFORMED", status="FAIL", path=str(path.relative_to(base)), detail=str(error)))
         active_path = assurance_root / "active-case.json"
+        missing_pointer = _require_active_pointer(assurance_cases, active_path, "evidence/assurance/active-case.json", "ASSURANCE_ACTIVE_POINTER_INVALID", "AssuranceCases")
+        if missing_pointer is not None:
+            checked += 1; issues.append(missing_pointer)
         if active_path.exists():
             checked += 1
             try:
@@ -1716,6 +1760,9 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
             except (ValidationError, ValueError, OSError, json.JSONDecodeError) as error:
                 issues.append(ProjectIntegrityIssue(code="VERIFICATION_BUNDLE_EVIDENCE_MALFORMED", status="FAIL", path=str(path.relative_to(base)), detail=str(error)))
         active_path = bundle_root / "active-bundle.json"
+        missing_pointer = _require_active_pointer(verification_bundles, active_path, "evidence/verification-bundles/active-bundle.json", "VERIFICATION_BUNDLE_ACTIVE_POINTER_INVALID", "VerificationBundles")
+        if missing_pointer is not None:
+            checked += 1; issues.append(missing_pointer)
         if active_path.exists():
             checked += 1
             try:
