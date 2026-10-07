@@ -423,6 +423,8 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
     return () => { active = false; };
   }, [executionBackendReload]);
   const datasetTask = dataset?.contract.task;
+  const activeStudyJob = Boolean(studyJob && ["QUEUED", "RUNNING"].includes(studyJob.status));
+  const studyJobStateResolved = studyJobsStatus === "loaded";
   const compatibleModels = useMemo(() => catalog.filter((entry) => entry.available && entry.capabilities.fit && !!datasetTask && entry.supported_tasks.includes(datasetTask)), [catalog, datasetTask]);
   const selectedModel = compatibleModels.find((entry) => entry.training_model_kinds.includes(modelKind)) ?? null;
   const selectedAdapterKey = selectedModel?.provider === "ruflex.builtin" ? null : selectedModel?.key ?? null;
@@ -491,6 +493,14 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
 
   async function train() {
     if (singleTrainingInFlightRef.current || splitContractMutationInFlightRef.current || running || splitContractRecovery || trainingRecovery) return;
+    if (!studyJobStateResolved) {
+      setError("Resolve saved Study job status before starting a single TrainingRun.");
+      return;
+    }
+    if (activeStudyJob) {
+      setError("A persisted StudyJob is still active. Resume or inspect that exact job before starting another fit.");
+      return;
+    }
     if (!splitSelectionMatchesFrozenContract) {
       setError("Freeze a SplitContract matching the currently selected split family, identity column and seed before fitting.");
       return;
@@ -547,7 +557,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
   }
   async function explicitlyRepeatTraining() {
     const pending = trainingRecovery;
-    if (!pending?.notFound || project.read_only || running || singleTrainingInFlightRef.current || splitContractMutationInFlightRef.current) return;
+    if (!pending?.notFound || project.read_only || running || singleTrainingInFlightRef.current || splitContractMutationInFlightRef.current || !studyJobStateResolved || activeStudyJob) return;
     singleTrainingInFlightRef.current = true;
     setRecoveringTraining(true); setRunning(true); setError(null);
     try { onRun(await studioApi.runTraining(project.session_id, pending.config)); setTrainingRecovery(null); }
@@ -826,7 +836,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
           <p>Both paths use the declared training/validation workflow; opening this screen or changing settings does not start computation or unlock the test split.</p>
         </section>
         {trainingRecovery && <div className="error" role="alert" data-testid="training-run-recovery"><strong>Training response is uncertain; no second fit was started.</strong><p>{trainingRecovery.error}</p><Button view="outlined" disabled={recoveringTraining} onClick={recoverTrainingRun}>Retry exact TrainingRun lookup</Button>{trainingRecovery.notFound && <Button view="outlined" disabled={recoveringTraining || running || project.read_only} onClick={explicitlyRepeatTraining}>Explicitly start a new fit with these settings</Button>}</div>}
-        <Button view="action" disabled={running || !!trainingRecovery || !!splitContractRecovery || !splitSelectionMatchesFrozenContract || project.read_only || splitEvidenceStatus !== "loaded" || catalogStatus !== "loaded" || !selectedModel || parameterErrors.length > 0} onClick={train} data-ruflex-action="training.run">{running ? "Training…" : "Run real training"}</Button>
+        <Button view="action" disabled={running || !!trainingRecovery || !!splitContractRecovery || !studyJobStateResolved || activeStudyJob || !splitSelectionMatchesFrozenContract || project.read_only || splitEvidenceStatus !== "loaded" || catalogStatus !== "loaded" || !selectedModel || parameterErrors.length > 0} onClick={train} data-ruflex-action="training.run">{running ? "Training…" : "Run real training"}</Button>
         <p id="study-seeds-help" className={studySeedValidation.error ? "error" : "property-description"} role={studySeedValidation.error ? "alert" : undefined}>{studySeedValidation.error ?? "Enter 3–32 distinct whole-number seeds, separated by commas."}</p>
         {parameterErrors.length > 0 && <div className="error" role="alert">Review model settings before training: {parameterErrors.join(" ")}</div>}
         <Button view="outlined" disabled={running || project.read_only || (!pendingStudyRequest && (!!(studyJob && ["QUEUED", "RUNNING"].includes(studyJob.status)) || !!trainingRecovery || !!splitContractRecovery || !splitSelectionMatchesFrozenContract || splitEvidenceStatus !== "loaded" || catalogStatus !== "loaded" || !selectedModel || Boolean(studySeedValidation.error) || parameterErrors.length > 0 || (studyHydrationStatus !== "none" && studyHydrationStatus !== "available") || studyJobsStatus !== "loaded" || executionBackendStatus !== "loaded" || !executionBackends.some((backend) => backend.identity.key === executionBackendKey)))} onClick={trainStudy} data-ruflex-action="study.start">{running ? "Training…" : pendingStudyRequest ? "Retry same Study request" : "Run multi-seed study"}</Button>

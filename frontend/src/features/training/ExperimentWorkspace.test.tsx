@@ -251,6 +251,28 @@ describe("ExperimentWorkspace dynamic model controls", () => {
     expect(studioApi.startStudyJob).not.toHaveBeenCalled();
   });
 
+  it("blocks single-run fitting while a persisted StudyJob is active", async () => {
+    studioApi.listStudyJobs.mockResolvedValueOnce([{
+      job_id: "job-running", name: "Active Study", model_kind: "logistic_regression", selection_metric: "f1",
+      status: "RUNNING", cancel_requested: false, seed_states: [{ seed: 3, status: "RUNNING", run_id: null, runtime_seconds: null, error: null }],
+      study_id: null, error: null, execution_backend: "LOCAL", execution_backend_key: "local_executor", execution_config: {}, recovery_count: 0, recovery_note: null,
+    }]);
+    render(<ExperimentWorkspace project={project} dataset={dataset as never} run={null} study={null} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);
+
+    await screen.findByText(/Study job RUNNING/);
+    expect(screen.getByRole("button", { name: "Run real training" })).toBeDisabled();
+    expect(studioApi.runTraining).not.toHaveBeenCalled();
+  });
+
+  it("keeps single-run fitting disabled when persisted StudyJob status cannot be restored", async () => {
+    studioApi.listStudyJobs.mockRejectedValueOnce(new Error("job store unavailable"));
+    render(<ExperimentWorkspace project={project} dataset={dataset as never} run={null} study={null} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);
+
+    await screen.findByText("Could not restore saved Study jobs.", { exact: true });
+    expect(screen.getByRole("button", { name: "Run real training" })).toBeDisabled();
+    expect(studioApi.runTraining).not.toHaveBeenCalled();
+  });
+
   it("shows accepted cancellation in progress without offering invalid resume or duplicate cancel actions", async () => {
     studioApi.listStudyJobs.mockResolvedValueOnce([{
       job_id: "job-cancel-requested", name: "Cancelling Study", model_kind: "logistic_regression", selection_metric: "f1",
