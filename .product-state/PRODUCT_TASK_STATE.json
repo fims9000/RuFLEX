@@ -160,12 +160,13 @@
     "alpha_study_cancel_requested_feedback",
     "alpha_dataset_import_lost_response_retry_reconciliation",
     "alpha_csv_confirmation_retry_reconciliation",
-    "alpha_explicit_dataset_role_contracts"
+    "alpha_explicit_dataset_role_contracts",
+    "alpha_dataset_role_api_rejection"
   ],
-  "active_capability": "alpha_explicit_dataset_role_contracts",
+  "active_capability": "alpha_dataset_role_api_rejection",
   "active_acceptance": [
-    "Profiled ID candidates remain advisory: only IDs explicitly selected in the DatasetContract are excluded from model features.",
-    "Dataset confirmation rejects missing, duplicate, or target-overlapping ID declarations instead of persisting a contradictory role contract."
+    "Dataset API returns a clear 422 for nonexistent, duplicate, or target-overlapping ID declarations.",
+    "Rejected DatasetContract writes leave no DatasetContract or source Artifact persisted."
   ],
   "blockers": [],
   "next_executable_work": "Continue the Dataset-to-Training first-use review; inspect validation and preprocessing failure states for actionable recovery without weakening frozen DatasetContract semantics.",
@@ -332,6 +333,7 @@
     "alpha_study_cancel_requested_feedback": "PASS: Active StudyJobs with cancel_requested no longer offer Resume or repeated Cancel actions; Studio explains an in-flight fit may finish, remaining seeds stop, and another Study is blocked until terminal state. ExperimentWorkspace tests 17/17 and Vite production build passed.",
     "alpha_dataset_import_lost_response_retry_reconciliation": "PASS: A source-hash/target/task/ID-column request identity is retained before file-import POST and reconciled on the next successful DatasetState hydration when both the POST response and immediate recovery read are lost. Only the matching pending selection is cleared; no duplicate import is issued. TypeScript/Vite production build passed and all 4 focused dataset import/confirmation recovery E2Es passed.",
     "alpha_csv_confirmation_retry_reconciliation": "PASS: Editable CSV confirmation now persists source hash/target/task/format/ID-column identity before POST and reconciles after both response and immediate read are lost. Draft revision binding prevents stale recovery from claiming a subsequently edited CSV or selected file; the frozen contract is surfaced without a repeat POST. TypeScript/Vite production build and focused dataset recovery E2Es passed 5/5.",
-    "alpha_explicit_dataset_role_contracts": "PASS: Automatic ID-like role proposals are advisory and a candidate omitted from the user's ID selection remains an explicit model feature. Confirmation rejects nonexistent, duplicate, and target-overlapping ID declarations. DatasetContract suite 16 passed; datasets.py compileall and git diff --check passed."
+    "alpha_explicit_dataset_role_contracts": "PASS: Automatic ID-like role proposals are advisory and a candidate omitted from the user's ID selection remains an explicit model feature. Confirmation rejects nonexistent, duplicate, and target-overlapping ID declarations. DatasetContract suite 16 passed; datasets.py compileall and git diff --check passed.",
+    "alpha_dataset_role_api_rejection": "PASS: API regressions exercise nonexistent, duplicate, and target-overlapping ID selections; each returns 422 before DatasetContract or source Artifact persistence. DatasetContract/API suite 17 passed; git diff --check passed."
   }
 }

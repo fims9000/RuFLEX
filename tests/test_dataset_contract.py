@@ -55,6 +55,29 @@ def test_invalid_id_role_declarations_fail_at_contract_confirmation(id_columns: 
         build_dataset_contract(profile, target="target", task="binary_classification", id_columns=id_columns)
 
 
+def test_invalid_id_role_declarations_are_rejected_before_dataset_persistence(tmp_path) -> None:
+    client = TestClient(app)
+    for index, id_columns in enumerate((["missing_id"], ["target"], ["entity_id", "entity_id"])):
+        root = tmp_path / f"invalid-id-contract-{index}"
+        created = client.post("/api/projects", json={"path": str(root), "name": f"invalid-id-{index}"})
+        session_id = created.json()["session_id"]
+        response = client.post(
+            "/api/projects/dataset/confirm",
+            json={
+                "session_id": session_id,
+                "csv_text": "entity_id,temperature,target\na,10,0\nb,20,1\n",
+                "target": "target",
+                "task": "binary_classification",
+                "id_columns": id_columns,
+            },
+        )
+
+        assert response.status_code == 422
+        assert "Dataset confirmation failed" in response.json()["detail"]
+        assert client.get(f"/api/projects/{session_id}/dataset").status_code == 404
+        assert client.get(f"/api/projects/{session_id}/artifacts").json() == []
+
+
 def test_id_candidate_heuristic_requires_explicit_id_token() -> None:
     frame = pd.DataFrame({
         "id": [1, 2], "row_id": [11, 12], "customer_id": [21, 22],
