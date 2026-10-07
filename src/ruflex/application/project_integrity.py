@@ -957,7 +957,12 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
             try:
                 pipeline = TransformPipelineContract.model_validate_json(path.read_text(encoding="utf-8"))
                 if path.stem != str(pipeline.pipeline_id): raise ValueError("TransformPipelineContract filename does not match its persisted identity.")
-                load_transform_pipeline_contract(base, pipeline.pipeline_id)
+                resolved = load_transform_pipeline_contract(base, pipeline.pipeline_id)
+                if contract is not None and resolved.feature_order != contract.feature_columns:
+                    raise DatasetConfirmationError("TransformPipelineContract feature order does not match the active DatasetContract.")
+                preprocessing = ArtifactStore(base).verify(ArtifactRef(sha256=resolved.preprocessing_artifact_sha256)); checked += 1
+                if not preprocessing.valid:
+                    raise DatasetConfirmationError(f"TransformPipelineContract preprocessing artifact is invalid: {preprocessing.message}")
             except (FileNotFoundError, ValidationError, ValueError, DatasetConfirmationError, OSError) as error:
                 issues.append(ProjectIntegrityIssue(code="TRANSFORM_PIPELINE_EVIDENCE_MALFORMED", status="FAIL", path=str(path.relative_to(base)), detail=str(error)))
     leakage_root = base / "data" / "leakage-audits"
@@ -970,6 +975,15 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                 audit = LeakageAuditReport.model_validate_json(path.read_text(encoding="utf-8"))
                 if path.stem != str(audit.audit_id): raise ValueError("LeakageAuditReport filename does not match its persisted identity.")
                 load_leakage_audit(base, audit.audit_id)
+                expected_status = "FAIL" if any(item.severity == "fail" for item in audit.findings) else "WARN" if audit.findings else "PASS"
+                if any(item.severity not in {"fail", "warning"} for item in audit.findings) or audit.status != expected_status:
+                    raise DatasetConfirmationError("LeakageAuditReport status does not match its persisted findings.")
+                if audit.transform_pipeline_id is not None:
+                    pipeline = load_transform_pipeline_contract(base, audit.transform_pipeline_id)
+                    if contract is not None and pipeline.feature_order != contract.feature_columns:
+                        raise DatasetConfirmationError("TransformPipelineContract feature order does not match the active DatasetContract.")
+                    if pipeline.split_contract_id != audit.split_contract_id:
+                        raise DatasetConfirmationError("LeakageAuditReport split does not match its referenced TransformPipelineContract.")
             except (FileNotFoundError, ValidationError, ValueError, DatasetConfirmationError, OSError) as error:
                 issues.append(ProjectIntegrityIssue(code="LEAKAGE_AUDIT_EVIDENCE_MALFORMED", status="FAIL", path=str(path.relative_to(base)), detail=str(error)))
     try:

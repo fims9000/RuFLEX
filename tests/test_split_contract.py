@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import pandas as pd
 import pytest
 import zipfile
@@ -169,6 +171,27 @@ def test_split_contract_api_survives_close_reopen_and_training_uses_it(tmp_path)
     assert any(edge.target == audit_node.id and edge.relation == "audited" for edge in lineage.edges)
     assert any(node.kind == "transform_pipeline" and node.object_id == pipeline_id for node in lineage.nodes)
     assert inspect_project_integrity(root).status == "PASS"
+    audit_path = root / "data" / "leakage-audits" / f"{leakage_audit_id}.json"
+    audit_payload = json.loads(audit_path.read_text(encoding="utf-8"))
+    original_status = audit_payload["status"]
+    audit_payload["status"] = "WARN" if original_status != "WARN" else "PASS"
+    audit_path.write_text(json.dumps(audit_payload), encoding="utf-8")
+    integrity_after_status_tamper = inspect_project_integrity(root)
+    assert any(issue.code == "LEAKAGE_AUDIT_EVIDENCE_MALFORMED" for issue in integrity_after_status_tamper.issues)
+    audit_payload["status"] = original_status
+    audit_path.write_text(json.dumps(audit_payload), encoding="utf-8")
+    from ruflex.application.datasets import TransformPipelineContract, _transform_pipeline_identity
+
+    pipeline_path = root / "data" / "transforms" / f"{pipeline_id}.json"
+    pipeline_payload = json.loads(pipeline_path.read_text(encoding="utf-8"))
+    original_pipeline = dict(pipeline_payload)
+    pipeline_payload["preprocessing_artifact_sha256"] = "f" * 64
+    pipeline_model = TransformPipelineContract.model_validate(pipeline_payload)
+    pipeline_payload["pipeline_identity"] = _transform_pipeline_identity(pipeline_model)
+    pipeline_path.write_text(json.dumps(pipeline_payload), encoding="utf-8")
+    invalid_pipeline_artifact = inspect_project_integrity(root)
+    assert any(issue.code == "TRANSFORM_PIPELINE_EVIDENCE_MALFORMED" for issue in invalid_pipeline_artifact.issues)
+    pipeline_path.write_text(json.dumps(original_pipeline), encoding="utf-8")
     assurance = client.post("/api/projects/evidence/assurance-cases", json={"session_id": reopened["session_id"]})
     assert assurance.status_code == 201, assurance.text
     gates = {gate["key"]: gate["status"] for gate in assurance.json()["gates"]}
