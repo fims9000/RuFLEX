@@ -24,6 +24,7 @@ import {
 import { StudioTheme } from "../../design/tokens";
 import { MembershipEditorCanvas } from "./MembershipEditorCanvas";
 import { exactFisEvaluationMatchesCurrent } from "./exactFisEvaluation";
+import { parseFisRunInputs } from "./fisRunInputs";
 
 function canonicalJson(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
@@ -1063,7 +1064,12 @@ export function BuildWorkspace({
   async function run() {
     if (!working || fisEvaluationRecovery) return;
     setError(null);
-    const inputs = Object.fromEntries(Object.entries(runInputs).map(([name, value]) => [name, Number(value)]));
+    const parsed = parseFisRunInputs(working.inputs.map((variable) => variable.name), runInputs);
+    if (!parsed.ok) {
+      setError(`Enter a finite number for each model input. Invalid: ${parsed.invalidInputs.join(", ")}. No inference was submitted.`);
+      return;
+    }
+    const inputs = parsed.values;
     try {
       const evaluation = await studioApi.evaluateFis(project.session_id, inputs, !project.read_only);
       setLastOutput(evaluation);
