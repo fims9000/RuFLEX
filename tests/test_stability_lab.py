@@ -117,6 +117,25 @@ def test_training_variability_keeps_split_identity_and_persists_stability_gate(t
     bundle_validation = validate_verification_bundle(tampered_bundle)
     assert bundle_validation.status == "FAIL"
     assert any("Stability gate" in error and "case evidence" in error for error in bundle_validation.errors)
+    selective_entry = f"analyses/selective-policies/{selective.json()['policy_id']}.json"
+    selective_entries = dict(entries)
+    bundle_selective = json.loads(selective_entries[selective_entry])
+    original_risk = bundle_selective["risk_coverage"][0]["accepted_risk"]
+    bundle_selective["risk_coverage"][0]["accepted_risk"] = 0.0 if original_risk != 0.0 else 1.0
+    selective_entries[selective_entry] = json.dumps(bundle_selective, indent=2).encode()
+    selective_manifest = json.loads(selective_entries["verification-manifest.json"])
+    selective_manifest["checksums"][selective_entry] = hashlib.sha256(selective_entries[selective_entry]).hexdigest()
+    selective_entries["verification-manifest.json"] = json.dumps(selective_manifest, indent=2, sort_keys=True).encode()
+    selective_entries["verification-manifest.sha256"] = (
+        f"{hashlib.sha256(selective_entries['verification-manifest.json']).hexdigest()}  verification-manifest.json\n".encode()
+    )
+    tampered_selective_bundle = tmp_path / "tampered-selective-bundle.zip"
+    with zipfile.ZipFile(tampered_selective_bundle, "w", zipfile.ZIP_DEFLATED) as archive:
+        for name, payload in selective_entries.items():
+            archive.writestr(name, payload)
+    selective_validation = validate_verification_bundle(tampered_selective_bundle)
+    assert selective_validation.status == "FAIL"
+    assert any("Selective policy" in error and "risk-coverage" in error for error in selective_validation.errors)
     reopened = client.post("/api/projects/open", json={"path": str(tmp_path / "stability")})
     listed = client.get(f"/api/projects/{reopened.json()['session_id']}/analyses/stability")
     assert listed.status_code == 200 and listed.json()[0]["analysis_id"] == analysis["analysis_id"]

@@ -114,6 +114,7 @@ def _validate_relationships(objects: list[BaseModel]) -> list[str]:
     studies = objects_by_type.get(TrainingStudy, {})
     runs = objects_by_type.get(TrainingRun, {})
     evaluations = objects_by_type.get(AnalysisEvaluation, {})
+    calibrations = objects_by_type.get(CalibrationTransform, {})
     thresholds = objects_by_type.get(DecisionThresholdPolicy, {})
     stability_analyses = objects_by_type.get(StudyStabilityAnalysis, {})
     from ruflex.application.project_integrity import _stability_analysis_cases_match, _stability_gate_evidence_matches
@@ -178,7 +179,33 @@ def _validate_relationships(objects: list[BaseModel]) -> list[str]:
         if isinstance(object_, AnalysisEvaluation) and not exists(TrainingRun, object_.run_id): errors.append(f"Evaluation {object_.evaluation_id} references missing TrainingRun {object_.run_id}.")
         elif isinstance(object_, CalibrationTransform) and (not exists(AnalysisEvaluation, object_.evaluation_id) or not exists(TrainingRun, object_.run_id)): errors.append(f"Calibration {object_.calibration_id} has a broken evaluation/run reference.")
         elif isinstance(object_, DecisionThresholdPolicy) and (not exists(AnalysisEvaluation, object_.evaluation_id) or not exists(TrainingRun, object_.run_id)): errors.append(f"Threshold {object_.threshold_id} has a broken evaluation/run reference.")
-        elif isinstance(object_, SelectivePredictionPolicy) and (not exists(AnalysisEvaluation, object_.evaluation_id) or not exists(TrainingRun, object_.run_id) or not exists(DecisionThresholdPolicy, object_.class_threshold_id)): errors.append(f"Selective policy {object_.policy_id} has broken frozen-policy provenance.")
+        elif isinstance(object_, SelectivePredictionPolicy):
+            evaluation = evaluations.get(str(object_.evaluation_id))
+            run = runs.get(str(object_.run_id))
+            threshold = thresholds.get(str(object_.class_threshold_id))
+            calibration = calibrations.get(str(object_.calibration_id)) if object_.calibration_id is not None else None
+            from ruflex.application.project_integrity import _selective_policy_fit_identity_matches, _selective_policy_risk_coverage_matches
+            if (
+                not isinstance(evaluation, AnalysisEvaluation)
+                or not isinstance(run, TrainingRun)
+                or not isinstance(threshold, DecisionThresholdPolicy)
+                or (object_.calibration_id is not None and not isinstance(calibration, CalibrationTransform))
+                or evaluation.run_id != object_.run_id
+                or evaluation.split != "validation"
+                or run.dataset_fingerprint != evaluation.dataset_fingerprint
+                or threshold.evaluation_id != object_.evaluation_id
+                or threshold.run_id != object_.run_id
+                or object_.source_split != "validation"
+                or object_.test_status != "LOCKED_NOT_EVALUATED"
+                or object_.class_threshold != threshold.selected_threshold
+                or threshold.source_split != "validation"
+                or threshold.test_status != "LOCKED_NOT_EVALUATED"
+                or (object_.calibration_id is None and (object_.probability_source != "raw" or threshold.calibration_id is not None or threshold.probability_source != "raw"))
+                or (object_.calibration_id is not None and (calibration is None or calibration.evaluation_id != object_.evaluation_id or calibration.run_id != object_.run_id or calibration.source_split != "validation" or object_.probability_source != "calibrated" or threshold.calibration_id != object_.calibration_id or threshold.probability_source != "calibrated"))
+                or not _selective_policy_fit_identity_matches(object_, evaluation, threshold, calibration)
+                or not _selective_policy_risk_coverage_matches(object_, evaluation, threshold, calibration)
+            ):
+                errors.append(f"Selective policy {object_.policy_id} does not match its exact frozen validation evidence or recomputed confidence risk-coverage curve.")
         elif isinstance(object_, ExplanationContract) and not exists(TrainingRun, object_.run_id): errors.append(f"Explanation {object_.explanation_id} references missing TrainingRun {object_.run_id}.")
         elif isinstance(object_, ExplanationCheck) and (not exists(ExplanationContract, object_.explanation_id) or not exists(TrainingRun, object_.run_id)): errors.append(f"Explanation check {object_.check_id} has broken evidence provenance.")
         elif isinstance(object_, BehaviorRevisionComparison):

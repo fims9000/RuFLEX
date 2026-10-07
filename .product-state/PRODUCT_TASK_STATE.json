@@ -238,14 +238,14 @@
     "alpha_comparison_slice_reference_integrity",
     "alpha_auxiliary_evidence_reference_integrity",
     "alpha_behavior_spec_result_integrity",
-    "alpha_stability_assurance_bundle_semantic_integrity"
+    "alpha_stability_assurance_bundle_semantic_integrity",
+    "alpha_selective_policy_bundle_semantic_integrity"
   ],
-  "active_capability": "alpha_stability_assurance_bundle_semantic_integrity",
+  "active_capability": "alpha_selective_policy_bundle_semantic_integrity",
   "active_acceptance": [
-    "Project Integrity and Assurance recompute frozen StudyStabilityAnalysis case statistics and StabilityGatePolicy decisions from persisted runs and validation evidence.",
-    "VerificationBundle validation checks StabilityAnalysis and StabilityGatePolicy semantic provenance, not only references and checksums.",
-    "Valid Stability bundles pass; re-checksummed tampered selected-run agreement fails closed.",
-    "Random-review risk verification uses the same deterministic identity protocol as the product policy creator."
+    "VerificationBundle resolves confidence-only SelectivePredictionPolicy to exact validation Evaluation, TrainingRun, threshold and optional CalibrationTransform.",
+    "The frozen confidence fit identity and risk-coverage curve are independently recomputed from validation evidence.",
+    "Raw/calibrated source and calibration/threshold bindings must agree; re-checksummed curve tampering fails closed."
   ],
   "blockers": [],
   "next_executable_work": "Inspect the remaining persisted evidence families for summary fields that can be tampered without semantic revalidation; keep each change narrow and resource-light.",
@@ -490,6 +490,7 @@
     "alpha_comparison_slice_reference_integrity": "PASS: Project Integrity resolves AnalysisComparison run subjects and recomputes persisted validation metric bindings/alignment; manual FIS hashes are checked. SliceAnalysis references exact validation Evaluation/Run/dataset and matching GeneralizationContract/definitions. Focused route+integrity suite: 21 passed; cross-model/manual-FIS comparison and full Slice Lab routes: 3 passed; compileall/diff check passed.",
     "alpha_auxiliary_evidence_reference_integrity": "PASS: Project Integrity replays TreePathEvidence against the exact frozen tree artifact, binds ExplanationReproducibilityAnalysis run/explanation/case identities, verifies ExpertCorrection FIS and dataset/target provenance, and resolves ExhaustiveLab run/FIS identities. Regressions reject tampered tree prediction, reproducibility references, correction hash, and exhaustive FIS hash. Focused integrity plus four real product routes: 23 passed.",
     "alpha_behavior_spec_result_integrity": "PASS: BehaviorSpec binds exact run/model or FIS semantic revision; persisted BehaviorSpecResult is deterministically replayed from the frozen requirement, and behavior revision comparisons bind their exact artifact/FIS identities. Project Integrity and Assurance now fail on forged result output, stale FIS revision, or corrupted comparison binding. Focused integrity and behavior-route regressions: 23 passed; integrated product journey: 1 passed; compileall and diff check passed.",
-    "alpha_stability_assurance_bundle_semantic_integrity": "PASS: Project Integrity and Assurance recompute stability case evidence and frozen gate decisions; VerificationBundle validates analysis/policy provenance and rejects re-checksummed semantic tampering. Fixed deterministic random-review baseline validation to use the product identity protocol. Focused Stability/Integrity tests: 8 passed; compileall and git diff --check passed."
+    "alpha_stability_assurance_bundle_semantic_integrity": "PASS: Project Integrity and Assurance recompute stability case evidence and frozen gate decisions; VerificationBundle validates analysis/policy provenance and rejects re-checksummed semantic tampering. Fixed deterministic random-review baseline validation to use the product identity protocol. Focused Stability/Integrity tests: 8 passed; compileall and git diff --check passed.",
+    "alpha_selective_policy_bundle_semantic_integrity": "PASS: VerificationBundle now resolves frozen confidence policy to exact validation run/evaluation/threshold/calibration, verifies probability-source consistency, and recomputes the policy fit identity and confidence risk-coverage curve. Re-checksummed curve tampering is rejected; tests/test_stability_lab.py: 7 passed; compileall and git diff --check passed."
   }
 }
