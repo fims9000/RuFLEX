@@ -105,6 +105,15 @@ def test_project_integrity_validates_frozen_stability_analysis_and_gate_chain(tm
     final_test = client.post("/api/projects/analyses/final-test", json={"session_id": session_id, "evaluation_id": evaluation_id, "threshold_id": threshold_id, "stability_gate_policy_id": policy_response.json()["policy_id"]})
     assert final_test.status_code == 201, final_test.text
     assert client.get(f"/api/projects/{session_id}/integrity").json()["status"] == "PASS"
+    threshold_path = root / "analyses" / "thresholds" / f"{threshold_id}.json"
+    threshold_payload = json.loads(threshold_path.read_text(encoding="utf-8"))
+    original_threshold_created_at = threshold_payload["created_at"]
+    threshold_payload["created_at"] = "2099-01-01T00:00:00Z"
+    threshold_path.write_text(json.dumps(threshold_payload), encoding="utf-8")
+    post_unlock_policy = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert any(issue["code"] == "FINAL_TEST_PROVENANCE_MISMATCH" for issue in post_unlock_policy["issues"])
+    threshold_payload["created_at"] = original_threshold_created_at
+    threshold_path.write_text(json.dumps(threshold_payload), encoding="utf-8")
 
     policy_path = root / "analyses" / "stability-policies" / f"{policy_response.json()['policy_id']}.json"
     payload = json.loads(policy_path.read_text(encoding="utf-8"))

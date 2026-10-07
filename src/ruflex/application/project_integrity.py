@@ -570,6 +570,12 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                         or final_test.test_row_count != len(final_test.prediction_rows)
                         or final_test.policy_frozen_at is None
                         or final_test.dataset_test_unlock_at is None
+                        or (final_test.policy_frozen_at is not None and final_test.dataset_test_unlock_at is not None and final_test.policy_frozen_at > final_test.dataset_test_unlock_at)
+                        or (evaluation is not None and final_test.dataset_test_unlock_at is not None and evaluation.created_at > final_test.dataset_test_unlock_at)
+                        or (threshold is not None and final_test.dataset_test_unlock_at is not None and threshold.created_at > final_test.dataset_test_unlock_at)
+                        or (calibration is not None and final_test.dataset_test_unlock_at is not None and calibration.created_at > final_test.dataset_test_unlock_at)
+                        or (selective_policy is not None and final_test.dataset_test_unlock_at is not None and selective_policy.created_at > final_test.dataset_test_unlock_at)
+                        or (stability_policy is not None and final_test.dataset_test_unlock_at is not None and stability_policy.frozen_at > final_test.dataset_test_unlock_at)
                         or (final_test.threshold_id is not None and (threshold is None or threshold.evaluation_id != final_test.evaluation_id or threshold.run_id != final_test.run_id or threshold.selected_threshold != final_test.decision_threshold or threshold.probability_source != final_test.probability_source))
                         or (final_test.calibration_id is not None and (calibration is None or calibration.evaluation_id != final_test.evaluation_id or calibration.run_id != final_test.run_id))
                         or (final_test.selective_policy_id is not None and (selective_policy is None or selective_policy.evaluation_id != final_test.evaluation_id or selective_policy.run_id != final_test.run_id or selective_policy.class_threshold_id != final_test.threshold_id))
