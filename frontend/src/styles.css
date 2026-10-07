@@ -31,7 +31,7 @@ input:focus-visible,
   --inspector: 320px;
   display: grid;
   grid-template:
-    44px minmax(0, 1fr) 220px 24px/48px var(--explorer) minmax(360px, 1fr)
+    44px minmax(0, 1fr) 220px 24px/128px var(--explorer) minmax(360px, 1fr)
     var(--inspector);
   height: 100vh;
   overflow: hidden;
@@ -90,20 +90,37 @@ input:focus-visible,
   grid-row: 2/4;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   gap: 4px;
   padding: 8px 6px;
   border-right: 1px solid var(--rf-border);
   background: var(--rf-bg-surface-2);
 }
 .activity-rail button {
-  width: 32px;
-  height: 32px;
+  width: 100%;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
   border: 0;
   border-radius: 6px;
   background: transparent;
   color: var(--rf-text-muted);
   font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+.activity-rail .rail-initial {
+  width: 16px;
+  flex: none;
+  text-align: center;
+  color: var(--rf-accent);
+}
+.activity-rail .rail-label {
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 .activity-rail button.active,
 .nav-item.active {
@@ -279,6 +296,12 @@ input:focus-visible,
 }
 .property-description {
   color: var(--rf-text-secondary);
+}
+.artifact-details {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+  overflow-wrap: anywhere;
 }
 .empty-state {
   display: grid;

@@ -343,7 +343,8 @@
     "alpha_synthetic_practice_final_test_route",
     "alpha_workbench_navigation_semantics",
     "alpha_synthetic_practice_behavior_route",
-    "alpha_synthetic_practice_bundle_handoff"
+    "alpha_synthetic_practice_bundle_handoff",
+    "alpha_visible_workbench_navigation"
   ],
   "active_capability": "alpha_master_spec_gap_audit",
   "active_acceptance": [
@@ -351,8 +352,9 @@
     "Select the next concrete, low-resource, end-to-end product gap and implement it without broad refactoring."
   ],
   "blockers": [],
-  "next_executable_work": "Continue the alpha product-gap audit after verifying reopened synthetic VerificationBundle download. Select the next concrete low-resource user-facing gap; preserve frozen research artifacts and unrelated docs/article edits.",
+  "next_executable_work": "Continue the alpha product-gap audit after verifying visible workbench navigation at the 1180 px minimum viewport. Select the next concrete user-facing gap; preserve frozen research artifacts and unrelated docs/article edits.",
   "qa": {
+    "visible_workbench_navigation": "PASS: Studio now renders full Project/Models/Studies/Analyses/Evidence rail labels alongside existing initials; active and assistive semantics remain intact. The Properties artifact heading and state no longer run together. TypeScript/Vite build passed; focused accessibility plus synthetic Golden Route Playwright passed 3/3, and a real 1180x720 screenshot was visually inspected after the spacing fix. No frozen research data was touched.",
     "synthetic_practice_bundle_handoff": "PASS: After closing and reopening the first-use synthetic project, Studio opens the persisted VerificationBundle through Lineage and successfully downloads its verified ZIP with the exact bundle filename. The same browser route then applies the frozen synthetic final-test policy. Focused Playwright passed 2/2; no benchmark data was used.",
     "synthetic_practice_behavior_route": "PASS: The same first-use synthetic project creates and executes a run-bound BehaviorSpec after explanation validation, builds an AssuranceCase that includes behavior-spec evidence, exports a validated VerificationBundle, then reopens the BehaviorSpec result. Focused real Studio Playwright passed 2/2; no A01/S03 benchmark evidence was used.",
     "workbench_navigation_semantics": "PASS: Existing one-letter Studio workbench buttons now expose full workspace descriptions and aria-current for the active section without changing the visual rail or established button names. Focused accessibility Playwright passed 1/1, including axe baseline across Project, Data, Training, Analysis and Evidence and active-state checks.",

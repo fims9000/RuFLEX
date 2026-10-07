@@ -100,11 +100,14 @@ Target branch: `feature/v1.3-data-governance-runtime`.
   reopened from Lineage. Read-only sessions do not offer the practice loader.
   This is training practice data, not frozen research evidence. Exact
   source-byte SHA-256 keeps this designation visible after project reopen and
-  across Studio
-  workspaces. The same synthetic route freezes a raw validation threshold and
-  selective policy before a one-time final-test evaluation; reopening shows
-  the saved result and disables threshold reselection. This exercise does not
+  across Studio workspaces. The same synthetic route freezes a raw validation
+  threshold and selective policy before one final-test evaluation. Reopening
+  shows the saved result and disables threshold reselection. This exercise does not
   access A01 or S03 benchmark projects.
+- The Studio workbench rail now shows full section names while retaining its
+  compact initials, active-section semantics and assistive descriptions. The
+  project inspector separates artifact headings from their loading/empty
+  states at the minimum supported viewport width.
 - Project Integrity, Assurance and portable bundles reject missing or malformed
   manual-FIS comparison rows and mismatched semantic-revision provenance.
   A portable bundle excludes raw dataset rows, so it checks the frozen row's

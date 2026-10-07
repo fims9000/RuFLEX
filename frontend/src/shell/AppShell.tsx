@@ -106,10 +106,12 @@ export function AppShell({
             className={active === section ? "active" : ""}
             onClick={() => setActive(section)}
             title={section}
+            aria-label={section.slice(0, 1)}
             aria-description={`Open ${section.toLowerCase()} workspace`}
             aria-current={active === section ? "page" : undefined}
           >
-            {section.slice(0, 1)}
+            <span className="rail-initial" aria-hidden="true">{section.slice(0, 1)}</span>
+            <span className="rail-label" aria-hidden="true">{section.slice(0, 1) + section.slice(1).toLowerCase()}</span>
           </button>
         ))}
       </nav>
