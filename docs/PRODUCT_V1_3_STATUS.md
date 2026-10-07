@@ -111,6 +111,12 @@ Target branch: `feature/v1.3-data-governance-runtime`.
 - The project inspector lists saved artifact names, origins, sizes and full
   SHA-256 identities instead of only truncated hashes. The inventory remains
   inspectable after reopen, including in a read-only project session.
+- The Studies Training form remains inside the Studio workspace at 1180px and
+  1280px, with controls that fit their grid cells. The model-capability table
+  remains horizontally scrollable where needed and keyboard-focusable with an
+  accessible name. Focused browser geometry, synthetic-route and accessibility
+  checks cover this layout; `docs/qa/ALPHA_TRAINING_OVERFLOW_REPRO.md` records
+  the root cause and regression.
 - Project Integrity, Assurance and portable bundles reject missing or malformed
   manual-FIS comparison rows and mismatched semantic-revision provenance.
   A portable bundle excludes raw dataset rows, so it checks the frozen row's

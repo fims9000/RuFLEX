@@ -510,6 +510,7 @@ input:focus-visible,
 }
 .feature-workspace {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 18px;
   padding-top: 18px;
 }
@@ -897,13 +898,15 @@ input:focus-visible,
 }
 .training-grid {
   display: grid;
-  grid-template-columns: 360px minmax(0, 1fr);
+  min-width: 0;
+  grid-template-columns: minmax(0, 360px) minmax(0, 1fr);
   gap: 16px;
 }
 .training-config-panel,
 .training-result-panel,
 .confusion-card {
   display: grid;
+  min-width: 0;
   align-content: start;
   gap: 12px;
   padding: 14px;
@@ -915,6 +918,13 @@ input:focus-visible,
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
+}
+.training-config-grid > * {
+  min-width: 0;
+}
+.training-config-grid select {
+  width: 100%;
+  min-width: 0;
 }
 .training-config-grid input {
   width: 100%;
@@ -1054,10 +1064,15 @@ input:focus-visible,
 @media (max-width: 1360px) {
   .training-grid,
   .evaluation-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .training-config-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 1260px) {
+  .training-config-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 .mf-canvas-wrap {

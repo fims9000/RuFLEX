@@ -4,6 +4,7 @@ import { join } from "node:path";
 
 test("a first-time user can persist synthetic evidence and apply a frozen final-test policy", async ({ page }, testInfo) => {
   test.setTimeout(75_000);
+  await page.setViewportSize({ width: 1180, height: 720 });
   const path = join(tmpdir(), `ruflex-practice-route-${Date.now()}-${Math.random().toString(16).slice(2)}`);
   await page.goto("/");
   await page.getByLabel("Project path").fill(path);
@@ -28,6 +29,18 @@ test("a first-time user can persist synthetic evidence and apply a frozen final-
   await expect(page.getByTestId("synthetic-practice-context")).toContainText("not benchmark or research evidence");
 
   await page.getByRole("button", { name: "S", exact: true }).click();
+  const workspaceBounds = await page.locator(".workspace").boundingBox();
+  const trainingBounds = await page.locator(".training-config-panel").boundingBox();
+  expect(workspaceBounds).not.toBeNull();
+  expect(trainingBounds).not.toBeNull();
+  expect(trainingBounds!.x + trainingBounds!.width).toBeLessThanOrEqual(workspaceBounds!.x + workspaceBounds!.width + 1);
+  expect(await page.locator(".training-config-panel").evaluate((panel) => panel.scrollWidth - panel.clientWidth)).toBeLessThanOrEqual(1);
+  expect(await page.locator(".training-config-grid select").evaluateAll((selects) => selects.every((select) => select.getBoundingClientRect().right <= select.parentElement!.getBoundingClientRect().right + 1))).toBeTruthy();
+  await page.locator(".workspace").screenshot({ path: testInfo.outputPath("training-workspace-1180.png") });
+  await page.setViewportSize({ width: 1280, height: 720 });
+  expect(await page.locator(".training-config-panel").evaluate((panel) => panel.getBoundingClientRect().right <= panel.closest(".workspace")!.getBoundingClientRect().right + 1)).toBeTruthy();
+  expect(await page.locator(".training-config-grid select").evaluateAll((selects) => selects.every((select) => select.getBoundingClientRect().right <= select.parentElement!.getBoundingClientRect().right + 1))).toBeTruthy();
+  await page.setViewportSize({ width: 1180, height: 720 });
   await page.getByLabel("Training model").selectOption("logistic_regression");
   const response = page.waitForResponse((item) => item.url().endsWith("/api/projects/training/run") && item.request().method() === "POST");
   await page.getByRole("button", { name: "Run real training", exact: true }).click();
