@@ -876,6 +876,7 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
     elif any((base / "data").glob("*.json")):
         issues.append(ProjectIntegrityIssue(code="DATASET_EVIDENCE_INCOMPLETE", status="FAIL", path="data", detail="Dataset evidence exists but the canonical DatasetContract is missing."))
     split_root = base / "data" / "splits"
+    persisted_splits: dict[object, SplitContract] = {}
     if split_root.exists() and not split_root.is_dir():
         issues.append(ProjectIntegrityIssue(code="SPLIT_CONTRACT_EVIDENCE_MALFORMED", status="FAIL", path="data/splits", detail="Split-contract evidence path is not a directory."))
     elif split_root.is_dir():
@@ -885,8 +886,35 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                 split = SplitContract.model_validate_json(path.read_text(encoding="utf-8"))
                 if path.stem != str(split.split_id): raise ValueError("SplitContract filename does not match its persisted identity.")
                 load_split_contract(base, split.split_id)
+                persisted_splits[split.split_id] = split
             except (FileNotFoundError, ValidationError, ValueError, DatasetConfirmationError, OSError) as error:
                 issues.append(ProjectIntegrityIssue(code="SPLIT_CONTRACT_EVIDENCE_MALFORMED", status="FAIL", path=str(path.relative_to(base)), detail=str(error)))
+    active_split_path = base / "data" / "active-split-contract.json"
+    split_pointer_issue = _active_latest_pointer_issue(
+        persisted_splits,
+        active_split_path,
+        "data/active-split-contract.json",
+        "SPLIT_CONTRACT_ACTIVE_POINTER_INVALID",
+        "SplitContract",
+        "split_id",
+        "split_id",
+        require_latest=False,
+    )
+    if split_pointer_issue is not None:
+        issues.append(split_pointer_issue)
+        checked += 1
+    elif active_split_path.exists():
+        checked += 1
+        try:
+            pointer = json.loads(active_split_path.read_text(encoding="utf-8"))
+            active_split = next((item for item in persisted_splits.values() if str(item.split_id) == str(pointer["split_id"])), None)
+            if active_split is None:
+                raise ValueError("Active SplitContract pointer does not resolve to persisted evidence.")
+            if pointer.get("split_identity") != active_split.split_identity:
+                raise ValueError("Active SplitContract pointer identity does not match its persisted contract.")
+            load_split_contract(base, active_split.split_id)
+        except (KeyError, TypeError, ValueError, OSError, json.JSONDecodeError, DatasetConfirmationError) as error:
+            issues.append(ProjectIntegrityIssue(code="SPLIT_CONTRACT_ACTIVE_POINTER_INVALID", status="FAIL", path="data/active-split-contract.json", detail=str(error)))
     transform_root = base / "data" / "transforms"
     if transform_root.exists() and not transform_root.is_dir():
         issues.append(ProjectIntegrityIssue(code="TRANSFORM_PIPELINE_EVIDENCE_MALFORMED", status="FAIL", path="data/transforms", detail="Transform-pipeline evidence path is not a directory."))

@@ -75,6 +75,26 @@ def test_project_integrity_rejects_stale_or_missing_auxiliary_analysis_pointers(
     assert any(issue.code == "ANALYSIS_COMPARISON_ACTIVE_POINTER_INVALID" for issue in issues)
 
 
+def test_project_integrity_validates_active_split_contract_pointer(tmp_path: Path) -> None:
+    client = TestClient(app)
+    root = tmp_path / "split-pointer-integrity"
+    session_id = client.post("/api/projects", json={"path": str(root), "name": "Split pointer integrity"}).json()["session_id"]
+    confirmed = client.post("/api/projects/dataset/confirm", json={"session_id": session_id, "csv_text": _frame(), "target": "target", "task": "binary_classification", "id_columns": []})
+    assert confirmed.status_code == 200, confirmed.text
+    created = client.post("/api/projects/dataset/splits", json={"session_id": session_id, "family": "RANDOM", "split_seed": 42, "validation_fraction": .2, "test_fraction": .2})
+    assert created.status_code == 201, created.text
+    pointer_path = root / "data" / "active-split-contract.json"
+    original = json.loads(pointer_path.read_text(encoding="utf-8"))
+    pointer = dict(original, split_identity="forged-identity")
+    pointer_path.write_text(json.dumps(pointer), encoding="utf-8")
+    report = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert any(issue["code"] == "SPLIT_CONTRACT_ACTIVE_POINTER_INVALID" for issue in report["issues"])
+
+    pointer_path.write_text(json.dumps(original), encoding="utf-8")
+    pointer_path.unlink()
+    report = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert any(issue["code"] == "SPLIT_CONTRACT_ACTIVE_POINTER_INVALID" for issue in report["issues"])
+
 def test_project_integrity_survives_reopen_and_reports_missing_frozen_model_artifact(tmp_path: Path) -> None:
     client = TestClient(app); root = tmp_path / "integrity"
     session_id = client.post("/api/projects", json={"path": str(root), "name": "Integrity"}).json()["session_id"]

@@ -231,16 +231,16 @@
     "alpha_training_run_active_pointer_integrity",
     "alpha_training_run_missing_pointer_integrity",
     "alpha_latest_object_pointer_completeness_integrity",
-    "alpha_auxiliary_evidence_latest_pointer_integrity"
+    "alpha_auxiliary_evidence_latest_pointer_integrity",
+    "alpha_split_contract_active_pointer_integrity"
   ],
-  "active_capability": "alpha_auxiliary_evidence_latest_pointer_integrity",
+  "active_capability": "alpha_split_contract_active_pointer_integrity",
   "active_acceptance": [
-    "Persisted comparisons, slices, explanation-reproducibility analyses, expert corrections, exhaustive results, tree-path evidence and behavior spec/results require resolvable active/latest pointers.",
-    "Timestamped active pointers must identify the latest persisted object; tree-path evidence is referentially checked because its schema has no creation timestamp.",
-    "Missing or stale pointers fail closed; empty optional collections remain valid without pointer files."
+    "Persisted SplitContract collections require a resolvable active-split pointer bound to the persisted split identity.",
+    "A missing, stale, malformed, or identity-mismatched split pointer fails Project Integrity; empty optional split collections remain valid."
   ],
   "blockers": [],
-  "next_executable_work": "Audit remaining project persistence/evidence families for user-visible reopen integrity gaps; preserve unrelated article files and keep verification resource-light.",
+  "next_executable_work": "Continue a resource-light audit of data-governance/evidence reopen integrity beyond active pointers; preserve unrelated article files.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -475,6 +475,7 @@
     "alpha_training_run_active_pointer_integrity": "PASS: Active TrainingRun pointer must identify the latest persisted run; rollback to an older valid run fails Project Integrity before close/reopen. Focused lifecycle integrity test passed.",
     "alpha_training_run_missing_pointer_integrity": "PASS: A missing active-training-run pointer with persisted runs now fails closed; recreating the pointer restores normal close/reopen behavior. Focused lifecycle integrity test passed.",
     "alpha_latest_object_pointer_completeness_integrity": "PASS: Latest-object pointer completeness is checked for persisted run/study/evaluation/policy/stability/final-test/explanation/assurance/bundle collections; missing Evaluation and TrainingRun pointers fail closed while empty collections remain optional. tests/test_project_integrity.py: 16 passed; adjacent training/Stability/Evidence routes: 56 passed.",
-    "alpha_auxiliary_evidence_latest_pointer_integrity": "PASS: Project Integrity now checks latest/missing active pointers for AnalysisComparison, SliceAnalysis, ExplanationReproducibilityAnalysis, ExpertCorrectionRevision, ExhaustiveLabResult, BehaviorSpec/BehaviorSpecResult and referential latest pointer for TreePathEvidence. Regression verifies stale and missing comparison pointers; tests/test_project_integrity.py plus training/Stability/Evidence routes: 67 passed; compileall and git diff --check passed."
+    "alpha_auxiliary_evidence_latest_pointer_integrity": "PASS: Project Integrity now checks latest/missing active pointers for AnalysisComparison, SliceAnalysis, ExplanationReproducibilityAnalysis, ExpertCorrectionRevision, ExhaustiveLabResult, BehaviorSpec/BehaviorSpecResult and referential latest pointer for TreePathEvidence. Regression verifies stale and missing comparison pointers; tests/test_project_integrity.py plus training/Stability/Evidence routes: 67 passed; compileall and git diff --check passed.",
+    "alpha_split_contract_active_pointer_integrity": "PASS: Project Integrity now requires the active split pointer to resolve to a persisted, dataset-bound SplitContract and checks its frozen split_identity. Regressions cover forged identity and missing pointer; tests/test_project_integrity.py: 18 passed, compileall and diff check passed."
   }
 }
