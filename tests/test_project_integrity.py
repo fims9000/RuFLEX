@@ -54,6 +54,27 @@ def test_project_integrity_survives_reopen_and_reports_missing_frozen_model_arti
     assert open_studio_project(root).integrity().status == "FAIL"
 
 
+def test_project_integrity_rejects_validation_evaluation_detached_from_frozen_run(tmp_path: Path) -> None:
+    client = TestClient(app)
+    root = tmp_path / "validation-evaluation-integrity"
+    session_id = client.post("/api/projects", json={"path": str(root), "name": "Validation Evaluation integrity"}).json()["session_id"]
+    assert client.post("/api/projects/dataset/confirm", json={"session_id": session_id, "csv_text": _frame(), "target": "target", "task": "binary_classification", "id_columns": []}).status_code == 200
+    trained = client.post("/api/projects/training/run", json={"session_id": session_id, "model_kind": "logistic_regression", "seed": 48, "max_epochs": 1, "learning_rate": .01, "batch_size": 16, "patience": 1, "validation_fraction": .2, "test_fraction": .2, "max_rules": 3})
+    assert trained.status_code == 201, trained.text
+    evaluation = client.post("/api/projects/analyses/evaluations", json={"session_id": session_id, "run_id": trained.json()["run_id"]})
+    assert evaluation.status_code == 201, evaluation.text
+    evaluation_id = evaluation.json()["evaluation_id"]
+    path = root / "analyses" / "evaluations" / f"{evaluation_id}.json"
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["model_artifact_sha256"] = "0" * 64
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    report = client.get(f"/api/projects/{session_id}/integrity").json()
+
+    assert report["status"] == "FAIL"
+    assert any(issue["code"] == "VALIDATION_EVALUATION_PROVENANCE_MISMATCH" for issue in report["issues"])
+
+
 def test_project_integrity_fails_closed_for_unknown_persisted_model_adapter(tmp_path: Path) -> None:
     client = TestClient(app); root = tmp_path / "unknown-adapter-integrity"
     session_id = client.post("/api/projects", json={"path": str(root), "name": "Unknown adapter"}).json()["session_id"]

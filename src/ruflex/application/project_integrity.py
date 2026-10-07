@@ -16,7 +16,7 @@ from ruflex.application.behavior import _requirement_identity
 from ruflex.domain.behavior import BehaviorRevisionComparison, BehaviorSpec, BehaviorSpecResult
 from ruflex.domain.evidence import ExplanationCheck, ExplanationContract
 from ruflex.domain.project import ProjectIntegrityIssue, ProjectIntegrityReport
-from ruflex.domain.training import StudyJob, TrainingStudy
+from ruflex.domain.training import AnalysisEvaluation, StudyJob, TrainingStudy
 from ruflex.runtime.registry import builtin_runtime_registry
 from ruflex.runtime.compatibility import resolve_run_adapter
 from ruflex.runtime.compatibility import LEGACY_MODEL_KIND_TO_ADAPTER
@@ -143,6 +143,49 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
             except (FileNotFoundError, ValidationError, ValueError, OSError, json.JSONDecodeError) as error:
                 issues.append(ProjectIntegrityIssue(code="IMPORTED_FIS_PROVENANCE_MALFORMED", status="FAIL", path=relative_path, detail=str(error)))
     runs_by_id = {run.run_id: run for run in runs}
+    evaluation_root = base / "analyses" / "evaluations"
+    evaluations: dict[object, AnalysisEvaluation] = {}
+    if evaluation_root.exists() and not evaluation_root.is_dir():
+        issues.append(ProjectIntegrityIssue(code="VALIDATION_EVALUATION_EVIDENCE_MALFORMED", status="FAIL", path="analyses/evaluations", detail="Validation Evaluation evidence path is not a directory."))
+    elif evaluation_root.is_dir():
+        for path in sorted(evaluation_root.glob("*.json")):
+            if path.name == "active-evaluation.json":
+                continue
+            checked += 1
+            relative_path = str(path.relative_to(base))
+            try:
+                evaluation = AnalysisEvaluation.model_validate_json(path.read_text(encoding="utf-8"))
+                if path.stem != str(evaluation.evaluation_id):
+                    raise ValueError("Validation Evaluation filename does not match its persisted identity.")
+                evaluations[evaluation.evaluation_id] = evaluation
+                run = runs_by_id.get(evaluation.run_id)
+                if run is None:
+                    issues.append(ProjectIntegrityIssue(code="VALIDATION_EVALUATION_RUN_MISSING", status="FAIL", path=relative_path, detail="Validation Evaluation references a TrainingRun that is not present."))
+                    continue
+                provenance_matches = (
+                    evaluation.task == run.task
+                    and evaluation.target == run.target
+                    and evaluation.model_kind == run.model_kind
+                    and evaluation.model_artifact_sha256 == run.model_artifact_sha256
+                    and evaluation.dataset_fingerprint == run.dataset_fingerprint
+                    and evaluation.dataset_artifact_sha256 == run.dataset_artifact_sha256
+                    and evaluation.preprocessing_artifact_sha256 == run.preprocessing_artifact_sha256
+                    and evaluation.prediction_preview == run.prediction_preview
+                    and evaluation.validation_row_count == len(run.prediction_preview)
+                )
+                if not provenance_matches:
+                    issues.append(ProjectIntegrityIssue(code="VALIDATION_EVALUATION_PROVENANCE_MISMATCH", status="FAIL", path=relative_path, detail="Validation Evaluation does not match its frozen TrainingRun, dataset, preprocessing, or complete validation predictions."))
+            except (ValidationError, ValueError, OSError, json.JSONDecodeError) as error:
+                issues.append(ProjectIntegrityIssue(code="VALIDATION_EVALUATION_EVIDENCE_MALFORMED", status="FAIL", path=relative_path, detail=str(error)))
+        active_path = evaluation_root / "active-evaluation.json"
+        if active_path.exists():
+            checked += 1
+            try:
+                active_id = json.loads(active_path.read_text(encoding="utf-8"))["evaluation_id"]
+                if str(active_id) not in {str(key) for key in evaluations}:
+                    raise ValueError("Active validation Evaluation pointer does not resolve to persisted evidence.")
+            except (KeyError, TypeError, ValueError, OSError, json.JSONDecodeError) as error:
+                issues.append(ProjectIntegrityIssue(code="VALIDATION_EVALUATION_ACTIVE_POINTER_INVALID", status="FAIL", path="analyses/evaluations/active-evaluation.json", detail=str(error)))
     for run in runs:
         run_path = f"runs/{run.run_id}.json"
         try:
