@@ -445,18 +445,17 @@ export function BuildWorkspace({
     const persistedModelChanged = hydratedProjectIdRef.current !== project.session_id ||
       hydratedFisIdentityRef.current !== nextFisIdentity;
     const currentWorking = workingRef.current;
-    const preserveNewerDraft = Boolean(
+    const preserveWorkingCopy = Boolean(
       persistedModelChanged &&
       fis?.semantic_hash &&
       preserveDraftOnHydrationHashRef.current === fis.semantic_hash &&
       currentWorking &&
-      !currentWorking.semantic_hash &&
       (currentWorking.fis_id === fis.fis_id || preserveDraftOnHydrationFisIdRef.current === currentWorking.fis_id),
     );
     if (persistedModelChanged) {
       hydratedProjectIdRef.current = project.session_id;
       hydratedFisIdentityRef.current = nextFisIdentity;
-      if (preserveNewerDraft) {
+      if (preserveWorkingCopy) {
         preserveDraftOnHydrationHashRef.current = null;
         preserveDraftOnHydrationFisIdRef.current = null;
       } else {

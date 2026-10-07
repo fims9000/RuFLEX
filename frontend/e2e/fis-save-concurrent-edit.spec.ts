@@ -61,6 +61,51 @@ test("edits made during a save remain as an unsaved draft", async ({ page }) => 
   await expect(page.getByRole("button", { name: "Evaluate", exact: true })).toBeEnabled();
 });
 
+test("an undo made during save remains selected when the persisted result hydrates", async ({ page }) => {
+  const projectPath = join(tmpdir(), `ruflex-fis-undo-save-race-${Date.now()}`);
+  let releaseSave: () => void = () => {};
+  let saveStarted: () => void = () => {};
+  const saveStartedPromise = new Promise<void>((resolve) => { saveStarted = resolve; });
+  let savePosts = 0;
+  await page.route("**/api/projects/fis/save", async (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    savePosts += 1;
+    const response = await route.fetch();
+    if (savePosts === 1) {
+      saveStarted();
+      await new Promise<void>((resolve) => { releaseSave = resolve; });
+    }
+    await route.fulfill({ response });
+  });
+
+  await page.goto("/");
+  await page.getByLabel("Project path").fill(projectPath);
+  await page.getByLabel("Project name").fill("FIS undo save race");
+  await page.getByRole("button", { name: "Create project", exact: true }).click();
+  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
+  await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
+  await page.getByRole("button", { name: /New FIS from dataset/ }).click();
+  await page.getByRole("button", { name: "Create FIS from dataset", exact: true }).click();
+
+  const resolution = page.getByLabel("Resolution", { exact: true });
+  const baseResolution = Number(await resolution.inputValue());
+  await resolution.fill(String(baseResolution + 3));
+  await page.getByRole("button", { name: "Save FIS", exact: true }).click();
+  await saveStartedPromise;
+
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
+  await expect(resolution).toHaveValue(String(baseResolution));
+  releaseSave();
+
+  await expect(page.getByText(/newer editor changes remain unsaved/)).toBeVisible();
+  await expect(resolution).toHaveValue(String(baseResolution));
+  await expect(page.getByRole("button", { name: "Redo", exact: true })).toBeEnabled();
+  await page.getByRole("button", { name: "Redo", exact: true }).click();
+  await expect(resolution).toHaveValue(String(baseResolution + 3));
+  expect(savePosts).toBe(1);
+});
+
 test("exact retry after an uncertain FIS save preserves edits made while the retry is in flight", async ({ page }) => {
   const projectPath = join(tmpdir(), `ruflex-fis-retry-race-${Date.now()}`);
   const savedSpecs: Array<{ operators: { centroid_resolution: number } }> = [];

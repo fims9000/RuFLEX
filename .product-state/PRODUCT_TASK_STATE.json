@@ -305,15 +305,16 @@
     "alpha_fis_diagnostics_stale_response_guard",
     "alpha_fis_dataset_range_response_guard",
     "alpha_fis_cross_action_write_mutex",
-    "alpha_fis_import_file_read_draft_baseline"
+    "alpha_fis_import_file_read_draft_baseline",
+    "alpha_fis_editor_history_async_integrity"
   ],
-  "active_capability": "alpha_fis_editor_history_async_integrity",
+  "active_capability": "alpha_master_spec_gap_audit",
   "active_acceptance": [
-    "Verify asynchronous FIS save/import/refit completions cannot desynchronize visible editor history from the active persisted revision.",
-    "If an undo/redo or history-state race is reproducible, preserve exact revision semantics and add a focused Studio E2E."
+    "Resume a bounded master-spec gap audit after the verified FIS lifecycle race fixes.",
+    "Select one concrete, low-resource, end-to-end product gap and implement it without broad refactoring."
   ],
   "blockers": [],
-  "next_executable_work": "Inspect FIS editor-history initialization, import adoption, save completion, undo/redo controls, and persisted active revision behavior; reproduce any actual async history divergence before editing.",
+  "next_executable_work": "Review the next unresolved user-facing workflow in 02_RuFLEX_FULL_TECHNICAL_SPEC_v1.md against its route/API/tests, choose a small falsifiable gap, then implement and verify one Studio user path.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -622,6 +623,7 @@
     "alpha_fis_diagnostics_stale_response_guard": "PASS: monotonic request identity prevents older diagnostics from replacing a newer result; FIS snapshot changes invalidate in-flight diagnostics. Two focused browser E2E tests passed for out-of-order response and edited-snapshot invalidation.",
     "alpha_fis_dataset_range_response_guard": "PASS: range requests capture FIS, selected input and feature identity; the response is discarded with visible retry guidance if the editor changes. Studio E2E verifies a concurrent Resolution edit survives the stale request and is persisted by the next save. 11 focused import/save/expert/golden-route E2E tests, TypeScript build, and git diff --check passed.",
     "alpha_fis_cross_action_write_mutex": "PASS: one synchronous FIS action mutex serializes save, MATLAB import, default creation, TRAIN-only expert refit, inference, and exact recovery/retry paths. Focused browser regressions cover save/import and save/refit race attempts; 7 focused Playwright tests and npm run build passed; git diff --check passed.",
-    "alpha_fis_import_file_read_draft_baseline": "PASS: MATLAB import captures the working FIS before asynchronous File.text() and retains that snapshot through exact-response retry; a delayed file-read E2E proves intervening edits remain visible and are persisted by the next save. Six focused MATLAB import/diagnostics Playwright tests and npm run build passed."
+    "alpha_fis_import_file_read_draft_baseline": "PASS: MATLAB import captures the working FIS before asynchronous File.text() and retains that snapshot through exact-response retry; a delayed file-read E2E proves intervening edits remain visible and are persisted by the next save. Six focused MATLAB import/diagnostics Playwright tests and npm run build passed.",
+    "alpha_fis_editor_history_async_integrity": "PASS: delayed-save browser reproduction showed a user Undo could be replaced by the newly persisted revision because hydration preserved only unhashed drafts. Project hydration now preserves the exact in-flight working copy when its identity matches the preservation receipt. The regression verifies Undo and Redo survive async save completion; all 14 focused FIS save/import/expert E2E tests and npm run build passed."
   }
 }
