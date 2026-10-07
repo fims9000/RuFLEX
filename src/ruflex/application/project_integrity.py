@@ -18,6 +18,7 @@ from ruflex.domain.evidence import ExplanationCheck, ExplanationContract
 from ruflex.domain.project import ProjectIntegrityIssue, ProjectIntegrityReport
 from ruflex.domain.training import AnalysisEvaluation, CalibrationTransform, DecisionThresholdPolicy, StudyJob, TrainingStudy
 from ruflex.domain.selective import SelectivePredictionPolicy
+from ruflex.domain.stability import StabilityGatePolicy, StudyStabilityAnalysis
 from ruflex.runtime.registry import builtin_runtime_registry
 from ruflex.runtime.compatibility import resolve_run_adapter
 from ruflex.runtime.compatibility import LEGACY_MODEL_KIND_TO_ADAPTER
@@ -364,6 +365,7 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                 except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError) as error:
                     issues.append(ProjectIntegrityIssue(code="PREPROCESSING_ARTIFACT_MALFORMED", status="FAIL", path=f"runs/{run.run_id}.json", detail=str(error)))
     study_root = base / "studies"
+    studies_by_id: dict[object, TrainingStudy] = {}
     if study_root.exists() and not study_root.is_dir():
         issues.append(ProjectIntegrityIssue(code="STUDY_EVIDENCE_MALFORMED", status="FAIL", path="studies", detail="Persisted study path is not a directory."))
     elif study_root.is_dir():
@@ -377,6 +379,7 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                 study = TrainingStudy.model_validate_json(study_path.read_text(encoding="utf-8"))
                 if study_path.stem != str(study.study_id):
                     raise ValueError("TrainingStudy filename does not match its persisted identity.")
+                studies_by_id[study.study_id] = study
                 if not any((study.adapter_key, study.adapter_version, study.adapter_provider)) and study.schema_version < 3:
                     legacy = LEGACY_MODEL_KIND_TO_ADAPTER.get(study.model_kind)
                     if legacy is None:
@@ -401,6 +404,95 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                 issues.append(ProjectIntegrityIssue(code="ADAPTER_IDENTITY", status="PASS", path=relative_path, detail=f"{identity_note}: {adapter.descriptor.identity.key}@{adapter.descriptor.identity.version}; selected run and seed-run bindings agree."))
             except Exception as error:
                 issues.append(ProjectIntegrityIssue(code="ADAPTER_IDENTITY", status="FAIL", path=relative_path, detail=f"TrainingStudy adapter provenance is invalid: {error}"))
+        stability_root = base / "analyses" / "stability-analyses"
+        stability_analyses: dict[object, StudyStabilityAnalysis] = {}
+        if stability_root.exists() and not stability_root.is_dir():
+            issues.append(ProjectIntegrityIssue(code="STABILITY_ANALYSIS_EVIDENCE_MALFORMED", status="FAIL", path="analyses/stability-analyses", detail="Stability Analysis evidence path is not a directory."))
+        elif stability_root.is_dir():
+            for path in sorted(stability_root.glob("*.json")):
+                if path.name == "active-analysis.json":
+                    continue
+                checked += 1
+                relative_path = str(path.relative_to(base))
+                try:
+                    analysis = StudyStabilityAnalysis.model_validate_json(path.read_text(encoding="utf-8"))
+                    if path.stem != str(analysis.analysis_id):
+                        raise ValueError("Stability Analysis filename does not match its persisted identity.")
+                    stability_analyses[analysis.analysis_id] = analysis
+                    study = studies_by_id.get(analysis.study_id)
+                    study_run_ids = set() if study is None else {run.run_id for run in study.seed_runs}
+                    threshold = thresholds.get(analysis.class_threshold_id) if analysis.class_threshold_id else None
+                    if (
+                        study is None
+                        or not study_run_ids
+                        or set(analysis.run_ids) != study_run_ids
+                        or analysis.selected_run_id != study.selected_run_id
+                        or analysis.model_kind != study.model_kind
+                        or any(run.dataset_fingerprint != analysis.dataset_fingerprint for run in study.seed_runs)
+                        or (analysis.evaluation_id is not None and (analysis.evaluation_id not in evaluations or evaluations[analysis.evaluation_id].run_id != analysis.selected_run_id))
+                        or (analysis.class_threshold_id is not None and (threshold is None or threshold.evaluation_id != analysis.evaluation_id or threshold.run_id != analysis.selected_run_id or threshold.selected_threshold != analysis.decision_threshold))
+                    ):
+                        issues.append(ProjectIntegrityIssue(code="STABILITY_ANALYSIS_PROVENANCE_MISMATCH", status="FAIL", path=relative_path, detail="Stability Analysis does not resolve to its exact TrainingStudy, run set, selected Evaluation, or validation threshold."))
+                except (ValidationError, ValueError, OSError, json.JSONDecodeError) as error:
+                    issues.append(ProjectIntegrityIssue(code="STABILITY_ANALYSIS_EVIDENCE_MALFORMED", status="FAIL", path=relative_path, detail=str(error)))
+            active_path = stability_root / "active-analysis.json"
+            if active_path.exists():
+                checked += 1
+                try:
+                    active_id = json.loads(active_path.read_text(encoding="utf-8"))["analysis_id"]
+                    if str(active_id) not in {str(key) for key in stability_analyses}:
+                        raise ValueError("Active Stability Analysis pointer does not resolve to persisted evidence.")
+                except (KeyError, TypeError, ValueError, OSError, json.JSONDecodeError) as error:
+                    issues.append(ProjectIntegrityIssue(code="STABILITY_ANALYSIS_ACTIVE_POINTER_INVALID", status="FAIL", path="analyses/stability-analyses/active-analysis.json", detail=str(error)))
+        stability_policy_root = base / "analyses" / "stability-policies"
+        stability_policies: dict[object, StabilityGatePolicy] = {}
+        if stability_policy_root.exists() and not stability_policy_root.is_dir():
+            issues.append(ProjectIntegrityIssue(code="STABILITY_GATE_EVIDENCE_MALFORMED", status="FAIL", path="analyses/stability-policies", detail="Stability Gate evidence path is not a directory."))
+        elif stability_policy_root.is_dir():
+            for path in sorted(stability_policy_root.glob("*.json")):
+                if path.name == "active-policy.json":
+                    continue
+                checked += 1
+                relative_path = str(path.relative_to(base))
+                try:
+                    policy = StabilityGatePolicy.model_validate_json(path.read_text(encoding="utf-8"))
+                    if path.stem != str(policy.policy_id):
+                        raise ValueError("Stability Gate filename does not match its persisted identity.")
+                    stability_policies[policy.policy_id] = policy
+                    analysis = stability_analyses.get(policy.stability_analysis_id)
+                    evaluation = evaluations.get(policy.evaluation_id)
+                    threshold = thresholds.get(policy.class_threshold_id) if policy.class_threshold_id else None
+                    if (
+                        analysis is None
+                        or evaluation is None
+                        or policy.study_id != analysis.study_id
+                        or policy.evaluation_id != analysis.evaluation_id
+                        or policy.selected_run_id != analysis.selected_run_id
+                        or set(policy.run_ids) != set(analysis.run_ids)
+                        or policy.dataset_fingerprint != analysis.dataset_fingerprint
+                        or policy.dataset_artifact_sha256 != analysis.dataset_artifact_sha256
+                        or policy.model_kind != analysis.model_kind
+                        or policy.source_split != "validation"
+                        or policy.probability_source != "raw"
+                        or policy.calibration_id is not None
+                        or threshold is None
+                        or policy.class_threshold_id != analysis.class_threshold_id
+                        or policy.decision_threshold != threshold.selected_threshold
+                        or evaluation.run_id != policy.selected_run_id
+                        or {item.case_id for item in policy.decisions} != {item.case_id for item in analysis.cases}
+                    ):
+                        issues.append(ProjectIntegrityIssue(code="STABILITY_GATE_PROVENANCE_MISMATCH", status="FAIL", path=relative_path, detail="Stability Gate does not match its frozen Analysis, selected validation Evaluation, raw threshold, run support, or case evidence."))
+                except (ValidationError, ValueError, OSError, json.JSONDecodeError) as error:
+                    issues.append(ProjectIntegrityIssue(code="STABILITY_GATE_EVIDENCE_MALFORMED", status="FAIL", path=relative_path, detail=str(error)))
+            active_path = stability_policy_root / "active-policy.json"
+            if active_path.exists():
+                checked += 1
+                try:
+                    active_id = json.loads(active_path.read_text(encoding="utf-8"))["policy_id"]
+                    if str(active_id) not in {str(key) for key in stability_policies}:
+                        raise ValueError("Active Stability Gate pointer does not resolve to persisted evidence.")
+                except (KeyError, TypeError, ValueError, OSError, json.JSONDecodeError) as error:
+                    issues.append(ProjectIntegrityIssue(code="STABILITY_GATE_ACTIVE_POINTER_INVALID", status="FAIL", path="analyses/stability-policies/active-policy.json", detail=str(error)))
         study_jobs_root = study_root / "jobs"
         if study_jobs_root.exists() and not study_jobs_root.is_dir():
             issues.append(ProjectIntegrityIssue(code="STUDY_JOB_EVIDENCE_MALFORMED", status="FAIL", path="studies/jobs", detail="Persisted StudyJob path is not a directory."))

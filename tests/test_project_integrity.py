@@ -82,6 +82,37 @@ def test_project_integrity_rejects_validation_evaluation_detached_from_frozen_ru
     assert any(issue["code"] == "VALIDATION_EVALUATION_PROVENANCE_MISMATCH" for issue in report["issues"])
 
 
+def test_project_integrity_validates_frozen_stability_analysis_and_gate_chain(tmp_path: Path) -> None:
+    client = TestClient(app)
+    root = tmp_path / "stability-chain-integrity"
+    session_id = client.post("/api/projects", json={"path": str(root), "name": "Stability chain integrity"}).json()["session_id"]
+    assert client.post("/api/projects/dataset/confirm", json={"session_id": session_id, "csv_text": _frame(), "target": "target", "task": "binary_classification", "id_columns": []}).status_code == 200
+    study_response = client.post("/api/projects/training/studies", json={"session_id": session_id, "name": "fixed split", "model_kind": "random_forest", "seeds": [11, 13, 17], "randomness_protocol": "TRAINING_VARIABILITY", "split_seed": 42, "selection_metric": "f1", "max_epochs": 1, "learning_rate": .01, "batch_size": 16, "patience": 1, "validation_fraction": .2, "test_fraction": .2, "max_rules": 3})
+    assert study_response.status_code == 201, study_response.text
+    study = study_response.json()
+    evaluation_response = client.post("/api/projects/analyses/evaluations", json={"session_id": session_id, "run_id": study["selected_run_id"]})
+    assert evaluation_response.status_code == 201, evaluation_response.text
+    evaluation_id = evaluation_response.json()["evaluation_id"]
+    threshold_response = client.post("/api/projects/analyses/thresholds", json={"session_id": session_id, "evaluation_id": evaluation_id, "calibration_id": None, "objective": "f1"})
+    assert threshold_response.status_code == 201, threshold_response.text
+    threshold_id = threshold_response.json()["threshold_id"]
+    analysis_response = client.post("/api/projects/analyses/stability", json={"session_id": session_id, "study_id": study["study_id"], "evaluation_id": evaluation_id, "threshold_id": threshold_id, "high_confidence_threshold": .9, "unstable_agreement_threshold": .8})
+    assert analysis_response.status_code == 201, analysis_response.text
+    analysis = analysis_response.json()
+    policy_response = client.post("/api/projects/analyses/stability-policies", json={"session_id": session_id, "analysis_id": analysis["analysis_id"], "evaluation_id": evaluation_id, "min_confidence": .9, "min_class_agreement": .8, "max_probability_std": .15})
+    assert policy_response.status_code == 201, policy_response.text
+    assert client.get(f"/api/projects/{session_id}/integrity").json()["status"] == "PASS"
+
+    policy_path = root / "analyses" / "stability-policies" / f"{policy_response.json()['policy_id']}.json"
+    payload = json.loads(policy_path.read_text(encoding="utf-8"))
+    payload["class_threshold_id"] = "00000000-0000-0000-0000-000000000001"
+    policy_path.write_text(json.dumps(payload), encoding="utf-8")
+    report = client.get(f"/api/projects/{session_id}/integrity").json()
+
+    assert report["status"] == "FAIL"
+    assert any(issue["code"] == "STABILITY_GATE_PROVENANCE_MISMATCH" for issue in report["issues"])
+
+
 def test_project_integrity_fails_closed_for_unknown_persisted_model_adapter(tmp_path: Path) -> None:
     client = TestClient(app); root = tmp_path / "unknown-adapter-integrity"
     session_id = client.post("/api/projects", json={"path": str(root), "name": "Unknown adapter"}).json()["session_id"]

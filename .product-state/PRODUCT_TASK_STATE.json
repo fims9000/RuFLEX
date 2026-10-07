@@ -188,12 +188,13 @@
     "alpha_validation_evaluation_reopen_identity_guard",
     "alpha_validation_policy_reopen_identity_guard",
     "alpha_validation_evaluation_project_integrity",
-    "alpha_validation_policy_chain_project_integrity"
+    "alpha_validation_policy_chain_project_integrity",
+    "alpha_stability_chain_project_integrity"
   ],
-  "active_capability": "alpha_validation_policy_chain_project_integrity",
+  "active_capability": "alpha_stability_chain_project_integrity",
   "active_acceptance": [
-    "Project Integrity validates CalibrationTransform, DecisionThresholdPolicy, and SelectivePredictionPolicy references as a resolvable validation evidence chain.",
-    "Broken filenames, missing references, incorrect bindings, and dangling active pointers produce explicit FAIL findings."
+    "Project Integrity validates Stability Analysis and Gate against their exact Study, run set, selected Evaluation, raw DecisionThreshold, and case identities.",
+    "Malformed or dangling Stability evidence and active pointers produce explicit FAIL findings."
   ],
   "blockers": [],
   "next_executable_work": "Continue resource-aware alpha audit of persisted validation/final-test object provenance and retry boundaries, preserving unrelated article files.",
@@ -388,6 +389,7 @@
     "alpha_validation_evaluation_reopen_identity_guard": "PASS: Exact Evaluation reopen validates the requested ID against the immutable object; latest reopen rejects malformed active pointers and identity mismatches with typed 422 integrity errors. Focused recovery, normal reopen and corruption regression tests passed.",
     "alpha_validation_policy_reopen_identity_guard": "PASS: Exact and latest calibration/threshold/selective-policy reopen validate immutable object IDs; malformed latest pointers and identity mismatches return typed 422 integrity errors. Regression corrupts policy records and a threshold pointer; policy-object integrity test passed.",
     "alpha_validation_evaluation_project_integrity": "PASS: Project Integrity now validates persisted validation Evaluations against their TrainingRun, model, dataset, preprocessing and complete validation predictions, plus active pointer resolution. Tampered run binding reports FAIL; focused integrity/training/stability/runtime suites passed.",
-    "alpha_validation_policy_chain_project_integrity": "PASS: Project Integrity resolves calibrations, thresholds and selective policies back to their exact validation Evaluation and each other, and checks active-pointer targets. A complete Evaluation/calibration/threshold/selective chain reopens PASS; focused project-integrity suite passed."
+    "alpha_validation_policy_chain_project_integrity": "PASS: Project Integrity resolves calibrations, thresholds and selective policies back to their exact validation Evaluation and each other, and checks active-pointer targets. A complete Evaluation/calibration/threshold/selective chain reopens PASS; focused project-integrity suite passed.",
+    "alpha_stability_chain_project_integrity": "PASS: Project Integrity validates Stability Analysis/Gate bindings against the persisted Study, selected Evaluation, exact raw threshold and matching case/run support, including active pointers. Complete chain reports PASS; a corrupted Gate threshold binding reports FAIL; focused regression passed."
   }
 }
