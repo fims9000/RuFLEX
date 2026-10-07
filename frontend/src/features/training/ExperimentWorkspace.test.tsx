@@ -234,6 +234,39 @@ describe("ExperimentWorkspace dynamic model controls", () => {
     expect(studioApi.startStudyJob).toHaveBeenCalledTimes(1);
   });
 
+  it.each(["single fit first", "Study first"] as const)("serializes cross-action fit versus Study submission when %s wins the event-loop race", async (firstAction) => {
+    let finishRun!: (value: never) => void;
+    let finishStudy!: (value: never) => void;
+    const completedStudy = { job_id: "job-cross-action", name: "Study", model_kind: "flat_neuro_fuzzy", selection_metric: "f1", status: "SUCCEEDED", cancel_requested: false, seed_states: [], study_id: "study-cross-action", error: null, execution_backend: "LOCAL", execution_backend_key: "local_executor", execution_config: {}, recovery_count: 0, recovery_note: null };
+    studioApi.runTraining.mockImplementationOnce(() => new Promise((resolve) => { finishRun = resolve as (value: never) => void; }));
+    studioApi.startStudyJob.mockImplementationOnce(() => new Promise((resolve) => { finishStudy = resolve as (value: never) => void; }));
+    studioApi.getLatestTrainingStudy.mockResolvedValue({ study_id: "study-cross-action", selection_metric: "f1", selected_run_id: null, seed_runs: [] });
+    render(<ExperimentWorkspace project={project} dataset={dataset as never} run={null} study={null} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);
+
+    const singleFit = await screen.findByRole("button", { name: "Run real training" });
+    const study = await screen.findByRole("button", { name: "Run multi-seed study" });
+    await waitFor(() => { expect(singleFit).toBeEnabled(); expect(study).toBeEnabled(); });
+    act(() => {
+      if (firstAction === "single fit first") {
+        singleFit.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+        study.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      } else {
+        study.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+        singleFit.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      }
+    });
+
+    if (firstAction === "single fit first") {
+      expect(studioApi.runTraining).toHaveBeenCalledTimes(1);
+      expect(studioApi.startStudyJob).not.toHaveBeenCalled();
+      await act(async () => { finishRun({} as never); });
+    } else {
+      expect(studioApi.startStudyJob).toHaveBeenCalledTimes(1);
+      expect(studioApi.runTraining).not.toHaveBeenCalled();
+      await act(async () => { finishStudy(completedStudy as never); });
+    }
+  });
+
   it("clears a rejected Study request so corrected parameters create a new request", async () => {
     studioApi.startStudyJob
       .mockRejectedValueOnce(new ProductApiError({ code: "VALIDATION_FAILED", status: 422, detail: "Study configuration is invalid." }))
