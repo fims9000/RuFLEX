@@ -212,7 +212,7 @@
     "Tampered selected-run agreement, disposition, reason, or risk summary fails closed while confidence and random comparators remain deterministic."
   ],
   "blockers": [],
-  "next_executable_work": "Run focused Project Integrity tests and close/reopen policy checks for the recomputed StabilityGate record, then continue to the next persistence-integrity gap; preserve unrelated article files.",
+  "next_executable_work": "Audit whether final-test unlock and policy-freeze timestamps are reconstructed exactly from all referenced frozen objects; preserve unrelated article files.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
