@@ -613,6 +613,10 @@ export function BuildWorkspace({
   }
   async function exportMatlabFile() {
     setError(null);
+    if (!working?.semantic_hash) {
+      setError("Save this FIS revision before exporting; MATLAB export uses the active persisted model. No export was created.");
+      return;
+    }
     try {
       const source = await studioApi.exportMatlabFis(project.session_id);
       const url = URL.createObjectURL(new Blob([source], { type: "text/plain" }));
@@ -1337,7 +1341,7 @@ export function BuildWorkspace({
           >
             {importingMatlabFis ? "Importing MATLAB FIS…" : "Import MATLAB .fis"}
           </Button>
-          <Button view="outlined" onClick={exportMatlabFile} data-ruflex-action="fis.export">
+          <Button view="outlined" disabled={!working.semantic_hash || savingFis} onClick={exportMatlabFile} data-ruflex-action="fis.export">
             Export MATLAB .fis
           </Button>
           <Button view="action" disabled={evaluatingFis || !working.semantic_hash || !!fisEvaluationRecovery} onClick={run} data-ruflex-action="fis.evaluate">
@@ -1999,7 +2003,7 @@ export function BuildWorkspace({
           <Button view="action" disabled={evaluatingFis || !working.semantic_hash || !!fisEvaluationRecovery} onClick={run}>
             {evaluatingFis ? "Evaluating…" : "Evaluate"}
           </Button>
-          {!working.semantic_hash && <p role="status">Save this FIS revision before evaluating; inference uses the active persisted model.</p>}
+          {!working.semantic_hash && <p role="status">Save this FIS revision before evaluating or exporting; both operations use the active persisted model.</p>}
           {evaluatingFis && <p role="status">Running the current FIS input sample…</p>}
           {evaluationStatus === "loading" && <p role="status">Checking the saved exact FIS trace…</p>}
           {evaluationStatus === "none" && !lastOutput && <p>No saved exact FIS trace is available yet.</p>}

@@ -275,7 +275,7 @@
   "active_capability": "alpha_fis_unsaved_revision_evaluation_guard",
   "active_acceptance": [
     "Editing FIS semantics invalidates the working copy's persisted semantic hash and hides any prior inference as stale.",
-    "Inference controls stay disabled until the edited FIS revision is saved; the handler independently rejects unsaved revisions without making an API request."
+    "Inference and MATLAB export controls stay disabled until the edited FIS revision is saved; both handlers independently reject unsaved revisions without making an API request."
   ],
   "blockers": [],
   "next_executable_work": "Inspect the next user-facing alpha workflow for an evidenced reliability/usability gap; use focused, low-resource checks and commit each verified slice locally.",
@@ -552,6 +552,6 @@
     "alpha_fis_creation_duplicate_guard": "PASS: Default FIS creation now uses a synchronous in-flight guard, disables the action with progress feedback, and releases after success or failure. TypeScript build and delayed-response Studio Playwright E2E passed (1/1) with a single create request.",
     "alpha_fis_save_duplicate_guard": "PASS: FIS revision save now guards synchronously against duplicate writes, shows Saving progress and stays disabled through exact persistence or recovery. TypeScript build and a delayed-route Studio E2E passed; both default creation and FIS save each issued exactly one request.",
     "alpha_matlab_fis_import_duplicate_guard": "PASS: MATLAB FIS initial import now synchronously locks duplicate submissions, disables the import controls and displays progress until the response resolves; the shared retry path also respects the in-flight guard. TypeScript build and focused import Playwright suite passed (2/2), including the uncertain-response recovery route and delayed duplicate-write guard.",
-    "alpha_fis_unsaved_revision_evaluation_guard": "PASS: semantic edits clear the working FIS hash so prior traces no longer match; both Evaluate controls are disabled until Save FIS persists a new revision, and run() rejects unsaved revisions before API submission. Focused FIS helper/parser tests: 3 passed; tsc -b passed; focused real Studio Playwright E2E passed (1/1), verifying stale output hiding, save-before-evaluate, and invalid-input no-submit behavior."
+    "alpha_fis_unsaved_revision_evaluation_guard": "PASS: semantic edits clear the working FIS hash so prior traces no longer match; Evaluate and MATLAB export are disabled until Save FIS persists a new revision, and both handlers reject unsaved revisions before API submission/download. Focused FIS helper/parser tests: 3 passed; tsc -b passed; focused real Studio Playwright E2E passed (1/1), verifying stale output hiding, save-before-evaluate/export, and invalid-input no-submit behavior."
   }
 }
