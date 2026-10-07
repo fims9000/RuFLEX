@@ -148,6 +148,55 @@ test("MATLAB FIS import completion does not overwrite an editor draft created wh
   expect(importRequests).toBe(2);
 });
 
+test("MATLAB file read captures the editor baseline before asynchronous import", async ({ page }) => {
+  const path = join(tmpdir(), `ruflex-fis-import-read-race-${Date.now()}`);
+  let savedDraftResolution: number | undefined;
+  await page.route("**/api/projects/fis/save", async (route) => {
+    if (route.request().method() === "POST") {
+      savedDraftResolution = route.request().postDataJSON().spec.operators.centroid_resolution;
+    }
+    await route.continue();
+  });
+
+  await page.goto("/");
+  await page.getByLabel("Project path").fill(path);
+  await page.getByLabel("Project name").fill("FIS import file read race");
+  await page.getByRole("button", { name: "Create project", exact: true }).click();
+  await page.getByRole("button", { name: "M", exact: true }).click();
+  await page.getByLabel("MATLAB FIS file").setInputFiles({ name: "tipper.fis", mimeType: "text/plain", buffer: Buffer.from(matlabFis) });
+  await expect(page.getByRole("heading", { name: "tipper", exact: true })).toBeVisible();
+
+  await page.evaluate(() => {
+    const testWindow = window as Window & {
+      __fisReadStarted?: boolean;
+      __releaseFisRead?: () => void;
+    };
+    const originalText = File.prototype.text;
+    File.prototype.text = function () {
+      if (this.name !== "tipper_slow.fis") return originalText.call(this);
+      testWindow.__fisReadStarted = true;
+      return new Promise<string>((resolve, reject) => {
+        testWindow.__releaseFisRead = () => { void originalText.call(this).then(resolve, reject); };
+      });
+    };
+  });
+
+  const secondImportedFis = matlabFis.replace("Name='tipper'", "Name='tipper_slow'");
+  await page.getByLabel("MATLAB FIS file").setInputFiles({ name: "tipper_slow.fis", mimeType: "text/plain", buffer: Buffer.from(secondImportedFis) });
+  await expect.poll(() => page.evaluate(() => (window as Window & { __fisReadStarted?: boolean }).__fisReadStarted ?? false)).toBe(true);
+
+  const resolution = page.getByLabel("Resolution", { exact: true });
+  const draftResolution = Number(await resolution.inputValue()) + 9;
+  await resolution.fill(String(draftResolution));
+  await resolution.blur();
+  await page.evaluate(() => (window as Window & { __releaseFisRead?: () => void }).__releaseFisRead?.());
+
+  await expect(page.getByText(/newer editor changes remain unsaved\. Save again to activate your draft/)).toBeVisible();
+  await expect(resolution).toHaveValue(String(draftResolution));
+  await page.getByRole("button", { name: "Save FIS", exact: true }).click();
+  await expect.poll(() => savedDraftResolution).toBe(draftResolution);
+});
+
 test("stale FIS diagnostics cannot replace a newer request result", async ({ page }) => {
   const path = join(tmpdir(), `ruflex-fis-diagnostics-race-${Date.now()}`);
   let requestCount = 0;

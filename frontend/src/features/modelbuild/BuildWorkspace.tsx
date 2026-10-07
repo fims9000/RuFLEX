@@ -371,7 +371,7 @@ export function BuildWorkspace({
   const fisEvaluationInFlightRef = useRef(false);
   const [fisEvaluationRecovery, setFisEvaluationRecovery] = useState<{ fisId: string; semanticHash: string; inputs: Record<string, number>; error: string; notFound: boolean } | null>(null);
   const [recoveringFisEvaluation, setRecoveringFisEvaluation] = useState(false);
-  const [fisImportRecovery, setFisImportRecovery] = useState<{ source: string; error: string } | null>(null);
+  const [fisImportRecovery, setFisImportRecovery] = useState<{ source: string; submittedWorking: FISSpec | null; error: string } | null>(null);
   const [retryingFisImport, setRetryingFisImport] = useState(false);
   const [importingMatlabFis, setImportingMatlabFis] = useState(false);
   const importMatlabFisInFlightRef = useRef(false);
@@ -642,11 +642,11 @@ export function BuildWorkspace({
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file || fisImportRecovery) return;
-    await submitMatlabImport(await file.text());
+    const submittedWorking = workingRef.current ? cloneFis(workingRef.current) : null;
+    await submitMatlabImport(await file.text(), submittedWorking);
   }
-  async function submitMatlabImport(source: string) {
+  async function submitMatlabImport(source: string, submittedWorking: FISSpec | null) {
     if (importMatlabFisInFlightRef.current || !beginFisAction()) return;
-    const submittedWorking = workingRef.current;
     importMatlabFisInFlightRef.current = true;
     setImportingMatlabFis(true);
     setError(null);
@@ -659,7 +659,7 @@ export function BuildWorkspace({
         return;
       }
       const latestWorking = workingRef.current;
-      const newerDraftExists = Boolean(latestWorking && canonicalJson(latestWorking) !== canonicalJson(submittedWorking));
+      const newerDraftExists = canonicalJson(latestWorking) !== canonicalJson(submittedWorking);
       if (newerDraftExists) {
         const importedIdentityWillHydrate = fis?.fis_id !== result.spec.fis_id || fis?.semantic_hash !== result.spec.semantic_hash;
         if (result.spec.semantic_hash && importedIdentityWillHydrate) {
@@ -675,7 +675,7 @@ export function BuildWorkspace({
         : `MATLAB FIS imported as a canonical executable model${result.source_artifact_sha256 ? ` · source artifact ${result.source_artifact_sha256.slice(0, 12)}` : ""}.`);
       setFisImportRecovery(null);
     } catch (reason) {
-      setFisImportRecovery({ source, error: reason instanceof Error ? reason.message : "Import response was uncertain." });
+      setFisImportRecovery({ source, submittedWorking, error: reason instanceof Error ? reason.message : "Import response was uncertain." });
       setError(
         reason instanceof Error ? reason.message : "MATLAB FIS import failed",
       );
@@ -688,7 +688,7 @@ export function BuildWorkspace({
   async function retrySameMatlabImport() {
     if (!fisImportRecovery) return;
     setRetryingFisImport(true);
-    try { await submitMatlabImport(fisImportRecovery.source); }
+    try { await submitMatlabImport(fisImportRecovery.source, fisImportRecovery.submittedWorking); }
     finally { setRetryingFisImport(false); }
   }
   async function exportMatlabFile() {

@@ -304,15 +304,16 @@
     "alpha_fis_expert_refit_draft_preservation",
     "alpha_fis_diagnostics_stale_response_guard",
     "alpha_fis_dataset_range_response_guard",
-    "alpha_fis_cross_action_write_mutex"
+    "alpha_fis_cross_action_write_mutex",
+    "alpha_fis_import_file_read_draft_baseline"
   ],
-  "active_capability": "alpha_fis_action_mutex_followthrough_audit",
+  "active_capability": "alpha_fis_editor_history_async_integrity",
   "active_acceptance": [
-    "Inspect remaining FIS async flows for stale-response or draft-loss paths after the shared write mutex change.",
-    "Add only a reproducible, user-visible regression fix where a real lost-draft or stale-state path remains."
+    "Verify asynchronous FIS save/import/refit completions cannot desynchronize visible editor history from the active persisted revision.",
+    "If an undo/redo or history-state race is reproducible, preserve exact revision semantics and add a focused Studio E2E."
   ],
   "blockers": [],
-  "next_executable_work": "Audit FIS diagnostics, range refresh, import file-read, and editor-history async completion against current working revision; add a focused E2E only for a confirmed stale-response or draft-loss case.",
+  "next_executable_work": "Inspect FIS editor-history initialization, import adoption, save completion, undo/redo controls, and persisted active revision behavior; reproduce any actual async history divergence before editing.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -620,6 +621,7 @@
     "alpha_fis_expert_refit_draft_preservation": "PASS: TRAIN-only expert correction results and exact recovery/retry are bound to the saved source snapshot; intervening Sugeno edits remain unsaved and are not overwritten. E2E verifies recovery after persisted lost response and normal refit concurrency, then verifies the next FIS save contains the exact user-entered consequent. Expert recovery E2E 2/2 passed.",
     "alpha_fis_diagnostics_stale_response_guard": "PASS: monotonic request identity prevents older diagnostics from replacing a newer result; FIS snapshot changes invalidate in-flight diagnostics. Two focused browser E2E tests passed for out-of-order response and edited-snapshot invalidation.",
     "alpha_fis_dataset_range_response_guard": "PASS: range requests capture FIS, selected input and feature identity; the response is discarded with visible retry guidance if the editor changes. Studio E2E verifies a concurrent Resolution edit survives the stale request and is persisted by the next save. 11 focused import/save/expert/golden-route E2E tests, TypeScript build, and git diff --check passed.",
-    "alpha_fis_cross_action_write_mutex": "PASS: one synchronous FIS action mutex serializes save, MATLAB import, default creation, TRAIN-only expert refit, inference, and exact recovery/retry paths. Focused browser regressions cover save/import and save/refit race attempts; 7 focused Playwright tests and npm run build passed; git diff --check passed."
+    "alpha_fis_cross_action_write_mutex": "PASS: one synchronous FIS action mutex serializes save, MATLAB import, default creation, TRAIN-only expert refit, inference, and exact recovery/retry paths. Focused browser regressions cover save/import and save/refit race attempts; 7 focused Playwright tests and npm run build passed; git diff --check passed.",
+    "alpha_fis_import_file_read_draft_baseline": "PASS: MATLAB import captures the working FIS before asynchronous File.text() and retains that snapshot through exact-response retry; a delayed file-read E2E proves intervening edits remain visible and are persisted by the next save. Six focused MATLAB import/diagnostics Playwright tests and npm run build passed."
   }
 }
