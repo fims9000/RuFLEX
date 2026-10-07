@@ -670,6 +670,28 @@ def _explanation_check_frozen_components_match(
     ) and set(items) == set(expected_statuses)
 
 
+def _assurance_claim_graph_matches(case: AssuranceCase) -> bool:
+    expected_claims = [
+        (
+            f"{gate.key.replace('_', ' ').capitalize()} is supported by the declared persisted evidence.",
+            "SUPPORTED" if gate.status == "PASS" else "QUALIFIED",
+            gate.evidence,
+            ["Referenced evidence remains readable and correctly bound to its recorded provenance."],
+            [gate.risk] if gate.risk else [],
+        )
+        for gate in case.gates if gate.evidence
+    ]
+    actual_claims = [
+        (claim.statement, claim.status, claim.evidence_ids, claim.assumptions, claim.limitations)
+        for claim in case.claims
+    ]
+    return (
+        len({str(claim.claim_id) for claim in case.claims}) == len(case.claims)
+        and actual_claims == expected_claims
+        and case.unresolved_risks == [gate.risk for gate in case.gates if gate.risk]
+    )
+
+
 def _final_test_freeze_timestamps_match(
     final_test: FinalTestEvaluation,
     run,
@@ -1615,6 +1637,8 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                 if path.stem != str(case.assurance_id):
                     raise ValueError("AssuranceCase filename does not match its persisted identity.")
                 assurance_cases[case.assurance_id] = case
+                if case.schema_version >= 2 and not _assurance_claim_graph_matches(case):
+                    issues.append(ProjectIntegrityIssue(code="ASSURANCE_CLAIM_GRAPH_MISMATCH", status="FAIL", path=str(path.relative_to(base)), detail="Persisted Assurance claims or unresolved risks do not match their declared evidence gates."))
             except (ValidationError, ValueError, OSError, json.JSONDecodeError) as error:
                 issues.append(ProjectIntegrityIssue(code="ASSURANCE_EVIDENCE_MALFORMED", status="FAIL", path=str(path.relative_to(base)), detail=str(error)))
         active_path = assurance_root / "active-case.json"

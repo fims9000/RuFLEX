@@ -556,6 +556,28 @@ def test_project_integrity_rejects_explanation_check_summary_tampering(tmp_path:
     assert any(issue["code"] == "EXPLANATION_CHECK_COMPONENT_MISMATCH" for issue in forged_component["issues"])
 
 
+def test_project_integrity_rejects_assurance_claim_detached_from_gate(tmp_path: Path) -> None:
+    client = TestClient(app)
+    root = tmp_path / "assurance-claim-integrity"
+    session_id = client.post("/api/projects", json={"path": str(root), "name": "Assurance claim integrity"}).json()["session_id"]
+    assert client.post("/api/projects/dataset/confirm", json={"session_id": session_id, "csv_text": _frame(), "target": "target", "task": "binary_classification", "id_columns": []}).status_code == 200
+    run = client.post("/api/projects/training/run", json={"session_id": session_id, "model_kind": "logistic_regression", "seed": 42, "max_epochs": 1, "learning_rate": .01, "batch_size": 16, "patience": 1, "validation_fraction": .2, "test_fraction": .2, "max_rules": 3})
+    assert run.status_code == 201, run.text
+    assurance = client.post("/api/projects/evidence/assurance-cases", json={"session_id": session_id})
+    assert assurance.status_code == 201, assurance.text
+    case_id = assurance.json()["assurance_id"]
+    case_path = root / "evidence" / "assurance" / f"{case_id}.json"
+    payload = json.loads(case_path.read_text(encoding="utf-8"))
+    assert payload["claims"]
+    payload["claims"][0]["statement"] = "Forged claim detached from its gate."
+    case_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    report = client.get(f"/api/projects/{session_id}/integrity").json()
+
+    assert report["status"] == "FAIL"
+    assert any(issue["code"] == "ASSURANCE_CLAIM_GRAPH_MISMATCH" for issue in report["issues"])
+
+
 def test_project_integrity_rejects_tampered_runtime_component_provenance(tmp_path: Path) -> None:
     client = TestClient(app); root = tmp_path / "runtime-component-integrity"
     session_id = client.post("/api/projects", json={"path": str(root), "name": "Runtime component integrity"}).json()["session_id"]
