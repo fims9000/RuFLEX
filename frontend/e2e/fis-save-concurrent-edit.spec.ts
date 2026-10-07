@@ -117,3 +117,45 @@ test("exact retry after an uncertain FIS save preserves edits made while the ret
   expect(savedSpecs[2].operators.centroid_resolution).toBe(newerResolution);
   await expect(page.getByRole("button", { name: "Evaluate", exact: true })).toBeEnabled();
 });
+
+test("dataset range response cannot overwrite an FIS draft edited while it is pending", async ({ page }) => {
+  const projectPath = join(tmpdir(), `ruflex-fis-range-race-${Date.now()}`);
+  let releaseRange: () => void = () => {};
+  let rangeStarted: () => void = () => {};
+  const rangeStartedPromise = new Promise<void>((resolve) => { rangeStarted = resolve; });
+  let savedResolution: number | undefined;
+  await page.route("**/api/projects/*/dataset/features/*/range", async (route) => {
+    const response = await route.fetch();
+    rangeStarted();
+    await new Promise<void>((resolve) => { releaseRange = resolve; });
+    await route.fulfill({ response });
+  });
+  await page.route("**/api/projects/fis/save", async (route) => {
+    if (route.request().method() === "POST") savedResolution = route.request().postDataJSON().spec.operators.centroid_resolution;
+    return route.continue();
+  });
+
+  await page.goto("/");
+  await page.getByLabel("Project path").fill(projectPath);
+  await page.getByLabel("Project name").fill("FIS dataset range race");
+  await page.getByRole("button", { name: "Create project", exact: true }).click();
+  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
+  await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
+  await page.getByRole("button", { name: /New FIS from dataset/ }).click();
+  await page.getByRole("button", { name: "Create FIS from dataset", exact: true }).click();
+  const featureMapping = page.getByLabel("Dataset feature mapping", { exact: true });
+  if (!(await featureMapping.inputValue())) await featureMapping.selectOption({ index: 1 });
+
+  await page.getByRole("button", { name: "Reset range from dataset", exact: true }).click();
+  await rangeStartedPromise;
+  const resolution = page.getByLabel("Resolution", { exact: true });
+  const draftResolution = Number(await resolution.inputValue()) + 11;
+  await resolution.fill(String(draftResolution));
+  await resolution.blur();
+  releaseRange();
+
+  await expect(page.getByRole("alert")).toContainText("The FIS or feature mapping changed while the DatasetContract range was loading");
+  await page.getByRole("button", { name: "Save FIS", exact: true }).click();
+  await expect.poll(() => savedResolution).toBe(draftResolution);
+});

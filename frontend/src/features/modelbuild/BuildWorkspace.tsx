@@ -746,14 +746,26 @@ export function BuildWorkspace({
       setError("Map this input to a numeric DatasetContract feature first.");
       return;
     }
+    const requestedSpec = cloneFis(working);
+    const requestedInputIndex = selected;
+    const requestedFeature = selectedVariable.dataset_feature;
     setError(null);
     try {
       const range = await studioApi.getDatasetFeatureRange(
         project.session_id,
-        selectedVariable.dataset_feature,
+        requestedFeature,
       );
+      const latestWorking = workingRef.current;
+      const requestedVariable = latestWorking?.inputs[requestedInputIndex];
+      if (!latestWorking ||
+        latestWorking.fis_id !== requestedSpec.fis_id ||
+        canonicalJson(fisSemanticPayload(latestWorking)) !== canonicalJson(fisSemanticPayload(requestedSpec)) ||
+        requestedVariable?.dataset_feature !== requestedFeature) {
+        setError("The FIS or feature mapping changed while the DatasetContract range was loading. No range was applied; retry against the current draft.");
+        return;
+      }
       mutate((next) => {
-        const variable = next.inputs[selected];
+        const variable = next.inputs[requestedInputIndex];
         const oldMinimum = variable.minimum;
         const oldMaximum = variable.maximum;
         variable.minimum = range.minimum;
