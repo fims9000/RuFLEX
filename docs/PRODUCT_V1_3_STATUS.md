@@ -137,6 +137,9 @@ Target branch: `feature/v1.3-data-governance-runtime`.
   visible separately from contract provenance.
 - A failed varying-split StudyJob shows each failed split/fit seed pair rather
   than collapsing multiple failures under the shared fixed training seed.
+- Study resume verifies each already-completed run against its declared seed
+  pair, split provenance, dataset, adapter and model artifact before reuse.
+  Duplicate seeds in a new Study request are rejected, not silently removed.
 - Project Integrity, Assurance and portable bundles reject missing or malformed
   manual-FIS comparison rows and mismatched semantic-revision provenance.
   A portable bundle excludes raw dataset rows, so it checks the frozen row's

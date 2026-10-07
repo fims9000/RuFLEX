@@ -245,6 +245,28 @@ def test_study_job_returns_immediately_and_persists_seed_lifecycle(tmp_path: Pat
     assert job["execution_config"]["max_epochs"] == 1
 
 
+@pytest.mark.parametrize("endpoint", ["/api/projects/training/studies", "/api/projects/training/study-jobs"])
+def test_study_rejects_duplicate_declared_seeds_before_execution(tmp_path: Path, endpoint: str) -> None:
+    client = TestClient(app)
+    root = tmp_path / "duplicate-study-seeds"
+    session_id = client.post("/api/projects", json={"path": str(root), "name": "Duplicate seeds"}).json()["session_id"]
+    confirmed = client.post("/api/projects/dataset/confirm", json={"session_id": session_id, "csv_text": _binary_frame().to_csv(index=False), "target": "target", "task": "binary_classification", "id_columns": []})
+    assert confirmed.status_code == 200, confirmed.text
+
+    response = client.post(endpoint, json={
+        "session_id": session_id, "name": "must preserve declared matrix", "model_kind": "random_forest",
+        "seeds": [3, 3, 5, 7], "selection_metric": "f1", "randomness_protocol": "TRAINING_VARIABILITY",
+        "split_seed": 42, "max_epochs": 1, "learning_rate": .01, "batch_size": 16,
+        "patience": 1, "validation_fraction": .2, "test_fraction": .2, "max_rules": 3,
+    })
+
+    assert response.status_code == 422, response.text
+    assert "distinct declared seeds" in response.text
+    assert not (root / "studies" / "active-study.json").exists()
+    assert not list((root / "studies" / "jobs").glob("*.json"))
+    assert not list((root / "runs").glob("*.json"))
+
+
 def test_study_job_rejects_an_unregistered_execution_backend_with_typed_error(tmp_path: Path) -> None:
     client = TestClient(app)
     root = tmp_path / "unknown-backend-study"
@@ -389,6 +411,47 @@ def test_persisted_study_job_resumes_without_replacing_declared_seeds(tmp_path: 
     assert job["adapter_provider"] == "ruflex.builtin"
     assert [state["seed"] for state in job["seed_states"]] == [71, 73, 79]
     assert {state["status"] for state in job["seed_states"]} == {"SUCCEEDED"}
+
+
+@pytest.mark.parametrize("corruption", ["seed_pair", "artifact_hash"])
+def test_study_job_rejects_mismatched_completed_run_on_resume(tmp_path: Path, corruption: str) -> None:
+    from ruflex.domain.training import StudyJob, StudySeedState
+
+    root = tmp_path / corruption
+    ProjectService().create(root, name="Completed run binding")
+    _confirm_dataset(root, _binary_frame())
+    run = training_application.train_model(
+        root, model_kind="random_forest", split_seed=42, training_seed=5,
+        n_estimators=5, max_depth=3,
+    )
+    run.randomness_protocol = "TRAINING_VARIABILITY"
+    if corruption == "artifact_hash":
+        run.model_artifact_sha256 = "0" * 64
+    training_application.persist_training_run(root, run)
+    declared_seed = 7 if corruption == "seed_pair" else 5
+    job = StudyJob(
+        name="resume frozen work", model_kind="random_forest", selection_metric="f1",
+        dataset_fingerprint=run.dataset_fingerprint,
+        randomness_protocol="TRAINING_VARIABILITY", split_seed=42,
+        adapter_key=run.adapter_key, adapter_version=run.adapter_version,
+        adapter_provider=run.adapter_provider,
+        seed_states=[
+            StudySeedState(seed=declared_seed, split_seed=42, training_seed=declared_seed, status="SUCCEEDED", run_id=run.run_id),
+            StudySeedState(seed=11, split_seed=42, training_seed=11, status="FAILED", error="historical fit failure"),
+            StudySeedState(seed=13, split_seed=42, training_seed=13, status="FAILED", error="historical fit failure"),
+        ],
+    )
+    training_application._persist_study_job(root, job)
+
+    training_application._execute_study_job(root, job.job_id)
+
+    restored = training_application.load_study_job(root, job.job_id)
+    assert restored.status == "FAILED"
+    assert restored.study_id is None
+    assert restored.seed_states[0].status == "FAILED"
+    expected_error = "split_seed/training_seed pair" if corruption == "seed_pair" else "artifact is missing or invalid"
+    assert expected_error in (restored.seed_states[0].error or "")
+    assert not (root / "studies" / "active-study.json").exists()
 
 
 def test_validation_evaluation_is_a_persistent_run_bound_analysis_object(tmp_path: Path) -> None:

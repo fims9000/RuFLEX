@@ -1037,17 +1037,18 @@ def verify_training_model_artifact(project_root: Path, run: TrainingRun) -> bool
 
 
 def _study_seed_pairs(*, seeds: list[int], randomness_protocol: str, split_seed: int | None, training_seed: int | None) -> list[tuple[int, int]]:
-    unique = list(dict.fromkeys(seeds))
-    if len(unique) < 3:
+    if len(set(seeds)) != len(seeds):
+        raise TrainingError("A multi-seed study requires distinct declared seeds; duplicates are not silently removed.")
+    if len(seeds) < 3:
         raise TrainingError("A multi-seed study requires at least three distinct seeds.")
     if randomness_protocol == "TRAINING_VARIABILITY":
-        return [(int(split_seed if split_seed is not None else 42), seed) for seed in unique]
+        return [(int(split_seed if split_seed is not None else 42), seed) for seed in seeds]
     if randomness_protocol == "SPLIT_VARIABILITY":
-        return [(seed, int(training_seed if training_seed is not None else 42)) for seed in unique]
+        return [(seed, int(training_seed if training_seed is not None else 42)) for seed in seeds]
     if randomness_protocol == "COMBINED_VARIABILITY":
-        return [(seed, seed) for seed in unique]
+        return [(seed, seed) for seed in seeds]
     if randomness_protocol == "LEGACY_COMBINED":
-        return [(seed, seed) for seed in unique]
+        return [(seed, seed) for seed in seeds]
     raise TrainingError(f"Unsupported randomness protocol {randomness_protocol!r}.")
 
 
@@ -1239,8 +1240,20 @@ def _execute_study_job(project_root: Path, job_id: UUID) -> None:
             else:
                 try:
                     completed_run = load_training_run(project_root, state.run_id)
+                    if completed_run.run_id != state.run_id:
+                        raise TrainingError("Completed seed run identity does not match its persisted StudyJob reference.")
                     if completed_run.dataset_fingerprint != job.dataset_fingerprint:
                         raise TrainingError("Completed seed run uses a different DatasetContract revision than its persisted StudyJob.")
+                    if completed_run.model_kind != job.model_kind:
+                        raise TrainingError("Completed seed run uses a different model kind than its persisted StudyJob.")
+                    if completed_run.split_seed != state.split_seed or completed_run.training_seed != state.training_seed:
+                        raise TrainingError("Completed seed run does not match its declared split_seed/training_seed pair.")
+                    if completed_run.split.split_seed != completed_run.split_seed:
+                        raise TrainingError("Completed seed run split provenance disagrees with its declared split_seed.")
+                    if completed_run.randomness_protocol != job.randomness_protocol:
+                        raise TrainingError("Completed seed run uses a different randomness protocol than its persisted StudyJob.")
+                    if not verify_training_model_artifact(project_root, completed_run):
+                        raise TrainingError("Completed seed run model artifact is missing or invalid.")
                     from ruflex.runtime.compatibility import resolve_run_adapter
 
                     completed_adapter = resolve_run_adapter(completed_run, registry=registry)
