@@ -631,6 +631,15 @@ def test_project_integrity_rejects_assurance_claim_detached_from_gate(tmp_path: 
     stale_assurance_pointer = client.get(f"/api/projects/{session_id}/integrity").json()
     assert any(issue["code"] == "ASSURANCE_ACTIVE_POINTER_INVALID" for issue in stale_assurance_pointer["issues"])
     active_assurance_path.write_text(json.dumps({"assurance_id": newer_assurance.json()["assurance_id"]}), encoding="utf-8")
+    first_bundle = client.post("/api/projects/evidence/verification-bundles", json={"session_id": session_id})
+    assert first_bundle.status_code == 201, first_bundle.text
+    second_bundle = client.post("/api/projects/evidence/verification-bundles", json={"session_id": session_id})
+    assert second_bundle.status_code == 201, second_bundle.text
+    active_bundle_path = root / "evidence" / "verification-bundles" / "active-bundle.json"
+    active_bundle_path.write_text(json.dumps({"bundle_id": first_bundle.json()["bundle_id"]}), encoding="utf-8")
+    stale_bundle_pointer = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert any(issue["code"] == "VERIFICATION_BUNDLE_ACTIVE_POINTER_INVALID" for issue in stale_bundle_pointer["issues"])
+    active_bundle_path.write_text(json.dumps({"bundle_id": second_bundle.json()["bundle_id"]}), encoding="utf-8")
     case_id = newer_assurance.json()["assurance_id"]
     case_path = root / "evidence" / "assurance" / f"{case_id}.json"
     payload = json.loads(case_path.read_text(encoding="utf-8"))
