@@ -98,6 +98,17 @@ def test_project_integrity_rejects_validation_evaluation_detached_from_frozen_ru
     stale_selective_pointer = client.get(f"/api/projects/{session_id}/integrity").json()
     assert any(issue["code"] == "SELECTIVE_POLICY_ACTIVE_POINTER_INVALID" for issue in stale_selective_pointer["issues"])
     active_policy_path.write_text(json.dumps({"policy_id": newer_selective.json()["policy_id"]}), encoding="utf-8")
+    second_run = client.post("/api/projects/training/run", json={"session_id": session_id, "model_kind": "logistic_regression", "seed": 49, "max_epochs": 1, "learning_rate": .01, "batch_size": 16, "patience": 1, "validation_fraction": .2, "test_fraction": .2, "max_rules": 3})
+    assert second_run.status_code == 201, second_run.text
+    second_evaluation = client.post("/api/projects/analyses/evaluations", json={"session_id": session_id, "run_id": second_run.json()["run_id"]})
+    assert second_evaluation.status_code == 201, second_evaluation.text
+    newer_threshold = client.post("/api/projects/analyses/thresholds", json={"session_id": session_id, "evaluation_id": second_evaluation.json()["evaluation_id"], "calibration_id": None, "objective": "f1"})
+    assert newer_threshold.status_code == 201, newer_threshold.text
+    active_threshold_path = root / "analyses" / "thresholds" / "active-threshold.json"
+    active_threshold_path.write_text(json.dumps({"threshold_id": threshold.json()["threshold_id"]}), encoding="utf-8")
+    stale_threshold_pointer = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert any(issue["code"] == "DECISION_THRESHOLD_ACTIVE_POINTER_INVALID" for issue in stale_threshold_pointer["issues"])
+    active_threshold_path.write_text(json.dumps({"threshold_id": newer_threshold.json()["threshold_id"]}), encoding="utf-8")
     path = root / "analyses" / "evaluations" / f"{evaluation_id}.json"
     payload = json.loads(path.read_text(encoding="utf-8"))
     payload["model_artifact_sha256"] = "0" * 64

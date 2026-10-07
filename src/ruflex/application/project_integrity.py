@@ -956,6 +956,9 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                 active_id = json.loads(active_path.read_text(encoding="utf-8"))["threshold_id"]
                 if str(active_id) not in {str(key) for key in thresholds}:
                     raise ValueError("Active decision-threshold pointer does not resolve to persisted evidence.")
+                latest_threshold = max(thresholds.values(), key=lambda item: (item.created_at, str(item.threshold_id)), default=None)
+                if latest_threshold is not None and str(latest_threshold.threshold_id) != str(active_id):
+                    raise ValueError("Active decision-threshold pointer does not identify the latest persisted policy.")
             except (KeyError, TypeError, ValueError, OSError, json.JSONDecodeError) as error:
                 issues.append(ProjectIntegrityIssue(code="DECISION_THRESHOLD_ACTIVE_POINTER_INVALID", status="FAIL", path="analyses/thresholds/active-threshold.json", detail=str(error)))
     selective_root = base / "analyses" / "selective-policies"
