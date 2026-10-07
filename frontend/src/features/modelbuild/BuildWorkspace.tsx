@@ -355,6 +355,8 @@ export function BuildWorkspace({
   onOpenTrace: () => void;
 }) {
   const [working, setWorking] = useState<FISSpec | null>(fis);
+  const workingRef = useRef<FISSpec | null>(working);
+  const preserveDraftOnHydrationHashRef = useRef<string | null>(null);
   const [editorHistory, setEditorHistory] = useState<FISSpec[]>(
     fis ? [cloneFis(fis)] : [],
   );
@@ -388,6 +390,9 @@ export function BuildWorkspace({
     Array<{ code: string; severity: string; message: string }>
   >([]);
   const [message, setMessage] = useState<string | null>(null);
+  useEffect(() => {
+    workingRef.current = working;
+  }, [working]);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => { setLastOutput(evaluation); }, [evaluation]);
   const [textRule, setTextRule] = useState("");
@@ -415,9 +420,19 @@ export function BuildWorkspace({
   }, [sourceExplanationId]);
   useEffect(() => {
     let active = true;
-    setWorking(fis);
-    setEditorHistory(fis ? [cloneFis(fis)] : []);
-    setHistoryIndex(0);
+    const preserveNewerDraft = Boolean(
+      fis?.semantic_hash &&
+      preserveDraftOnHydrationHashRef.current === fis.semantic_hash &&
+      workingRef.current?.fis_id === fis.fis_id &&
+      !workingRef.current.semantic_hash,
+    );
+    if (preserveNewerDraft) {
+      preserveDraftOnHydrationHashRef.current = null;
+    } else {
+      setWorking(fis);
+      setEditorHistory(fis ? [cloneFis(fis)] : []);
+      setHistoryIndex(0);
+    }
     if (fis) {
       setRevisions([]);
       setRevisionHistoryError(null);
@@ -948,15 +963,26 @@ export function BuildWorkspace({
     setSavingFis(true);
     try {
       const saved = await studioApi.saveFis(project.session_id, requestedSpec);
-      setWorking(saved);
-      setEditorHistory((history) => [
-        ...history.slice(0, historyIndex + 1),
-        cloneFis(saved),
-      ]);
-      setHistoryIndex((index) => index + 1);
+      const latestWorking = workingRef.current;
+      const newerDraftExists = Boolean(
+        latestWorking &&
+        canonicalJson(fisSemanticPayload(latestWorking)) !== canonicalJson(fisSemanticPayload(requestedSpec)),
+      );
+      if (!newerDraftExists) {
+        setWorking(saved);
+        setEditorHistory((history) => [
+          ...history.slice(0, historyIndex + 1),
+          cloneFis(saved),
+        ]);
+        setHistoryIndex((index) => index + 1);
+      } else if (saved.semantic_hash) {
+        preserveDraftOnHydrationHashRef.current = saved.semantic_hash;
+      }
       setRevisions(await studioApi.getFisRevisions(project.session_id));
       publishFisChange(saved);
-      setMessage("Canonical executable FIS saved with a semantic hash.");
+      setMessage(newerDraftExists
+        ? "The submitted FIS revision was saved; newer editor changes remain unsaved. Save again to make them active."
+        : "Canonical executable FIS saved with a semantic hash.");
       setFisSaveRecovery(null);
     } catch (reason) {
       setFisSaveRecovery({ spec: requestedSpec, error: reason instanceof Error ? reason.message : "FIS save response was uncertain.", notFound: false });
