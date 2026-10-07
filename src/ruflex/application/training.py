@@ -1591,14 +1591,28 @@ def fit_validation_calibration(project_root: Path, evaluation_id: UUID) -> Calib
 
 
 def load_validation_calibration(project_root: Path, calibration_id: UUID) -> CalibrationTransform:
-    return CalibrationTransform.model_validate_json(
-        _calibration_path(project_root, calibration_id).read_text(encoding="utf-8")
-    )
+    path = _calibration_path(project_root, calibration_id)
+    try:
+        calibration = CalibrationTransform.model_validate_json(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        raise
+    except (ValueError, OSError) as error:
+        raise TrainingError(f"Persisted calibration {calibration_id} is malformed or unreadable.") from error
+    if calibration.calibration_id != calibration_id:
+        raise TrainingError("Persisted calibration identity does not match the requested object ID.")
+    return calibration
 
 
 def load_latest_validation_calibration(project_root: Path) -> CalibrationTransform:
-    pointer = json.loads((_calibrations_root(project_root) / "active-calibration.json").read_text(encoding="utf-8"))
-    return load_validation_calibration(project_root, UUID(pointer["calibration_id"]))
+    pointer_path = _calibrations_root(project_root) / "active-calibration.json"
+    try:
+        pointer = json.loads(pointer_path.read_text(encoding="utf-8"))
+        calibration_id = UUID(pointer["calibration_id"])
+    except FileNotFoundError:
+        raise
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        raise TrainingError("The persisted latest calibration pointer is malformed; refusing to infer the active object.") from error
+    return load_validation_calibration(project_root, calibration_id)
 
 
 def load_latest_validation_calibration_for_evaluation(
@@ -1726,14 +1740,28 @@ def select_validation_threshold(
 
 
 def load_decision_threshold(project_root: Path, threshold_id: UUID) -> DecisionThresholdPolicy:
-    return DecisionThresholdPolicy.model_validate_json(
-        _threshold_path(project_root, threshold_id).read_text(encoding="utf-8")
-    )
+    path = _threshold_path(project_root, threshold_id)
+    try:
+        threshold = DecisionThresholdPolicy.model_validate_json(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        raise
+    except (ValueError, OSError) as error:
+        raise TrainingError(f"Persisted decision threshold {threshold_id} is malformed or unreadable.") from error
+    if threshold.threshold_id != threshold_id:
+        raise TrainingError("Persisted decision-threshold identity does not match the requested object ID.")
+    return threshold
 
 
 def load_latest_decision_threshold(project_root: Path) -> DecisionThresholdPolicy:
-    pointer = json.loads((_thresholds_root(project_root) / "active-threshold.json").read_text(encoding="utf-8"))
-    return load_decision_threshold(project_root, UUID(pointer["threshold_id"]))
+    pointer_path = _thresholds_root(project_root) / "active-threshold.json"
+    try:
+        pointer = json.loads(pointer_path.read_text(encoding="utf-8"))
+        threshold_id = UUID(pointer["threshold_id"])
+    except FileNotFoundError:
+        raise
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        raise TrainingError("The persisted latest decision-threshold pointer is malformed; refusing to infer the active object.") from error
+    return load_decision_threshold(project_root, threshold_id)
 
 
 def load_latest_validation_threshold_for_evaluation(

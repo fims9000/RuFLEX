@@ -486,6 +486,48 @@ def test_validation_evaluation_reopen_fails_closed_on_identity_or_pointer_corrup
     assert "pointer is malformed" in malformed_pointer.text
 
 
+def test_validation_calibration_and_threshold_reopen_validate_persisted_identity(tmp_path: Path) -> None:
+    client = TestClient(app)
+    root = tmp_path / "policy-object-integrity"
+    session_id = client.post("/api/projects", json={"path": str(root), "name": "Policy object integrity"}).json()["session_id"]
+    confirmed = client.post("/api/projects/dataset/confirm", json={"session_id": session_id, "csv_text": _binary_frame().to_csv(index=False), "target": "target", "task": "binary_classification", "id_columns": []})
+    assert confirmed.status_code == 200, confirmed.text
+    trained = client.post("/api/projects/training/run", json={"session_id": session_id, "model_kind": "logistic_regression", "seed": 47, "max_epochs": 1, "learning_rate": .01, "batch_size": 16, "patience": 1, "validation_fraction": .2, "test_fraction": .2, "max_rules": 3})
+    assert trained.status_code == 201, trained.text
+    evaluation = client.post("/api/projects/analyses/evaluations", json={"session_id": session_id, "run_id": trained.json()["run_id"]})
+    assert evaluation.status_code == 201, evaluation.text
+    evaluation_id = evaluation.json()["evaluation_id"]
+    calibration = client.post("/api/projects/analyses/calibrations", json={"session_id": session_id, "evaluation_id": evaluation_id})
+    assert calibration.status_code == 201, calibration.text
+    calibration_id = calibration.json()["calibration_id"]
+    threshold = client.post("/api/projects/analyses/thresholds", json={"session_id": session_id, "evaluation_id": evaluation_id, "calibration_id": None, "objective": "f1"})
+    assert threshold.status_code == 201, threshold.text
+    threshold_id = threshold.json()["threshold_id"]
+
+    calibration_path = root / "analyses" / "calibrations" / f"{calibration_id}.json"
+    calibration_payload = json.loads(calibration_path.read_text(encoding="utf-8"))
+    calibration_payload["calibration_id"] = "00000000-0000-0000-0000-000000000001"
+    calibration_path.write_text(json.dumps(calibration_payload), encoding="utf-8")
+    exact_calibration = client.get(f"/api/projects/{session_id}/analyses/calibrations/{calibration_id}")
+    latest_calibration = client.get(f"/api/projects/{session_id}/analyses/calibrations/latest")
+    assert exact_calibration.status_code == latest_calibration.status_code == 422
+    assert "identity does not match" in exact_calibration.text
+
+    threshold_path = root / "analyses" / "thresholds" / f"{threshold_id}.json"
+    threshold_payload = json.loads(threshold_path.read_text(encoding="utf-8"))
+    threshold_payload["threshold_id"] = "00000000-0000-0000-0000-000000000002"
+    threshold_path.write_text(json.dumps(threshold_payload), encoding="utf-8")
+    exact_threshold = client.get(f"/api/projects/{session_id}/analyses/thresholds/{threshold_id}")
+    latest_threshold = client.get(f"/api/projects/{session_id}/analyses/thresholds/latest")
+    assert exact_threshold.status_code == latest_threshold.status_code == 422
+    assert "identity does not match" in exact_threshold.text
+
+    (root / "analyses" / "thresholds" / "active-threshold.json").write_text("{ malformed", encoding="utf-8")
+    malformed_pointer = client.get(f"/api/projects/{session_id}/analyses/thresholds/latest")
+    assert malformed_pointer.status_code == 422
+    assert "pointer is malformed" in malformed_pointer.text
+
+
 def test_validation_threshold_recovers_by_evaluation_after_active_pointer_write_failure(tmp_path: Path, monkeypatch) -> None:
     client = TestClient(app)
     root = tmp_path / "threshold-recovery"

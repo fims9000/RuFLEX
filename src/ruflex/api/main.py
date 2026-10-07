@@ -1893,11 +1893,13 @@ def fit_analysis_calibration(request: FitAnalysisCalibrationRequest) -> Calibrat
 
 @app.get("/api/projects/{session_id}/analyses/calibrations/latest", response_model=CalibrationTransform)
 def get_latest_analysis_calibration(session_id: UUID) -> CalibrationTransform:
-    from ruflex.application.training import load_latest_validation_calibration
+    from ruflex.application.training import TrainingError, load_latest_validation_calibration
     try:
         return load_latest_validation_calibration(service.get(session_id).project.root)
     except ProjectError as error:
         raise _project_error(error) from error
+    except TrainingError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
     except FileNotFoundError as error:
         raise HTTPException(status_code=404, detail="No persisted calibration transform exists in this project.") from error
 
@@ -1919,13 +1921,15 @@ def get_latest_analysis_calibration_for_evaluation(session_id: UUID, evaluation_
 
 @app.get("/api/projects/{session_id}/analyses/calibrations/{calibration_id}", response_model=CalibrationTransform)
 def get_analysis_calibration(session_id: UUID, calibration_id: UUID) -> CalibrationTransform:
-    from ruflex.application.training import load_validation_calibration
+    from ruflex.application.training import TrainingError, load_validation_calibration
     try:
         return load_validation_calibration(service.get(session_id).project.root, calibration_id)
     except (ProjectError, FileNotFoundError, ValueError) as error:
         if isinstance(error, ProjectError):
             raise _project_error(error) from error
         raise HTTPException(status_code=404, detail=f"Calibration not found: {calibration_id}") from error
+    except TrainingError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
 
 
 @app.post("/api/projects/analyses/thresholds", response_model=DecisionThresholdPolicy, status_code=201)
@@ -1953,11 +1957,13 @@ def select_analysis_threshold(request: SelectAnalysisThresholdRequest) -> Decisi
 
 @app.get("/api/projects/{session_id}/analyses/thresholds/latest", response_model=DecisionThresholdPolicy)
 def get_latest_analysis_threshold(session_id: UUID) -> DecisionThresholdPolicy:
-    from ruflex.application.training import load_latest_decision_threshold
+    from ruflex.application.training import TrainingError, load_latest_decision_threshold
     try:
         return load_latest_decision_threshold(service.get(session_id).project.root)
     except ProjectError as error:
         raise _project_error(error) from error
+    except TrainingError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
     except FileNotFoundError as error:
         raise HTTPException(status_code=404, detail="No persisted decision-threshold policy exists in this project.") from error
 
@@ -1990,13 +1996,15 @@ def get_latest_analysis_threshold_for_evaluation(
 
 @app.get("/api/projects/{session_id}/analyses/thresholds/{threshold_id}", response_model=DecisionThresholdPolicy)
 def get_analysis_threshold(session_id: UUID, threshold_id: UUID) -> DecisionThresholdPolicy:
-    from ruflex.application.training import load_decision_threshold
+    from ruflex.application.training import TrainingError, load_decision_threshold
     try:
         return load_decision_threshold(service.get(session_id).project.root, threshold_id)
     except (ProjectError, FileNotFoundError, ValueError) as error:
         if isinstance(error, ProjectError):
             raise _project_error(error) from error
         raise HTTPException(status_code=404, detail=f"Threshold not found: {threshold_id}") from error
+    except TrainingError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
 
 
 @app.post("/api/projects/analyses/selective-policies", response_model=SelectivePredictionPolicy, status_code=201)
