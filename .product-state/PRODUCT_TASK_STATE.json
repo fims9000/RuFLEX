@@ -330,7 +330,8 @@
     "alpha_evaluation_definitive_rejection_recovery",
     "alpha_manual_slice_exact_source_row_validation",
     "alpha_slice_draft_completeness_validation",
-    "alpha_stability_map_minority_and_na_truthfulness"
+    "alpha_stability_map_minority_and_na_truthfulness",
+    "alpha_stability_project_session_isolation"
   ],
   "active_capability": "alpha_master_spec_gap_audit",
   "active_acceptance": [
@@ -338,8 +339,9 @@
     "Select the next concrete, low-resource, end-to-end product gap and implement it without broad refactoring."
   ],
   "blockers": [],
-  "next_executable_work": "Continue the product-gap audit beyond Stability Lab display truthfulness. Inspect frozen-evidence creation/recovery for unintended duplicate validation objects or false uncertain locks; keep resource-aware focused verification and preserve unrelated docs/article edits.",
+  "next_executable_work": "Continue the product-gap audit beyond Stability Lab session isolation. Inspect persisted validation-evidence creation/recovery for duplicate object risks and use a focused end-to-end route; preserve unrelated docs/article edits.",
   "qa": {
+    "stability_project_session_isolation": "PASS: ExperimentWorkspace remounts StabilityLab for each project session, dropping local uncertain-save recovery and case selection instead of carrying them into another project. Focused ExperimentWorkspace/StabilityLab component suites 36 passed, TypeScript/Vite build passed, and real Stability Lab browser E2E passed across close/reopen with lineage, Assurance and bundle evidence.",
     "stability_map_minority_and_na_truthfulness": "PASS: Stability Map now spans selected-run agreement 0..1, so confident minority support (1/20) is visible; undefined agreement is omitted rather than plotted as zero and Case Inspector shows N/A. Risk/coverage view labels its full-coverage and matched-count descriptive operating points accurately. StabilityLab component suite 3 passed including 20-run minority regression, TypeScript/Vite build passed, and real fixed-split Stability Lab browser E2E passed with frozen gate, close/reopen, lineage, Assurance and bundle checks.",
     "slice_draft_completeness_validation": "PASS: Slice Lab rejects blank categorical/group entries and missing numeric/temporal bounds before creating an Evaluation or SliceAnalysis. Existing session-isolation test now submits a valid bound. Component suite 39 passed, TypeScript/Vite build passed, and the real Studio route confirmed zero writes for empty numeric range and malformed manual rows, then persisted/reopened valid slices.",
     "manual_slice_exact_source_row_validation": "PASS: Slice Lab rejects blank, malformed, duplicate and unsafe original source-row IDs before creating an Evaluation or SliceAnalysis; no token is silently discarded or coerced to row zero. Component suite 35 passed; TypeScript/Vite build passed; focused real Studio route confirmed zero writes for malformed input, exact [2,7] persisted after correction, and close/reopen evidence.",

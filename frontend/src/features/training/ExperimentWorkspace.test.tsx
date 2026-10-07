@@ -44,7 +44,7 @@ vi.mock("../../components/StudioPrimitives", () => ({
   StatusBadge: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
 }));
 vi.mock("../../charts/ChartSurface", () => ({ ChartSurface: () => <div /> }));
-vi.mock("./StabilityLab", () => ({ StabilityLab: () => <div /> }));
+vi.mock("./StabilityLab", () => ({ StabilityLab: ({ project: currentProject }: { project: { session_id: string } }) => <input aria-label="Stability recovery draft" defaultValue={currentProject.session_id} /> }));
 
 import { ExperimentWorkspace } from "./ExperimentWorkspace";
 import { ProductApiError } from "../../api";
@@ -75,6 +75,15 @@ beforeEach(() => {
 });
 
 describe("ExperimentWorkspace dynamic model controls", () => {
+  it("remounts Stability Lab when the project session changes", async () => {
+    const view = render(<ExperimentWorkspace project={project} dataset={dataset as never} run={null} study={null} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);
+    await screen.findByLabelText("Stability recovery draft");
+    fireEvent.change(screen.getByLabelText("Stability recovery draft"), { target: { value: "old-project-recovery" } });
+    expect(screen.getByLabelText("Stability recovery draft")).toHaveValue("old-project-recovery");
+    view.rerender(<ExperimentWorkspace project={{ ...project, session_id: "another-session" }} dataset={dataset as never} run={null} study={null} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);
+    expect(screen.getByLabelText("Stability recovery draft")).toHaveValue("another-session");
+  });
+
   it("synchronously rejects duplicate SplitContract writes before React can rerender", async () => {
     const frozenSplit = {
       split_id: "split-once", dataset_fingerprint: "fingerprint", dataset_artifact_sha256: "a".repeat(64),

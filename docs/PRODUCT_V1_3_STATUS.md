@@ -77,6 +77,9 @@ Target branch: `feature/v1.3-data-governance-runtime`.
   The policy chart explicitly distinguishes full-coverage no-review from the
   descriptive matched-count confidence/random references; it is not the
   frozen A01 confirmatory comparator.
+- Stability Lab's local case selection and uncertain-save recovery remount with
+  the project session, so a pending chain from a closed project cannot be
+  offered as a recovery action in the next project.
 - Project Integrity, Assurance and portable bundles reject missing or malformed
   manual-FIS comparison rows and mismatched semantic-revision provenance.
   A portable bundle excludes raw dataset rows, so it checks the frozen row's
