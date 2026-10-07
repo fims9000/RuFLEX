@@ -1,5 +1,5 @@
 import { EChartsOption } from "echarts";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AnalysisComparison,
   AnalysisEvaluation,
@@ -34,7 +34,7 @@ type ValidationPolicyRecovery =
   | { kind: "calibration"; evaluationId: string; error: string; notFound: boolean }
   | { kind: "threshold"; evaluationId: string; calibrationId: string | null; error: string; notFound: boolean }
   | { kind: "selective"; evaluationId: string; confidenceCutoff: number; calibrationId: string | null; thresholdId: string; error: string; notFound: boolean };
-type ComparisonRecovery = { runIds: string[]; fisId: string | null; error: string; notFound: boolean };
+type ComparisonRecovery = { runIds: string[]; fisId: string | null; fisSemanticHash: string | null; error: string; notFound: boolean };
 type FinalTestRecovery = { evaluationId: string; calibrationId: string | null; thresholdId: string | null; selectivePolicyId: string | null; stabilityGatePolicyId: string | null; error: string };
 
 function calibrationOption(
@@ -112,6 +112,9 @@ type Props = {
   datasetHydrationError?: string | null;
   onRetryDatasetHydration?: () => void;
   fis: FISSpec | null;
+  modelContextStatus?: "idle" | "loading" | "loaded" | "error";
+  modelContextError?: string | null;
+  onRetryModelContext?: () => void;
   run: TrainingRun | null;
   runs: TrainingRun[];
   runListStatus: "idle" | "loading" | "loaded" | "error";
@@ -158,6 +161,9 @@ export function EvaluationWorkspace({
   datasetHydrationError = null,
   onRetryDatasetHydration = () => undefined,
   fis,
+  modelContextStatus = "loaded",
+  modelContextError = null,
+  onRetryModelContext,
   run,
   runs,
   runListStatus,
@@ -216,6 +222,9 @@ export function EvaluationWorkspace({
   const [recoveringComparison, setRecoveringComparison] = useState(false);
   const [selectedRunIds, setSelectedRunIds] = useState<string[]>([]);
   const [includeManualFis, setIncludeManualFis] = useState(false);
+  useEffect(() => {
+    if (modelContextStatus !== "loaded" || !fis?.semantic_hash) setIncludeManualFis(false);
+  }, [modelContextStatus, fis?.fis_id, fis?.semantic_hash]);
   const [sliceRunning, setSliceRunning] = useState(false);
   const [sliceRecoveryRequest, setSliceRecoveryRequest] = useState<{ evaluationId: string; metric: string; definitions: SliceDefinition[] } | null>(null);
   const [sliceRecoveryError, setSliceRecoveryError] = useState<string | null>(null);
@@ -561,9 +570,11 @@ export function EvaluationWorkspace({
 
   async function createComparisonForExactRequest(request: ComparisonRecovery) {
     const includeFis = request.fisId !== null;
-    if (includeFis && fis?.fis_id !== request.fisId) throw new Error("The active FIS revision changed; the original comparison request cannot be repeated safely.");
+    if (includeFis && (modelContextStatus !== "loaded" || fis?.fis_id !== request.fisId || fis.semantic_hash !== request.fisSemanticHash)) throw new Error("The saved FIS revision is unverified or changed; the original comparison request cannot be repeated safely.");
     try {
-      onComparison(await studioApi.createAnalysisComparison(project.session_id, request.runIds, includeFis));
+      const created = await studioApi.createAnalysisComparison(project.session_id, request.runIds, includeFis, request.fisId, request.fisSemanticHash);
+      if (created.fis_id !== request.fisId || created.fis_semantic_hash !== request.fisSemanticHash) throw new Error("Saved comparison does not match the exact requested FIS revision.");
+      onComparison(created);
       setComparisonRecovery(null);
     } catch (reason) {
       const pending = { ...request, error: reason instanceof Error ? reason.message : "Comparison response was uncertain.", notFound: false };
@@ -575,16 +586,17 @@ export function EvaluationWorkspace({
   async function saveStudyComparison() {
     if (!study || comparisonRecovery) return;
     setComparing(true); setError(null);
-    try { await createComparisonForExactRequest({ runIds: study.seed_runs.map((seedRun) => seedRun.run_id), fisId: null, error: "", notFound: false }); }
+    try { await createComparisonForExactRequest({ runIds: study.seed_runs.map((seedRun) => seedRun.run_id), fisId: null, fisSemanticHash: null, error: "", notFound: false }); }
     catch (reason) { setError(reason instanceof Error ? reason.message : "Could not save validation comparison"); }
     finally { setComparing(false); }
   }
 
   async function saveSelectedComparison() {
     if (comparisonRecovery) return;
-    if (selectedRunIds.length < 2) { setError("Select at least two compatible completed runs."); return; }
+    if (selectedRunIds.length + Number(includeManualFis) < 2 || selectedRunIds.length < 1) { setError("Select two compatible runs, or one run and a saved manual FIS."); return; }
+    if (includeManualFis && (modelContextStatus !== "loaded" || !fis?.semantic_hash)) { setError("Verify and save the exact manual FIS revision before comparing it with a run."); return; }
     setComparing(true); setError(null);
-    try { await createComparisonForExactRequest({ runIds: selectedRunIds, fisId: includeManualFis ? fis?.fis_id ?? null : null, error: "", notFound: false }); }
+    try { await createComparisonForExactRequest({ runIds: selectedRunIds, fisId: includeManualFis ? fis!.fis_id : null, fisSemanticHash: includeManualFis ? fis!.semantic_hash : null, error: "", notFound: false }); }
     catch (reason) { setError(reason instanceof Error ? reason.message : "Could not save validation comparison"); }
     finally { setComparing(false); }
   }
@@ -595,7 +607,7 @@ export function EvaluationWorkspace({
     setRecoveringComparison(true); setError(null);
     try {
       const latest = await studioApi.getLatestAnalysisComparison(project.session_id);
-      if (canonicalJson(latest.run_ids) !== canonicalJson(pending.runIds) || latest.fis_id !== pending.fisId) {
+      if (canonicalJson(latest.run_ids) !== canonicalJson(pending.runIds) || latest.fis_id !== pending.fisId || latest.fis_semantic_hash !== pending.fisSemanticHash) {
         setComparisonRecovery({ ...pending, notFound: true, error: "The latest comparison has different run/FIS identities; no replacement was created." });
         return;
       }
@@ -830,9 +842,11 @@ export function EvaluationWorkspace({
     {comparisonHydrationStatus === "none" && <p className="property-description" data-testid="comparison-hydration-empty">No saved validation comparison is available for this project.</p>}
     {comparisonHydrationStatus === "error" && <div className="error" role="alert" data-testid="comparison-hydration-error"><strong>Saved validation comparison could not be verified.</strong><p>{comparisonHydrationError}</p>{onRetryComparison && <Button view="outlined" onClick={onRetryComparison}>Retry validation comparison</Button>}</div>}
     {comparisonRecovery && <div className="error" role="alert" data-testid="comparison-recovery"><strong>Validation comparison save is uncertain; no duplicate was submitted.</strong><p>{comparisonRecovery.error}</p><Button view="outlined" disabled={recoveringComparison} onClick={recoverComparison}>Retry exact comparison lookup</Button>{comparisonRecovery.notFound && <Button view="outlined" disabled={recoveringComparison || project.read_only} onClick={explicitlyRepeatComparison}>Explicitly repeat this exact comparison</Button>}</div>}
-    {comparison && <section className="comparison-card"><span className="eyebrow">SAVED MODEL COMPARISON · VALIDATION ONLY</span><h3>{comparison.metric_rows.length} compatible trained runs</h3><div className="comparison-protocol-line"><StatusBadge tone={comparison.validation_alignment === "same_cases" ? "success" : comparison.validation_alignment === "mixed_cases" ? "warning" : "info"}>{comparison.validation_alignment === "same_cases" ? "same validation cases" : comparison.validation_alignment === "mixed_cases" ? "mixed validation cases" : "validation alignment unknown"}</StatusBadge>{comparison.dataset_fingerprint && <span className="mono">dataset {comparison.dataset_fingerprint.slice(0, 12)}</span>}</div><div className="data-table-wrap"><table className="data-table"><thead><tr>{[...new Set(comparison.metric_rows.flatMap((row) => Object.keys(row)))].map((key) => <th key={key}>{key}</th>)}</tr></thead><tbody>{comparison.metric_rows.map((row) => <tr key={String(row.subject_id ?? row.run_id)}>{[...new Set(comparison.metric_rows.flatMap((candidate) => Object.keys(candidate)))].map((key) => <td key={key}>{typeof row[key] === "number" ? Number(row[key]).toFixed(4) : row[key] === undefined ? "—" : String(row[key])}</td>)}</tr>)}</tbody></table></div><p>{comparison.scientific_note}</p></section>}
-    {comparison && comparison.metric_rows.length > 0 && <ChartSurface title="Shared validation metrics by run" option={comparisonOption(comparison)} theme={theme} />}
-    {(runs.length > 1 || (runs.length > 0 && fis)) && <section className="comparison-card"><span className="eyebrow">MODEL COMPARISON · VALIDATION ONLY</span><h3>Compare compatible models on declared validation evidence</h3>{fis && <label className="comparison-choice"><input type="checkbox" disabled={!!comparisonRecovery} checked={includeManualFis} onChange={(event) => setIncludeManualFis(event.target.checked)} />Manual {fis.system_type} FIS · semantic {(fis.semantic_hash ?? "unsaved").slice(0, 12)} · {fis.rules.length} rules</label>}{runs.map((candidate) => <label className="comparison-choice" key={candidate.run_id}><input type="checkbox" disabled={!!comparisonRecovery} checked={selectedRunIds.includes(candidate.run_id)} onChange={(event) => setSelectedRunIds((current) => event.target.checked ? [...current, candidate.run_id] : current.filter((id) => id !== candidate.run_id))} />{candidate.model_kind} · seed {candidate.seed} · {candidate.run_id.slice(0, 12)} · nodes {typeof candidate.model_spec.node_count === "number" ? candidate.model_spec.node_count : "—"}</label>)}<Button view="outlined" disabled={comparing || !!comparisonRecovery || project.read_only || !["none", "available"].includes(comparisonHydrationStatus) || selectedRunIds.length + (includeManualFis ? 1 : 0) < 2 || (includeManualFis && selectedRunIds.length < 1)} onClick={saveSelectedComparison} data-ruflex-action="comparison.selected.create">{comparing ? "Comparing…" : `Compare ${selectedRunIds.length + (includeManualFis ? 1 : 0)} selected models`}</Button><p>Manual FIS is evaluated on exactly the persisted validation cases of the selected trained run(s). If selected runs use different validation cases, RuFLEX blocks adding the FIS instead of pretending the comparison is paired. FIS scores are not labeled calibrated probabilities.</p></section>}
+    {comparison && <section className="comparison-card"><span className="eyebrow">SAVED MODEL COMPARISON · VALIDATION ONLY</span><h3>{comparison.metric_rows.length} compatible model subjects</h3><div className="comparison-protocol-line"><StatusBadge tone={comparison.validation_alignment === "same_cases" ? "success" : comparison.validation_alignment === "mixed_cases" ? "warning" : "info"}>{comparison.validation_alignment === "same_cases" ? "same validation cases" : comparison.validation_alignment === "mixed_cases" ? "mixed validation cases" : "validation alignment unknown"}</StatusBadge>{comparison.dataset_fingerprint && <span className="mono">dataset {comparison.dataset_fingerprint.slice(0, 12)}</span>}</div><div className="data-table-wrap"><table className="data-table"><thead><tr>{[...new Set(comparison.metric_rows.flatMap((row) => Object.keys(row)))].map((key) => <th key={key}>{key}</th>)}</tr></thead><tbody>{comparison.metric_rows.map((row) => <tr key={String(row.subject_id ?? row.run_id)}>{[...new Set(comparison.metric_rows.flatMap((candidate) => Object.keys(candidate)))].map((key) => <td key={key}>{typeof row[key] === "number" ? Number(row[key]).toFixed(4) : row[key] === undefined ? "—" : String(row[key])}</td>)}</tr>)}</tbody></table></div><p>{comparison.scientific_note}</p></section>}
+    {comparison && comparison.metric_rows.length > 0 && <ChartSurface title="Shared validation metrics by model subject" option={comparisonOption(comparison)} theme={theme} />}
+    {(modelContextStatus === "idle" || modelContextStatus === "loading") && <p role="status" data-testid="comparison-model-context-loading">Checking saved FIS availability before enabling manual-FIS comparison…</p>}
+    {modelContextStatus === "error" && <div className="error" role="alert" data-testid="comparison-model-context-error"><strong>Manual FIS availability could not be verified.</strong><p>{modelContextError ?? "No empty-FIS state is inferred from this failed read."}</p>{onRetryModelContext && <Button view="outlined" onClick={onRetryModelContext}>Retry saved model context</Button>}</div>}
+    {(runs.length > 1 || (runs.length > 0 && fis)) && <section className="comparison-card"><span className="eyebrow">MODEL COMPARISON · VALIDATION ONLY</span><h3>Compare compatible models on declared validation evidence</h3>{fis && <label className="comparison-choice"><input type="checkbox" disabled={!!comparisonRecovery || modelContextStatus !== "loaded" || !fis.semantic_hash} checked={includeManualFis} onChange={(event) => setIncludeManualFis(event.target.checked)} />Manual {fis.system_type} FIS · semantic {(fis.semantic_hash ?? "unsaved").slice(0, 12)} · {fis.rules.length} rules</label>}{runs.map((candidate) => <label className="comparison-choice" key={candidate.run_id}><input type="checkbox" disabled={!!comparisonRecovery} checked={selectedRunIds.includes(candidate.run_id)} onChange={(event) => setSelectedRunIds((current) => event.target.checked ? [...current, candidate.run_id] : current.filter((id) => id !== candidate.run_id))} />{candidate.model_kind} · seed {candidate.seed} · {candidate.run_id.slice(0, 12)} · nodes {typeof candidate.model_spec.node_count === "number" ? candidate.model_spec.node_count : "—"}</label>)}<Button view="outlined" disabled={comparing || !!comparisonRecovery || project.read_only || !["none", "available"].includes(comparisonHydrationStatus) || selectedRunIds.length + (includeManualFis ? 1 : 0) < 2 || (includeManualFis && (selectedRunIds.length < 1 || modelContextStatus !== "loaded" || !fis?.semantic_hash))} onClick={saveSelectedComparison} data-ruflex-action="comparison.selected.create">{comparing ? "Comparing…" : `Compare ${selectedRunIds.length + (includeManualFis ? 1 : 0)} selected models`}</Button><p>Manual FIS is evaluated on exactly the persisted validation cases of the selected trained run(s). If selected runs use different validation cases, RuFLEX blocks adding the FIS instead of pretending the comparison is paired. FIS scores are not labeled calibrated probabilities.</p></section>}
 
     <section className="comparison-card slice-lab">
       <span className="eyebrow">SLICE LAB · VALIDATION ONLY</span>

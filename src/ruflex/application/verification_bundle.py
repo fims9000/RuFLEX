@@ -303,6 +303,7 @@ def _validate_relationships(objects: list[BaseModel]) -> list[str]:
                 or (object_.schema_version >= 2 and object_.validation_sample_identities != expected_identities)
                 or (object_.schema_version >= 2 and object_.validation_alignment != expected_alignment)
                 or (object_.fis_id is None) != (object_.fis_semantic_hash is None)
+                or (object_.fis_id is not None and not any(spec.fis_id == object_.fis_id and spec.semantic_hash == object_.fis_semantic_hash for spec in fis_specs))
             ):
                 errors.append(f"Analysis comparison {object_.comparison_id} does not match its frozen validation runs, metrics, or case identities.")
         elif isinstance(object_, SliceAnalysis):

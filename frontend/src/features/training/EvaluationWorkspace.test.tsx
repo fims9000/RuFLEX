@@ -14,6 +14,7 @@ const { studioApi } = vi.hoisted(() => ({ studioApi: {
   selectAnalysisThreshold: vi.fn(),
   createSelectivePolicy: vi.fn(),
   createAnalysisComparison: vi.fn(),
+  getLatestAnalysisComparison: vi.fn(),
   createSelectedAnalysisComparison: vi.fn(),
   createSliceAnalysis: vi.fn(),
 } }));
@@ -32,6 +33,7 @@ const project = { session_id: "session", project_id: "project", name: "Test", de
 const run = {
   run_id: "run-123456789012", model_kind: "logistic_regression", task: "binary_classification", target: "target",
   model_artifact_sha256: "a".repeat(64), scientific_note: "validation only", split: { test_count: 2 },
+  model_spec: { node_count: 2 },
   validation_metrics: { f1: .8 }, calibration: [], prediction_preview: [], confusion_matrix: { true_negative: 1, false_positive: 0, false_negative: 0, true_positive: 1 },
 };
 const evaluation = {
@@ -54,6 +56,8 @@ function renderWorkspace(readOnly = false, overrides: {
   onRetryDatasetHydration?: () => void;
   finalTestEvaluation?: unknown;
   run?: unknown;
+  fis?: unknown;
+  modelContextStatus?: "idle" | "loading" | "loaded" | "error";
   runs?: unknown[];
   runListStatus?: "idle" | "loading" | "loaded" | "error";
   runListError?: string | null;
@@ -76,7 +80,7 @@ function renderWorkspace(readOnly = false, overrides: {
   onSelectivePolicy?: (policy: unknown) => void;
 } = {}) {
   return render(<EvaluationWorkspace
-    project={{ ...project, read_only: readOnly } as never} dataset={(overrides.dataset === undefined ? dataset : overrides.dataset) as never} datasetHydrationStatus={overrides.datasetHydrationStatus ?? "available"} datasetHydrationError={overrides.datasetHydrationError ?? null} onRetryDatasetHydration={overrides.onRetryDatasetHydration ?? vi.fn()} fis={null} run={(overrides.run === undefined ? run : overrides.run) as never} runs={(overrides.runs ?? [run]) as never} runListStatus={overrides.runListStatus ?? "loaded"} runListError={overrides.runListError ?? null} onRetryRunList={overrides.onRetryRunList ?? vi.fn()} study={null}
+    project={{ ...project, read_only: readOnly } as never} dataset={(overrides.dataset === undefined ? dataset : overrides.dataset) as never} datasetHydrationStatus={overrides.datasetHydrationStatus ?? "available"} datasetHydrationError={overrides.datasetHydrationError ?? null} onRetryDatasetHydration={overrides.onRetryDatasetHydration ?? vi.fn()} fis={(overrides.fis ?? null) as never} modelContextStatus={overrides.modelContextStatus ?? "loaded"} run={(overrides.run === undefined ? run : overrides.run) as never} runs={(overrides.runs ?? [run]) as never} runListStatus={overrides.runListStatus ?? "loaded"} runListError={overrides.runListError ?? null} onRetryRunList={overrides.onRetryRunList ?? vi.fn()} study={null}
     evaluation={(overrides.evaluationStatus === "error" ? null : evaluation) as never} evaluationStatus={overrides.evaluationStatus ?? "available"} evaluationError={overrides.evaluationError ?? null} onRetryEvaluation={overrides.onRetryEvaluation ?? vi.fn()} validationPolicyEvidenceStatus={overrides.validationPolicyEvidenceStatus ?? "available"} validationPolicyEvidenceError={overrides.validationPolicyEvidenceError ?? null} onRetryValidationPolicyEvidence={overrides.onRetryValidationPolicyEvidence ?? vi.fn()} calibrationTransform={null} decisionThreshold={(overrides.decisionThreshold === undefined ? threshold : overrides.decisionThreshold) as never} finalTestEvaluation={(overrides.finalTestEvaluation ?? null) as never}
     finalTestEvidenceStatus={overrides.finalTestEvidenceStatus ?? "none"} finalTestEvidenceError={overrides.finalTestEvidenceError ?? null} onRetryFinalTestEvidence={overrides.onRetryFinalTestEvidence ?? vi.fn()}
     comparison={null} sliceAnalysis={null} selectivePolicy={(overrides.selectivePolicy ?? null) as never} stabilityGatePolicy={(overrides.stabilityGatePolicy ?? null) as never} theme={"light" as never}
@@ -85,6 +89,34 @@ function renderWorkspace(readOnly = false, overrides: {
 }
 
 describe("EvaluationWorkspace final-test boundary", () => {
+  it("compares one selected run with one saved manual FIS on validation", async () => {
+    studioApi.createAnalysisComparison.mockClear().mockResolvedValueOnce({ comparison_id: "comparison-1", fis_id: "fis-1", fis_semantic_hash: "saved-semantic-hash" } as never);
+    renderWorkspace(false, { fis: { fis_id: "fis-1", semantic_hash: "saved-semantic-hash", system_type: "mamdani", rules: [] } });
+    const manual = screen.getByText(/Manual mamdani FIS/).closest("label")?.querySelector("input");
+    const training = screen.getByText(/logistic_regression · seed/).closest("label")?.querySelector("input");
+    expect(manual).not.toBeNull();
+    expect(training).not.toBeNull();
+    fireEvent.click(manual!);
+    fireEvent.click(training!);
+    const compare = screen.getByRole("button", { name: "Compare 2 selected models" });
+    expect(compare).toBeEnabled();
+    fireEvent.click(compare);
+    await waitFor(() => expect(studioApi.createAnalysisComparison).toHaveBeenCalledWith("session", [run.run_id], true, "fis-1", "saved-semantic-hash"));
+  });
+
+  it("does not recover a comparison from a different FIS semantic revision", async () => {
+    studioApi.createAnalysisComparison.mockReset().mockRejectedValueOnce(new Error("comparison response lost"));
+    studioApi.getLatestAnalysisComparison.mockReset().mockResolvedValueOnce({ run_ids: [run.run_id], fis_id: "fis-1", fis_semantic_hash: "newer-semantic-hash" } as never);
+    renderWorkspace(false, { fis: { fis_id: "fis-1", semantic_hash: "saved-semantic-hash", system_type: "mamdani", rules: [] } });
+    fireEvent.click(screen.getByText(/Manual mamdani FIS/).closest("label")!.querySelector("input")!);
+    fireEvent.click(screen.getByText(/logistic_regression · seed/).closest("label")!.querySelector("input")!);
+    fireEvent.click(screen.getByRole("button", { name: "Compare 2 selected models" }));
+    expect(await screen.findByTestId("comparison-recovery")).toHaveTextContent("comparison response lost");
+    fireEvent.click(screen.getByRole("button", { name: "Retry exact comparison lookup" }));
+    await waitFor(() => expect(screen.getByTestId("comparison-recovery")).toHaveTextContent("different run/FIS identities"));
+    expect(studioApi.createAnalysisComparison).toHaveBeenCalledTimes(1);
+  });
+
   it("recovers a persisted Evaluation by its exact run when the active pointer write failed", async () => {
     const onEvaluation = vi.fn();
     studioApi.createAnalysisEvaluation.mockRejectedValueOnce(new Error("active-evaluation pointer write failed"));

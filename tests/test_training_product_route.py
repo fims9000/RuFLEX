@@ -818,6 +818,27 @@ def test_manual_fis_can_join_same_case_validation_comparison_without_probability
     assert logistic.status_code == 201, logistic.text
     assert tree.status_code == 201, tree.text
 
+    single_run_only = client.post(
+        "/api/projects/analyses/comparisons",
+        json={"session_id": session_id, "run_ids": [logistic.json()["run_id"]]},
+    )
+    assert single_run_only.status_code == 422
+    single_with_fis = client.post(
+        "/api/projects/analyses/comparisons",
+        json={"session_id": session_id, "run_ids": [logistic.json()["run_id"]], "include_active_fis": True,
+              "expected_fis_id": fis.json()["fis_id"], "expected_fis_semantic_hash": fis.json()["semantic_hash"]},
+    )
+    assert single_with_fis.status_code == 201, single_with_fis.text
+    assert single_with_fis.json()["run_ids"] == [logistic.json()["run_id"]]
+    assert len(single_with_fis.json()["metric_rows"]) == 2
+    assert single_with_fis.json()["fis_semantic_hash"] == fis.json()["semantic_hash"]
+    assert inspect_project_integrity(root).status == "PASS"
+    assert client.post("/api/projects/evidence/assurance-cases", json={"session_id": session_id}).status_code == 201
+    bundle_response = client.post("/api/projects/evidence/verification-bundles", json={"session_id": session_id})
+    assert bundle_response.status_code == 201, bundle_response.text
+    from ruflex.application.verification_bundle import validate_verification_bundle
+    assert validate_verification_bundle(bundle_response.json()["path"]).status == "PASS"
+
     compared = client.post(
         "/api/projects/analyses/comparisons",
         json={
@@ -840,6 +861,22 @@ def test_manual_fis_can_join_same_case_validation_comparison_without_probability
     assert "brier" not in fis_row
     assert "ece" not in fis_row
     assert "manual fis outputs are not labeled calibrated probabilities" in comparison["scientific_note"].lower()
+    revised_fis = fis.json()
+    revised_fis["operators"]["centroid_resolution"] += 1
+    saved_revision = client.post("/api/projects/fis/save", json={"session_id": session_id, "spec": revised_fis})
+    assert saved_revision.status_code == 200, saved_revision.text
+    assert saved_revision.json()["semantic_hash"] != fis.json()["semantic_hash"]
+    assert inspect_project_integrity(root).status == "PASS"
+    refreshed_bundle = client.post("/api/projects/evidence/verification-bundles", json={"session_id": session_id})
+    assert refreshed_bundle.status_code == 201, refreshed_bundle.text
+    assert validate_verification_bundle(refreshed_bundle.json()["path"]).status == "PASS"
+    stale_revision_request = client.post(
+        "/api/projects/analyses/comparisons",
+        json={"session_id": session_id, "run_ids": [logistic.json()["run_id"]], "include_active_fis": True,
+              "expected_fis_id": fis.json()["fis_id"], "expected_fis_semantic_hash": fis.json()["semantic_hash"]},
+    )
+    assert stale_revision_request.status_code == 422
+    assert "exact saved revision" in stale_revision_request.text
 
 
 def test_logistic_baseline_uses_train_only_split_and_safe_declarative_artifact(tmp_path: Path) -> None:

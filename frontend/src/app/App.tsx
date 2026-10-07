@@ -479,36 +479,39 @@ export function App() {
       setSelectedExpertCorrectionId(null);
       return;
     }
+    const newProjectSession = overviewContextSessionId !== project.session_id;
     setOverviewContextStatus("loading");
     setOverviewContextSessionId(project.session_id);
     setOverviewContextError(null);
-    setDatasetState(null);
-    setDataset(null);
-    setProfile(null);
-    setDatasetStateStatus("loading");
-    setDatasetStateError(null);
-    setTrainingRun(null);
-    setTrainingRuns([]);
-    setTrainingRunsStatus("loading");
-    setTrainingRunsError(null);
-    setTrainingStudy(null);
-    setTrainingStudyStatus("loading");
-    setTrainingStudyError(null);
-    setStabilityGatePolicy(null);
-    setCalibrationTransform(null);
-    setDecisionThreshold(null);
-    setSelectivePolicy(null);
-    setValidationPolicyEvidenceStatus("loading");
-    setValidationPolicyEvidenceError(null);
-    setLineage(null);
-    setLineageStatus("loading");
-    setLineageError(null);
-    setIntegrity(null);
-    setIntegrityStatus("loading");
-    setIntegrityError(null);
-    setFisEvaluation(null);
-    setFisEvaluationStatus("loading");
-    setFisEvaluationError(null);
+    if (newProjectSession) {
+      setDatasetState(null);
+      setDataset(null);
+      setProfile(null);
+      setDatasetStateStatus("loading");
+      setDatasetStateError(null);
+      setTrainingRun(null);
+      setTrainingRuns([]);
+      setTrainingRunsStatus("loading");
+      setTrainingRunsError(null);
+      setTrainingStudy(null);
+      setTrainingStudyStatus("loading");
+      setTrainingStudyError(null);
+      setStabilityGatePolicy(null);
+      setCalibrationTransform(null);
+      setDecisionThreshold(null);
+      setSelectivePolicy(null);
+      setValidationPolicyEvidenceStatus("loading");
+      setValidationPolicyEvidenceError(null);
+      setLineage(null);
+      setLineageStatus("loading");
+      setLineageError(null);
+      setIntegrity(null);
+      setIntegrityStatus("loading");
+      setIntegrityError(null);
+      setFisEvaluation(null);
+      setFisEvaluationStatus("loading");
+      setFisEvaluationError(null);
+    }
     const resolveOptional = <T,>(request: Promise<T>) => request.then(
       (value) => ({ kind: "value" as const, value }),
       (reason: unknown) => reason instanceof ProductApiError && reason.status === 404
@@ -520,8 +523,8 @@ export function App() {
       resolveOptional(studioApi.getLatestTraining(project.session_id)),
     ]).then(([fisResult, runResult]) => {
       if (!active) return;
-      setFis(fisResult.kind === "value" ? fisResult.value : null);
-      setTrainingRun(runResult.kind === "value" ? runResult.value : null);
+      if (fisResult.kind !== "error" || newProjectSession) setFis(fisResult.kind === "value" ? fisResult.value : null);
+      if (runResult.kind !== "error" || newProjectSession) setTrainingRun((current) => runResult.kind === "value" ? (newProjectSession ? runResult.value : current ?? runResult.value) : null);
       const failures = [fisResult, runResult].filter((result) => result.kind === "error");
       if (failures.length) {
         const first = failures[0];
@@ -2300,7 +2303,7 @@ export function App() {
           onStabilityGatePolicyChange={bindProjectSession(project.session_id, setStabilityGatePolicy)}
         />
       ) : active === "ANALYSES" ? (
-        <EvaluationWorkspace project={project} dataset={datasetState} datasetHydrationStatus={datasetStateStatus} datasetHydrationError={datasetStateError} onRetryDatasetHydration={() => setDatasetStateReload((current) => current + 1)} fis={fis} run={trainingRun} runs={trainingRuns} runListStatus={trainingRunsStatus} runListError={trainingRunsError} onRetryRunList={() => setTrainingRunsReload((current) => current + 1)} study={trainingStudy} evaluation={analysisEvaluation} evaluationStatus={analysisEvaluationStatus} evaluationError={analysisEvaluationError} onRetryEvaluation={() => setAnalysisEvaluationReload((current) => current + 1)} validationPolicyEvidenceStatus={validationPolicyEvidenceStatus} validationPolicyEvidenceError={validationPolicyEvidenceError} onRetryValidationPolicyEvidence={() => setValidationPolicyEvidenceReload((current) => current + 1)} calibrationTransform={calibrationTransform} decisionThreshold={decisionThreshold} finalTestEvaluation={finalTestEvaluation} finalTestEvidenceStatus={finalTestEvidenceStatus} finalTestEvidenceError={finalTestEvidenceError} onRetryFinalTestEvidence={() => setFinalTestEvidenceReload((current) => current + 1)} comparison={analysisComparison} comparisonHydrationStatus={analysisComparisonHydrationStatus} comparisonHydrationError={analysisComparisonHydrationError} onRetryComparison={() => setAnalysisComparisonHydrationReload((current) => current + 1)} sliceAnalysis={sliceAnalysis} sliceAnalysisHydrationStatus={sliceAnalysisHydrationStatus} sliceAnalysisHydrationError={sliceAnalysisHydrationError} onRetrySliceAnalysis={() => setSliceAnalysisHydrationReload((current) => current + 1)} selectivePolicy={selectivePolicy} stabilityGatePolicy={stabilityGatePolicy} theme={theme} onEvaluation={bindProjectSession(project.session_id, (evaluation) => { setAnalysisEvaluation(evaluation); setAnalysisEvaluationStatus("available"); })} onCalibration={bindProjectSession(project.session_id, setCalibrationTransform)} onThreshold={bindProjectSession(project.session_id, setDecisionThreshold)} onSelectivePolicy={bindProjectSession(project.session_id, setSelectivePolicy)} onFinalTest={bindProjectSession(project.session_id, (evaluation) => { setFinalTestEvaluation(evaluation); if (evaluation) setFinalTestEvidenceStatus("available"); })} onComparison={bindProjectSession(project.session_id, (comparison) => { setAnalysisComparison(comparison); setAnalysisComparisonHydrationStatus("available"); setAnalysisComparisonHydrationError(null); })} onSliceAnalysis={bindProjectSession(project.session_id, (analysis) => { setSliceAnalysis(analysis); setSliceAnalysisHydrationStatus("available"); setSliceAnalysisHydrationError(null); })} />
+        <EvaluationWorkspace project={project} dataset={datasetState} datasetHydrationStatus={datasetStateStatus} datasetHydrationError={datasetStateError} onRetryDatasetHydration={() => setDatasetStateReload((current) => current + 1)} fis={fis} modelContextStatus={overviewContextSessionId === project.session_id ? overviewContextStatus : "loading"} modelContextError={overviewContextError} onRetryModelContext={() => setOverviewContextReload((current) => current + 1)} run={trainingRun} runs={trainingRuns} runListStatus={trainingRunsStatus} runListError={trainingRunsError} onRetryRunList={() => setTrainingRunsReload((current) => current + 1)} study={trainingStudy} evaluation={analysisEvaluation} evaluationStatus={analysisEvaluationStatus} evaluationError={analysisEvaluationError} onRetryEvaluation={() => setAnalysisEvaluationReload((current) => current + 1)} validationPolicyEvidenceStatus={validationPolicyEvidenceStatus} validationPolicyEvidenceError={validationPolicyEvidenceError} onRetryValidationPolicyEvidence={() => setValidationPolicyEvidenceReload((current) => current + 1)} calibrationTransform={calibrationTransform} decisionThreshold={decisionThreshold} finalTestEvaluation={finalTestEvaluation} finalTestEvidenceStatus={finalTestEvidenceStatus} finalTestEvidenceError={finalTestEvidenceError} onRetryFinalTestEvidence={() => setFinalTestEvidenceReload((current) => current + 1)} comparison={analysisComparison} comparisonHydrationStatus={analysisComparisonHydrationStatus} comparisonHydrationError={analysisComparisonHydrationError} onRetryComparison={() => setAnalysisComparisonHydrationReload((current) => current + 1)} sliceAnalysis={sliceAnalysis} sliceAnalysisHydrationStatus={sliceAnalysisHydrationStatus} sliceAnalysisHydrationError={sliceAnalysisHydrationError} onRetrySliceAnalysis={() => setSliceAnalysisHydrationReload((current) => current + 1)} selectivePolicy={selectivePolicy} stabilityGatePolicy={stabilityGatePolicy} theme={theme} onEvaluation={bindProjectSession(project.session_id, (evaluation) => { setAnalysisEvaluation(evaluation); setAnalysisEvaluationStatus("available"); })} onCalibration={bindProjectSession(project.session_id, setCalibrationTransform)} onThreshold={bindProjectSession(project.session_id, setDecisionThreshold)} onSelectivePolicy={bindProjectSession(project.session_id, setSelectivePolicy)} onFinalTest={bindProjectSession(project.session_id, (evaluation) => { setFinalTestEvaluation(evaluation); if (evaluation) setFinalTestEvidenceStatus("available"); })} onComparison={bindProjectSession(project.session_id, (comparison) => { setAnalysisComparison(comparison); setAnalysisComparisonHydrationStatus("available"); setAnalysisComparisonHydrationError(null); })} onSliceAnalysis={bindProjectSession(project.session_id, (analysis) => { setSliceAnalysis(analysis); setSliceAnalysisHydrationStatus("available"); setSliceAnalysisHydrationError(null); })} />
       ) : active === "EVIDENCE" ? (
         <EvidenceWorkspace
           project={project}

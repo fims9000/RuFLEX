@@ -688,11 +688,13 @@ export const studioApi = {
     request<FinalTestEvaluation>(`/api/projects/${sessionId}/analyses/final-test/latest`),
   getFinalTestEvaluation: (sessionId: string, finalTestId: string) =>
     request<FinalTestEvaluation>(`/api/projects/${sessionId}/analyses/final-test/${finalTestId}`),
-  createAnalysisComparison: (sessionId: string, runIds: string[], includeActiveFis = false) =>
+  createAnalysisComparison: (sessionId: string, runIds: string[], includeActiveFis = false, expectedFisId: string | null = null, expectedFisSemanticHash: string | null = null) =>
     request<AnalysisComparison>("/api/projects/analyses/comparisons", {
       session_id: sessionId,
       run_ids: runIds,
       include_active_fis: includeActiveFis,
+      expected_fis_id: expectedFisId,
+      expected_fis_semantic_hash: expectedFisSemanticHash,
     }),
   getLatestAnalysisComparison: (sessionId: string) =>
     request<AnalysisComparison>(`/api/projects/${sessionId}/analyses/comparisons/latest`),

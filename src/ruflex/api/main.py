@@ -276,6 +276,8 @@ class CreateAnalysisEvaluationRequest(SessionRequest):
 class CreateAnalysisComparisonRequest(SessionRequest):
     run_ids: list[UUID] = Field(min_length=1)
     include_active_fis: bool = False
+    expected_fis_id: UUID | None = None
+    expected_fis_semantic_hash: str | None = None
 
 
 class FitAnalysisCalibrationRequest(SessionRequest):
@@ -2191,6 +2193,8 @@ def create_analysis_comparison(request: CreateAnalysisComparisonRequest) -> Anal
             session.project.root,
             request.run_ids,
             include_active_fis=request.include_active_fis,
+            expected_fis_id=request.expected_fis_id,
+            expected_fis_semantic_hash=request.expected_fis_semantic_hash,
         )
     except ProjectError as error:
         raise _project_error(error) from error

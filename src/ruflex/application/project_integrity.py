@@ -901,9 +901,9 @@ def _inspect_auxiliary_evidence_integrity(
                     if (item.fis_id is None) != (item.fis_semantic_hash is None):
                         raise ValueError("AnalysisComparison manual FIS identity and semantic hash must be bound together.")
                     if item.fis_id is not None:
-                        fis = load_fis(base, str(item.fis_id))
-                        if fis.semantic_hash != item.fis_semantic_hash:
-                            raise ValueError("AnalysisComparison manual FIS semantic hash does not match its persisted FIS.")
+                        revisions = list_fis_revisions(base, str(item.fis_id))
+                        if item.fis_semantic_hash not in {revision.semantic_hash for revision in revisions}:
+                            raise ValueError("AnalysisComparison manual FIS semantic hash does not match a persisted FIS revision.")
                 elif isinstance(item, SliceAnalysis):
                     evaluation = evaluations.get(item.evaluation_id)
                     if (

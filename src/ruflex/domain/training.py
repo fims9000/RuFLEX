@@ -480,7 +480,7 @@ class AnalysisComparison(BaseModel):
     task: Literal["regression", "binary_classification"]
     target: str
     split: Literal["validation"] = "validation"
-    run_ids: list[UUID] = Field(min_length=2)
+    run_ids: list[UUID] = Field(min_length=1)
     dataset_fingerprint: str | None = None
     validation_alignment: Literal["same_cases", "mixed_cases", "unknown"] = "unknown"
     validation_sample_identities: dict[str, str] = Field(default_factory=dict)
@@ -488,6 +488,14 @@ class AnalysisComparison(BaseModel):
     fis_semantic_hash: str | None = None
     metric_rows: list[dict[str, float | str]]
     scientific_note: str = "Comparison is validation-only. Locked final test data are not included."
+
+    @model_validator(mode="after")
+    def require_two_distinct_subjects(self) -> AnalysisComparison:
+        if len(set(self.run_ids)) != len(self.run_ids) or len(self.run_ids) + int(self.fis_id is not None) < 2:
+            raise ValueError("AnalysisComparison requires two distinct subjects: two runs or one run and a manual FIS.")
+        if (self.fis_id is None) != (self.fis_semantic_hash is None):
+            raise ValueError("AnalysisComparison manual FIS ID and semantic hash must be bound together.")
+        return self
 
 
 class TreePathStep(BaseModel):

@@ -34,6 +34,11 @@ Target branch: `feature/v1.3-data-governance-runtime`.
   creation recovery and close/reopen inspection.
 - Failed saved-model reads are distinguished from an empty project in the
   Models and Evidence workspaces; both pause writes and offer a retry.
+- Analysis can compare one persisted TrainingRun with one saved manual FIS on
+  the run's exact validation cases. The request binds the FIS semantic revision;
+  stale revisions are rejected, while older persisted comparisons remain
+  inspectable after later FIS edits. Failed FIS reads pause manual-FIS
+  comparison and expose retry rather than implying that no FIS exists.
 
 ## Boundaries
 

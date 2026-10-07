@@ -2220,6 +2220,9 @@ def _manual_fis_comparison_row(
     project_root: Path,
     reference_run: TrainingRun,
     validation_identity: str,
+    *,
+    expected_fis_id: UUID | None = None,
+    expected_fis_semantic_hash: str | None = None,
 ) -> tuple[dict[str, float | str], UUID, str]:
     """Evaluate the active manual FIS on exactly the reference run's validation cases.
 
@@ -2234,6 +2237,8 @@ def _manual_fis_comparison_row(
     spec = load_fis(project_root)
     if spec.semantic_hash is None:
         raise TrainingError("The active FIS must be saved with a semantic hash before comparison.")
+    if (expected_fis_id is not None and spec.fis_id != expected_fis_id) or (expected_fis_semantic_hash is not None and spec.semantic_hash != expected_fis_semantic_hash):
+        raise TrainingError("The active FIS is not the exact saved revision requested for validation comparison.")
     contract = load_dataset_contract(project_root)
     if reference_run.dataset_fingerprint and reference_run.dataset_fingerprint != contract.dataset_fingerprint:
         raise TrainingError(
@@ -2336,7 +2341,11 @@ def create_validation_comparison(
     run_ids: list[UUID],
     *,
     include_active_fis: bool = False,
+    expected_fis_id: UUID | None = None,
+    expected_fis_semantic_hash: str | None = None,
 ) -> AnalysisComparison:
+    if bool(expected_fis_id is not None) != bool(expected_fis_semantic_hash is not None) or (not include_active_fis and expected_fis_id is not None):
+        raise TrainingError("Expected FIS ID and semantic hash must be supplied together only for a manual-FIS comparison.")
     runs = [load_training_run(project_root, run_id) for run_id in dict.fromkeys(run_ids)]
     if len(runs) + int(include_active_fis) < 2:
         raise TrainingError("A comparison requires at least two distinct model/run subjects.")
@@ -2429,7 +2438,9 @@ def create_validation_comparison(
             )
         reference_identity = validation_sample_identities[str(runs[0].run_id)]
         fis_row, fis_id, fis_semantic_hash = _manual_fis_comparison_row(
-            project_root, runs[0], reference_identity
+            project_root, runs[0], reference_identity,
+            expected_fis_id=expected_fis_id,
+            expected_fis_semantic_hash=expected_fis_semantic_hash,
         )
         rows.append(fis_row)
         validation_sample_identities[f"fis:{fis_id}"] = reference_identity
