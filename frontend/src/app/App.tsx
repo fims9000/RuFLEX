@@ -10,6 +10,7 @@ import { ChartSurface } from "../charts/ChartSurface";
 import { chartFixtures } from "../charts/fixtureOptions";
 import { FlowGrammar } from "../flow/FlowGrammar";
 import { ProjectLineage } from "../flow/ProjectLineage";
+import { trainingStudyOverviewLabel } from "./projectOverview";
 import {
   ArtifactRecord,
   ProductApiError,
@@ -2332,7 +2333,12 @@ export function App() {
               Studies
               <br />
               <small>
-                {trainingRun ? "Training run available" : "No studies"}
+                {trainingStudyOverviewLabel({
+                  status: trainingStudyStatus,
+                  studyName: trainingStudy?.name ?? null,
+                  runCount: trainingStudy?.seed_runs.length ?? null,
+                  hasTrainingRun: Boolean(trainingRun),
+                })}
               </small>
             </button>
             <button onClick={() => setActive("ANALYSES")}>
