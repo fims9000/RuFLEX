@@ -194,12 +194,13 @@
     "alpha_stability_exact_reopen_identity",
     "alpha_training_study_integrity_selection",
     "alpha_study_randomness_protocol_integrity",
-    "alpha_final_test_policy_freeze_time_integrity"
+    "alpha_final_test_policy_freeze_time_integrity",
+    "alpha_final_test_case_and_policy_identity_integrity"
   ],
-  "active_capability": "alpha_final_test_policy_freeze_time_integrity",
+  "active_capability": "alpha_final_test_case_and_policy_identity_integrity",
   "active_acceptance": [
-    "Project Integrity verifies every policy/evaluation referenced by FinalTestEvaluation existed before first test unlock.",
-    "Policy freeze timestamp must not be later than the unlock timestamp; post-unlock policy evidence invalidates the final-test chain."
+    "Project Integrity independently recomputes test_case_identity, test_sample_identity, and policy_identity from persisted rows and frozen IDs.",
+    "Final-test evidence must have unique complete source-row and row-identity coverage consistent with those hashes."
   ],
   "blockers": [],
   "next_executable_work": "Continue resource-aware alpha audit of persisted validation/final-test object provenance and retry boundaries, preserving unrelated article files.",
@@ -400,6 +401,7 @@
     "alpha_stability_exact_reopen_identity": "PASS: Exact Stability Analysis and Gate API reads validate the requested ID against the persisted immutable object and return typed 422 integrity errors for malformed or mismatched objects. Corruption regressions for both IDs pass.",
     "alpha_training_study_integrity_selection": "PASS: Project Integrity compares embedded Study seed-run identity/provenance with canonical run files, recomputes selected run from validation metrics and deterministic tie-break, and validates active-study pointer. Tampered embedded metrics and dangling pointer report FAIL.",
     "alpha_study_randomness_protocol_integrity": "PASS: Project Integrity cross-checks Study seed lists, dataset revisions, split seeds/identities, and fixed-vs-varying randomness semantics. A Study relabeled from TRAINING_VARIABILITY to SPLIT_VARIABILITY fails closed.",
-    "alpha_final_test_policy_freeze_time_integrity": "PASS: FinalTestEvaluation integrity rejects referenced Evaluation or policy artifacts timestamped after dataset_test_unlock_at and rejects a policy_frozen_at later than unlock. Regression moves a frozen threshold timestamp past unlock and observes FAIL."
+    "alpha_final_test_policy_freeze_time_integrity": "PASS: FinalTestEvaluation integrity rejects referenced Evaluation or policy artifacts timestamped after dataset_test_unlock_at and rejects a policy_frozen_at later than unlock. Regression moves a frozen threshold timestamp past unlock and observes FAIL.",
+    "alpha_final_test_case_and_policy_identity_integrity": "PASS: Project Integrity recomputes final-test case/sample/policy identities from persisted prediction rows and frozen bindings, verifying complete unique source rows and case identities. Forged test_case_identity produces FAIL."
   }
 }

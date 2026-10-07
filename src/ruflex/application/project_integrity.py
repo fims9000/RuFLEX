@@ -7,11 +7,11 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from ruflex.application.artifacts import ArtifactRecord, ArtifactRef, ArtifactStore
-from ruflex.application.datasets import DatasetConfirmationError, DatasetContract, DatasetProfile, LeakageAuditReport, SplitContract, TransformPipelineContract, load_data_audit, load_dataset_contract, load_dataset_profile, load_leakage_audit, load_split_contract, load_transform_pipeline_contract
+from ruflex.application.datasets import DatasetConfirmationError, DatasetContract, DatasetProfile, LeakageAuditReport, SplitContract, TransformPipelineContract, load_data_audit, load_dataset_contract, load_dataset_profile, load_leakage_audit, load_split_contract, load_transform_pipeline_contract, row_identity
 from ruflex.application.fis import list_fis_revisions, load_fis
 from ruflex.application.jobs import Job
 from ruflex.application.projects import ProjectService
-from ruflex.application.training import _select_study_run, list_training_runs
+from ruflex.application.training import _select_study_run, _stable_identity, list_training_runs
 from ruflex.application.behavior import _requirement_identity
 from ruflex.domain.behavior import BehaviorRevisionComparison, BehaviorSpec, BehaviorSpecResult
 from ruflex.domain.evidence import ExplanationCheck, ExplanationContract
@@ -555,6 +555,31 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                     calibration = calibrations.get(final_test.calibration_id) if final_test.calibration_id else None
                     selective_policy = selective_policies.get(final_test.selective_policy_id) if final_test.selective_policy_id else None
                     stability_policy = stability_policies.get(final_test.stability_gate_policy_id) if final_test.stability_gate_policy_id else None
+                    source_rows = [int(row.source_row) for row in final_test.prediction_rows if row.source_row is not None]
+                    row_identities = [row.row_identity or row_identity(final_test.dataset_fingerprint, int(row.source_row)) for row in final_test.prediction_rows if row.source_row is not None]
+                    expected_case_identity = _stable_identity("final-test-cases", {"dataset_fingerprint": final_test.dataset_fingerprint, "row_identities": sorted(row_identities)})
+                    expected_sample_identity = _stable_identity("final-test-samples", {"dataset_fingerprint": final_test.dataset_fingerprint, "run_id": str(final_test.run_id), "source_rows": sorted(source_rows)})
+                    expected_policy_identity = _stable_identity(
+                        "final-test-policy",
+                        {
+                            "run_id": str(final_test.run_id),
+                            "evaluation_id": str(final_test.evaluation_id),
+                            "model_artifact": final_test.model_artifact_sha256,
+                            "preprocessing": final_test.preprocessing_identity,
+                            "calibration_id": None if final_test.calibration_id is None else str(final_test.calibration_id),
+                            "threshold_id": None if final_test.threshold_id is None else str(final_test.threshold_id),
+                            "selective_policy_id": None if final_test.selective_policy_id is None else str(final_test.selective_policy_id),
+                            "stability_gate_policy_id": None if final_test.stability_gate_policy_id is None else str(final_test.stability_gate_policy_id),
+                        },
+                    )
+                    identity_hashes_match = (
+                        len(source_rows) == final_test.test_row_count
+                        and len(set(source_rows)) == final_test.test_row_count
+                        and len(set(row_identities)) == final_test.test_row_count
+                        and final_test.test_sample_identity == expected_sample_identity
+                        and final_test.test_case_identity == expected_case_identity
+                        and final_test.policy_identity == expected_policy_identity
+                    )
                     if (
                         evaluation is None
                         or run is None
@@ -568,6 +593,7 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                         or final_test.preprocessing_identity != evaluation.preprocessing_identity
                         or final_test.preprocessing_artifact_sha256 != evaluation.preprocessing_artifact_sha256
                         or final_test.test_row_count != len(final_test.prediction_rows)
+                        or not identity_hashes_match
                         or final_test.policy_frozen_at is None
                         or final_test.dataset_test_unlock_at is None
                         or (final_test.policy_frozen_at is not None and final_test.dataset_test_unlock_at is not None and final_test.policy_frozen_at > final_test.dataset_test_unlock_at)
