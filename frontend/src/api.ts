@@ -805,7 +805,7 @@ export type StudyJob = {
   selection_metric: string;
   status: "QUEUED" | "RUNNING" | "SUCCEEDED" | "FAILED" | "CANCELLED";
   cancel_requested: boolean;
-  seed_states: Array<{ seed: number; status: "QUEUED" | "RUNNING" | "SUCCEEDED" | "FAILED" | "CANCELLED"; run_id: string | null; runtime_seconds: number | null; error: string | null }>;
+  seed_states: Array<{ seed: number; split_seed?: number | null; training_seed?: number | null; status: "QUEUED" | "RUNNING" | "SUCCEEDED" | "FAILED" | "CANCELLED"; run_id: string | null; runtime_seconds: number | null; error: string | null }>;
   study_id: string | null;
   error: string | null;
   execution_backend: "LOCAL";

@@ -121,6 +121,13 @@ Target branch: `feature/v1.3-data-governance-runtime`.
   the fitting seed even without an explicit SplitContract. The saved run shows
   both identities after reopen; the form explains which seed varies in each
   Study randomness protocol. This does not rewrite legacy runs or frozen studies.
+- Varying-split and combined Studies can run in a project that already has a
+  fixed SplitContract: the new Study does not bind that incompatible contract,
+  uses declared RANDOM split seeds, and shows both split and fitting seeds in
+  job status, charts and Explorer. Non-RANDOM varying-split submissions are
+  blocked in Studio. New Study selection breaks exact validation-metric ties
+  by training seed then split seed; existing frozen selections are not changed.
+  `docs/qa/ALPHA_STUDY_SEED_PROVENANCE.md` records the boundary.
 - Project Integrity, Assurance and portable bundles reject missing or malformed
   manual-FIS comparison rows and mismatched semantic-revision provenance.
   A portable bundle excludes raw dataset rows, so it checks the frozen row's

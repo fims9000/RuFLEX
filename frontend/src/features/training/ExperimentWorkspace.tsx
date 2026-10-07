@@ -35,24 +35,28 @@ function trajectoryOption(run: TrainingRun): EChartsOption {
 }
 
 function studyDistributionOption(study: TrainingStudy): EChartsOption {
+  const varyingSplit = study.randomness_protocol === "SPLIT_VARIABILITY";
   return {
     tooltip: { trigger: "axis" },
     grid: { left: 54, right: 18, top: 28, bottom: 46 },
-    xAxis: { type: "category", name: "seed", data: study.seed_runs.map((run) => String(run.seed)) },
+    xAxis: { type: "category", name: varyingSplit ? "split seed" : "training seed", data: study.seed_runs.map((run) => String(varyingSplit ? run.split_seed ?? run.split.split_seed : run.training_seed ?? run.seed)) },
     yAxis: { type: "value", name: study.selection_metric, scale: true },
     series: [{ name: study.selection_metric, type: "bar", data: study.seed_runs.map((run) => run.validation_metrics[study.selection_metric] ?? null) }],
   };
 }
 
 function studyTrajectoryOption(study: TrainingStudy): EChartsOption {
+  const seedLabel = (run: TrainingRun) => study.randomness_protocol === "SPLIT_VARIABILITY"
+    ? `split ${run.split_seed ?? run.split.split_seed} · train ${run.training_seed ?? run.seed}`
+    : `train ${run.training_seed ?? run.seed}`;
   return {
     tooltip: { trigger: "axis" },
-    legend: { type: "scroll", data: study.seed_runs.map((run) => `seed ${run.seed}`) },
+    legend: { type: "scroll", data: study.seed_runs.map(seedLabel) },
     grid: { left: 54, right: 18, top: 44, bottom: 34 },
     xAxis: { type: "value", name: "epoch", minInterval: 1 },
     yAxis: { type: "value", name: "validation loss", scale: true },
     series: study.seed_runs.map((run) => ({
-      name: `seed ${run.seed}`,
+      name: seedLabel(run),
       type: "line",
       showSymbol: true,
       symbolSize: 5,
@@ -294,6 +298,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
       && identityFields.every((field) => splitContract[field] === (field === selectedIdentityField ? groupColumn || null : null));
   }, [dataset?.contract.dataset_fingerprint, dataset?.contract.source_artifact_sha256, groupColumn, splitContract, splitFamily, splitSeed]);
   const splitContractAlreadyFrozen = Boolean(splitContract && splitSelectionMatchesFrozenContract);
+  const studySplitReady = studyMode === "TRAINING_VARIABILITY" ? splitSelectionMatchesFrozenContract : splitFamily === "RANDOM";
   useEffect(() => {
     setStudy(restoredStudy);
   }, [restoredStudy?.study_id]);
@@ -671,8 +676,8 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
       return;
     }
     if (splitContractRecovery) return;
-    if (!splitSelectionMatchesFrozenContract) {
-      setError("Freeze a SplitContract matching the currently selected split family, identity column and seed before starting this Study.");
+    if (!studySplitReady) {
+      setError(studyMode === "TRAINING_VARIABILITY" ? "Freeze a SplitContract matching the selected split settings before starting this fixed-split Study." : "Split and combined variability Studies require RANDOM split family; their listed seeds define the varying splits.");
       return;
     }
     if (studySeedValidation.error) {
@@ -693,8 +698,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
     setError(null);
     try {
       const selectionMetric = dataset?.contract.task === "regression" ? "rmse" : "f1";
-      if (splitContract && studyMode !== "TRAINING_VARIABILITY") throw new Error("A frozen SplitContract can be used only with fixed-split training variability studies.");
-      const request: Parameters<typeof studioApi.startStudyJob>[1] = { client_request_id: crypto.randomUUID(), name: `Study ${new Date().toLocaleString()}`, model_kind: trainingModelKind, adapter_key: selectedAdapterKey, seeds, randomness_protocol: studyMode, split_seed: splitContract?.split_seed ?? splitSeed, training_seed: splitSeed, split_contract_id: splitContract?.split_id ?? null, execution_backend_key: executionBackendKey, selection_metric: selectionMetric, normalization, max_epochs: maxEpochs, learning_rate: learningRate, batch_size: batchSize, patience, validation_fraction: validationFraction, test_fraction: testFraction, max_rules: maxRules, n_estimators: nEstimators, max_depth: maxDepth };
+      const request: Parameters<typeof studioApi.startStudyJob>[1] = { client_request_id: crypto.randomUUID(), name: `Study ${new Date().toLocaleString()}`, model_kind: trainingModelKind, adapter_key: selectedAdapterKey, seeds, randomness_protocol: studyMode, split_seed: studyMode === "TRAINING_VARIABILITY" ? splitContract?.split_seed ?? splitSeed : null, training_seed: studyMode === "SPLIT_VARIABILITY" ? splitSeed : null, split_contract_id: studyMode === "TRAINING_VARIABILITY" ? splitContract?.split_id ?? null : null, execution_backend_key: executionBackendKey, selection_metric: selectionMetric, normalization, max_epochs: maxEpochs, learning_rate: learningRate, batch_size: batchSize, patience, validation_fraction: validationFraction, test_fraction: testFraction, max_rules: maxRules, n_estimators: nEstimators, max_depth: maxDepth };
       pendingStudyRequestRef.current = request;
       setPendingStudyRequest(request);
       let job = await studioApi.startStudyJob(project.session_id, request);
@@ -850,7 +854,9 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
         {catalogStatus === "error" && <div className="error" role="alert"><strong>Could not check available models.</strong> {catalogError} <Button view="outlined" size="s" onClick={() => setCatalogReload((current) => current + 1)} data-ruflex-action="training.catalog.retry">Retry model check</Button></div>}
         {catalogStatus === "loaded" && compatibleModels.length === 0 && <div className="info-message" role="status"><strong>No compatible model is available.</strong> The catalog loaded, but no available adapter declares fit support for {datasetTask}. Training remains disabled; install/register a compatible adapter or choose a dataset for a supported task.</div>}
         {splitContractRecovery && <div className="error" role="alert" data-testid="split-contract-recovery"><strong>SplitContract save is uncertain; training is paused.</strong><p>{splitContractRecovery.error}</p><Button view="outlined" disabled={recoveringSplitContract} onClick={recoverSplitContract}>Retry exact SplitContract lookup</Button>{splitContractRecovery.notFound && <Button view="outlined" disabled={recoveringSplitContract || running || project.read_only} onClick={explicitlyRepeatSplitContract}>Explicitly repeat these exact split settings</Button>}</div>}
-        {!splitSelectionMatchesFrozenContract && !splitContractRecovery && <p className="error" role="status">The selected split settings do not match a frozen SplitContract. Freeze this configuration before training; no legacy RANDOM fallback will be used.</p>}
+        {!splitSelectionMatchesFrozenContract && !splitContractRecovery && <p className="error" role="status">The selected split settings do not match a frozen SplitContract. Single-run training and fixed-split Studies require a matching contract; varying-split Studies use their declared RANDOM seeds instead.</p>}
+        {studyMode !== "TRAINING_VARIABILITY" && <p className="info-message" role="status">This Study varies RANDOM split membership. Its runs do not reuse the project's active SplitContract; that frozen contract remains available for single runs and fixed-split Studies. Case-level Stability agreement is not claimed for unmatched validation rows.</p>}
+        {studyMode !== "TRAINING_VARIABILITY" && splitFamily !== "RANDOM" && <p className="error" role="status">Choose RANDOM split family for this Study protocol; declared group, temporal and holdout contracts cannot be silently applied to varying random splits.</p>}
         <Button view="outlined" disabled={running || !!splitContractRecovery || project.read_only || splitEvidenceStatus !== "loaded" || splitContractAlreadyFrozen} onClick={freezeSplitContract} data-ruflex-action="split.freeze">{splitContractMutationInFlight ? "Freezing split…" : splitContractAlreadyFrozen ? "SplitContract frozen" : `Freeze ${splitFamily} SplitContract`}</Button>
         <section className="info-message" aria-label="Training choices">
           <strong>Choose how to start</strong>
@@ -863,9 +869,9 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
         <Button view="action" disabled={running || !!trainingRecovery || !!splitContractRecovery || !studyJobStateResolved || activeStudyJob || !splitSelectionMatchesFrozenContract || project.read_only || splitEvidenceStatus !== "loaded" || catalogStatus !== "loaded" || !selectedModel || parameterErrors.length > 0} onClick={train} data-ruflex-action="training.run">{running ? "Training…" : "Run real training"}</Button>
         <p id="study-seeds-help" className={studySeedValidation.error ? "error" : "property-description"} role={studySeedValidation.error ? "alert" : undefined}>{studySeedValidation.error ?? "Enter 3–32 distinct whole-number seeds, separated by commas."}</p>
         {parameterErrors.length > 0 && <div className="error" role="alert">Review model settings before training: {parameterErrors.join(" ")}</div>}
-        <Button view="outlined" disabled={running || project.read_only || (!pendingStudyRequest && (!!(studyJob && ["QUEUED", "RUNNING"].includes(studyJob.status)) || !!trainingRecovery || !!splitContractRecovery || !splitSelectionMatchesFrozenContract || splitEvidenceStatus !== "loaded" || catalogStatus !== "loaded" || !selectedModel || Boolean(studySeedValidation.error) || parameterErrors.length > 0 || (studyHydrationStatus !== "none" && studyHydrationStatus !== "available") || studyJobsStatus !== "loaded" || executionBackendStatus !== "loaded" || !executionBackends.some((backend) => backend.identity.key === executionBackendKey)))} onClick={trainStudy} data-ruflex-action="study.start">{running ? "Training…" : pendingStudyRequest ? "Retry same Study request" : "Run multi-seed study"}</Button>
+        <Button view="outlined" disabled={running || project.read_only || (!pendingStudyRequest && (!!(studyJob && ["QUEUED", "RUNNING"].includes(studyJob.status)) || !!trainingRecovery || !!splitContractRecovery || !studySplitReady || splitEvidenceStatus !== "loaded" || catalogStatus !== "loaded" || !selectedModel || Boolean(studySeedValidation.error) || parameterErrors.length > 0 || (studyHydrationStatus !== "none" && studyHydrationStatus !== "available") || studyJobsStatus !== "loaded" || executionBackendStatus !== "loaded" || !executionBackends.some((backend) => backend.identity.key === executionBackendKey)))} onClick={trainStudy} data-ruflex-action="study.start">{running ? "Training…" : pendingStudyRequest ? "Retry same Study request" : "Run multi-seed study"}</Button>
         {pendingStudyRequest && !running && <p role="status">Study submission status is uncertain. Retry uses the same request ID and frozen configuration; it will recover the existing job or safely report a mismatch.</p>}
-        {studyJob && <div className="info-message"><strong>Study job {studyJob.status}</strong> · {studyJob.execution_backend_key ?? studyJob.execution_backend} · {studyJob.seed_states.map((state) => `seed ${state.seed}: ${state.status}`).join(" · ")} {(["QUEUED", "RUNNING"].includes(studyJob.status) && !studyJob.cancel_requested) && <><Button view="flat" size="s" disabled={running} onClick={resumeStudy} data-ruflex-action="study.resume">Resume persisted study</Button><Button view="flat" size="s" disabled={cancellingStudy} onClick={cancelStudy} data-ruflex-action="study.cancel">{cancellingStudy ? "Requesting cancellation…" : "Cancel study"}</Button></>} {studyJob.cancel_requested && ["QUEUED", "RUNNING"].includes(studyJob.status) && <small role="status">Cancellation requested. The active seed fit may finish; remaining seeds will not start, and this job cannot be resumed.</small>} {studyJob.recovery_note && <small>{studyJob.recovery_note}</small>}{studyJobPollError && <div className="error" role="alert"><strong>Study status could not be refreshed.</strong> {studyJobPollError} <Button view="outlined" size="s" disabled={running} onClick={retryStudyStatus}>Retry Study status</Button></div>}</div>}
+        {studyJob && <div className="info-message"><strong>Study job {studyJob.status}</strong> · {studyJob.execution_backend_key ?? studyJob.execution_backend} · {studyJob.seed_states.map((state) => `split ${state.split_seed ?? "unrecorded"} / train ${state.training_seed ?? state.seed}: ${state.status}`).join(" · ")} {(["QUEUED", "RUNNING"].includes(studyJob.status) && !studyJob.cancel_requested) && <><Button view="flat" size="s" disabled={running} onClick={resumeStudy} data-ruflex-action="study.resume">Resume persisted study</Button><Button view="flat" size="s" disabled={cancellingStudy} onClick={cancelStudy} data-ruflex-action="study.cancel">{cancellingStudy ? "Requesting cancellation…" : "Cancel study"}</Button></>} {studyJob.cancel_requested && ["QUEUED", "RUNNING"].includes(studyJob.status) && <small role="status">Cancellation requested. The active seed fit may finish; remaining seeds will not start, and this job cannot be resumed.</small>} {studyJob.recovery_note && <small>{studyJob.recovery_note}</small>}{studyJobPollError && <div className="error" role="alert"><strong>Study status could not be refreshed.</strong> {studyJobPollError} <Button view="outlined" size="s" disabled={running} onClick={retryStudyStatus}>Retry Study status</Button></div>}</div>}
         {studyJob?.status === "CANCELLED" && <p className="property-description">This StudyJob is terminal and cannot be resumed. Seed fits completed before cancellation remain persisted; starting another Study creates new fits.</p>}
         {studyJob?.status === "FAILED" && <p className="property-description">This StudyJob is terminal and did not produce a selected TrainingStudy. Review the per-seed errors before starting another set of fits.</p>}
         {studyJob?.error && <p className="error" role="alert">StudyJob error: {studyJob.error}</p>}

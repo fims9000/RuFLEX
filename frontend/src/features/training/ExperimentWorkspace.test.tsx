@@ -154,7 +154,7 @@ describe("ExperimentWorkspace dynamic model controls", () => {
     fireEvent.change(screen.getByLabelText("Split family"), { target: { value: "GROUP" } });
     fireEvent.change(screen.getByLabelText("Split seed"), { target: { value: "8" } });
     expect(runButton).toBeDisabled();
-    expect(screen.getByText(/no legacy RANDOM fallback will be used/)).toBeVisible();
+    expect(screen.getByText(/Single-run training and fixed-split Studies require a matching contract/)).toBeVisible();
     expect(screen.getByRole("button", { name: "Run multi-seed study" })).toBeDisabled();
     expect(studioApi.runTraining).not.toHaveBeenCalled();
 

@@ -37,7 +37,7 @@ test("PRODUCT-03 persists a multi-seed Study and restores it through the project
   await expect(page.getByText("Validation f1 across seeds", { exact: true })).toBeVisible({ timeout: 45_000 });
   await expect(page.getByText(/locked test was not used/)).toBeVisible();
   await expect(page.getByRole("button", { name: /Study .*3 seed runs/ })).toBeVisible();
-  await expect(page.getByRole("button", { name: /SeedRun 7/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /SeedRun split 42 · train 7/ })).toBeVisible();
 
   await page.getByRole("button", { name: "Close", exact: true }).click();
   await page.getByLabel("Project path").fill(path);
@@ -48,5 +48,5 @@ test("PRODUCT-03 persists a multi-seed Study and restores it through the project
   await expect(page.getByText("Study job SUCCEEDED", { exact: false })).toBeVisible();
   await expect(page.getByText("Validation f1 across seeds", { exact: true })).toBeVisible();
   await expect(page.getByText(/locked test was not used/)).toBeVisible();
-  await expect(page.getByRole("button", { name: /SeedRun 9/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /SeedRun split 42 · train 9/ })).toBeVisible();
 });

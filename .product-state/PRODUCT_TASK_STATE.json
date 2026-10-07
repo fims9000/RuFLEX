@@ -347,7 +347,8 @@
     "alpha_visible_workbench_navigation",
     "alpha_readable_artifact_inventory",
     "alpha_training_workspace_responsive_layout",
-    "alpha_single_run_seed_provenance_in_studio"
+    "alpha_single_run_seed_provenance_in_studio",
+    "alpha_varying_split_study_studio_route"
   ],
   "active_capability": "alpha_master_spec_gap_audit",
   "active_acceptance": [
@@ -355,8 +356,9 @@
     "Select the next concrete, low-resource, end-to-end product gap and implement it without broad refactoring."
   ],
   "blockers": [],
-  "next_executable_work": "Continue the alpha product-gap audit after verifying distinct split/training seeds in the first-use Studio path. Inspect the next concrete product-path gap using focused resource-aware checks; preserve frozen research artifacts and unrelated docs/article edits.",
+  "next_executable_work": "Continue the alpha product-gap audit after verifying varying-split and combined Study routes with an existing fixed SplitContract. Inspect the next concrete persisted Studio workflow gap using focused resource-aware checks; preserve frozen research artifacts and unrelated docs/article edits.",
   "qa": {
+    "varying_split_study_studio_route": "PASS: Studio now submits SPLIT_VARIABILITY/COMBINED_VARIABILITY Studies from a project with an existing fixed SplitContract without rebinding that contract to incompatible random splits. A real synthetic browser route verified three split seeds with fixed training seed, three combined seeds, exact request provenance, RANDOM-family fail-closed UI, completed Study and reopen. Job, Explorer and charts distinguish split from fitting seeds. New Study exact F1/RMSE ties select lowest training seed then lowest split seed; frozen studies remain unchanged. Focused Python selection+Stability 9/9 and training product route 30/30, ExperimentWorkspace unit 33/33, Study/Stability browser 3/3 plus expanded varying-mode route 1/1, Vite build and diff check passed. See docs/qa/ALPHA_STUDY_SEED_PROVENANCE.md.",
     "single_run_seed_provenance_in_studio": "PASS: For a new Studio single TrainingRun without an explicit SplitContract, the displayed split seed is now sent explicitly instead of null while the separate training seed controls fitting. The synthetic real browser route submitted split_seed=42/training_seed=7, verified both persisted response values and reopened provenance, then completed frozen-policy/final-test practice. The Stability Lab route also passed after clarifying seed labels and mode-specific guidance. Focused Playwright 3/3, ExperimentWorkspace unit 33/33, Vite build and diff check passed. Existing runs and research artifacts were not modified.",
     "alpha_primary_workspace_page_overflow_guard": "PASS: At the minimum 1180x720 viewport, the focused Studio accessibility route now asserts no page-level horizontal overflow in Project, Data, Studies, Analyses and Evidence. Axe has no serious/critical findings on the same route; focused Playwright passed 1/1. Intentional internal evidence-table scrolling remains separate from page overflow.",
     "training_workspace_responsive_layout": "PASS: Studies Training form no longer overflows the workspace at 1180px or 1280px. Browser geometry assertions cover panel and model selector bounds, a real 1180x720 screenshot was inspected, and the horizontally scrollable model-capability table is keyboard-focusable and named. Focused accessibility plus synthetic practice Playwright passed 3/3, TypeScript/Vite build passed, and git diff --check passed. Root cause documented in docs/qa/ALPHA_TRAINING_OVERFLOW_REPRO.md.",

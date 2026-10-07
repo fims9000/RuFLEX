@@ -188,7 +188,7 @@ export function ProjectExplorer({
                   className="object-tree-child"
                   onClick={() => onSelect("STUDIES")}
                 >
-                  <span>SeedRun {run.seed}</span>
+                  <span>SeedRun split {run.split_seed ?? run.split.split_seed} · train {run.training_seed ?? run.seed}</span>
                   <small>{run.run_id === trainingStudy.selected_run_id ? "selected" : run.status}</small>
                 </button>
               ))}
