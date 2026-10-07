@@ -111,8 +111,11 @@ test("PRODUCT-06 persists revision-bound BehaviorSpec evidence through reopen", 
   await page.getByRole("combobox", { name: "Behavior spec type" }).selectOption("monotonic_pair");
   await page.getByLabel("Behavior comparison temperature").fill("100");
   await page.getByLabel("Name", { exact: true }).fill("Monotonic regression requirement");
-  await page.getByRole("button", { name: "Create and run BehaviorSpec", exact: true }).click();
+  let behaviorSpecPosts = 0;
+  await page.route("**/api/projects/evidence/behavior-specs", async (route) => { if (route.request().method() === "POST") behaviorSpecPosts += 1; await route.continue(); });
+  await page.getByRole("button", { name: "Create and run BehaviorSpec", exact: true }).evaluate((button) => { button.dispatchEvent(new MouseEvent("click", { bubbles: true })); button.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
   await expect(page.getByTestId("behavior-result")).toContainText("expected nondecreasing", { timeout: 15_000 });
+  expect(behaviorSpecPosts).toBe(1);
   await expect(page.getByText(/artifact [0-9a-f]{12}/)).toBeVisible();
   await page.getByRole("button", { name: "Create and run BehaviorSpec", exact: true }).click();
   await expect(page.getByTestId("behavior-result")).toContainText("expected nondecreasing", { timeout: 15_000 });
@@ -176,6 +179,6 @@ test("PRODUCT-06 persists revision-bound BehaviorSpec evidence through reopen", 
   const comparisonNode = page.locator(".lineage-behavior_revision_comparison").first();
   await expect(comparisonNode).toBeVisible();
   await comparisonNode.click({ force: true });
-  await expect(page.getByTestId("behavior-revision-comparison")).toContainText("PASS TO PASS");
-  await expect(page.getByTestId("behavior-revision-comparison")).toContainText(`Baseline ${baselineResultId.slice(0, 12)} · candidate ${candidateResultId.slice(0, 12)}`);
+  await expect(page.getByTestId("behavior-revision-comparison").last()).toContainText("PASS TO PASS");
+  await expect(page.getByTestId("behavior-revision-comparison").last()).toContainText(`Baseline ${baselineResultId.slice(0, 12)} · candidate ${candidateResultId.slice(0, 12)}`);
 });

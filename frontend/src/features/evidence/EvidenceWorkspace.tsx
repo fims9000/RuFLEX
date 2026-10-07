@@ -176,6 +176,7 @@ export function EvidenceWorkspace({
   const [maximum, setMaximum] = useState("1");
   const [direction, setDirection] = useState<"nondecreasing" | "nonincreasing">("nondecreasing");
   const [behaviorSpec, setBehaviorSpec] = useState<BehaviorSpec | null>(restoredBehaviorSpec);
+  const behaviorSpecActionInFlightRef = useRef(false);
   const [behaviorResult, setBehaviorResult] = useState<BehaviorSpecResult | null>(restoredBehaviorResult);
   const [behaviorExecutionRecoveryError, setBehaviorExecutionRecoveryError] = useState<string | null>(null);
   const [behaviorSpecCreationRecoveryRequest, setBehaviorSpecCreationRecoveryRequest] = useState<{ runId: string; payload: Parameters<typeof studioApi.createBehaviorSpec>[1] } | null>(null);
@@ -601,7 +602,8 @@ export function EvidenceWorkspace({
   }
 
   async function createAndRunBehavior() {
-    if (!run) return;
+    if (behaviorSpecActionInFlightRef.current || !run || behaviorSpecCreationRecoveryRequest) return;
+    behaviorSpecActionInFlightRef.current = true;
     setBusy(true); setError(null);
     let createdSpec: BehaviorSpec | null = null;
     let request: { runId: string; payload: Parameters<typeof studioApi.createBehaviorSpec>[1] } | null = null;
@@ -635,12 +637,14 @@ export function EvidenceWorkspace({
       }
       setError(reason instanceof Error ? reason.message : String(reason));
     }
-    finally { setBusy(false); }
+    finally { behaviorSpecActionInFlightRef.current = false; setBusy(false); }
   }
 
   async function recoverBehaviorSpecCreation() {
+    if (behaviorSpecActionInFlightRef.current) return;
     const request = behaviorSpecCreationRecoveryRequest;
     if (!request) return;
+    behaviorSpecActionInFlightRef.current = true;
     let matchedSpec = false;
     setBusy(true); setError(null);
     try {
@@ -662,12 +666,14 @@ export function EvidenceWorkspace({
       if (!matchedSpec) setBehaviorSpecCreationRecoveryError(reason instanceof Error ? reason.message : "Could not recover the saved BehaviorSpec.");
       else setBehaviorExecutionRecoveryError(reason instanceof Error ? reason.message : "The saved BehaviorSpec was found, but its result could not be confirmed.");
       setError(reason instanceof Error ? reason.message : String(reason));
-    } finally { setBusy(false); }
+    } finally { behaviorSpecActionInFlightRef.current = false; setBusy(false); }
   }
 
   async function explicitlyRestartBehaviorSpecCreation() {
+    if (behaviorSpecActionInFlightRef.current) return;
     const request = behaviorSpecCreationRecoveryRequest;
     if (!request || !behaviorSpecCreationNotFound) return;
+    behaviorSpecActionInFlightRef.current = true;
     let createdSpec = false;
     setBusy(true); setError(null);
     try {
@@ -681,11 +687,12 @@ export function EvidenceWorkspace({
       if (createdSpec) setBehaviorExecutionRecoveryError(reason instanceof Error ? reason.message : "The newly saved BehaviorSpec result could not be confirmed.");
       else { setBehaviorSpecCreationRecoveryError(reason instanceof Error ? reason.message : "The repeated BehaviorSpec creation could not be confirmed."); setBehaviorSpecCreationNotFound(false); }
       setError(reason instanceof Error ? reason.message : String(reason));
-    } finally { setBusy(false); }
+    } finally { behaviorSpecActionInFlightRef.current = false; setBusy(false); }
   }
 
   async function resumeBehaviorSpecExecution() {
-    if (!behaviorSpec) return;
+    if (behaviorSpecActionInFlightRef.current || !behaviorSpec) return;
+    behaviorSpecActionInFlightRef.current = true;
     setBusy(true); setError(null);
     try {
       const results = await studioApi.listBehaviorResults(project.session_id);
@@ -698,7 +705,7 @@ export function EvidenceWorkspace({
     } catch (reason) {
       setBehaviorExecutionRecoveryError(reason instanceof Error ? reason.message : "Could not recover the result for this saved BehaviorSpec.");
       setError(reason instanceof Error ? reason.message : String(reason));
-    } finally { setBusy(false); }
+    } finally { behaviorSpecActionInFlightRef.current = false; setBusy(false); }
   }
 
   async function compareBehaviorRevisions() {

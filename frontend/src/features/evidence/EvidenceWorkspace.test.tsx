@@ -6,6 +6,9 @@ import type { ButtonHTMLAttributes } from "react";
 const { studioApi } = vi.hoisted(() => ({ studioApi: {
   listBehaviorResults: vi.fn().mockResolvedValue([]),
   listBehaviorRevisionComparisons: vi.fn().mockResolvedValue([]),
+  createBehaviorSpec: vi.fn(),
+  listBehaviorSpecs: vi.fn().mockResolvedValue([]),
+  runBehaviorSpec: vi.fn(),
   getLatestConditionMonitoringDemo: vi.fn().mockResolvedValue(null),
   runConditionMonitoringDemo: vi.fn(),
   listPosthocExplanationJobs: vi.fn().mockResolvedValue([]),
@@ -49,6 +52,9 @@ function renderEvidence(assurance: unknown = null, selectivePolicy: unknown = nu
 beforeEach(() => {
   studioApi.listBehaviorResults.mockReset().mockResolvedValue([]);
   studioApi.listBehaviorRevisionComparisons.mockReset().mockResolvedValue([]);
+  studioApi.createBehaviorSpec.mockReset();
+  studioApi.listBehaviorSpecs.mockReset().mockResolvedValue([]);
+  studioApi.runBehaviorSpec.mockReset();
   studioApi.getLatestConditionMonitoringDemo.mockReset().mockResolvedValue(null);
   studioApi.runConditionMonitoringDemo.mockReset();
   studioApi.listPosthocExplanationJobs.mockReset().mockResolvedValue([]);
@@ -66,6 +72,24 @@ beforeEach(() => {
 });
 
 describe("EvidenceWorkspace persisted explanation jobs", () => {
+  it("creates a single BehaviorSpec when submit events arrive before React rerenders", async () => {
+    let rejectCreate!: (error: Error) => void;
+    studioApi.createBehaviorSpec.mockImplementationOnce(() => new Promise((_resolve, reject) => { rejectCreate = reject; }));
+    renderEvidence();
+
+    const create = await screen.findByRole("button", { name: "Create and run BehaviorSpec" });
+    act(() => {
+      create.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      create.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(studioApi.createBehaviorSpec).toHaveBeenCalledTimes(1);
+    expect(create).toBeDisabled();
+    await act(async () => { rejectCreate(new Error("creation response unavailable")); });
+    expect(await screen.findByTestId("behavior-spec-create-recovery")).toHaveTextContent("creation response unavailable");
+    expect(studioApi.createBehaviorSpec).toHaveBeenCalledTimes(1);
+    expect(studioApi.runBehaviorSpec).not.toHaveBeenCalled();
+  });
+
   it("serializes condition-monitoring demo submission and retains its exact request after uncertainty", async () => {
     let rejectDemo!: (error: Error) => void;
     studioApi.runConditionMonitoringDemo.mockImplementationOnce(() => new Promise((_resolve, reject) => { rejectDemo = reject; }));
