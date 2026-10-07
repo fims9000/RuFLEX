@@ -26,6 +26,17 @@ import {
 
 type ObjectTarget = "DATA" | "MODELS" | "STUDIES" | "ANALYSES" | "EVIDENCE";
 
+export function assuranceGateSummary(assurance: AssuranceCase): string {
+  const counts = assurance.gates.reduce(
+    (summary, gate) => {
+      summary[gate.status] += 1;
+      return summary;
+    },
+    { PASS: 0, WARN: 0, FAIL: 0, NOT_AVAILABLE: 0 },
+  );
+  return `${counts.PASS} passed · ${counts.WARN} warnings · ${counts.FAIL} failed · ${counts.NOT_AVAILABLE} unavailable`;
+}
+
 export function ProjectExplorer({
   projectName,
   dataset,
@@ -232,7 +243,7 @@ export function ProjectExplorer({
         {behaviorResult && item("EVIDENCE", "BehaviorSpec run", `${behaviorResult.status} · revision bound`)}
         {reproducibility && item("EVIDENCE", "Explanation reproducibility", `${reproducibility.run_ids.length} runs · paired`)}
         {exhaustive && item("EVIDENCE", "Exhaustive Lab", exhaustive.exactness_label)}
-        {assurance && item("EVIDENCE", "AssuranceCase", `${assurance.gates.filter((gate) => gate.status === "PASS").length}/${assurance.gates.length} gates available`)}
+        {assurance && item("EVIDENCE", "AssuranceCase", assuranceGateSummary(assurance))}
         {traceCount > 1 && (
           <small className="tree-count">{traceCount} persisted traces</small>
         )}
