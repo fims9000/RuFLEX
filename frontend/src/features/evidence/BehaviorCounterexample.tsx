@@ -24,7 +24,7 @@ export function BehaviorCounterexample({ spec, result }: { spec: BehaviorSpec; r
     : [];
   return <div className="trace-card" data-testid="behavior-counterexample">
     <div className="evidence-check-header"><strong>Actionable counterexample</strong><span>Persisted BehaviorSpec failure</span></div>
-    <p>Expected: {expectedCondition(spec)}</p>
+    <p>Expected: {spec.kind === "batch_regression_suite" ? "each named case satisfies its declared output range" : expectedCondition(spec)}</p>
     {spec.kind === "batch_regression_suite" ? failedCases.map(({ observation, case: failedCase }) => <div key={observation.name}>
       <p><strong>{observation.name}</strong> · expected {expectedCondition(spec, failedCase?.minimum, failedCase?.maximum)} · observed {observation.output}</p>
       {failedCase && <SampleValues sample={failedCase.sample} label="Failed case input" />}
