@@ -1125,6 +1125,16 @@ def cancel_study_job(project_root: Path, job_id: UUID) -> StudyJob:
 def _execute_study_job(project_root: Path, job_id: UUID) -> None:
     cancellation = _study_job_cancellations.setdefault(job_id, Event())
     job = load_study_job(project_root, job_id)
+    if job.status in {"SUCCEEDED", "FAILED", "CANCELLED"}:
+        return
+    if job.cancel_requested or cancellation.is_set():
+        for state in job.seed_states:
+            if state.status == "QUEUED":
+                state.status = "CANCELLED"
+        job.status = "CANCELLED"
+        job.finished_at = job.finished_at or datetime.now(timezone.utc)
+        _persist_study_job(project_root, job)
+        return
     try:
         from ruflex.runtime.registry import builtin_runtime_registry
 

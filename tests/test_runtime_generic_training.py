@@ -451,6 +451,28 @@ def test_cancel_orphaned_queued_study_job_becomes_terminal(tmp_path: Path, monke
     assert [state.status for state in cancelled.seed_states] == ["CANCELLED"] * 3
 
 
+def test_late_executor_start_cannot_run_a_cancelled_study_job(tmp_path: Path, monkeypatch) -> None:
+    _project(tmp_path)
+    from ruflex.application import training as training_app
+
+    monkeypatch.setattr(training_app, "_submit_study_job", lambda root, job_id: training_app.load_study_job(root, job_id))
+    queued = training_app.start_study_job(
+        tmp_path, name="cancelled before worker start", model_kind="logistic_regression", seeds=[21, 23, 25], selection_metric="f1",
+    )
+    cancelled = training_app.cancel_study_job(tmp_path, queued.job_id)
+    assert cancelled.status == "CANCELLED"
+
+    def unexpected_fit(*_args, **_kwargs):
+        raise AssertionError("a cancelled StudyJob must not start a model fit")
+
+    monkeypatch.setattr(training_app, "train_model", unexpected_fit)
+    training_app._execute_study_job(tmp_path, queued.job_id)
+
+    reopened = training_app.load_study_job(tmp_path, queued.job_id)
+    assert reopened.status == "CANCELLED"
+    assert [state.status for state in reopened.seed_states] == ["CANCELLED"] * 3
+
+
 @pytest.mark.parametrize("adapter_key,model_kind,parameters", [
     ("native_flat_neuro_fuzzy", "flat_neuro_fuzzy", {"max_epochs": 2, "batch_size": 16, "patience": 2, "max_rules": 3, "learning_rate": .01}),
     ("native_linear", "logistic_regression", {}),
