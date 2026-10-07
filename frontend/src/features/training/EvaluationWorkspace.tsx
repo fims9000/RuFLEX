@@ -34,6 +34,18 @@ function isDefinitiveValidationWriteRejection(reason: unknown): boolean {
   return reason instanceof ProductApiError && [403, 404, 409, 422].includes(reason.status);
 }
 
+function parseManualSourceRows(draft: string): number[] {
+  const tokens = draft.split(",").map((value) => value.trim());
+  if (tokens.some((value) => !/^(0|[1-9]\d*)$/.test(value))) {
+    throw new Error("Enter one or more comma-separated original source row IDs as non-negative whole numbers; no entry may be blank or ignored.");
+  }
+  const rows = tokens.map(Number);
+  if (rows.some((value) => !Number.isSafeInteger(value)) || new Set(rows).size !== rows.length) {
+    throw new Error("Original source row IDs must be unique safe integers; correct the list before saving the slice.");
+  }
+  return rows;
+}
+
 type ValidationPolicyRecovery =
   | { kind: "calibration"; evaluationId: string; error: string; notFound: boolean }
   | { kind: "threshold"; evaluationId: string; calibrationId: string | null; error: string; notFound: boolean }
@@ -693,12 +705,13 @@ export function EvaluationWorkspace({
     setSliceRunning(true);
     setError(null);
     try {
+      const manualRows = sliceKind === "manual" ? parseManualSourceRows(sliceRows) : null;
       const current = await ensureEvaluation();
       if (workspaceSessionRef.current !== requestSessionId) return;
       const field = sliceField || dataset.contract.feature_columns[0] || dataset.profile.columns[0]?.name || "";
       const definition: SliceDefinition = { name: sliceName.trim() || "Validation slice", kind: sliceKind };
       if (sliceKind === "manual") {
-        definition.source_rows = sliceRows.split(",").map((value) => Number(value.trim())).filter(Number.isInteger);
+        definition.source_rows = manualRows!;
       } else {
         definition.field = field;
       }

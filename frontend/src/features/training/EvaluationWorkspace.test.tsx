@@ -155,6 +155,32 @@ describe("EvaluationWorkspace final-test boundary", () => {
     expect(screen.queryByText("old slice response lost")).not.toBeInTheDocument();
   });
 
+  it.each(["", "2,foo", "2,", "-1", "1.5", "2,2", "9007199254740992"])("rejects an invalid manual source-row draft %j without writing evidence", async (draft) => {
+    studioApi.createSliceAnalysis.mockClear();
+    studioApi.createAnalysisEvaluation.mockClear();
+    renderWorkspace();
+    fireEvent.change(screen.getByLabelText("Slice type"), { target: { value: "manual" } });
+    fireEvent.change(screen.getByLabelText("Slice source rows"), { target: { value: draft } });
+    fireEvent.click(screen.getByRole("button", { name: "Run and persist slice" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(/source row IDs|Original source row IDs/);
+    expect(studioApi.createSliceAnalysis).not.toHaveBeenCalled();
+    expect(studioApi.createAnalysisEvaluation).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("slice-analysis-recovery")).not.toBeInTheDocument();
+  });
+
+  it("persists every declared manual source row after correcting a malformed draft", async () => {
+    studioApi.createSliceAnalysis.mockClear().mockResolvedValueOnce({ analysis_id: "slice-1", results: [] } as never);
+    renderWorkspace();
+    fireEvent.change(screen.getByLabelText("Slice type"), { target: { value: "manual" } });
+    fireEvent.change(screen.getByLabelText("Slice source rows"), { target: { value: "2,foo" } });
+    fireEvent.click(screen.getByRole("button", { name: "Run and persist slice" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("no entry may be blank or ignored");
+    fireEvent.change(screen.getByLabelText("Slice source rows"), { target: { value: "2, 7" } });
+    fireEvent.click(screen.getByRole("button", { name: "Run and persist slice" }));
+    await waitFor(() => expect(studioApi.createSliceAnalysis).toHaveBeenCalledTimes(1));
+    expect(studioApi.createSliceAnalysis.mock.calls[0][3][0].source_rows).toEqual([2, 7]);
+  });
+
   it("never carries final-test confirmation or a late opening error into another project", async () => {
     let rejectRequest: (error: Error) => void = () => undefined;
     studioApi.evaluateFinalTest.mockReset().mockImplementationOnce(() => new Promise((_resolve, reject) => { rejectRequest = reject; }));
