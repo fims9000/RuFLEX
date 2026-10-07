@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import hashlib
+import math
 from pathlib import Path
 from uuid import UUID
 
@@ -26,6 +27,77 @@ from ruflex.domain.stability import StabilityGatePolicy, StudyStabilityAnalysis
 from ruflex.runtime.registry import builtin_runtime_registry
 from ruflex.runtime.compatibility import resolve_run_adapter
 from ruflex.runtime.compatibility import LEGACY_MODEL_KIND_TO_ADAPTER
+
+
+def _final_test_stability_evidence_matches(final_test: FinalTestEvaluation, policy: StabilityGatePolicy | None) -> bool:
+    evidence = final_test.stability_gate_evidence
+    if final_test.stability_gate_policy_id is None:
+        return evidence is None
+    if policy is None or evidence is None or evidence.policy_id != policy.policy_id:
+        return False
+    if (
+        evidence.class_threshold_id != policy.class_threshold_id
+        or evidence.decision_threshold != policy.decision_threshold
+        or evidence.run_ids != policy.run_ids
+        or len(evidence.cases) != len(final_test.prediction_rows)
+    ):
+        return False
+    predictions = {row.row_identity or (row_identity(final_test.dataset_fingerprint, int(row.source_row)) if row.source_row is not None else None): row for row in final_test.prediction_rows}
+    cases = {case.row_identity or case.case_id: case for case in evidence.cases}
+    if (
+        None in predictions
+        or len(predictions) != len(final_test.prediction_rows)
+        or len(cases) != len(evidence.cases)
+        or list(predictions) != [case.row_identity or case.case_id for case in evidence.cases]
+    ):
+        return False
+    for identity, row in predictions.items():
+        case = cases[identity]
+        probability = case.selected_run_probability
+        expected_class = int(probability >= policy.decision_threshold)
+        if (
+            case.case_id != identity
+            or (case.row_identity is not None and case.row_identity != identity)
+            or row.source_row != case.source_row
+            or row.target is None
+            or int(row.target) != case.target
+            or row.probability is None
+            or not math.isclose(float(row.probability), probability, rel_tol=1e-12, abs_tol=1e-12)
+            or row.predicted_label != expected_class
+            or case.selected_run_class != expected_class
+        ):
+            return False
+        expected_reasons: list[str] = []
+        if max(probability, 1.0 - probability) < policy.min_confidence:
+            expected_reasons.append("LOW_CONFIDENCE")
+        if case.selected_run_agreement < policy.min_class_agreement:
+            expected_reasons.append("RUN_DISAGREEMENT")
+        if len(policy.run_ids) < policy.required_run_support:
+            expected_reasons.append("INSUFFICIENT_RUN_SUPPORT")
+        if case.probability_std > policy.max_probability_std:
+            expected_reasons.append("HIGH_DISPERSION")
+        if case.reasons != expected_reasons or case.disposition != ("REVIEW" if expected_reasons else "ACCEPT"):
+            return False
+    accepted = [case for case in evidence.cases if case.disposition == "ACCEPT"]
+    reviewed = [case for case in evidence.cases if case.disposition == "REVIEW"]
+    blocked = [case for case in evidence.cases if case.disposition == "BLOCK"]
+    accepted_errors = sum(case.selected_run_class != case.target for case in accepted)
+    accepted_fn = sum(case.selected_run_class == 0 and case.target == 1 for case in accepted)
+    accepted_positives = sum(case.target == 1 for case in accepted)
+    confidence_only = sorted(evidence.cases, key=lambda case: max(case.selected_run_probability, 1.0 - case.selected_run_probability), reverse=True)[:len(accepted)]
+    confidence_error = None if not confidence_only else sum(case.selected_run_class != case.target for case in confidence_only) / len(confidence_only)
+    expected_coverage = len(accepted) / len(evidence.cases) if evidence.cases else 0.0
+    return (
+        evidence.accepted_count == len(accepted)
+        and evidence.review_count == len(reviewed)
+        and evidence.block_count == len(blocked)
+        and math.isclose(evidence.coverage, expected_coverage, rel_tol=1e-12, abs_tol=1e-12)
+        and evidence.accepted_error == (None if not accepted else accepted_errors / len(accepted))
+        and evidence.accepted_false_negative_count == accepted_fn
+        and evidence.accepted_false_negative_rate == (None if accepted_positives == 0 else accepted_fn / accepted_positives)
+        and evidence.confidence_only_accepted_count == len(confidence_only)
+        and evidence.confidence_only_accepted_error == confidence_error
+    )
 
 
 def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
@@ -630,6 +702,7 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                         or (final_test.calibration_id is not None and (calibration is None or calibration.evaluation_id != final_test.evaluation_id or calibration.run_id != final_test.run_id))
                         or (final_test.selective_policy_id is not None and (selective_policy is None or selective_policy.evaluation_id != final_test.evaluation_id or selective_policy.run_id != final_test.run_id or selective_policy.class_threshold_id != final_test.threshold_id))
                         or (final_test.stability_gate_policy_id is not None and (stability_policy is None or stability_policy.evaluation_id != final_test.evaluation_id or stability_policy.selected_run_id != final_test.run_id or stability_policy.class_threshold_id != final_test.threshold_id))
+                        or not _final_test_stability_evidence_matches(final_test, stability_policy)
                     ):
                         issues.append(ProjectIntegrityIssue(code="FINAL_TEST_PROVENANCE_MISMATCH", status="FAIL", path=relative_path, detail="FinalTestEvaluation does not match its frozen validation Evaluation, model, dataset, threshold, calibration, or selective/stability policy bindings."))
                 except (ValidationError, ValueError, OSError, json.JSONDecodeError) as error:

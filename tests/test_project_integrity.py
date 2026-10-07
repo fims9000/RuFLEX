@@ -129,6 +129,13 @@ def test_project_integrity_validates_frozen_stability_analysis_and_gate_chain(tm
         run_path.write_text(json.dumps(run_payload), encoding="utf-8")
     final_test_path = root / "analyses" / "final-tests" / f"{final_test.json()['final_test_id']}.json"
     final_test_payload = json.loads(final_test_path.read_text(encoding="utf-8"))
+    original_selected_class = final_test_payload["stability_gate_evidence"]["cases"][0]["selected_run_class"]
+    final_test_payload["stability_gate_evidence"]["cases"][0]["selected_run_class"] = 1 - original_selected_class
+    final_test_path.write_text(json.dumps(final_test_payload), encoding="utf-8")
+    bad_stability_case = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert any(issue["code"] == "FINAL_TEST_PROVENANCE_MISMATCH" for issue in bad_stability_case["issues"])
+    final_test_payload["stability_gate_evidence"]["cases"][0]["selected_run_class"] = original_selected_class
+    final_test_path.write_text(json.dumps(final_test_payload), encoding="utf-8")
     original_test_case_identity = final_test_payload["test_case_identity"]
     final_test_payload["test_case_identity"] = "forged-case-identity"
     final_test_path.write_text(json.dumps(final_test_payload), encoding="utf-8")
