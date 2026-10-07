@@ -234,6 +234,8 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
   const pendingStudyRequestRef = useRef<Parameters<typeof studioApi.startStudyJob>[1] | null>(null);
   const [running, setRunning] = useState(false);
   const singleTrainingInFlightRef = useRef(false);
+  const splitContractMutationInFlightRef = useRef(false);
+  const [splitContractMutationInFlight, setSplitContractMutationInFlight] = useState(false);
   const [trainingRecovery, setTrainingRecovery] = useState<{ config: Parameters<typeof studioApi.runTraining>[1]; requestedAt: number; error: string; notFound: boolean } | null>(null);
   const [recoveringTraining, setRecoveringTraining] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -488,7 +490,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
   }
 
   async function train() {
-    if (singleTrainingInFlightRef.current || running || splitContractRecovery || trainingRecovery) return;
+    if (singleTrainingInFlightRef.current || splitContractMutationInFlightRef.current || running || splitContractRecovery || trainingRecovery) return;
     if (!splitSelectionMatchesFrozenContract) {
       setError("Freeze a SplitContract matching the currently selected split family, identity column and seed before fitting.");
       return;
@@ -545,7 +547,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
   }
   async function explicitlyRepeatTraining() {
     const pending = trainingRecovery;
-    if (!pending?.notFound || project.read_only || running || singleTrainingInFlightRef.current) return;
+    if (!pending?.notFound || project.read_only || running || singleTrainingInFlightRef.current || splitContractMutationInFlightRef.current) return;
     singleTrainingInFlightRef.current = true;
     setRecoveringTraining(true); setRunning(true); setError(null);
     try { onRun(await studioApi.runTraining(project.session_id, pending.config)); setTrainingRecovery(null); }
@@ -555,8 +557,10 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
     } finally { singleTrainingInFlightRef.current = false; setRecoveringTraining(false); setRunning(false); }
   }
   async function freezeSplitContract() {
-    if (splitContractRecovery) return;
+    if (splitContractRecovery || running || splitContractMutationInFlightRef.current || singleTrainingInFlightRef.current) return;
     if (!dataset) { setError("Confirm a DatasetContract before freezing split provenance."); return; }
+    splitContractMutationInFlightRef.current = true;
+    setSplitContractMutationInFlight(true);
     setRunning(true); setError(null);
     try {
       if (splitFamily !== "RANDOM" && !groupColumn) throw new Error("Choose the declared identity column before freezing this split.");
@@ -573,7 +577,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
         throw reason;
       }
     } catch (reason) { setError(reason instanceof Error ? reason.message : "Could not freeze split contract"); }
-    finally { setRunning(false); }
+    finally { splitContractMutationInFlightRef.current = false; setSplitContractMutationInFlight(false); setRunning(false); }
   }
   function splitContractMatchesRecovery(candidate: SplitContract, pending: NonNullable<typeof splitContractRecovery>): boolean {
     const request = pending.request;
@@ -609,16 +613,19 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
   }
   async function explicitlyRepeatSplitContract() {
     const pending = splitContractRecovery;
-    if (!pending?.notFound || project.read_only || dataset?.contract.dataset_fingerprint !== pending.datasetFingerprint || dataset.contract.source_artifact_sha256 !== pending.datasetArtifactSha256) return;
+    if (!pending?.notFound || project.read_only || running || splitContractMutationInFlightRef.current || singleTrainingInFlightRef.current || dataset?.contract.dataset_fingerprint !== pending.datasetFingerprint || dataset.contract.source_artifact_sha256 !== pending.datasetArtifactSha256) return;
+    splitContractMutationInFlightRef.current = true;
+    setSplitContractMutationInFlight(true);
     setRecoveringSplitContract(true); setRunning(true); setError(null);
     try {
       setSplitContract(await studioApi.createSplitContract(project.session_id, pending.request)); setSplitContractRecovery(null);
     } catch (reason) {
       const message = reason instanceof Error ? reason.message : "The explicitly repeated SplitContract could not be confirmed.";
       setSplitContractRecovery({ ...pending, notFound: false, error: message }); setError(message);
-    } finally { setRecoveringSplitContract(false); setRunning(false); }
+    } finally { splitContractMutationInFlightRef.current = false; setSplitContractMutationInFlight(false); setRecoveringSplitContract(false); setRunning(false); }
   }
   async function trainStudy() {
+    if (splitContractMutationInFlightRef.current || running) return;
     const pendingRequest = pendingStudyRequestRef.current;
     if (pendingRequest) {
       setRunning(true);
@@ -765,7 +772,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
   return <section className="feature-workspace training-workspace">
     <div className="feature-toolbar">
       <div><span className="eyebrow">REAL TRAINING ENGINE</span><h2>Train a model revision</h2><p>Canonical train-only preprocessing · held-out test remains locked.</p></div>
-      <StatusBadge tone={running ? "warning" : run ? "success" : "info"}>{running ? "Training" : run ? "Completed run" : "Ready"}</StatusBadge>
+      <StatusBadge tone={running ? "warning" : run ? "success" : "info"}>{splitContractMutationInFlight ? "Saving split contract" : running ? "Training" : run ? "Completed run" : "Ready"}</StatusBadge>
     </div>
 
     <div className="training-grid">
@@ -811,7 +818,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
         {catalogStatus === "loaded" && compatibleModels.length === 0 && <div className="info-message" role="status"><strong>No compatible model is available.</strong> The catalog loaded, but no available adapter declares fit support for {datasetTask}. Training remains disabled; install/register a compatible adapter or choose a dataset for a supported task.</div>}
         {splitContractRecovery && <div className="error" role="alert" data-testid="split-contract-recovery"><strong>SplitContract save is uncertain; training is paused.</strong><p>{splitContractRecovery.error}</p><Button view="outlined" disabled={recoveringSplitContract} onClick={recoverSplitContract}>Retry exact SplitContract lookup</Button>{splitContractRecovery.notFound && <Button view="outlined" disabled={recoveringSplitContract || running || project.read_only} onClick={explicitlyRepeatSplitContract}>Explicitly repeat these exact split settings</Button>}</div>}
         {!splitSelectionMatchesFrozenContract && !splitContractRecovery && <p className="error" role="status">The selected split settings do not match a frozen SplitContract. Freeze this configuration before training; no legacy RANDOM fallback will be used.</p>}
-        <Button view="outlined" disabled={running || !!splitContractRecovery || project.read_only || splitEvidenceStatus !== "loaded"} onClick={freezeSplitContract} data-ruflex-action="split.freeze">Freeze {splitFamily} SplitContract</Button>
+        <Button view="outlined" disabled={running || !!splitContractRecovery || project.read_only || splitEvidenceStatus !== "loaded"} onClick={freezeSplitContract} data-ruflex-action="split.freeze">{splitContractMutationInFlight ? "Freezing split…" : `Freeze ${splitFamily} SplitContract`}</Button>
         <section className="info-message" aria-label="Training choices">
           <strong>Choose how to start</strong>
           <p><strong>Run real training</strong> creates one fitted TrainingRun for the current settings.</p>

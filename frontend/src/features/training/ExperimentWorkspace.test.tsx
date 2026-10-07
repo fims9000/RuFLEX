@@ -70,6 +70,31 @@ beforeEach(() => {
 });
 
 describe("ExperimentWorkspace dynamic model controls", () => {
+  it("synchronously rejects duplicate SplitContract writes before React can rerender", async () => {
+    const frozenSplit = {
+      split_id: "split-once", dataset_fingerprint: "fingerprint", dataset_artifact_sha256: "a".repeat(64),
+      family: "RANDOM", split_seed: 42, validation_fraction: 0.2, test_fraction: 0.2,
+      group_column: null, time_column: null, site_column: null, device_column: null, spatial_column: null, regime_column: null,
+    };
+    let finishSplit!: (value: never) => void;
+    studioApi.createSplitContract.mockImplementationOnce(() => new Promise((resolve) => { finishSplit = resolve as (value: never) => void; }));
+    render(<ExperimentWorkspace project={project} dataset={dataset as never} run={null} study={null} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);
+
+    const freezeButton = await screen.findByRole("button", { name: "Freeze RANDOM SplitContract" });
+    await waitFor(() => expect(freezeButton).toBeEnabled());
+    act(() => {
+      freezeButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      freezeButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(studioApi.createSplitContract).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "Freezing split…" })).toBeDisabled();
+    expect(screen.getByText("Saving split contract")).toBeVisible();
+    await act(async () => { finishSplit(frozenSplit as never); });
+    await waitFor(() => expect(screen.getByText(/RANDOM · split-on/)).toBeVisible());
+    expect(studioApi.createSplitContract).toHaveBeenCalledTimes(1);
+  });
+
   it("keeps split validation errors editable instead of treating them as uncertain writes", async () => {
     studioApi.createSplitContract
       .mockRejectedValueOnce(new ProductApiError({ code: "VALIDATION_FAILED", status: 422, detail: "GROUP split requires at least three distinct groups." }))

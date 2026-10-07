@@ -32,7 +32,30 @@ test("a rejected GROUP split can be corrected without uncertain-write recovery",
 
   await page.getByLabel("Split family").selectOption("GROUP");
   await page.getByLabel("Split identity column").selectOption("group");
+  let releaseGroupSplit!: () => void;
+  let markGroupSplitStarted!: () => void;
+  const groupSplitGate = new Promise<void>((resolve) => { releaseGroupSplit = resolve; });
+  const groupSplitStarted = new Promise<void>((resolve) => { markGroupSplitStarted = resolve; });
+  let splitRequests = 0;
+  await page.route("**/api/projects/dataset/splits", async (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    splitRequests += 1;
+    if (splitRequests === 1) {
+      markGroupSplitStarted();
+      await groupSplitGate;
+    }
+    await route.continue();
+  });
   await page.getByRole("button", { name: "Freeze GROUP SplitContract", exact: true }).click();
+  await groupSplitStarted;
+  try {
+    await expect(page.getByRole("button", { name: "Freezing split…", exact: true })).toBeDisabled();
+    await expect(page.locator(".feature-toolbar")).toContainText("Saving split contract");
+    await expect(page.locator('[data-ruflex-action="training.run"]')).toBeDisabled();
+    expect(splitRequests).toBe(1);
+  } finally {
+    releaseGroupSplit();
+  }
   await expect(page.getByRole("alert")).toContainText("GROUP split requires at least three distinct groups");
   await expect(page.getByTestId("split-contract-recovery")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Run real training", exact: true })).toBeDisabled();
