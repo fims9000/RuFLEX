@@ -165,15 +165,16 @@
     "alpha_frozen_dataset_role_inspection_ui",
     "alpha_split_validation_rejection_recovery",
     "alpha_training_validation_rejection_recovery",
-    "alpha_training_mutation_persistence_error_classification"
+    "alpha_training_mutation_persistence_error_classification",
+    "alpha_frozen_split_selection_binding"
   ],
-  "active_capability": "alpha_training_mutation_persistence_error_classification",
+  "active_capability": "alpha_frozen_split_selection_binding",
   "active_acceptance": [
-    "Split, single TrainingRun, and StudyJob endpoints distinguish validation failures from filesystem persistence failures that may occur after a durable write.",
-    "Persistence OSErrors are not encoded as validation 422s; Studio treats only typed string-body validation errors as definitive and retains lookup/recovery for ambiguous failures."
+    "TrainingRun and TrainingStudy can start only when the currently selected split family, seed, identity column, dataset identity and frozen split contract agree.",
+    "No invalid or stale frozen-split selection can silently fall back to legacy RANDOM; explicit frozen fractions are reused for training and shown truthfully in Studio."
   ],
   "blockers": [],
-  "next_executable_work": "Review train-only preprocessing and transform-evidence failure states, then continue the first-run route through persisted training and validation evidence.",
+  "next_executable_work": "Continue the real first-run route from frozen split through TrainingRun, persisted TRAIN-only preprocessing, validation evidence save/reopen, then verify policy/evidence navigation without opening final test.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -342,6 +343,7 @@
     "alpha_frozen_dataset_role_inspection_ui": "PASS: Data workspace now separates persisted feature/ID roles from advisory profile proposals in a compact expandable summary. PRODUCT E2E-08 deliberately leaves the ID candidate unselected and verifies it remains a model feature; TypeScript/Vite production build and focused browser route passed.",
     "alpha_split_validation_rejection_recovery": "PASS: Definitive SplitContract HTTP 422 VALIDATION_FAILED responses no longer create uncertain-write recovery state; users can correct the split and submit a valid contract. Frontend unit tests 18/18, TypeScript/Vite production build, focused Playwright correction flow 1/1, and git diff --check passed.",
     "alpha_training_validation_rejection_recovery": "PASS: Typed HTTP 422 VALIDATION_FAILED responses for single TrainingRun and Study requests remain editable and do not create stale recovery requests; Study correction creates a new request identity and retains corrected parameters. Frontend unit tests 20/20, TypeScript/Vite production build, and git diff --check passed; existing network/uncertain Study retry regression remains in the focused suite.",
-    "alpha_training_mutation_persistence_error_classification": "PASS: SplitContract, TrainingRun and StudyJob persistence OSErrors now map to HTTP 500 instead of validation 422; Studio treats only typed 422 VALIDATION_FAILED with string detail as definitive, retaining exact recovery for ambiguous/runtime failures. Runtime application errors retain their typed runtime code through API and remain visible in Studio. Backend API/runtime/split selections 14 passed, frontend unit 20/20, focused split-correction Playwright 1/1, compileall, Vite build and git diff --check passed."
+    "alpha_training_mutation_persistence_error_classification": "PASS: SplitContract, TrainingRun and StudyJob persistence OSErrors now map to HTTP 500 instead of validation 422; Studio treats only typed 422 VALIDATION_FAILED with string detail as definitive, retaining exact recovery for ambiguous/runtime failures. Runtime application errors retain their typed runtime code through API and remain visible in Studio. Backend API/runtime/split selections 14 passed, frontend unit 20/20, focused split-correction Playwright 1/1, compileall, Vite build and git diff --check passed.",
+    "alpha_frozen_split_selection_binding": "PASS: Training is blocked when visible split controls disagree with the frozen Dataset-bound SplitContract; invalid GROUP no longer silently executes legacy RANDOM. Matching contract fractions are reused for single runs/Studies and displayed accurately. Frontend unit 21/21, Vite production build, invalid-GROUP-to-RANDOM correction E2E 1/1, and real training/validation/reopen E2E 1/1 passed."
   }
 }

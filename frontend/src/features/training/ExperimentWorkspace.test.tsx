@@ -73,7 +73,11 @@ describe("ExperimentWorkspace dynamic model controls", () => {
   it("keeps split validation errors editable instead of treating them as uncertain writes", async () => {
     studioApi.createSplitContract
       .mockRejectedValueOnce(new ProductApiError({ code: "VALIDATION_FAILED", status: 422, detail: "GROUP split requires at least three distinct groups." }))
-      .mockResolvedValueOnce({ split_id: "split-random", family: "RANDOM", split_seed: 42 } as never);
+      .mockResolvedValueOnce({
+        split_id: "split-random", dataset_fingerprint: "fingerprint", dataset_artifact_sha256: "a".repeat(64),
+        family: "RANDOM", split_seed: 42, validation_fraction: 0.2, test_fraction: 0.2,
+        group_column: null, time_column: null, site_column: null, device_column: null, spatial_column: null, regime_column: null,
+      } as never);
     render(<ExperimentWorkspace project={project} dataset={dataset as never} run={null} study={null} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);
 
     await screen.findByRole("option", { name: "Random Forest" });
@@ -83,12 +87,34 @@ describe("ExperimentWorkspace dynamic model controls", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("GROUP split requires at least three distinct groups.");
     expect(screen.queryByTestId("split-contract-recovery")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Run real training" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Run real training" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Run multi-seed study" })).toBeDisabled();
 
     fireEvent.change(screen.getByLabelText("Split family"), { target: { value: "RANDOM" } });
     fireEvent.click(screen.getByRole("button", { name: "Freeze RANDOM SplitContract" }));
     await waitFor(() => expect(studioApi.createSplitContract).toHaveBeenCalledTimes(2));
     expect(screen.queryByTestId("split-contract-recovery")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Run real training" })).toBeEnabled();
+  });
+
+  it("blocks fitting when visible split settings no longer match the frozen contract", async () => {
+    studioApi.listSplitContracts.mockResolvedValueOnce([{
+      split_id: "split-group", dataset_fingerprint: "fingerprint", dataset_artifact_sha256: "a".repeat(64),
+      family: "GROUP", split_seed: 7, validation_fraction: 0.2, test_fraction: 0.2,
+      group_column: "x", time_column: null, site_column: null, device_column: null, spatial_column: null, regime_column: null,
+    }]);
+    render(<ExperimentWorkspace project={project} dataset={dataset as never} run={null} study={null} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);
+
+    const runButton = await screen.findByRole("button", { name: "Run real training" });
+    await waitFor(() => expect(runButton).toBeEnabled());
+    fireEvent.change(screen.getByLabelText("Study split seed"), { target: { value: "8" } });
+    expect(runButton).toBeDisabled();
+    expect(screen.getByText(/no legacy RANDOM fallback will be used/)).toBeVisible();
+    expect(screen.getByRole("button", { name: "Run multi-seed study" })).toBeDisabled();
+    expect(studioApi.runTraining).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText("Study split seed"), { target: { value: "7" } });
+    await waitFor(() => expect(runButton).toBeEnabled());
   });
 
   it("keeps single-run training validation errors editable and reserves recovery for uncertain writes", async () => {

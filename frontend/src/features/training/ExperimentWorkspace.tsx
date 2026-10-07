@@ -265,6 +265,22 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
   const option = useMemo(() => run ? trajectoryOption(run) : null, [run]);
   const statistics = useMemo(() => study ? studyStatistics(study) : null, [study]);
   const studySeedValidation = useMemo(() => parseStudySeeds(seedList), [seedList]);
+  const validationFraction = splitContract?.validation_fraction ?? 0.2;
+  const testFraction = splitContract?.test_fraction ?? 0.2;
+  const splitSelectionMatchesFrozenContract = useMemo(() => {
+    if (!splitContract) return splitFamily === "RANDOM";
+    const identityFields = ["group_column", "time_column", "site_column", "device_column", "spatial_column", "regime_column"] as const;
+    const selectedIdentityField = {
+      RANDOM: null,
+      GROUP: "group_column", TEMPORAL: "time_column", SITE_HOLDOUT: "site_column",
+      DEVICE_HOLDOUT: "device_column", SPATIAL: "spatial_column", REGIME: "regime_column",
+    }[splitFamily];
+    return splitContract.dataset_fingerprint === dataset?.contract.dataset_fingerprint
+      && splitContract.dataset_artifact_sha256 === dataset?.contract.source_artifact_sha256
+      && splitContract.family === splitFamily
+      && splitContract.split_seed === splitSeed
+      && identityFields.every((field) => splitContract[field] === (field === selectedIdentityField ? groupColumn || null : null));
+  }, [dataset?.contract.dataset_fingerprint, dataset?.contract.source_artifact_sha256, groupColumn, splitContract, splitFamily, splitSeed]);
   useEffect(() => {
     setStudy(restoredStudy);
   }, [restoredStudy?.study_id]);
@@ -472,6 +488,10 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
 
   async function train() {
     if (splitContractRecovery || trainingRecovery) return;
+    if (!splitSelectionMatchesFrozenContract) {
+      setError("Freeze a SplitContract matching the currently selected split family, identity column and seed before fitting.");
+      return;
+    }
     setRunning(true);
     setError(null);
     const config: Parameters<typeof studioApi.runTraining>[1] = {
@@ -482,8 +502,8 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
       learning_rate: learningRate,
       batch_size: batchSize,
       patience,
-      validation_fraction: 0.2,
-      test_fraction: 0.2,
+      validation_fraction: validationFraction,
+      test_fraction: testFraction,
       max_rules: maxRules,
       n_estimators: nEstimators,
       max_depth: maxDepth,
@@ -616,6 +636,10 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
       return;
     }
     if (splitContractRecovery) return;
+    if (!splitSelectionMatchesFrozenContract) {
+      setError("Freeze a SplitContract matching the currently selected split family, identity column and seed before starting this Study.");
+      return;
+    }
     if (studySeedValidation.error) {
       setError(studySeedValidation.error);
       return;
@@ -634,7 +658,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
     try {
       const selectionMetric = dataset?.contract.task === "regression" ? "rmse" : "f1";
       if (splitContract && studyMode !== "TRAINING_VARIABILITY") throw new Error("A frozen SplitContract can be used only with fixed-split training variability studies.");
-      const request: Parameters<typeof studioApi.startStudyJob>[1] = { client_request_id: crypto.randomUUID(), name: `Study ${new Date().toLocaleString()}`, model_kind: trainingModelKind, adapter_key: selectedAdapterKey, seeds, randomness_protocol: studyMode, split_seed: splitContract?.split_seed ?? splitSeed, training_seed: splitSeed, split_contract_id: splitContract?.split_id ?? null, execution_backend_key: executionBackendKey, selection_metric: selectionMetric, max_epochs: maxEpochs, learning_rate: learningRate, batch_size: batchSize, patience, validation_fraction: .2, test_fraction: .2, max_rules: maxRules, n_estimators: nEstimators, max_depth: maxDepth };
+      const request: Parameters<typeof studioApi.startStudyJob>[1] = { client_request_id: crypto.randomUUID(), name: `Study ${new Date().toLocaleString()}`, model_kind: trainingModelKind, adapter_key: selectedAdapterKey, seeds, randomness_protocol: studyMode, split_seed: splitContract?.split_seed ?? splitSeed, training_seed: splitSeed, split_contract_id: splitContract?.split_id ?? null, execution_backend_key: executionBackendKey, selection_metric: selectionMetric, max_epochs: maxEpochs, learning_rate: learningRate, batch_size: batchSize, patience, validation_fraction: validationFraction, test_fraction: testFraction, max_rules: maxRules, n_estimators: nEstimators, max_depth: maxDepth };
       pendingStudyRequestRef.current = request;
       setPendingStudyRequest(request);
       let job = await studioApi.startStudyJob(project.session_id, request);
@@ -753,7 +777,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
           <dt>Target</dt><dd>{dataset.contract.target}</dd>
           <dt>Task</dt><dd>{dataset.contract.task}</dd>
           <dt>Features</dt><dd>{dataset.contract.feature_columns.join(", ")}</dd>
-          <dt>Split</dt><dd>60% train · 20% validation · 20% locked test</dd>
+          <dt>Split</dt><dd>{Math.round((1 - validationFraction - testFraction) * 100)}% train · {Math.round(validationFraction * 100)}% validation · {Math.round(testFraction * 100)}% locked test</dd>
           <dt>Frozen split</dt><dd>{splitContract ? `${splitContract.family} · ${splitContract.split_id.slice(0, 8)}` : "No explicit contract — legacy random holdout"}</dd>
           <dt>Preprocessing</dt><dd>train-only median/mode fill + ordinal encoding + standardization</dd>
         </dl>
@@ -782,6 +806,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
         {catalogStatus === "error" && <div className="error" role="alert"><strong>Could not check available models.</strong> {catalogError} <Button view="outlined" size="s" onClick={() => setCatalogReload((current) => current + 1)} data-ruflex-action="training.catalog.retry">Retry model check</Button></div>}
         {catalogStatus === "loaded" && compatibleModels.length === 0 && <div className="info-message" role="status"><strong>No compatible model is available.</strong> The catalog loaded, but no available adapter declares fit support for {datasetTask}. Training remains disabled; install/register a compatible adapter or choose a dataset for a supported task.</div>}
         {splitContractRecovery && <div className="error" role="alert" data-testid="split-contract-recovery"><strong>SplitContract save is uncertain; training is paused.</strong><p>{splitContractRecovery.error}</p><Button view="outlined" disabled={recoveringSplitContract} onClick={recoverSplitContract}>Retry exact SplitContract lookup</Button>{splitContractRecovery.notFound && <Button view="outlined" disabled={recoveringSplitContract || running || project.read_only} onClick={explicitlyRepeatSplitContract}>Explicitly repeat these exact split settings</Button>}</div>}
+        {!splitSelectionMatchesFrozenContract && !splitContractRecovery && <p className="error" role="status">The selected split settings do not match a frozen SplitContract. Freeze this configuration before training; no legacy RANDOM fallback will be used.</p>}
         <Button view="outlined" disabled={running || !!splitContractRecovery || project.read_only || splitEvidenceStatus !== "loaded"} onClick={freezeSplitContract} data-ruflex-action="split.freeze">Freeze {splitFamily} SplitContract</Button>
         <section className="info-message" aria-label="Training choices">
           <strong>Choose how to start</strong>
@@ -790,10 +815,10 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
           <p>Both paths use the declared training/validation workflow; opening this screen or changing settings does not start computation or unlock the test split.</p>
         </section>
         {trainingRecovery && <div className="error" role="alert" data-testid="training-run-recovery"><strong>Training response is uncertain; no second fit was started.</strong><p>{trainingRecovery.error}</p><Button view="outlined" disabled={recoveringTraining} onClick={recoverTrainingRun}>Retry exact TrainingRun lookup</Button>{trainingRecovery.notFound && <Button view="outlined" disabled={recoveringTraining || running || project.read_only} onClick={explicitlyRepeatTraining}>Explicitly start a new fit with these settings</Button>}</div>}
-        <Button view="action" disabled={running || !!trainingRecovery || !!splitContractRecovery || project.read_only || splitEvidenceStatus !== "loaded" || catalogStatus !== "loaded" || !selectedModel || parameterErrors.length > 0} onClick={train} data-ruflex-action="training.run">{running ? "Training…" : "Run real training"}</Button>
+        <Button view="action" disabled={running || !!trainingRecovery || !!splitContractRecovery || !splitSelectionMatchesFrozenContract || project.read_only || splitEvidenceStatus !== "loaded" || catalogStatus !== "loaded" || !selectedModel || parameterErrors.length > 0} onClick={train} data-ruflex-action="training.run">{running ? "Training…" : "Run real training"}</Button>
         <p id="study-seeds-help" className={studySeedValidation.error ? "error" : "property-description"} role={studySeedValidation.error ? "alert" : undefined}>{studySeedValidation.error ?? "Enter 3–32 distinct whole-number seeds, separated by commas."}</p>
         {parameterErrors.length > 0 && <div className="error" role="alert">Review model settings before training: {parameterErrors.join(" ")}</div>}
-        <Button view="outlined" disabled={running || project.read_only || (!pendingStudyRequest && (!!(studyJob && ["QUEUED", "RUNNING"].includes(studyJob.status)) || !!trainingRecovery || !!splitContractRecovery || splitEvidenceStatus !== "loaded" || catalogStatus !== "loaded" || !selectedModel || Boolean(studySeedValidation.error) || parameterErrors.length > 0 || (studyHydrationStatus !== "none" && studyHydrationStatus !== "available") || studyJobsStatus !== "loaded" || executionBackendStatus !== "loaded" || !executionBackends.some((backend) => backend.identity.key === executionBackendKey)))} onClick={trainStudy} data-ruflex-action="study.start">{running ? "Training…" : pendingStudyRequest ? "Retry same Study request" : "Run multi-seed study"}</Button>
+        <Button view="outlined" disabled={running || project.read_only || (!pendingStudyRequest && (!!(studyJob && ["QUEUED", "RUNNING"].includes(studyJob.status)) || !!trainingRecovery || !!splitContractRecovery || !splitSelectionMatchesFrozenContract || splitEvidenceStatus !== "loaded" || catalogStatus !== "loaded" || !selectedModel || Boolean(studySeedValidation.error) || parameterErrors.length > 0 || (studyHydrationStatus !== "none" && studyHydrationStatus !== "available") || studyJobsStatus !== "loaded" || executionBackendStatus !== "loaded" || !executionBackends.some((backend) => backend.identity.key === executionBackendKey)))} onClick={trainStudy} data-ruflex-action="study.start">{running ? "Training…" : pendingStudyRequest ? "Retry same Study request" : "Run multi-seed study"}</Button>
         {pendingStudyRequest && !running && <p role="status">Study submission status is uncertain. Retry uses the same request ID and frozen configuration; it will recover the existing job or safely report a mismatch.</p>}
         {studyJob && <div className="info-message"><strong>Study job {studyJob.status}</strong> · {studyJob.execution_backend_key ?? studyJob.execution_backend} · {studyJob.seed_states.map((state) => `seed ${state.seed}: ${state.status}`).join(" · ")} {(["QUEUED", "RUNNING"].includes(studyJob.status) && !studyJob.cancel_requested) && <><Button view="flat" size="s" disabled={running} onClick={resumeStudy} data-ruflex-action="study.resume">Resume persisted study</Button><Button view="flat" size="s" disabled={running} onClick={cancelStudy} data-ruflex-action="study.cancel">Cancel study</Button></>} {studyJob.cancel_requested && ["QUEUED", "RUNNING"].includes(studyJob.status) && <small role="status">Cancellation requested. The active seed fit may finish; remaining seeds will not start, and this job cannot be resumed.</small>} {studyJob.recovery_note && <small>{studyJob.recovery_note}</small>}{studyJobPollError && <div className="error" role="alert"><strong>Study status could not be refreshed.</strong> {studyJobPollError} <Button view="outlined" size="s" disabled={running} onClick={retryStudyStatus}>Retry Study status</Button></div>}</div>}
         {studyJob?.status === "CANCELLED" && <p className="property-description">This StudyJob is terminal and cannot be resumed. Seed fits completed before cancellation remain persisted; starting another Study creates new fits.</p>}

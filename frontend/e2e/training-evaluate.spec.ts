@@ -35,13 +35,15 @@ test("a rejected GROUP split can be corrected without uncertain-write recovery",
   await page.getByRole("button", { name: "Freeze GROUP SplitContract", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("GROUP split requires at least three distinct groups");
   await expect(page.getByTestId("split-contract-recovery")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Run real training", exact: true })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Run real training", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Run multi-seed study", exact: true })).toBeDisabled();
 
   await page.getByLabel("Split family").selectOption("RANDOM");
   await page.getByRole("button", { name: "Freeze RANDOM SplitContract", exact: true }).click();
   const frozenSplitLabel = page.locator(".compact-definition dt").filter({ hasText: "Frozen split" });
   await expect(frozenSplitLabel.locator("xpath=following-sibling::dd[1]")).toContainText("RANDOM");
   await expect(page.getByTestId("split-contract-recovery")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Run real training", exact: true })).toBeEnabled();
 });
 
 test("PRODUCT-02 performs real neuro-fuzzy training, validation evaluation and reopen", async ({ page }) => {
