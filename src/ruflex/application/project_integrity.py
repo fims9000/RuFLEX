@@ -979,6 +979,12 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                     stability_runs = [] if stability_policy is None else [runs_by_id[run_id] for run_id in stability_policy.run_ids if run_id in runs_by_id]
                     source_rows = [int(row.source_row) for row in final_test.prediction_rows if row.source_row is not None]
                     row_identities = [row.row_identity or row_identity(final_test.dataset_fingerprint, int(row.source_row)) for row in final_test.prediction_rows if row.source_row is not None]
+                    row_identity_bindings_match = all(
+                        row.source_row is not None
+                        and row.row == index
+                        and row.row_identity in (None, row_identity(final_test.dataset_fingerprint, int(row.source_row)))
+                        for index, row in enumerate(final_test.prediction_rows)
+                    )
                     expected_case_identity = _stable_identity("final-test-cases", {"dataset_fingerprint": final_test.dataset_fingerprint, "row_identities": sorted(row_identities)})
                     expected_sample_identity = _stable_identity("final-test-samples", {"dataset_fingerprint": final_test.dataset_fingerprint, "run_id": str(final_test.run_id), "source_rows": sorted(source_rows)})
                     expected_policy_identity = _stable_identity(
@@ -998,6 +1004,7 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                         len(source_rows) == final_test.test_row_count
                         and len(set(source_rows)) == final_test.test_row_count
                         and len(set(row_identities)) == final_test.test_row_count
+                        and row_identity_bindings_match
                         and final_test.test_sample_identity == expected_sample_identity
                         and final_test.test_case_identity == expected_case_identity
                         and final_test.policy_identity == expected_policy_identity

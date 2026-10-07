@@ -208,15 +208,16 @@
     "alpha_final_test_freeze_timestamp_reconstruction_integrity",
     "alpha_dataset_revision_first_unlock_consistency_integrity",
     "alpha_final_test_metric_and_curve_recomputation_integrity",
-    "alpha_final_test_duplicate_and_latest_pointer_integrity"
+    "alpha_final_test_duplicate_and_latest_pointer_integrity",
+    "alpha_final_test_canonical_row_order_identity_integrity"
   ],
-  "active_capability": "alpha_final_test_duplicate_and_latest_pointer_integrity",
+  "active_capability": "alpha_final_test_canonical_row_order_identity_integrity",
   "active_acceptance": [
-    "Each dataset revision has at most one persisted FinalTestEvaluation per exact frozen policy identity.",
-    "The active FinalTestEvaluation pointer resolves to a newest persisted result; duplicate results and stale pointers fail closed."
+    "Each final-test prediction row retains its canonical zero-based positional index and row identity derived from dataset fingerprint plus source row.",
+    "Forged ordering/identity fails closed independently of the summary identity hash."
   ],
   "blockers": [],
-  "next_executable_work": "Continue focused audit of final-test holdout identity and policy-family binding, then move to remaining project integrity gaps; preserve unrelated article files.",
+  "next_executable_work": "Continue a lightweight integrity audit of frozen policy-family bindings and the persisted product event/job graph; preserve unrelated article files.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -428,6 +429,7 @@
     "alpha_final_test_freeze_timestamp_reconstruction_integrity": "PASS: Project Integrity reconstructs policy_frozen_at as the exact maximum creation time of bound objects, requires Stability Analysis/support runs to predate Gate creation, and requires frozen sources to predate first test unlock. Regressions forge late gate/analysis creation and a false frozen timestamp; tests/test_project_integrity.py: 14 passed, compileall and diff checks passed.",
     "alpha_dataset_revision_first_unlock_consistency_integrity": "PASS: Project Integrity requires all FinalTestEvaluations for one dataset revision to retain the same timezone-aware first-unlock timestamp and rejects unlock times later than evaluation creation. Regression adds a second persisted evaluation with a forged revision unlock; tests/test_project_integrity.py: 14 passed, compileall and diff checks passed.",
     "alpha_final_test_metric_and_curve_recomputation_integrity": "PASS: Project Integrity reconstructs raw/calibrated probabilities from persisted logits and frozen calibration, recomputes thresholded metrics/confusion, Brier/ECE/AUC/PR-AUC, calibration bins, operating curves, and regression residual/metrics. A forged persisted final-test F1 is rejected; tests/test_project_integrity.py: 14 passed, compileall and diff checks passed.",
-    "alpha_final_test_duplicate_and_latest_pointer_integrity": "PASS: Project Integrity rejects duplicate result objects for the same dataset-revision/policy identity and requires the active final-test pointer to reference a newest persisted object. Regression synthesizes a duplicate with a later timestamp and observes duplicate-policy plus stale-pointer issues; forged revision unlock is also rejected. Project-integrity suite: 14 passed; compileall and diff checks passed."
+    "alpha_final_test_duplicate_and_latest_pointer_integrity": "PASS: Project Integrity rejects duplicate result objects for the same dataset-revision/policy identity and requires the active final-test pointer to reference a newest persisted object. Regression synthesizes a duplicate with a later timestamp and observes duplicate-policy plus stale-pointer issues; forged revision unlock is also rejected. Project-integrity suite: 14 passed; compileall and diff checks passed.",
+    "alpha_final_test_canonical_row_order_identity_integrity": "PASS: Project Integrity requires final-test prediction rows to retain their canonical zero-based row order and source-row-derived identity. Regression changes one persisted row index without changing metrics or case hashes and is rejected; tests/test_project_integrity.py: 14 passed, compileall and diff checks passed."
   }
 }
