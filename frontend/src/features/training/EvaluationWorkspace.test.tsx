@@ -214,6 +214,15 @@ describe("EvaluationWorkspace final-test boundary", () => {
     expect(screen.queryByTestId("evaluation-recovery")).not.toBeInTheDocument();
   });
 
+  it("does not lock Evaluation authoring after a definite wrong-run rejection", async () => {
+    studioApi.createAnalysisEvaluation.mockReset().mockRejectedValueOnce(new ProductApiError(404, "The selected training run does not exist in this project."));
+    renderWorkspace();
+    fireEvent.click(screen.getByRole("button", { name: "Save evaluation revision" }));
+    expect(await screen.findByText("The selected training run does not exist in this project.")).toBeVisible();
+    expect(screen.queryByTestId("evaluation-recovery")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save evaluation revision" })).toBeEnabled();
+  });
+
   it("recovers a persisted threshold by exact Evaluation and calibration after pointer failure", async () => {
     const onThreshold = vi.fn();
     studioApi.selectAnalysisThreshold.mockRejectedValueOnce(new Error("active threshold pointer write failed"));

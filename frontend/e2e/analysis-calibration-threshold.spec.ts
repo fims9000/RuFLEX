@@ -112,6 +112,16 @@ test("PRODUCT-07 persists a validation-only ACCEPT / REVIEW policy separately fr
   await page.getByRole("button", { name: "Run real training", exact: true }).click();
   await expect(page.locator(".run-provenance")).toContainText("model artifact persisted", { timeout: 30_000 });
   await page.getByRole("button", { name: "A", exact: true }).click();
+  let rejectFirstEvaluation = true;
+  await page.route("**/api/projects/analyses/evaluations", async (route) => {
+    if (rejectFirstEvaluation) {
+      rejectFirstEvaluation = false;
+      await route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ code: "RESOURCE_NOT_FOUND", detail: "The selected training run does not exist in this project." }) });
+    } else await route.continue();
+  });
+  await page.getByRole("button", { name: "Save validation evidence", exact: true }).click();
+  await expect(page.getByText("The selected training run does not exist in this project.")).toBeVisible();
+  await expect(page.getByTestId("evaluation-recovery")).toHaveCount(0);
   await page.getByRole("button", { name: "Save validation evidence", exact: true }).click();
   await page.getByRole("button", { name: /Select F1 threshold \(raw\)/, exact: true }).click();
   let policyPosts = 0;

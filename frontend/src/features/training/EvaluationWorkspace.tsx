@@ -346,6 +346,7 @@ export function EvaluationWorkspace({
       setEvaluationRecoveryRunId(null); setEvaluationRecoveryError(null); setEvaluationRecoveryNotFound(false);
       return created;
     } catch (reason) {
+      if (isDefinitiveValidationWriteRejection(reason)) throw reason;
       setEvaluationRecoveryRunId(targetRunId);
       setEvaluationRecoveryError(reason instanceof Error ? reason.message : "The persisted validation evaluation could not be confirmed.");
       setEvaluationRecoveryNotFound(false);

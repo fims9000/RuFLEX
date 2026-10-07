@@ -326,7 +326,8 @@
     "alpha_final_test_confirmation_session_isolation",
     "alpha_selective_cutoff_draft_validation",
     "alpha_selective_policy_definitive_rejection_recovery",
-    "alpha_validation_policy_definitive_rejection_recovery"
+    "alpha_validation_policy_definitive_rejection_recovery",
+    "alpha_evaluation_definitive_rejection_recovery"
   ],
   "active_capability": "alpha_master_spec_gap_audit",
   "active_acceptance": [
@@ -334,8 +335,9 @@
     "Select the next concrete, low-resource, end-to-end product gap and implement it without broad refactoring."
   ],
   "blockers": [],
-  "next_executable_work": "Continue the alpha product gap audit. Inspect run-bound Evaluation creation and recovery for deterministic API refusal versus uncertain persistence; verify server write ordering before changing Studio behavior. Preserve frozen final-test semantics and unrelated docs/article edits.",
+  "next_executable_work": "Continue the alpha product gap audit with a higher-level real-user workflow check: identify the next unmet master-spec requirement in Studio rather than repeating error-classification changes. Keep verification resource-aware and preserve unrelated docs/article edits.",
   "qa": {
+    "evaluation_definitive_rejection_recovery": "PASS: Run-bound Evaluation creation checks run/dataset and constructs the typed object before its first persisted write; Studio treats definitive API 403/404/409/422 as refusal without recovery lock, while lost responses and pointer-write failures retain run-bound exact lookup. EvaluationWorkspace unit suite 27 passed, PRODUCT-07 real Studio route simulated Evaluation 404 then saved/reopened validation policy, TypeScript/Vite build passed.",
     "validation_policy_definitive_rejection_recovery": "PASS: Product calibration and threshold routes validate evaluation/task/bound calibration before first artifact write, so Studio treats HTTP 403/404/409/422 as definite refusal rather than uncertain persistence. API 5xx/lost response still retains exact recovery. EvaluationWorkspace unit suite 26 passed; PRODUCT-04 browser route simulated calibration 422 and threshold 404, verified no recovery lock, then persisted both policies and completed the separate frozen final-test route. TypeScript/Vite build passed.",
     "selective_policy_definitive_rejection_recovery": "PASS: A selective-policy HTTP 422 is treated as a definite validation refusal, not an uncertain save; the user can correct the request without exact-recovery controls. Lost response/persistence failure remains subject to exact-binding lookup. EvaluationWorkspace unit suite 25 passed; PRODUCT-07 browser route rejected blank cutoff with zero POST, handled a simulated 422 without recovery, then persisted the valid policy and reopened it. TypeScript/Vite build passed.",
     "selective_cutoff_draft_validation": "PASS: A blank, non-finite or outside-[0.5,1.0] selective confidence cutoff is rejected in Studio before any Evaluation or policy persistence request. Red regression reproduced the prior missing guidance; updated EvaluationWorkspace unit suite 24 passed, PRODUCT-07 real Studio route confirmed zero policy POSTs for blank input then one valid frozen policy POST and close/reopen, TypeScript/Vite build and diff check passed. Scientific cutoff semantics are unchanged.",
