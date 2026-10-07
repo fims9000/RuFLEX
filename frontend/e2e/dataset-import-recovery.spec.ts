@@ -80,6 +80,33 @@ test("a rejected replacement import preserves the previously saved DatasetContra
   await expect(page.locator(".data-summary code").first()).not.toHaveText(originalSha ?? "");
 });
 
+test("a rejected replacement CSV retains its draft beside the frozen prior contract", async ({ page }) => {
+  const projectPath = join(tmpdir(), `ruflex-replacement-csv-rejection-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  await page.goto("/");
+  await page.getByLabel("Project path").fill(projectPath);
+  await page.getByLabel("Project name").fill("Replacement CSV recovery");
+  await page.getByRole("button", { name: "Create project", exact: true }).click();
+  await page.getByRole("button", { name: "Review or import data", exact: true }).click();
+  await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
+  await expect(page.getByRole("combobox", { name: "Role for entity_id" })).toBeVisible();
+  await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
+  await expect(page.getByText(/Contract: target/)).toBeVisible();
+  const originalSha = await page.locator(".data-summary code").first().textContent();
+
+  await page.getByLabel("CSV data").fill("sensor,target\n30,0\n40,1\n");
+  await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
+  await expect(page.getByRole("combobox", { name: "Role for sensor" })).toBeVisible();
+  await page.getByRole("textbox", { name: "ID columns" }).fill("missing_id");
+  await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
+
+  await expect(page.getByRole("alert").filter({ hasText: "ID columns are absent" })).toBeVisible();
+  await expect(page.locator(".data-summary code").first()).toHaveText(originalSha ?? "");
+  await expect(page.getByRole("combobox", { name: "Role for sensor" })).toBeVisible();
+  await page.getByRole("textbox", { name: "ID columns" }).fill("");
+  await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
+  await expect(page.locator(".data-summary code").first()).not.toHaveText(originalSha ?? "");
+});
+
 test("a persisted file import is reconciled after its confirmation read fails", async ({ page }) => {
   let datasetReads = 0;
   await page.route("**/api/projects/*/dataset", async (route) => {
