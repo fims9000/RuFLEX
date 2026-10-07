@@ -68,6 +68,15 @@ const initialTheme =
   (localStorage.getItem("ruflex.theme") as StudioTheme | null) ?? "light";
 const RECENT_PROJECTS_STORAGE_KEY = "ruflex.recent-projects.v1";
 type RecentProject = { name: string; path: string };
+type PendingDatasetImport = {
+  sessionId: string;
+  sourceArtifactSha256: string;
+  target: string;
+  task: string;
+  idColumns: string[];
+  selectionId: number;
+  datasetFingerprint?: string;
+};
 
 function loadRecentProjects(): RecentProject[] {
   try {
@@ -248,7 +257,7 @@ export function App() {
   const backendHealthRequestRef = useRef(0);
   const csvInspectionRequestRef = useRef(0);
   const datasetMutationRequestRef = useRef(0);
-  const pendingImportedFingerprintRef = useRef<string | null>(null);
+  const pendingDatasetImportRef = useRef<PendingDatasetImport | null>(null);
   const generalizationMutationRequestRef = useRef(0);
   const scopeClassificationRequestRef = useRef(0);
   const artifactInventoryRequestRef = useRef(0);
@@ -819,10 +828,25 @@ export function App() {
     setDatasetStateError(null);
     studioApi.getDatasetState(project.session_id).then((state) => {
       if (!active) return;
-      if (pendingImportedFingerprintRef.current === state.contract.dataset_fingerprint) {
-        setPendingDatasetFile(null);
-        setPendingDatasetProfile(null);
-        pendingImportedFingerprintRef.current = null;
+      const pendingImport = pendingDatasetImportRef.current;
+      const pendingImportMatches = pendingImport?.sessionId === project.session_id
+        && (
+          pendingImport.datasetFingerprint === state.contract.dataset_fingerprint
+          || (
+            pendingImport.sourceArtifactSha256 === state.contract.source_artifact_sha256
+            && pendingImport.target === state.contract.target
+            && pendingImport.task === state.contract.task
+            && JSON.stringify(pendingImport.idColumns) === JSON.stringify(state.contract.id_columns)
+          )
+        );
+      if (pendingImportMatches && pendingImport) {
+        if (pendingImport.selectionId === datasetFileSelectionId.current) {
+          setPendingDatasetFile(null);
+          setPendingDatasetProfile(null);
+          setError(null);
+          setStatus("The saved DatasetContract matches the pending file import; its confirmation was restored.");
+        }
+        pendingDatasetImportRef.current = null;
       }
       setDatasetState(state);
       setProfile(state.profile);
@@ -1233,7 +1257,7 @@ export function App() {
     setDatasetState(null);
     setPendingDatasetFile(null);
     setPendingDatasetProfile(null);
-    pendingImportedFingerprintRef.current = null;
+    pendingDatasetImportRef.current = null;
     setInspectingDatasetFile(false);
     setImportingDatasetFile(false);
     setConfirmingCsvDataset(false);
@@ -1405,6 +1429,14 @@ export function App() {
       const bytes = new Uint8Array(fileBytes);
       if (!isCurrent()) return;
       sourceArtifactSha256 = await sha256Hex(fileBytes);
+      pendingDatasetImportRef.current = {
+        sessionId,
+        sourceArtifactSha256,
+        target,
+        task,
+        idColumns: requestedIdColumns,
+        selectionId: datasetFileSelectionId.current,
+      };
       let binary = "";
       for (const byte of bytes) binary += String.fromCharCode(byte);
       const confirmed = await studioApi.importDataset(
@@ -1417,7 +1449,10 @@ export function App() {
       );
       importResponseReceived = true;
       if (!isCurrent()) return;
-      pendingImportedFingerprintRef.current = confirmed.contract.dataset_fingerprint;
+      if (pendingDatasetImportRef.current?.sessionId === sessionId
+        && pendingDatasetImportRef.current.selectionId === datasetFileSelectionId.current) {
+        pendingDatasetImportRef.current.datasetFingerprint = confirmed.contract.dataset_fingerprint;
+      }
       setDataset(confirmed);
       const persisted = await studioApi.getDatasetState(sessionId);
       if (!isCurrent()) return;
@@ -1428,7 +1463,7 @@ export function App() {
       setStatus(`${file.name} saved as a verified dataset artifact`);
       setPendingDatasetFile(null);
       setPendingDatasetProfile(null);
-      pendingImportedFingerprintRef.current = null;
+      pendingDatasetImportRef.current = null;
       setError(null);
     } catch (reason) {
       if (!isCurrent()) return;
@@ -1446,9 +1481,12 @@ export function App() {
           setDatasetStateStatus("available");
           setDatasetStateError(null);
           if (sameContract) {
-            pendingImportedFingerprintRef.current = null;
-            setPendingDatasetFile(null);
-            setPendingDatasetProfile(null);
+            const pendingImport = pendingDatasetImportRef.current;
+            pendingDatasetImportRef.current = null;
+            if (!pendingImport || pendingImport.selectionId === datasetFileSelectionId.current) {
+              setPendingDatasetFile(null);
+              setPendingDatasetProfile(null);
+            }
             setError(null);
             setStatus(`${file.name} is present in the project; restored its confirmation after the upload response was lost`);
             void refreshArtifactInventory(sessionId);

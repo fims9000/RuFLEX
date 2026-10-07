@@ -157,15 +157,16 @@
     "alpha_first_write_training_request_provenance",
     "alpha_run_bound_evaluation_policy_application",
     "alpha_late_worker_cancel_guard",
-    "alpha_study_cancel_requested_feedback"
+    "alpha_study_cancel_requested_feedback",
+    "alpha_dataset_import_lost_response_retry_reconciliation"
   ],
-  "active_capability": "alpha_study_cancel_requested_feedback",
+  "active_capability": "alpha_dataset_import_lost_response_retry_reconciliation",
   "active_acceptance": [
-    "When a training response is lost, Studio may recover only the uniquely persisted TrainingRun whose declared model, adapter, and complete request config match the original request.",
-    "When durable cancel_requested is true, Studio discloses that the current fit may finish, hides invalid resume/cancel actions, and blocks any new Study until the existing job reaches terminal status."
+    "When an imported dataset is persisted but both the upload response and immediate DatasetState recovery read are lost, the next explicit Dataset check reconciles the saved contract to the pending file by source SHA, target, task, and ID columns.",
+    "A matching recovered DatasetContract clears only the corresponding file draft and never repeats the import request."
   ],
   "blockers": [],
-  "next_executable_work": "Continue the Alpha user's main workflow review beyond Study lifecycle; inspect the Dataset-to-Training first-use route for places where a failed import or contract validation leaves no clear next action.",
+  "next_executable_work": "Continue the Dataset-to-Training first-use review; inspect validation and preprocessing failure states for actionable recovery without weakening frozen DatasetContract semantics.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -326,6 +327,7 @@
     "alpha_first_write_training_request_provenance": "PASS: train_model now passes exact declared request/adapter provenance into train_with_adapter, so the first persisted TrainingRun already carries recovery identity; there is no intermediate persisted run lacking exact config. Direct reopen regression, generic adapter persistence, StudyJob recovery tests, 4 Training Studio multi-seed/job route tests, compileall and diff check passed.",
     "alpha_run_bound_evaluation_policy_application": "PASS: EvaluationWorkspace now requires exact active run/evaluation/class threshold/calibration bindings for SelectivePredictionPolicy, and exact selected run/evaluation/threshold/calibration/dataset identities for StabilityGatePolicy. Stale policies are disclosed but neither shown as active nor sent into evaluateFinalTest. Regressions cover mismatched IDs being omitted and current frozen IDs being retained; EvaluationWorkspace tests 12/12, Vite build, and diff check passed.",
     "alpha_late_worker_cancel_guard": "PASS: _execute_study_job now no-ops terminal jobs and persists cancellation before adapter resolution or fitting if a delayed worker starts after cancel. Regression cancels an orphaned queued job, invokes the late worker path, asserts no fit occurs, and verifies all seed statuses remain cancelled; focused cancellation/request-id tests (4), compileall and diff check passed.",
-    "alpha_study_cancel_requested_feedback": "PASS: Active StudyJobs with cancel_requested no longer offer Resume or repeated Cancel actions; Studio explains an in-flight fit may finish, remaining seeds stop, and another Study is blocked until terminal state. ExperimentWorkspace tests 17/17 and Vite production build passed."
+    "alpha_study_cancel_requested_feedback": "PASS: Active StudyJobs with cancel_requested no longer offer Resume or repeated Cancel actions; Studio explains an in-flight fit may finish, remaining seeds stop, and another Study is blocked until terminal state. ExperimentWorkspace tests 17/17 and Vite production build passed.",
+    "alpha_dataset_import_lost_response_retry_reconciliation": "PASS: A source-hash/target/task/ID-column request identity is retained before file-import POST and reconciled on the next successful DatasetState hydration when both the POST response and immediate recovery read are lost. Only the matching pending selection is cleared; no duplicate import is issued. TypeScript/Vite production build passed and all 4 focused dataset import/confirmation recovery E2Es passed."
   }
 }
