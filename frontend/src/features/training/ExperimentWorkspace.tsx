@@ -234,6 +234,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
   const pendingStudyRequestRef = useRef<Parameters<typeof studioApi.startStudyJob>[1] | null>(null);
   const [running, setRunning] = useState(false);
   const singleTrainingInFlightRef = useRef(false);
+  const studyResumeInFlightRef = useRef(false);
   const splitContractMutationInFlightRef = useRef(false);
   const [splitContractMutationInFlight, setSplitContractMutationInFlight] = useState(false);
   const [trainingRecovery, setTrainingRecovery] = useState<{ config: Parameters<typeof studioApi.runTraining>[1]; requestedAt: number; error: string; notFound: boolean } | null>(null);
@@ -758,11 +759,12 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
     catch (reason) { setError(reason instanceof Error ? reason.message : "Could not cancel Study"); }
   }
   async function resumeStudy() {
-    if (!studyJob || !["QUEUED", "RUNNING"].includes(studyJob.status)) return;
+    if (studyResumeInFlightRef.current || !studyJob || !["QUEUED", "RUNNING"].includes(studyJob.status)) return;
+    studyResumeInFlightRef.current = true;
     setRunning(true); setError(null);
     try { await observeStudy(await studioApi.resumeStudyJob(project.session_id, studyJob.job_id)); }
     catch (reason) { setError(reason instanceof Error ? reason.message : "Could not resume Study"); }
-    finally { setRunning(false); }
+    finally { studyResumeInFlightRef.current = false; setRunning(false); }
   }
 
   async function retryStudyStatus() {

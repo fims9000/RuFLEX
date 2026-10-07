@@ -279,13 +279,14 @@
     "alpha_dataset_write_serialization",
     "alpha_single_training_submission_guard",
     "alpha_split_contract_duplicate_guard",
-    "alpha_training_study_execution_mutex"
+    "alpha_training_study_execution_mutex",
+    "alpha_study_resume_duplicate_guard"
   ],
-  "active_capability": "alpha_training_study_execution_mutex",
+  "active_capability": "alpha_study_resume_duplicate_guard",
   "active_acceptance": [
-    "Single-run TrainingRun creation is blocked while a persisted multi-seed StudyJob is QUEUED or RUNNING.",
-    "Single-run TrainingRun creation remains disabled until saved StudyJob status is successfully restored.",
-    "The handler rechecks both conditions so stale button state cannot submit a conflicting fit."
+    "Resume for one persisted StudyJob can be submitted only once at a time, before React rerenders.",
+    "The in-flight resume control communicates that the action is busy and cannot trigger duplicate resume requests.",
+    "The synchronous guard releases after success or failure so explicit recovery remains possible."
   ],
   "blockers": [],
   "next_executable_work": "Inspect the next user-facing alpha workflow for an evidenced reliability/usability gap; use focused, low-resource checks and commit each verified slice locally.",
@@ -571,6 +572,7 @@
     "alpha_dataset_write_serialization": "PASS: CSV confirmation and file import now use a synchronous shared dataset mutation guard; save, description update, generalization writes and close cannot overlap. Focused delayed-confirmation Studio E2E and generalization write E2E passed (2/2), TypeScript build, product-state JSON parse and git diff --check passed.",
     "alpha_single_training_submission_guard": "PASS: single-run TrainingRun submission now has a synchronous ref guard, including explicit retry after confirmed absence. ExperimentWorkspace unit suite: 22 passed; PRODUCT-02 real Studio training/reopen E2E passed with a delayed response and one POST; TypeScript build and git diff checks passed.",
     "alpha_split_contract_duplicate_guard": "PASS: SplitContract freeze and explicit retry now use a synchronous duplicate guard; single-run training and Study start are refused while the split write is pending. Studio reports 'Saving split contract' and keeps fitting disabled. ExperimentWorkspace unit suite: 23 passed; focused GROUP-split correction E2E passed; TypeScript build and diff check passed.",
-    "alpha_training_study_execution_mutex": "PASS: single-run fitting now fails closed until saved StudyJob status is restored and while any persisted StudyJob is QUEUED/RUNNING; the submit handler enforces the same guard as the disabled control. Explicit repeat of an uncertain single fit also refuses to overlap an active/unresolved Study. ExperimentWorkspace unit suite: 25 passed; TypeScript project build and git diff --check passed."
+    "alpha_training_study_execution_mutex": "PASS: single-run fitting now fails closed until saved StudyJob status is restored and while any persisted StudyJob is QUEUED/RUNNING; the submit handler enforces the same guard as the disabled control. Explicit repeat of an uncertain single fit also refuses to overlap an active/unresolved Study. ExperimentWorkspace unit suite: 25 passed; TypeScript project build and git diff --check passed.",
+    "alpha_study_resume_duplicate_guard": "PASS: Resume persisted study now has a synchronous in-flight guard, preventing duplicate backend resume requests before React updates; the guard releases in finally. ExperimentWorkspace unit suite: 26 passed; TypeScript project build and git diff --check passed."
   }
 }

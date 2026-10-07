@@ -367,6 +367,27 @@ describe("ExperimentWorkspace dynamic model controls", () => {
     expect(onStudy).toHaveBeenCalledOnce();
   });
 
+  it("synchronously rejects duplicate resume requests for one persisted StudyJob", async () => {
+    const job = { job_id: "job-resume-once", name: "Study", model_kind: "flat_neuro_fuzzy", selection_metric: "f1", status: "RUNNING", cancel_requested: false, seed_states: [], study_id: null, error: null, execution_backend: "LOCAL", execution_backend_key: "local_executor", execution_config: {}, recovery_count: 0, recovery_note: null };
+    const completed = { ...job, status: "SUCCEEDED", study_id: "study-resumed" };
+    let finishResume!: (value: never) => void;
+    studioApi.listStudyJobs.mockResolvedValueOnce([job]);
+    studioApi.resumeStudyJob.mockImplementationOnce(() => new Promise((resolve) => { finishResume = resolve as (value: never) => void; }));
+    studioApi.getLatestTrainingStudy.mockResolvedValue({ study_id: "study-resumed", selection_metric: "f1", selected_run_id: null, seed_runs: [] });
+    render(<ExperimentWorkspace project={project} dataset={dataset as never} run={null} study={null} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);
+
+    const resume = await screen.findByRole("button", { name: "Resume persisted study" });
+    act(() => {
+      resume.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      resume.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(studioApi.resumeStudyJob).toHaveBeenCalledTimes(1);
+    expect(resume).toBeDisabled();
+    await act(async () => { finishResume(completed as never); });
+    await waitFor(() => expect(screen.getByText(/Study job SUCCEEDED/)).toBeVisible());
+    expect(studioApi.resumeStudyJob).toHaveBeenCalledTimes(1);
+  });
+
   it("keeps Study creation paused while saved Study and job lookups are unresolved, then retries", async () => {
     studioApi.listStudyJobs.mockRejectedValueOnce(new Error("job store unavailable"));
     const retryStudy = vi.fn();
