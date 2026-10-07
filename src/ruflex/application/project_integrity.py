@@ -1056,6 +1056,12 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
             for dataset_fingerprint, unlocks in unlocks_by_dataset.items():
                 if len(set(unlocks)) > 1:
                     issues.append(ProjectIntegrityIssue(code="DATASET_TEST_UNLOCK_INCONSISTENT", status="FAIL", path="analyses/final-tests", detail=f"FinalTestEvaluations for dataset revision {dataset_fingerprint} do not share one immutable first-test unlock timestamp."))
+            policy_identities: set[tuple[str, str]] = set()
+            for final_test in final_tests.values():
+                identity = (final_test.dataset_fingerprint, final_test.policy_identity)
+                if identity in policy_identities:
+                    issues.append(ProjectIntegrityIssue(code="FINAL_TEST_DUPLICATE_POLICY_EVIDENCE", status="FAIL", path=f"analyses/final-tests/{final_test.final_test_id}.json", detail="The same frozen final-test policy has multiple persisted result objects; the canonical executor should return the existing evaluation instead."))
+                policy_identities.add(identity)
             active_path = final_test_root / "active-final-test.json"
             if active_path.exists():
                 checked += 1
@@ -1063,6 +1069,10 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                     active_id = json.loads(active_path.read_text(encoding="utf-8"))["final_test_id"]
                     if str(active_id) not in {str(key) for key in final_tests}:
                         raise ValueError("Active FinalTestEvaluation pointer does not resolve to persisted evidence.")
+                    latest_created_at = max(item.created_at for item in final_tests.values())
+                    latest_ids = {str(item.final_test_id) for item in final_tests.values() if item.created_at == latest_created_at}
+                    if str(active_id) not in latest_ids:
+                        raise ValueError("Active FinalTestEvaluation pointer does not reference the most recently persisted result.")
                 except (KeyError, TypeError, ValueError, OSError, json.JSONDecodeError) as error:
                     issues.append(ProjectIntegrityIssue(code="FINAL_TEST_ACTIVE_POINTER_INVALID", status="FAIL", path="analyses/final-tests/active-final-test.json", detail=str(error)))
         study_jobs_root = study_root / "jobs"
