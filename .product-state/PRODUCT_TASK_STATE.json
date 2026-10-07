@@ -266,15 +266,16 @@
     "alpha_fis_current_result_identity",
     "alpha_fis_run_input_validation",
     "alpha_fis_surface_input_validation",
-    "alpha_fis_duplicate_inference_guard"
+    "alpha_fis_duplicate_inference_guard",
+    "alpha_fis_creation_duplicate_guard"
   ],
-  "active_capability": "alpha_fis_duplicate_inference_guard",
+  "active_capability": "alpha_fis_creation_duplicate_guard",
   "active_acceptance": [
-    "An FIS input inference allows only one active API request even when the user double-clicks Evaluate.",
-    "The button and status message expose the in-flight state and unlock again after success or failure."
+    "Default FIS creation allows only one active request while the model is being initialized.",
+    "The creation control exposes progress and is disabled until the canonical model response arrives or fails."
   ],
   "blockers": [],
-  "next_executable_work": "Continue with a verified, low-memory functional or recovery issue in a user-facing alpha route, then test and commit locally.",
+  "next_executable_work": "Continue with another verified low-memory functional/recovery issue in a user-facing alpha route; test and commit one coherent slice locally.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -544,6 +545,7 @@
     "alpha_fis_current_result_identity": "PASS: BuildWorkspace displays an FIS output as current only when persisted trace model ID, semantic revision and exact numeric input map match the current state; stale output is replaced by explicit guidance. Focused helper unit test passed, TypeScript build passed, and focused real Studio Playwright E2E passed (1/1).",
     "alpha_fis_run_input_validation": "PASS: FIS inference now rejects blank, missing and non-finite inputs before calling the evaluate API and identifies invalid fields in a visible alert. Parser unit tests: 2 cases passed; TypeScript build passed; focused Studio Playwright E2E passed (1/1) and confirmed invalid input creates no second inference request.",
     "alpha_fis_surface_input_validation": "PASS: Response-surface generation now rejects invalid fixed-input drafts locally instead of converting blanks to zero or sending non-finite values. Parser tests passed, TypeScript build and git diff --check passed, and focused Studio Playwright E2E confirmed invalid drafts submit no surface request while corrected input refreshes the chart (1/1).",
-    "alpha_fis_duplicate_inference_guard": "PASS: Evaluate now locks synchronously while an FIS inference is in flight, disables repeated submissions and displays progress; the guard releases in finally for both success and failure. Focused unit tests, TypeScript build and a delayed-request Studio double-click E2E passed (1/1) with exactly one persisted inference request."
+    "alpha_fis_duplicate_inference_guard": "PASS: Evaluate now locks synchronously while an FIS inference is in flight, disables repeated submissions and displays progress; the guard releases in finally for both success and failure. Focused unit tests, TypeScript build and a delayed-request Studio double-click E2E passed (1/1) with exactly one persisted inference request.",
+    "alpha_fis_creation_duplicate_guard": "PASS: Default FIS creation now uses a synchronous in-flight guard, disables the action with progress feedback, and releases after success or failure. TypeScript build and delayed-response Studio Playwright E2E passed (1/1) with a single create request."
   }
 }

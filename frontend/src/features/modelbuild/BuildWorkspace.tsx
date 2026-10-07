@@ -378,6 +378,8 @@ export function BuildWorkspace({
   const [surfaceLoading, setSurfaceLoading] = useState(false);
   const [surfaceError, setSurfaceError] = useState<string | null>(null);
   const responseSurfaceRequestRef = useRef(0);
+  const [creatingDefaultFis, setCreatingDefaultFis] = useState(false);
+  const createDefaultFisInFlightRef = useRef(false);
   const [diagnostics, setDiagnostics] = useState<
     Array<{ code: string; severity: string; message: string }>
   >([]);
@@ -547,8 +549,10 @@ export function BuildWorkspace({
     setWorking(next);
   }
   async function createDefault() {
-    if (fisImportRecovery) return;
+    if (fisImportRecovery || createDefaultFisInFlightRef.current) return;
     setError(null);
+    createDefaultFisInFlightRef.current = true;
+    setCreatingDefaultFis(true);
     try {
       const created = await studioApi.createDefaultFis(project.session_id);
       setWorking(created);
@@ -558,6 +562,9 @@ export function BuildWorkspace({
       setError(
         reason instanceof Error ? reason.message : "FIS creation failed",
       );
+    } finally {
+      createDefaultFisInFlightRef.current = false;
+      setCreatingDefaultFis(false);
     }
   }
   async function importMatlabFile(event: ChangeEvent<HTMLInputElement>) {
@@ -1193,11 +1200,11 @@ export function BuildWorkspace({
         <div className="form-actions">
           <Button
             view="action"
-            disabled={project.read_only || !!fisImportRecovery}
+            disabled={project.read_only || !!fisImportRecovery || creatingDefaultFis}
             onClick={createDefault}
             data-ruflex-action="fis.create"
           >
-            Create FIS from dataset
+            {creatingDefaultFis ? "Creating FIS…" : "Create FIS from dataset"}
           </Button>
           <input
             ref={importInputRef}
