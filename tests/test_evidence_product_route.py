@@ -666,6 +666,18 @@ def test_verification_bundle_rejects_rechecksumming_broken_provenance(tmp_path: 
     assert invalid.status == "FAIL"
     assert any("broken evidence provenance" in error for error in invalid.errors)
 
+    changed["run_id"] = explanation.json()["run_id"]
+    changed["status"] = "FAILED" if changed["status"] != "FAILED" else "PASSED_AVAILABLE_CHECKS"
+    check_path.write_text(json.dumps(changed), encoding="utf-8")
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["checksums"][relative] = hashlib.sha256(check_path.read_bytes()).hexdigest()
+    manifest_bytes = json.dumps(manifest, indent=2, sort_keys=True).encode()
+    manifest_path.write_bytes(manifest_bytes)
+    (extracted / "verification-manifest.sha256").write_text(f"{hashlib.sha256(manifest_bytes).hexdigest()}  verification-manifest.json\n", encoding="utf-8")
+    invalid_summary = validate_verification_bundle(extracted)
+    assert invalid_summary.status == "FAIL"
+    assert any("summary or deterministic contract-derived checks" in error for error in invalid_summary.errors)
+
 
 def test_verification_bundle_rejects_rechecksummed_transform_pipeline_tampering(tmp_path: Path) -> None:
     from ruflex.application.verification_bundle import validate_verification_bundle

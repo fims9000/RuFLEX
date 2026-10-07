@@ -210,7 +210,26 @@ def _validate_relationships(objects: list[BaseModel]) -> list[str]:
             ):
                 errors.append(f"Selective policy {object_.policy_id} does not match its exact frozen validation evidence or recomputed confidence risk-coverage curve.")
         elif isinstance(object_, ExplanationContract) and not exists(TrainingRun, object_.run_id): errors.append(f"Explanation {object_.explanation_id} references missing TrainingRun {object_.run_id}.")
-        elif isinstance(object_, ExplanationCheck) and (not exists(ExplanationContract, object_.explanation_id) or not exists(TrainingRun, object_.run_id)): errors.append(f"Explanation check {object_.check_id} has broken evidence provenance.")
+        elif isinstance(object_, ExplanationCheck):
+            explanations = objects_by_type.get(ExplanationContract, {})
+            explanation = explanations.get(str(object_.explanation_id))
+            run = runs.get(str(object_.run_id))
+            from ruflex.application.project_integrity import _explanation_check_frozen_components_match
+            names = [item.name for item in object_.checks]
+            expected_status = (
+                "FAILED" if any(item.status == "FAIL" for item in object_.checks)
+                else "WARNING" if any(item.status == "WARN" for item in object_.checks)
+                else "PASSED_AVAILABLE_CHECKS"
+            )
+            if not isinstance(explanation, ExplanationContract) or not isinstance(run, TrainingRun) or object_.run_id != explanation.run_id:
+                errors.append(f"Explanation check {object_.check_id} has broken evidence provenance.")
+            elif (
+                object_.status != expected_status
+                or len(names) != len(set(names))
+                or (object_.validator_key is not None and any(item.validator_key != object_.validator_key for item in object_.checks))
+                or (object_.schema_version >= 3 and (not all((object_.validator_key, object_.validator_version, object_.validator_provider)) or not _explanation_check_frozen_components_match(object_, explanation, run)))
+            ):
+                errors.append(f"Explanation check {object_.check_id} summary or deterministic contract-derived checks do not match its frozen evidence.")
         elif isinstance(object_, BehaviorRevisionComparison):
             baseline = objects_by_type.get(BehaviorSpecResult, {}).get(str(object_.baseline_result_id))
             candidate = objects_by_type.get(BehaviorSpecResult, {}).get(str(object_.candidate_result_id))
