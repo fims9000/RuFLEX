@@ -255,7 +255,44 @@ def create_assurance_case(root: Path) -> AssuranceCase:
     else:
         gates.append(_gate("explanation_checks", "PASS", [f"check:{check_by_explanation[x.explanation_id].check_id}" for x in explanations]))
     reproducibility_root = base / "evidence" / "explanation-reproducibility"; reproducibility = _objects(reproducibility_root, ExplanationReproducibilityAnalysis)
-    repro_ok = reproducibility and all(len(x.run_ids) >= 2 and x.validation_case_identities for x in reproducibility)
+    runs_by_id = {item.run_id: item for item in runs}
+    explanations_by_id = {item.explanation_id: item for item in explanations}
+
+    def reproducibility_matches(item: ExplanationReproducibilityAnalysis) -> bool:
+        matched_runs = [runs_by_id.get(run_id) for run_id in item.run_ids]
+        matched_explanations = [explanations_by_id.get(explanation_id) for explanation_id in item.explanation_ids]
+        case_sets = [
+            [row.source_row if row.source_row is not None else row.row for row in run.prediction_preview]
+            for run in matched_runs if run is not None
+        ]
+        expected_cases = [str(value) for value in sorted(case_sets[0])] if case_sets else []
+        expected_pairs = {
+            frozenset((left, right))
+            for index, left in enumerate(item.run_ids)
+            for right in item.run_ids[index + 1:]
+        }
+        actual_pairs = {
+            frozenset((pair.left_run_id, pair.right_run_id))
+            for pair in item.pairwise
+        }
+        return bool(
+            len(item.run_ids) >= 2
+            and len(set(item.run_ids)) == len(item.run_ids)
+            and len(set(item.explanation_ids)) == len(item.explanation_ids)
+            and all(run is not None for run in matched_runs)
+            and all(explanation is not None for explanation in matched_explanations)
+            and {explanation.run_id for explanation in matched_explanations if explanation is not None} == set(item.run_ids)
+            and all(run.dataset_fingerprint == item.dataset_fingerprint and run.task == item.task and run.target == item.target for run in matched_runs if run is not None)
+            and all(explanation.method == item.explanation_method and explanation.reference_definition == item.reference_protocol for explanation in matched_explanations if explanation is not None)
+            and all(len(values) == len(set(values)) and values == case_sets[0] for values in case_sets)
+            and bool(expected_cases)
+            and len(expected_cases) == len(set(expected_cases))
+            and item.validation_case_identities == expected_cases
+            and len(item.pairwise) == len(actual_pairs)
+            and actual_pairs == expected_pairs
+        )
+
+    repro_ok = reproducibility and all(reproducibility_matches(item) for item in reproducibility)
     status, risk = _evidence_status(present=bool(reproducibility), valid=bool(repro_ok), malformed=_has_malformed_object(reproducibility_root, ExplanationReproducibilityAnalysis), unavailable="Cross-run reproducibility is absent.", invalid="Cross-run reproducibility is incomplete.")
     gates.append(_gate("explanation_reproducibility", status, [f"reproducibility:{x.analysis_id}" for x in reproducibility], risk))
     behavior_root = base / "evidence" / "behavior-specs"; specs = _objects(behavior_root, BehaviorSpec)
