@@ -265,15 +265,16 @@
     "alpha_fis_response_surface_refresh_inputs",
     "alpha_fis_current_result_identity",
     "alpha_fis_run_input_validation",
-    "alpha_fis_surface_input_validation"
+    "alpha_fis_surface_input_validation",
+    "alpha_fis_duplicate_inference_guard"
   ],
-  "active_capability": "alpha_fis_surface_input_validation",
+  "active_capability": "alpha_fis_duplicate_inference_guard",
   "active_acceptance": [
-    "Response-surface generation rejects blank, missing and non-finite fixed-input values before issuing the surface API request.",
-    "The user is told which fixed variables need correction and that no surface request was submitted."
+    "An FIS input inference allows only one active API request even when the user double-clicks Evaluate.",
+    "The button and status message expose the in-flight state and unlock again after success or failure."
   ],
   "blockers": [],
-  "next_executable_work": "Inspect the next manageable Studio workflow for a concrete functional or recovery gap, verify one bounded fix, and commit locally.",
+  "next_executable_work": "Continue with a verified, low-memory functional or recovery issue in a user-facing alpha route, then test and commit locally.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -542,6 +543,7 @@
     "alpha_fis_response_surface_refresh_inputs": "PASS: Response surfaces now recompute when fixed run inputs change, discard stale async replies after spec/axis/input changes, and expose loading/error status beside the chart. TypeScript project build (tsc -b), focused Studio Playwright E2E (1/1) verifying changed fixed-input payload, and git diff --check passed.",
     "alpha_fis_current_result_identity": "PASS: BuildWorkspace displays an FIS output as current only when persisted trace model ID, semantic revision and exact numeric input map match the current state; stale output is replaced by explicit guidance. Focused helper unit test passed, TypeScript build passed, and focused real Studio Playwright E2E passed (1/1).",
     "alpha_fis_run_input_validation": "PASS: FIS inference now rejects blank, missing and non-finite inputs before calling the evaluate API and identifies invalid fields in a visible alert. Parser unit tests: 2 cases passed; TypeScript build passed; focused Studio Playwright E2E passed (1/1) and confirmed invalid input creates no second inference request.",
-    "alpha_fis_surface_input_validation": "PASS: Response-surface generation now rejects invalid fixed-input drafts locally instead of converting blanks to zero or sending non-finite values. Parser tests passed, TypeScript build and git diff --check passed, and focused Studio Playwright E2E confirmed invalid drafts submit no surface request while corrected input refreshes the chart (1/1)."
+    "alpha_fis_surface_input_validation": "PASS: Response-surface generation now rejects invalid fixed-input drafts locally instead of converting blanks to zero or sending non-finite values. Parser tests passed, TypeScript build and git diff --check passed, and focused Studio Playwright E2E confirmed invalid drafts submit no surface request while corrected input refreshes the chart (1/1).",
+    "alpha_fis_duplicate_inference_guard": "PASS: Evaluate now locks synchronously while an FIS inference is in flight, disables repeated submissions and displays progress; the guard releases in finally for both success and failure. Focused unit tests, TypeScript build and a delayed-request Studio double-click E2E passed (1/1) with exactly one persisted inference request."
   }
 }

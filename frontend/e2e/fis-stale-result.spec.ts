@@ -7,6 +7,7 @@ test("FIS output is not presented as current after inputs change", async ({ page
   let evaluationRequests = 0;
   await page.route("**/api/projects/fis/evaluate", async (route) => {
     evaluationRequests += 1;
+    await new Promise((resolve) => setTimeout(resolve, 400));
     await route.continue();
   });
   await page.goto("/");
@@ -19,7 +20,7 @@ test("FIS output is not presented as current after inputs change", async ({ page
   await page.getByRole("button", { name: /New FIS from dataset/ }).click();
   await page.getByRole("button", { name: "Create FIS from dataset", exact: true }).click();
 
-  await page.getByRole("button", { name: "Evaluate", exact: true }).click();
+  await page.getByRole("button", { name: "Evaluate", exact: true }).dblclick({ delay: 20 });
   const output = page.locator(".result-card").filter({ has: page.getByText("OUTPUT", { exact: true }) });
   await expect(output).toBeVisible();
   await page.getByLabel("temperature", { exact: true }).fill("21");

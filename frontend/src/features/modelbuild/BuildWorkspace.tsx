@@ -363,6 +363,8 @@ export function BuildWorkspace({
   const [selected, setSelected] = useState(0);
   const [runInputs, setRunInputs] = useState<Record<string, string>>({});
   const [lastOutput, setLastOutput] = useState<FISEvaluation | null>(evaluation);
+  const [evaluatingFis, setEvaluatingFis] = useState(false);
+  const fisEvaluationInFlightRef = useRef(false);
   const [fisEvaluationRecovery, setFisEvaluationRecovery] = useState<{ fisId: string; semanticHash: string; inputs: Record<string, number>; error: string; notFound: boolean } | null>(null);
   const [recoveringFisEvaluation, setRecoveringFisEvaluation] = useState(false);
   const [fisImportRecovery, setFisImportRecovery] = useState<{ source: string; error: string } | null>(null);
@@ -1062,7 +1064,7 @@ export function BuildWorkspace({
   }
 
   async function run() {
-    if (!working || fisEvaluationRecovery) return;
+    if (!working || fisEvaluationRecovery || fisEvaluationInFlightRef.current) return;
     setError(null);
     const parsed = parseFisRunInputs(working.inputs.map((variable) => variable.name), runInputs);
     if (!parsed.ok) {
@@ -1070,6 +1072,8 @@ export function BuildWorkspace({
       return;
     }
     const inputs = parsed.values;
+    fisEvaluationInFlightRef.current = true;
+    setEvaluatingFis(true);
     try {
       const evaluation = await studioApi.evaluateFis(project.session_id, inputs, !project.read_only);
       setLastOutput(evaluation);
@@ -1081,6 +1085,9 @@ export function BuildWorkspace({
       setError(
         reason instanceof Error ? reason.message : "FIS evaluation failed",
       );
+    } finally {
+      fisEvaluationInFlightRef.current = false;
+      setEvaluatingFis(false);
     }
   }
   async function recoverFisEvaluation() {
@@ -1962,9 +1969,10 @@ export function BuildWorkspace({
               />
             </label>
           ))}
-          <Button view="action" onClick={run}>
-            Evaluate
+          <Button view="action" disabled={evaluatingFis || !!fisEvaluationRecovery} onClick={run}>
+            {evaluatingFis ? "Evaluating…" : "Evaluate"}
           </Button>
+          {evaluatingFis && <p role="status">Running the current FIS input sample…</p>}
           {evaluationStatus === "loading" && <p role="status">Checking the saved exact FIS trace…</p>}
           {evaluationStatus === "none" && !lastOutput && <p>No saved exact FIS trace is available yet.</p>}
           {evaluationStatus === "error" && <div className="error" role="alert"><strong>Could not load saved FIS evaluation evidence.</strong> {evaluationError} <Button view="outlined" size="s" onClick={onRetryEvaluation}>Retry FIS trace check</Button></div>}
