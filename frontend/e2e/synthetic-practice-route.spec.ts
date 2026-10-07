@@ -42,10 +42,17 @@ test("a first-time user can persist synthetic evidence and apply a frozen final-
   expect(await page.locator(".training-config-grid select").evaluateAll((selects) => selects.every((select) => select.getBoundingClientRect().right <= select.parentElement!.getBoundingClientRect().right + 1))).toBeTruthy();
   await page.setViewportSize({ width: 1180, height: 720 });
   await page.getByLabel("Training model").selectOption("logistic_regression");
+  await page.getByLabel("Single-run training seed").fill("7");
+  await expect(page.getByRole("region", { name: "Training choices" })).toContainText("the split seed controls row membership");
   const response = page.waitForResponse((item) => item.url().endsWith("/api/projects/training/run") && item.request().method() === "POST");
   await page.getByRole("button", { name: "Run real training", exact: true }).click();
-  expect((await response).status()).toBe(201);
+  const trainingResponse = await response;
+  expect(trainingResponse.status()).toBe(201);
+  expect(trainingResponse.request().postDataJSON()).toMatchObject({ seed: 7, split_seed: 42, training_seed: 7, split_contract_id: null });
+  expect(await trainingResponse.json()).toMatchObject({ split_seed: 42, training_seed: 7 });
   await expect(page.locator(".run-provenance")).toContainText("model artifact persisted");
+  await expect(page.locator(".run-provenance")).toContainText("split seed 42");
+  await expect(page.locator(".run-provenance")).toContainText("training seed 7");
   await expect(page.getByTestId("artifact-inventory")).toContainText(`SHA-256 ${frozenSha}`);
   await expect(page.getByTestId("artifact-inventory")).toContainText("logistic_regression");
   await page.getByTestId("artifact-inventory").screenshot({ path: testInfo.outputPath("artifact-inventory.png") });
@@ -83,6 +90,8 @@ test("a first-time user can persist synthetic evidence and apply a frozen final-
   await expect(page.getByTestId("synthetic-practice-context")).toBeVisible();
   await page.getByRole("button", { name: "S", exact: true }).click();
   await expect(page.locator(".run-provenance")).toContainText("model artifact persisted");
+  await expect(page.locator(".run-provenance")).toContainText("split seed 42");
+  await expect(page.locator(".run-provenance")).toContainText("training seed 7");
   await expect(page.getByTestId("artifact-inventory")).toContainText(`SHA-256 ${frozenSha}`);
   await page.getByRole("button", { name: "A", exact: true }).click();
   await expect(page.getByText("Validation ROC curve · raw model", { exact: true })).toBeVisible();

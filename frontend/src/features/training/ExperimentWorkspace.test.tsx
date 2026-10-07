@@ -152,13 +152,13 @@ describe("ExperimentWorkspace dynamic model controls", () => {
     fireEvent.change(screen.getByLabelText("Split family"), { target: { value: "RANDOM" } });
     expect(runButton).toBeDisabled();
     fireEvent.change(screen.getByLabelText("Split family"), { target: { value: "GROUP" } });
-    fireEvent.change(screen.getByLabelText("Study split seed"), { target: { value: "8" } });
+    fireEvent.change(screen.getByLabelText("Split seed"), { target: { value: "8" } });
     expect(runButton).toBeDisabled();
     expect(screen.getByText(/no legacy RANDOM fallback will be used/)).toBeVisible();
     expect(screen.getByRole("button", { name: "Run multi-seed study" })).toBeDisabled();
     expect(studioApi.runTraining).not.toHaveBeenCalled();
 
-    fireEvent.change(screen.getByLabelText("Study split seed"), { target: { value: "7" } });
+    fireEvent.change(screen.getByLabelText("Split seed"), { target: { value: "7" } });
     await waitFor(() => expect(runButton).toBeEnabled());
     fireEvent.click(runButton);
     await waitFor(() => expect(studioApi.runTraining).toHaveBeenCalledTimes(1));

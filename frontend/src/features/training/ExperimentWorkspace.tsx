@@ -520,7 +520,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
     setError(null);
     const config: Parameters<typeof studioApi.runTraining>[1] = {
       model_kind: trainingModelKind, adapter_key: selectedAdapterKey,
-      seed, split_seed: splitContract?.split_seed ?? null, training_seed: seed, split_contract_id: splitContract?.split_id ?? null,
+      seed, split_seed: splitContract?.split_seed ?? splitSeed, training_seed: seed, split_contract_id: splitContract?.split_id ?? null,
       rigor_profile: rigorProfile,
       normalization,
       max_epochs: maxEpochs,
@@ -827,8 +827,8 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
         <div className="training-config-grid">
           <label className="field-label">Model<select aria-label="Training model" value={modelKind} disabled={running || project.read_only || !compatibleModels.length} onChange={(event) => setModelKind(event.target.value)}>{compatibleModels.map((entry) => <option key={entry.key} value={entry.key === "linear" ? (datasetTask === "regression" ? "linear_regression" : "logistic_regression") : entry.training_model_kinds[0]}>{entry.display_name}</option>)}</select></label>
           <label className="field-label">Scaling<select aria-label="Training normalization" value={normalization} disabled={running || project.read_only || activeStudyJob} onChange={(event) => setNormalization(event.target.value as "none" | "standard" | "minmax")}><option value="standard">Standard (TRAIN only)</option><option value="minmax">Min–max (TRAIN only)</option><option value="none">None</option></select></label>
-          <NumberField label="Seed" value={seed} step={1} disabled={running || project.read_only} onChange={setSeed} />
-          <NumberField label="Study split seed" value={splitSeed} step={1} disabled={running || project.read_only} onChange={setSplitSeed} />
+          <NumberField label="Single-run training seed" value={seed} step={1} disabled={running || project.read_only} onChange={setSeed} />
+          <NumberField label="Split seed" value={splitSeed} step={1} disabled={running || project.read_only} onChange={setSplitSeed} />
           <label className="field-label">Split family<select aria-label="Split family" value={splitFamily} disabled={running || project.read_only} onChange={(event) => setSplitFamily(event.target.value as SplitContract["family"])}><option value="RANDOM">Random holdout</option><option value="GROUP">Group holdout</option><option value="TEMPORAL">Temporal holdout</option><option value="SITE_HOLDOUT">Site holdout</option><option value="DEVICE_HOLDOUT">Device holdout</option><option value="SPATIAL">Spatial-block holdout</option><option value="REGIME">Regime holdout</option></select></label>
           {splitFamily !== "RANDOM" && <label className="field-label">{splitFamily === "TEMPORAL" ? "Time" : "Declared identity"}<select aria-label="Split identity column" value={groupColumn} disabled={running || project.read_only} onChange={(event) => setGroupColumn(event.target.value)}><option value="">Choose column</option>{dataset.profile.columns.map((column) => <option key={column.name} value={column.name}>{column.name}</option>)}</select></label>}
           <label className="field-label">Rigor profile<select aria-label="Rigor profile" value={rigorProfile} disabled={running || project.read_only} onChange={(event) => setRigorProfile(event.target.value as typeof rigorProfile)}><option value="EXPLORATORY">Exploratory</option><option value="CONFIRMATORY">Confirmatory</option><option value="HIGH_ASSURANCE_LIKE">High-assurance-like</option></select></label>
@@ -854,8 +854,9 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
         <Button view="outlined" disabled={running || !!splitContractRecovery || project.read_only || splitEvidenceStatus !== "loaded" || splitContractAlreadyFrozen} onClick={freezeSplitContract} data-ruflex-action="split.freeze">{splitContractMutationInFlight ? "Freezing split…" : splitContractAlreadyFrozen ? "SplitContract frozen" : `Freeze ${splitFamily} SplitContract`}</Button>
         <section className="info-message" aria-label="Training choices">
           <strong>Choose how to start</strong>
-          <p><strong>Run real training</strong> creates one fitted TrainingRun for the current settings.</p>
+          <p><strong>Run real training</strong> creates one fitted TrainingRun. Its training seed controls model fitting; the split seed controls row membership, even before an explicit SplitContract is saved.</p>
           <p><strong>Run multi-seed study</strong> executes the distinct seeds listed above under the selected randomness protocol and preserves the per-seed results as a TrainingStudy. It requires at least three seeds.</p>
+          <p>For a fixed-split Study, listed seeds control fitting and this split seed is fixed. For split variability, listed seeds control row membership and this field supplies the fixed training seed. Combined variability uses each listed seed for both.</p>
           <p>Both paths use the declared training/validation workflow; opening this screen or changing settings does not start computation or unlock the test split.</p>
         </section>
         {trainingRecovery && <div className="error" role="alert" data-testid="training-run-recovery"><strong>Training response is uncertain; no second fit was started.</strong><p>{trainingRecovery.error}</p><Button view="outlined" disabled={recoveringTraining} onClick={recoverTrainingRun}>Retry exact TrainingRun lookup</Button>{trainingRecovery.notFound && <Button view="outlined" disabled={recoveringTraining || running || project.read_only || !studyJobStateResolved || activeStudyJob} onClick={explicitlyRepeatTraining}>Explicitly start a new fit with these settings</Button>}</div>}
@@ -893,7 +894,8 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
             {run.preprocessing_artifact_sha256 && <><StatusBadge tone="success">train-only preprocessing persisted</StatusBadge><code>{run.preprocessing_artifact_sha256.slice(0, 24)}…</code></>}
             {run.transform_pipeline_id && <><StatusBadge tone="success">transform pipeline frozen</StatusBadge><code>{run.transform_pipeline_id.slice(0, 12)}…</code></>}
             {run.leakage_audit_id && <><StatusBadge tone="success">leakage audit persisted</StatusBadge><code>{run.leakage_audit_id.slice(0, 12)}…</code></>}
-            <span>seed {run.seed}</span>
+            <span>split seed {run.split_seed ?? run.split.split_seed}</span>
+            <span>training seed {run.training_seed ?? run.seed}</span>
             <span>{run.split.train_count}/{run.split.validation_count}/{run.split.test_count} rows</span>
           </div>
           <details className="data-governance-evidence" data-testid="data-governance-evidence">

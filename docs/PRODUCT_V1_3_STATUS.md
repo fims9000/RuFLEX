@@ -117,6 +117,10 @@ Target branch: `feature/v1.3-data-governance-runtime`.
   accessible name. Focused browser geometry, synthetic-route and accessibility
   checks cover this layout; `docs/qa/ALPHA_TRAINING_OVERFLOW_REPRO.md` records
   the root cause and regression.
+- New Studio single-run requests pass the displayed split seed separately from
+  the fitting seed even without an explicit SplitContract. The saved run shows
+  both identities after reopen; the form explains which seed varies in each
+  Study randomness protocol. This does not rewrite legacy runs or frozen studies.
 - Project Integrity, Assurance and portable bundles reject missing or malformed
   manual-FIS comparison rows and mismatched semantic-revision provenance.
   A portable bundle excludes raw dataset rows, so it checks the frozen row's

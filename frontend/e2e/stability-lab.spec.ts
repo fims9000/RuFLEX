@@ -17,7 +17,7 @@ test("Stability Lab persists fixed-split multi-run evidence and its validation-o
   await page.getByLabel("Project path").fill(root); await page.getByLabel("Project name").fill("Stability Lab"); await page.getByRole("button", { name: "Create project", exact: true }).click();
   await page.getByRole("button", { name: /Data.*No dataset/ }).click(); await page.getByLabel("CSV data").fill(csv()); await page.getByRole("button", { name: "Inspect dataset", exact: true }).click(); await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
   await page.getByRole("button", { name: "S", exact: true }).click();
-  await page.getByLabel("Training model").selectOption("random_forest"); await page.getByLabel("Study randomness protocol").selectOption("TRAINING_VARIABILITY"); await page.getByLabel("Study split seed").fill("42"); await page.getByLabel("Study seeds").fill("11, 13, 17");
+  await page.getByLabel("Training model").selectOption("random_forest"); await page.getByLabel("Study randomness protocol").selectOption("TRAINING_VARIABILITY"); await page.getByLabel("Split seed").fill("42"); await page.getByLabel("Study seeds").fill("11, 13, 17");
   await page.getByRole("button", { name: "Run multi-seed study", exact: true }).click();
   await expect(page.getByText("Validation f1 across seeds", { exact: true })).toBeVisible({ timeout: 60_000 });
   await expect(page.getByText(/Training variability fixes split membership/)).toBeVisible();
