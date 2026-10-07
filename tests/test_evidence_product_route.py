@@ -480,6 +480,14 @@ def test_cross_run_explanation_reproducibility_persists_and_rejects_incompatible
     assert "must not be interpreted" in analysis["warnings"][0]
     integrity = inspect_project_integrity(root)
     assert integrity.status == "PASS", integrity.issues
+    from ruflex.application.verification_bundle import validate_verification_bundle
+    assurance = client.post("/api/projects/evidence/assurance-cases", json={"session_id": session_id})
+    assert assurance.status_code == 201, assurance.text
+    bundle = client.post("/api/projects/evidence/verification-bundles", json={"session_id": session_id})
+    assert bundle.status_code == 201, bundle.text
+    portable = validate_verification_bundle(Path(bundle.json()["path"]))
+    assert portable.status == "PASS", portable.errors
+    assert any("aggregate agreement values are not independently recomputed" in item for item in portable.warnings)
     analysis_path = root / "evidence" / "explanation-reproducibility" / f"{analysis['analysis_id']}.json"
     analysis_payload = json.loads(analysis_path.read_text(encoding="utf-8"))
     original_explanation_ids = list(analysis_payload["explanation_ids"])
@@ -519,6 +527,13 @@ def test_exhaustive_lab_persists_exact_tree_structure_and_declared_fis_grid(tmp_
     assert grid_result.json()["requested_grid_points"] == 3
     assert "does not fully explain" in grid_result.json()["scientific_note"]
     assert inspect_project_integrity(root).status == "PASS"
+    from ruflex.application.verification_bundle import validate_verification_bundle
+    assurance = client.post("/api/projects/evidence/assurance-cases", json={"session_id": session_id})
+    assert assurance.status_code == 201, assurance.text
+    bundle = client.post("/api/projects/evidence/verification-bundles", json={"session_id": session_id})
+    assert bundle.status_code == 201, bundle.text
+    portable = validate_verification_bundle(Path(bundle.json()["path"]))
+    assert portable.status == "PASS", portable.errors
     assert client.post("/api/projects/close", json={"session_id": session_id}).status_code == 204
     reopened = client.post("/api/projects/open", json={"path": str(root), "read_only": False}).json()["session_id"]
     latest = client.get(f"/api/projects/{reopened}/evidence/exhaustive-lab/latest")

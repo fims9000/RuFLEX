@@ -87,6 +87,13 @@ def test_expert_correction_refits_only_unlocked_sugeno_consequents_on_train(tmp_
     assert specific.status_code == 200, specific.text
     assert specific.json()["source_semantic_hash"] == correction["source_semantic_hash"]
     assert inspect_project_integrity(root).status == "PASS"
+    from ruflex.application.verification_bundle import validate_verification_bundle
+    assurance = client.post("/api/projects/evidence/assurance-cases", json={"session_id": reopened.json()["session_id"]})
+    assert assurance.status_code == 201, assurance.text
+    bundle = client.post("/api/projects/evidence/verification-bundles", json={"session_id": reopened.json()["session_id"]})
+    assert bundle.status_code == 201, bundle.text
+    portable = validate_verification_bundle(Path(bundle.json()["path"]))
+    assert portable.status == "PASS", portable.errors
     correction_path = root / "analyses" / "expert-corrections" / f"{correction['correction_id']}.json"
     tampered = json.loads(correction_path.read_text(encoding="utf-8"))
     tampered["result_semantic_hash"] = "0" * 64

@@ -18,6 +18,9 @@ from ruflex.application.datasets import DataAuditReport, DatasetContract, Datase
 from ruflex.domain.assurance import AssuranceCase
 from ruflex.domain.behavior import BehaviorRevisionComparison, BehaviorSpec, BehaviorSpecResult
 from ruflex.domain.evidence import ExplanationCheck, ExplanationContract, ExplanationReproducibilityAnalysis
+from ruflex.domain.expert_correction import ExpertCorrectionRevision
+from ruflex.domain.exhaustive import ExhaustiveLabResult
+from ruflex.domain.fis import FISSpec
 from ruflex.application.generalization import GeneralizationContract, SliceAnalysis
 from ruflex.domain.selective import SelectivePredictionPolicy
 from ruflex.domain.stability import StabilityGatePolicy, StudyStabilityAnalysis
@@ -69,6 +72,9 @@ def _model_for_entry(name: str) -> type[BaseModel] | None:
     if name.startswith("evidence/explanation-checks/"): return ExplanationCheck
     if name.startswith("evidence/explanation-reproducibility/"): return ExplanationReproducibilityAnalysis
     if name.startswith("evidence/tree-paths/"): return TreePathEvidence
+    if name.startswith("analyses/expert-corrections/"): return ExpertCorrectionRevision
+    if name.startswith("evidence/exhaustive-lab/"): return ExhaustiveLabResult
+    if name.startswith("models/fis/") and name.endswith(".json"): return FISSpec
     if name.startswith("evidence/behavior-specs/comparison-"): return BehaviorRevisionComparison
     if name.startswith("evidence/behavior-specs/result-"): return BehaviorSpecResult
     if name.startswith("evidence/behavior-specs/"): return BehaviorSpec
@@ -101,7 +107,7 @@ def _validate_relationships(objects: list[BaseModel]) -> list[str]:
     objects_by_type: dict[type[BaseModel], dict[str, BaseModel]] = {}
     for object_ in objects:
         identifier_field = {
-            DatasetContract: "dataset_fingerprint", SplitContract: "split_id", TransformPipelineContract: "pipeline_id", LeakageAuditReport: "audit_id", TrainingRun: "run_id", TrainingStudy: "study_id", AnalysisEvaluation: "evaluation_id", CalibrationTransform: "calibration_id", DecisionThresholdPolicy: "threshold_id", SelectivePredictionPolicy: "policy_id", StudyStabilityAnalysis: "analysis_id", StabilityGatePolicy: "policy_id", FinalTestEvaluation: "final_test_id", ExplanationContract: "explanation_id", ExplanationCheck: "check_id", ExplanationReproducibilityAnalysis: "analysis_id", TreePathEvidence: "evidence_id", BehaviorSpec: "spec_id", BehaviorSpecResult: "result_id", BehaviorRevisionComparison: "comparison_id", AssuranceCase: "assurance_id",
+            DatasetContract: "dataset_fingerprint", SplitContract: "split_id", TransformPipelineContract: "pipeline_id", LeakageAuditReport: "audit_id", TrainingRun: "run_id", TrainingStudy: "study_id", AnalysisEvaluation: "evaluation_id", CalibrationTransform: "calibration_id", DecisionThresholdPolicy: "threshold_id", SelectivePredictionPolicy: "policy_id", StudyStabilityAnalysis: "analysis_id", StabilityGatePolicy: "policy_id", FinalTestEvaluation: "final_test_id", ExplanationContract: "explanation_id", ExplanationCheck: "check_id", ExplanationReproducibilityAnalysis: "analysis_id", TreePathEvidence: "evidence_id", ExpertCorrectionRevision: "correction_id", ExhaustiveLabResult: "result_id", FISSpec: "fis_id", BehaviorSpec: "spec_id", BehaviorSpecResult: "result_id", BehaviorRevisionComparison: "comparison_id", AssuranceCase: "assurance_id",
         }.get(type(object_))
         identifier = getattr(object_, identifier_field) if identifier_field else None
         if identifier is not None:
@@ -122,6 +128,7 @@ def _validate_relationships(objects: list[BaseModel]) -> list[str]:
     generalization_contracts = objects_by_type.get(GeneralizationContract, {})
     selective_policies = objects_by_type.get(SelectivePredictionPolicy, {})
     final_tests = objects_by_type.get(FinalTestEvaluation, {})
+    fis_specs = [item for item in objects if isinstance(item, FISSpec)]
     from ruflex.application.project_integrity import _stability_analysis_cases_match, _stability_gate_evidence_matches
     from ruflex.application.project_integrity import _assurance_claim_graph_matches
     for object_ in objects:
@@ -323,6 +330,61 @@ def _validate_relationships(objects: list[BaseModel]) -> list[str]:
                 or (object_.class_probabilities is not None and run.task != "binary_classification")
             ):
                 errors.append(f"Tree path evidence {object_.evidence_id} does not match its frozen Decision Tree run and feature schema.")
+        elif isinstance(object_, ExplanationReproducibilityAnalysis):
+            analysis_runs = [runs.get(str(run_id)) for run_id in object_.run_ids]
+            explanations = objects_by_type.get(ExplanationContract, {})
+            analysis_explanations = [explanations.get(str(explanation_id)) for explanation_id in object_.explanation_ids]
+            case_sets = [
+                sorted(row.source_row if row.source_row is not None else row.row for row in run.prediction_preview)
+                for run in analysis_runs if isinstance(run, TrainingRun)
+            ]
+            expected_cases = [str(value) for value in case_sets[0]] if case_sets else []
+            expected_pairs = {
+                frozenset((str(left), str(right)))
+                for index, left in enumerate(object_.run_ids)
+                for right in object_.run_ids[index + 1:]
+            }
+            actual_pairs = {frozenset((str(pair.left_run_id), str(pair.right_run_id))) for pair in object_.pairwise}
+            if (
+                len(set(object_.run_ids)) != len(object_.run_ids)
+                or len(set(object_.explanation_ids)) != len(object_.explanation_ids)
+                or len(analysis_runs) < 2
+                or any(not isinstance(run, TrainingRun) for run in analysis_runs)
+                or any(not isinstance(item, ExplanationContract) for item in analysis_explanations)
+                or any(item.run_id not in object_.run_ids for item in analysis_explanations if isinstance(item, ExplanationContract))
+                or {str(item.run_id) for item in analysis_explanations if isinstance(item, ExplanationContract)} != {str(run_id) for run_id in object_.run_ids}
+                or any(run.dataset_fingerprint != object_.dataset_fingerprint or run.task != object_.task or run.target != object_.target for run in analysis_runs if isinstance(run, TrainingRun))
+                or any(item.method != object_.explanation_method or item.reference_definition != object_.reference_protocol for item in analysis_explanations if isinstance(item, ExplanationContract))
+                or any(len(values) != len(set(values)) or values != case_sets[0] for values in case_sets)
+                or object_.validation_case_identities != expected_cases
+                or len(object_.validation_case_identities) != len(set(object_.validation_case_identities))
+                or len(object_.pairwise) != len(actual_pairs)
+                or actual_pairs != expected_pairs
+            ):
+                errors.append(f"Explanation reproducibility analysis {object_.analysis_id} has broken run, explanation, or validation-case provenance.")
+        elif isinstance(object_, ExpertCorrectionRevision):
+            hashes = {spec.semantic_hash for spec in fis_specs if str(spec.fis_id) == str(object_.fis_id)}
+            contracts = objects_by_type.get(DatasetContract, {})
+            matching_contract = contracts.get(object_.dataset_fingerprint)
+            explanations = objects_by_type.get(ExplanationContract, {})
+            if (
+                object_.source_semantic_hash not in hashes
+                or object_.result_semantic_hash not in hashes
+                or not isinstance(matching_contract, DatasetContract)
+                or matching_contract.target != object_.target
+                or (object_.source_explanation_id is not None and str(object_.source_explanation_id) not in explanations)
+                or object_.test_status != "LOCKED_NOT_EVALUATED"
+            ):
+                errors.append(f"Expert correction {object_.correction_id} does not resolve to its frozen FIS, dataset, target, or source explanation.")
+        elif isinstance(object_, ExhaustiveLabResult):
+            if object_.kind == "decision_tree_structure":
+                run = runs.get(str(object_.run_id)) if object_.run_id is not None else None
+                invalid = not isinstance(run, TrainingRun) or run.model_kind != "decision_tree" or object_.fis_semantic_hash is not None
+            else:
+                known_hashes = {spec.semantic_hash for spec in fis_specs}
+                invalid = object_.fis_semantic_hash not in known_hashes or object_.run_id is not None
+            if invalid or object_.state_count != len(object_.paths) or object_.state_estimate < object_.state_count:
+                errors.append(f"Exhaustive Lab result {object_.result_id} has broken finite-state or model provenance.")
         elif isinstance(object_, BehaviorRevisionComparison):
             baseline = objects_by_type.get(BehaviorSpecResult, {}).get(str(object_.baseline_result_id))
             candidate = objects_by_type.get(BehaviorSpecResult, {}).get(str(object_.candidate_result_id))
@@ -490,6 +552,8 @@ def validate_verification_bundle(path: Path | str) -> VerificationBundleValidati
     errors.extend(_validate_relationships(objects))
     if any(isinstance(item, TreePathEvidence) for item in objects):
         warnings.append("TreePathEvidence run/hash/feature bindings were checked, but exact path replay is unavailable because model artifacts are excluded from the inspection-first bundle.")
+    if any(isinstance(item, ExplanationReproducibilityAnalysis) for item in objects):
+        warnings.append("ExplanationReproducibilityAnalysis run, explanation, and case bindings were checked; aggregate agreement values are not independently recomputed by the portable bundle validator.")
     assurance_objects = {str(item.assurance_id): item for item in objects if isinstance(item, AssuranceCase)}
     if not assurance_objects:
         warnings.append("No typed AssuranceCase object was found in the bundle.")

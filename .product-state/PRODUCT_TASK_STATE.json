@@ -246,16 +246,17 @@
     "alpha_explanation_check_bundle_semantics",
     "alpha_explanation_contract_bundle_semantics",
     "alpha_comparison_slice_bundle_semantics",
-    "alpha_tree_path_bundle_provenance"
+    "alpha_tree_path_bundle_provenance",
+    "alpha_remaining_auxiliary_bundle_semantics"
   ],
-  "active_capability": "alpha_tree_path_bundle_provenance",
+  "active_capability": "alpha_remaining_auxiliary_bundle_semantics",
   "active_acceptance": [
     "VerificationBundle parses TreePathEvidence and checks its exact frozen Decision Tree run, model artifact identity and ordered feature schema.",
     "Portable validation explicitly warns that exact path replay cannot be completed because executable/model artifacts are excluded from the inspection-first archive.",
     "A valid tree-path bundle remains PASS with this limitation visible."
   ],
   "blockers": [],
-  "next_executable_work": "Type and validate the remaining auxiliary bundle evidence families (explanation reproducibility, expert correction, exhaustive lab), preserving explicit limits where excluded artifacts prevent replay.",
+  "next_executable_work": "Audit AssuranceCase and VerificationBundle end-to-end for any remaining untyped evidence families and add semantic re-checksum tampering tests before advancing to the next alpha capability.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -505,6 +506,7 @@
     "alpha_explanation_check_bundle_semantics": "PASS: VerificationBundle validates ExplanationCheck references, aggregate status, unique components, validator binding and deterministic contract-derived identity/completeness checks. Re-checksummed status tampering fails; focused VerificationBundle provenance and Stability bundle tests: 2 passed.",
     "alpha_explanation_contract_bundle_semantics": "PASS: VerificationBundle binds ExplanationContract to its exact frozen run/model/preprocessing, feature order, target, sample and reference identities. Re-checksummed target tampering fails; focused provenance and Stability bundle tests: 2 passed.",
     "alpha_comparison_slice_bundle_semantics": "PASS: VerificationBundle parses SliceAnalysis and checks frozen validation references, scope binding and result structure; AnalysisComparison metrics and case-alignment identities are recomputed against persisted runs. Re-checksummed F1 tampering is rejected; comparison bundle negative test and product integrated journey: 2 passed.",
-    "alpha_tree_path_bundle_provenance": "PASS: VerificationBundle now parses TreePathEvidence, checks exact run/model hash and feature schema, and discloses that exact replay is unavailable because model artifacts are excluded. Decision-tree path route + bundle validation regression passed."
+    "alpha_tree_path_bundle_provenance": "PASS: VerificationBundle now parses TreePathEvidence, checks exact run/model hash and feature schema, and discloses that exact replay is unavailable because model artifacts are excluded. Decision-tree path route + bundle validation regression passed.",
+    "alpha_remaining_auxiliary_bundle_semantics": "PASS: Portable VerificationBundle now types and checks ExplanationReproducibilityAnalysis, ExpertCorrectionRevision, ExhaustiveLabResult and FISSpec references. Reproducibility validation requires complete run coverage, exact pairwise combinations and aligned unique validation identities; portable output explicitly states that aggregate agreement is not recomputed. Reopen route tests validate bundles for all three evidence families; integrated product journey also passes (4 focused tests), compileall and git diff --check pass."
   }
 }
