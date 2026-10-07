@@ -27,6 +27,7 @@ const { studioApi } = vi.hoisted(() => ({ studioApi: {
   getRuntimeBackends: vi.fn().mockResolvedValue([{ identity: { key: "local_executor", version: "1", provider: "ruflex.builtin", kind: "execution_backend" }, supports_cancel: true, supports_resume: true }]),
   listStudyJobs: vi.fn().mockResolvedValue([]),
   startStudyJob: vi.fn(),
+  cancelStudyJob: vi.fn(),
   runTraining: vi.fn(),
   getStudyJob: vi.fn(),
   resumeStudyJob: vi.fn(),
@@ -66,6 +67,7 @@ beforeEach(() => {
   studioApi.resumeStudyJob.mockReset();
   studioApi.getLatestTrainingStudy.mockReset();
   studioApi.startStudyJob.mockReset();
+  studioApi.cancelStudyJob.mockReset();
   studioApi.runTraining.mockReset();
 });
 
@@ -305,6 +307,29 @@ describe("ExperimentWorkspace dynamic model controls", () => {
     expect(screen.queryByRole("button", { name: "Resume persisted study" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Cancel study" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Run multi-seed study" })).toBeDisabled();
+  });
+
+  it("synchronously sends one cancellation request for a persisted StudyJob", async () => {
+    const job = {
+      job_id: "job-cancel-once", name: "Study", model_kind: "logistic_regression", selection_metric: "f1",
+      status: "RUNNING", cancel_requested: false, seed_states: [{ seed: 3, status: "RUNNING", run_id: null, runtime_seconds: null, error: null }],
+      study_id: null, error: null, execution_backend: "LOCAL", execution_backend_key: "local_executor", execution_config: {}, recovery_count: 0, recovery_note: null,
+    };
+    let finishCancel!: (value: never) => void;
+    studioApi.listStudyJobs.mockResolvedValueOnce([job]);
+    studioApi.cancelStudyJob.mockImplementationOnce(() => new Promise((resolve) => { finishCancel = resolve as (value: never) => void; }));
+    render(<ExperimentWorkspace project={project} dataset={dataset as never} run={null} study={null} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);
+
+    const cancel = await screen.findByRole("button", { name: "Cancel study" });
+    act(() => {
+      cancel.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      cancel.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(studioApi.cancelStudyJob).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "Requesting cancellation…" })).toBeDisabled();
+    await act(async () => { finishCancel({ ...job, cancel_requested: true } as never); });
+    expect(await screen.findByText(/Cancellation requested\. The active seed fit may finish/)).toBeVisible();
+    expect(studioApi.cancelStudyJob).toHaveBeenCalledTimes(1);
   });
 
   it("shows the persisted StudyJob and per-seed failure reasons", async () => {

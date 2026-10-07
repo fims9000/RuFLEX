@@ -236,6 +236,8 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
   const singleTrainingInFlightRef = useRef(false);
   const studyStartInFlightRef = useRef(false);
   const studyResumeInFlightRef = useRef(false);
+  const studyCancelInFlightRef = useRef(false);
+  const [cancellingStudy, setCancellingStudy] = useState(false);
   const splitContractMutationInFlightRef = useRef(false);
   const [splitContractMutationInFlight, setSplitContractMutationInFlight] = useState(false);
   const [trainingRecovery, setTrainingRecovery] = useState<{ config: Parameters<typeof studioApi.runTraining>[1]; requestedAt: number; error: string; notFound: boolean } | null>(null);
@@ -759,9 +761,12 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
     } finally { setRunning(false); }
   }
   async function cancelStudy() {
-    if (!studyJob || !["QUEUED", "RUNNING"].includes(studyJob.status)) return;
+    if (studyCancelInFlightRef.current || !studyJob || !["QUEUED", "RUNNING"].includes(studyJob.status) || studyJob.cancel_requested) return;
+    studyCancelInFlightRef.current = true;
+    setCancellingStudy(true);
     try { setStudyJob(await studioApi.cancelStudyJob(project.session_id, studyJob.job_id)); }
     catch (reason) { setError(reason instanceof Error ? reason.message : "Could not cancel Study"); }
+    finally { studyCancelInFlightRef.current = false; setCancellingStudy(false); }
   }
   async function resumeStudy() {
     if (studyResumeInFlightRef.current || !studyJob || !["QUEUED", "RUNNING"].includes(studyJob.status)) return;
@@ -848,7 +853,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
         {parameterErrors.length > 0 && <div className="error" role="alert">Review model settings before training: {parameterErrors.join(" ")}</div>}
         <Button view="outlined" disabled={running || project.read_only || (!pendingStudyRequest && (!!(studyJob && ["QUEUED", "RUNNING"].includes(studyJob.status)) || !!trainingRecovery || !!splitContractRecovery || !splitSelectionMatchesFrozenContract || splitEvidenceStatus !== "loaded" || catalogStatus !== "loaded" || !selectedModel || Boolean(studySeedValidation.error) || parameterErrors.length > 0 || (studyHydrationStatus !== "none" && studyHydrationStatus !== "available") || studyJobsStatus !== "loaded" || executionBackendStatus !== "loaded" || !executionBackends.some((backend) => backend.identity.key === executionBackendKey)))} onClick={trainStudy} data-ruflex-action="study.start">{running ? "Training…" : pendingStudyRequest ? "Retry same Study request" : "Run multi-seed study"}</Button>
         {pendingStudyRequest && !running && <p role="status">Study submission status is uncertain. Retry uses the same request ID and frozen configuration; it will recover the existing job or safely report a mismatch.</p>}
-        {studyJob && <div className="info-message"><strong>Study job {studyJob.status}</strong> · {studyJob.execution_backend_key ?? studyJob.execution_backend} · {studyJob.seed_states.map((state) => `seed ${state.seed}: ${state.status}`).join(" · ")} {(["QUEUED", "RUNNING"].includes(studyJob.status) && !studyJob.cancel_requested) && <><Button view="flat" size="s" disabled={running} onClick={resumeStudy} data-ruflex-action="study.resume">Resume persisted study</Button><Button view="flat" size="s" disabled={running} onClick={cancelStudy} data-ruflex-action="study.cancel">Cancel study</Button></>} {studyJob.cancel_requested && ["QUEUED", "RUNNING"].includes(studyJob.status) && <small role="status">Cancellation requested. The active seed fit may finish; remaining seeds will not start, and this job cannot be resumed.</small>} {studyJob.recovery_note && <small>{studyJob.recovery_note}</small>}{studyJobPollError && <div className="error" role="alert"><strong>Study status could not be refreshed.</strong> {studyJobPollError} <Button view="outlined" size="s" disabled={running} onClick={retryStudyStatus}>Retry Study status</Button></div>}</div>}
+        {studyJob && <div className="info-message"><strong>Study job {studyJob.status}</strong> · {studyJob.execution_backend_key ?? studyJob.execution_backend} · {studyJob.seed_states.map((state) => `seed ${state.seed}: ${state.status}`).join(" · ")} {(["QUEUED", "RUNNING"].includes(studyJob.status) && !studyJob.cancel_requested) && <><Button view="flat" size="s" disabled={running} onClick={resumeStudy} data-ruflex-action="study.resume">Resume persisted study</Button><Button view="flat" size="s" disabled={running || cancellingStudy} onClick={cancelStudy} data-ruflex-action="study.cancel">{cancellingStudy ? "Requesting cancellation…" : "Cancel study"}</Button></>} {studyJob.cancel_requested && ["QUEUED", "RUNNING"].includes(studyJob.status) && <small role="status">Cancellation requested. The active seed fit may finish; remaining seeds will not start, and this job cannot be resumed.</small>} {studyJob.recovery_note && <small>{studyJob.recovery_note}</small>}{studyJobPollError && <div className="error" role="alert"><strong>Study status could not be refreshed.</strong> {studyJobPollError} <Button view="outlined" size="s" disabled={running} onClick={retryStudyStatus}>Retry Study status</Button></div>}</div>}
         {studyJob?.status === "CANCELLED" && <p className="property-description">This StudyJob is terminal and cannot be resumed. Seed fits completed before cancellation remain persisted; starting another Study creates new fits.</p>}
         {studyJob?.status === "FAILED" && <p className="property-description">This StudyJob is terminal and did not produce a selected TrainingStudy. Review the per-seed errors before starting another set of fits.</p>}
         {studyJob?.error && <p className="error" role="alert">StudyJob error: {studyJob.error}</p>}
