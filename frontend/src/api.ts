@@ -200,7 +200,10 @@ export class ProductApiError extends Error {
   readonly detail: unknown;
 
   constructor({ code, status, detail }: { code: ProductErrorCode; status: number; detail: unknown }) {
-    super(typeof detail === "string" ? detail : code === "REQUEST_INVALID" ? "The request is incomplete or invalid." : `Request failed (${status}).`);
+    const nestedMessage = detail && typeof detail === "object" && !Array.isArray(detail)
+      ? (detail as { message?: unknown }).message
+      : null;
+    super(typeof detail === "string" ? detail : typeof nestedMessage === "string" ? nestedMessage : code === "REQUEST_INVALID" ? "The request is incomplete or invalid." : `Request failed (${status}).`);
     this.name = "ProductApiError";
     this.code = code;
     this.status = status;

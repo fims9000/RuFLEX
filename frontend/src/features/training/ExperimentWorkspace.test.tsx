@@ -126,6 +126,7 @@ describe("ExperimentWorkspace dynamic model controls", () => {
 
   it("retries an uncertain Study submission with the exact same request identity and configuration", async () => {
     studioApi.startStudyJob.mockRejectedValueOnce(new Error("response lost after submit"));
+    studioApi.startStudyJob.mockRejectedValueOnce(new ProductApiError({ code: "VALIDATION_FAILED", status: 422, detail: { code: "RUNTIME_INCOMPATIBLE", message: "Selected runtime cannot execute this request." } }));
     const completed = { job_id: "job-1", name: "Study", model_kind: "flat_neuro_fuzzy", selection_metric: "f1", status: "SUCCEEDED", cancel_requested: false, seed_states: [], study_id: "study-1", error: null, execution_backend: "LOCAL", execution_backend_key: "local_executor", execution_config: {}, recovery_count: 0, recovery_note: null };
     studioApi.startStudyJob.mockResolvedValueOnce(completed);
     studioApi.getLatestTrainingStudy.mockResolvedValue({ study_id: "study-1", selection_metric: "f1", selected_run_id: null, seed_runs: [] });
@@ -137,7 +138,11 @@ describe("ExperimentWorkspace dynamic model controls", () => {
     expect(await screen.findByRole("status")).toHaveTextContent("Retry uses the same request ID");
     fireEvent.click(screen.getByRole("button", { name: "Retry same Study request" }));
     await waitFor(() => expect(studioApi.startStudyJob).toHaveBeenCalledTimes(2));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Selected runtime cannot execute this request.");
+    fireEvent.click(screen.getByRole("button", { name: "Retry same Study request" }));
+    await waitFor(() => expect(studioApi.startStudyJob).toHaveBeenCalledTimes(3));
     expect(studioApi.startStudyJob.mock.calls[1]).toEqual(studioApi.startStudyJob.mock.calls[0]);
+    expect(studioApi.startStudyJob.mock.calls[2]).toEqual(studioApi.startStudyJob.mock.calls[0]);
     expect(studioApi.startStudyJob.mock.calls[0][1].client_request_id).toMatch(/^[0-9a-f-]{36}$/i);
   });
 
