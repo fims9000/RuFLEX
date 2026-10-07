@@ -115,6 +115,7 @@ test("serializes project save and metadata update writes", async ({ page }) => {
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await saveStartedPromise;
   await expect(page.getByRole("button", { name: "Saving…", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Close", exact: true })).toBeDisabled();
   await expect(page.getByRole("button", { name: "Update description", exact: true })).toBeDisabled();
   await expect(page.getByLabel("Description")).toBeDisabled();
   releaseSave();
@@ -125,6 +126,7 @@ test("serializes project save and metadata update writes", async ({ page }) => {
   await page.getByRole("button", { name: "Update description", exact: true }).click();
   await metadataStartedPromise;
   await expect(page.getByRole("button", { name: "Save", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Close", exact: true })).toBeDisabled();
   await expect(page.getByRole("button", { name: "Updating description…", exact: true })).toBeDisabled();
   await expect(page.getByLabel("Description")).toBeDisabled();
   releaseMetadata();

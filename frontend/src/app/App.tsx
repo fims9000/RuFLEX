@@ -1274,6 +1274,7 @@ export function App() {
     }
   }
   async function close() {
+    if (projectWriteInFlightRef.current) return;
     const requestId = ++projectLifecycleRequestRef.current;
     datasetFileSelectionId.current += 1;
     csvInspectionRequestRef.current += 1;
@@ -1749,6 +1750,7 @@ export function App() {
       readOnly={project?.read_only}
       saving={projectWriteOperation === "save"}
       saveDisabled={projectWriteOperation !== null}
+      closeDisabled={projectWriteOperation !== null}
       status={status}
       error={error}
       onSave={save}

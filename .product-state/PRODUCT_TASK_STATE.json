@@ -279,7 +279,8 @@
   "active_capability": "alpha_project_persistence_write_serialization",
   "active_acceptance": [
     "Project save and metadata update cannot overlap; the active write is protected by a synchronous guard.",
-    "The action and fields communicate in-flight state and prevent accidental duplicate or conflicting writes."
+    "The action and fields communicate in-flight state and prevent accidental duplicate or conflicting writes.",
+    "Project close waits until an active persistence write resolves."
   ],
   "blockers": [],
   "next_executable_work": "Inspect the next user-facing alpha workflow for an evidenced reliability/usability gap; use focused, low-resource checks and commit each verified slice locally.",
@@ -560,6 +561,6 @@
     "alpha_fis_concurrent_save_draft_preservation": "PASS: an edit made during an in-flight save remains an unsaved draft while the submitted snapshot is persisted; parent FIS hydration and revision-history retry do not replace that draft, and a subsequent save persists it. Focused Studio Playwright E2E passed (1/1) for history retry plus concurrent save, stale-evaluation E2E passed (1/1), TypeScript project build and git diff --check.",
     "alpha_validation_policy_write_serialization": "PASS: validation evidence writes, calibration, threshold and selective-policy writes share a synchronous mutual-exclusion guard; final-test opening uses the same guard. Cross-action buttons disable while a write is in flight. Focused PRODUCT-04 Studio E2E passed, holding calibration open and verifying both threshold selection and evaluation revision save remain disabled; TypeScript build and diff check passed.",
     "alpha_project_lifecycle_mutation_serialization": "PASS: create, form-open, and recent-project open share a synchronous in-flight guard; create/open controls and recent project entries are disabled while the request is pending. Focused Studio Playwright E2E passed (1/1), delaying create and recent-open separately and confirming exactly one lifecycle request for each; TypeScript build and git diff --check passed.",
-    "alpha_project_persistence_write_serialization": "PASS: project save and project-description update use one synchronous shared write guard; the header displays Saving progress and both save/description controls disable during either mutation. Focused Studio Playwright E2E passed (1/1) with delayed save and metadata responses, TypeScript build and git diff --check."
+    "alpha_project_persistence_write_serialization": "PASS: project save and project-description update use one synchronous shared write guard; the header displays Saving progress and save/description/close controls disable during either mutation. Focused Studio Playwright E2E passed (1/1) with delayed save and metadata responses, TypeScript build and git diff --check."
   }
 }
