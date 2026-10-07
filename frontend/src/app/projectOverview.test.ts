@@ -1,5 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { trainingStudyOverviewLabel } from "./projectOverview";
+import { projectModelOverviewLabel, trainingStudyOverviewLabel } from "./projectOverview";
+
+describe("projectModelOverviewLabel", () => {
+  it("keeps model loading and errors distinct from a verified empty project", () => {
+    expect(projectModelOverviewLabel({ status: "loading", fisName: null, trainingModelKind: null })).toBe("Checking saved models…");
+    expect(projectModelOverviewLabel({ status: "error", fisName: null, trainingModelKind: null })).toBe("Model state unavailable");
+  });
+
+  it("shows a persisted FIS or trained model instead of inferring no model", () => {
+    expect(projectModelOverviewLabel({ status: "loaded", fisName: "Pump controller", trainingModelKind: "decision_tree" })).toBe("Pump controller");
+    expect(projectModelOverviewLabel({ status: "loaded", fisName: null, trainingModelKind: "decision_tree" })).toBe("Trained decision tree");
+    expect(projectModelOverviewLabel({ status: "loaded", fisName: null, trainingModelKind: null })).toBe("No saved model");
+  });
+});
 
 describe("trainingStudyOverviewLabel", () => {
   it("does not claim the project has no studies while history is loading or unavailable", () => {

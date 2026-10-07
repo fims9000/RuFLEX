@@ -10,7 +10,7 @@ import { ChartSurface } from "../charts/ChartSurface";
 import { chartFixtures } from "../charts/fixtureOptions";
 import { FlowGrammar } from "../flow/FlowGrammar";
 import { ProjectLineage } from "../flow/ProjectLineage";
-import { trainingStudyOverviewLabel } from "./projectOverview";
+import { projectModelOverviewLabel, trainingStudyOverviewLabel } from "./projectOverview";
 import {
   ArtifactRecord,
   ProductApiError,
@@ -2327,7 +2327,11 @@ export function App() {
             <button onClick={() => setActive("MODELS")}>
               Models
               <br />
-              <small>{fis ? fis.name : "No model"}</small>
+              <small>{projectModelOverviewLabel({
+                status: overviewContextStatus,
+                fisName: fis?.name ?? null,
+                trainingModelKind: trainingRun?.model_kind ?? null,
+              })}</small>
             </button>
             <button onClick={() => setActive("STUDIES")}>
               Studies

@@ -258,15 +258,16 @@
     "alpha_auxiliary_assurance_evidence_gates",
     "alpha_explanation_assurance_status_semantics",
     "alpha_explorer_assurance_gate_outcomes",
-    "alpha_project_overview_study_history_truthfulness"
+    "alpha_project_overview_study_history_truthfulness",
+    "alpha_project_overview_model_truthfulness"
   ],
-  "active_capability": "alpha_project_overview_study_history_truthfulness",
+  "active_capability": "alpha_project_overview_model_truthfulness",
   "active_acceptance": [
-    "The project Overview Study tile reports persisted study history rather than inferring that there are no studies from a missing active TrainingRun.",
-    "Study loading and read failures remain distinct from a verified empty study history."
+    "The Project Overview Models tile reports a saved FIS or native trained model run instead of inferring there is no model from a missing FIS.",
+    "Model loading and context-read failures remain distinct from verified absence."
   ],
   "blockers": [],
-  "next_executable_work": "Inspect another lightweight Studio workflow for a concrete alpha usability/recovery gap; make a bounded fix, test, and commit locally.",
+  "next_executable_work": "Inspect one adjacent Overview summary for false-empty states; continue only if a concrete mismatch is verified, then test and commit locally.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -528,6 +529,7 @@
     "alpha_auxiliary_assurance_evidence_gates": "PASS: Assurance now exposes explicit analysis_comparisons, tree_path_evidence and expert_correction gates backed by typed records plus their canonical project-integrity provenance checks. The full integrated route asserts valid comparison/tree gates; tampered correction FIS binding fails its gate. Four focused integrated/evidence/slice/correction tests passed with compileall.",
     "alpha_explanation_assurance_status_semantics": "PASS: Assurance explanation_checks gate now fails on typed contract/check integrity issues, reports WARNING checks or unavailable validator runtime as WARN, and only reports PASS when persisted checks are clean. Latest check per explanation is used deterministically. Integrated, malformed-evidence and native explanation route tests passed.",
     "alpha_explorer_assurance_gate_outcomes": "PASS: Project Explorer now summarizes AssuranceCase gates by passed/warning/failed/unavailable counts instead of incorrectly saying passing gates are available. Focused ProjectExplorer unit tests: 2 passed; TypeScript project build (tsc -b) and git diff --check passed. Full frontend build/browser suite not run for this small label correction.",
-    "alpha_project_overview_study_history_truthfulness": "PASS: Project Overview Study tile now distinguishes saved TrainingStudy history, individual-run-only state, loading, read failure and verified absence instead of inferring 'No studies' from a missing active TrainingRun. Focused helper tests: 3 passed; TypeScript project build (tsc -b) and git diff --check passed. Browser E2E not run for this contained summary-state fix."
+    "alpha_project_overview_study_history_truthfulness": "PASS: Project Overview Study tile now distinguishes saved TrainingStudy history, individual-run-only state, loading, read failure and verified absence instead of inferring 'No studies' from a missing active TrainingRun. Focused helper tests: 3 passed; TypeScript project build (tsc -b) and git diff --check passed. Browser E2E not run for this contained summary-state fix.",
+    "alpha_project_overview_model_truthfulness": "PASS: Project Overview Models tile now distinguishes context loading/failure, saved FIS, native trained model runs and verified absence. Focused projectOverview tests: 5 passed; TypeScript project build (tsc -b) and git diff --check passed. Browser E2E not run for this contained summary-state fix."
   }
 }
