@@ -2,6 +2,84 @@ import { expect, test } from "@playwright/test";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+test("a rejected CSV role remains correctable without a dataset-state recovery lock", async ({ page }) => {
+  const projectPath = join(tmpdir(), `ruflex-csv-role-rejection-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  await page.goto("/");
+  await page.getByLabel("Project path").fill(projectPath);
+  await page.getByLabel("Project name").fill("Correctable CSV roles");
+  await page.getByRole("button", { name: "Create project", exact: true }).click();
+  await page.getByRole("button", { name: "Review or import data", exact: true }).click();
+  await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
+  await expect(page.getByRole("combobox", { name: "Role for entity_id" })).toBeVisible();
+  await page.getByRole("textbox", { name: "ID columns" }).fill("missing_id");
+  await expect(page.getByRole("textbox", { name: "ID columns" })).toHaveValue("missing_id");
+  await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
+
+  await expect(page.getByRole("alert")).toContainText("ID columns are absent from the dataset");
+  await expect(page.getByText("Could not verify persisted dataset state.")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Confirm dataset contract", exact: true })).toBeEnabled();
+  await page.getByRole("textbox", { name: "ID columns" }).fill("");
+  await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
+  await expect(page.getByText(/Contract: target/)).toBeVisible();
+});
+
+test("a rejected file role remains correctable without reselecting the file", async ({ page }) => {
+  const projectPath = join(tmpdir(), `ruflex-file-role-rejection-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  await page.goto("/");
+  await page.getByLabel("Project path").fill(projectPath);
+  await page.getByLabel("Project name").fill("Correctable file roles");
+  await page.getByRole("button", { name: "Create project", exact: true }).click();
+  await page.getByRole("button", { name: "Review or import data", exact: true }).click();
+  await page.getByLabel("Dataset CSV or XLSX file").setInputFiles({
+    name: "roles.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from("sensor,target\n10,0\n20,1\n"),
+  });
+  await expect(page.getByLabel("Selected file schema preview")).toContainText("roles.csv");
+  await page.getByLabel("Target", { exact: true }).selectOption("target");
+  await page.getByRole("textbox", { name: "Exclude from model" }).fill("missing_feature");
+  await page.getByRole("button", { name: "Confirm target and import file", exact: true }).click();
+
+  await expect(page.getByRole("alert").filter({ hasText: "Excluded columns are absent" })).toBeVisible();
+  await expect(page.getByText("Could not verify persisted dataset state.")).toHaveCount(0);
+  await expect(page.getByLabel("Selected file schema preview")).toContainText("roles.csv");
+  await page.getByRole("textbox", { name: "Exclude from model" }).fill("");
+  await page.getByRole("button", { name: "Confirm target and import file", exact: true }).click();
+  await expect(page.getByText(/Contract: target/)).toBeVisible();
+});
+
+test("a rejected replacement import preserves the previously saved DatasetContract", async ({ page }) => {
+  const projectPath = join(tmpdir(), `ruflex-replacement-role-rejection-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  await page.goto("/");
+  await page.getByLabel("Project path").fill(projectPath);
+  await page.getByLabel("Project name").fill("Replacement role recovery");
+  await page.getByRole("button", { name: "Create project", exact: true }).click();
+  await page.getByRole("button", { name: "Review or import data", exact: true }).click();
+  await page.getByLabel("Dataset CSV or XLSX file").setInputFiles({
+    name: "first.csv", mimeType: "text/csv", buffer: Buffer.from("sensor,target\n10,0\n20,1\n"),
+  });
+  await expect(page.getByLabel("Selected file schema preview")).toContainText("first.csv");
+  await page.getByLabel("Target", { exact: true }).selectOption("target");
+  await page.getByRole("button", { name: "Confirm target and import file", exact: true }).click();
+  await expect(page.getByText(/Contract: target/)).toBeVisible();
+  const originalSha = await page.locator(".data-summary code").first().textContent();
+
+  await page.getByLabel("Dataset CSV or XLSX file").setInputFiles({
+    name: "second.csv", mimeType: "text/csv", buffer: Buffer.from("sensor,target\n30,0\n40,1\n"),
+  });
+  await expect(page.getByLabel("Selected file schema preview")).toContainText("second.csv");
+  await page.getByLabel("Target", { exact: true }).selectOption("target");
+  await page.getByRole("textbox", { name: "Exclude from model" }).fill("missing_feature");
+  await page.getByRole("button", { name: "Confirm target and import file", exact: true }).click();
+
+  await expect(page.getByRole("alert").filter({ hasText: "Excluded columns are absent" })).toBeVisible();
+  await expect(page.getByLabel("Selected file schema preview")).toContainText("second.csv");
+  await expect(page.locator(".data-summary code").first()).toHaveText(originalSha ?? "");
+  await page.getByRole("textbox", { name: "Exclude from model" }).fill("");
+  await page.getByRole("button", { name: "Confirm target and import file", exact: true }).click();
+  await expect(page.locator(".data-summary code").first()).not.toHaveText(originalSha ?? "");
+});
+
 test("a persisted file import is reconciled after its confirmation read fails", async ({ page }) => {
   let datasetReads = 0;
   await page.route("**/api/projects/*/dataset", async (route) => {

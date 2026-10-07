@@ -1389,6 +1389,8 @@ export function App() {
     datasetMutationInFlightRef.current = true;
     const requestId = ++datasetMutationRequestRef.current;
     const sessionId = project.session_id;
+    const previousDatasetFingerprint = datasetState?.contract.dataset_fingerprint ?? null;
+    const draftProfile = profile;
     const isCurrent = () => requestId === datasetMutationRequestRef.current && projectSessionRef.current === sessionId;
     setConfirmingCsvDataset(true);
     setDatasetStateStatus("loading");
@@ -1456,10 +1458,30 @@ export function App() {
             void refreshArtifactInventory(sessionId);
             return;
           }
+          if (reason instanceof ProductApiError && reason.status === 422
+            && persisted.contract.dataset_fingerprint === previousDatasetFingerprint) {
+            pendingDatasetWriteRef.current = null;
+            setProfile(draftProfile);
+            setError(reason.message);
+            setStatus("Dataset confirmation rejected; correct the draft roles and retry");
+            return;
+          }
           setError("The confirmation response was lost and the saved DatasetContract does not match the current CSV and settings. No second confirmation was sent; review the saved dataset.");
           setStatus("CSV confirmation outcome could not be matched to the saved dataset");
           return;
-        } catch {
+        } catch (readReason) {
+          if (reason instanceof ProductApiError && reason.status === 422
+            && previousDatasetFingerprint === null
+            && readReason instanceof ProductApiError && readReason.status === 404) {
+            pendingDatasetWriteRef.current = null;
+            setDatasetState(null);
+            setDataset(null);
+            setDatasetStateStatus("none");
+            setDatasetStateError(null);
+            setError(reason.message);
+            setStatus("Dataset confirmation rejected; correct the draft roles and retry");
+            return;
+          }
           /* Fall through to the explicit retry state if the persisted state cannot be read either. */
         }
       }
@@ -1519,6 +1541,7 @@ export function App() {
     datasetMutationInFlightRef.current = true;
     const requestId = ++datasetMutationRequestRef.current;
     const sessionId = project.session_id;
+    const previousDatasetFingerprint = datasetState?.contract.dataset_fingerprint ?? null;
     const isCurrent = () => requestId === datasetMutationRequestRef.current && projectSessionRef.current === sessionId;
     const file = pendingDatasetFile;
     setImportingDatasetFile(true);
@@ -1603,10 +1626,29 @@ export function App() {
             void refreshArtifactInventory(sessionId);
             return;
           }
+          if (reason instanceof ProductApiError && reason.status === 422
+            && persisted.contract.dataset_fingerprint === previousDatasetFingerprint) {
+            pendingDatasetWriteRef.current = null;
+            setError(reason.message);
+            setStatus("Dataset import rejected; correct the draft roles and retry");
+            return;
+          }
           setError("The upload response was lost and the saved DatasetContract does not match this file and target. The file was not uploaded again; review the saved dataset before retrying.");
           setStatus("Upload outcome could not be matched to the saved dataset");
           return;
-        } catch {
+        } catch (readReason) {
+          if (reason instanceof ProductApiError && reason.status === 422
+            && previousDatasetFingerprint === null
+            && readReason instanceof ProductApiError && readReason.status === 404) {
+            pendingDatasetWriteRef.current = null;
+            setDatasetState(null);
+            setDataset(null);
+            setDatasetStateStatus("none");
+            setDatasetStateError(null);
+            setError(reason.message);
+            setStatus("Dataset import rejected; correct the draft roles and retry");
+            return;
+          }
           /* Fall through to the explicit retry state if the persisted state cannot be read either. */
         }
       }
