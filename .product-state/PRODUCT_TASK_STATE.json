@@ -292,16 +292,17 @@
     "alpha_assurance_bundle_job_submission_mutex",
     "alpha_evidence_job_cancel_mutex",
     "alpha_condition_demo_write_serialization",
-    "alpha_behavior_spec_create_mutex"
+    "alpha_behavior_spec_create_mutex",
+    "alpha_behavior_revision_comparison_mutex"
   ],
-  "active_capability": "alpha_behavior_revision_comparison_mutex",
+  "active_capability": "alpha_explanation_reproducibility_write_serialization",
   "active_acceptance": [
-    "Persisted BehaviorSpec revision comparisons, exact lookup recovery, and explicit repeat share a synchronous request guard.",
-    "Repeated event dispatch before React rerenders creates at most one comparison for a frozen baseline/candidate pair.",
-    "Comparison recovery remains bound to the original pair and does not silently substitute a different result."
+    "Cross-run explanation reproducibility creation, exact recovery, and explicitly confirmed retry share one synchronous guard.",
+    "Repeated event dispatch before React rerenders sends at most one comparison request for the frozen selected explanation IDs.",
+    "Recovery and retry retain the original selected IDs without silently incorporating current UI selection."
   ],
   "blockers": [],
-  "next_executable_work": "Inspect compareBehaviorRevisions/recoverBehaviorRevisionComparison/explicitlyRestartBehaviorRevisionComparison for duplicate and cross-action submissions; guard the immutable result pair and add a focused delayed-response regression plus browser verification, then continue the EvidenceWorkspace audit.",
+  "next_executable_work": "Inspect compareReproducibility/recoverReproducibility/explicitlyRestartReproducibility for duplicate/cross-action submissions; guard the immutable explanation ID set and add a focused delayed-response regression plus browser verification.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -597,6 +598,7 @@
     "alpha_assurance_bundle_job_submission_mutex": "PASS: AssuranceCase creation, VerificationBundle export and exact evidence-job resume share a synchronous in-flight guard; build/export and resume cannot emit duplicate or cross-action jobs. EvidenceWorkspace component tests: 4 passed; focused AssuranceCase + VerificationBundle Studio Playwright E2E passed (1/1), exercising duplicate synchronous event dispatch for both real persisted jobs; TypeScript project build and git diff --check passed.",
     "alpha_evidence_job_cancel_mutex": "PASS: queued explanation-job cancellation uses a synchronous cancellation guard and visibly disables the cancel action while its request is unresolved; cancellation remains enabled during ordinary job polling so the user can still cancel queued work. EvidenceWorkspace component tests: 5 passed, including cancellation during polling and duplicate synchronous cancellation dispatch; TypeScript project build and git diff --check passed.",
     "alpha_condition_demo_write_serialization": "PASS: condition-monitoring demo run, exact saved-request recovery and explicit rerun share a synchronous guard while preserving original policy, telemetry and GeneralizationContract identities. EvidenceWorkspace component tests: 6 passed; focused real Studio PRODUCT-11 Playwright route passed (1/1) with double synchronous event dispatch and exactly one persisted demo POST; TypeScript build and git diff --check passed.",
-    "alpha_behavior_spec_create_mutex": "PASS: BehaviorSpec create-and-run, exact creation recovery, explicitly confirmed creation retry, and result-execution recovery share one synchronous guard; creation recovery retains the exact run and request definition. EvidenceWorkspace component tests: 7 passed; focused PRODUCT-06 Studio E2E passed (1/1), verifying two synchronous submit events produce one BehaviorSpec POST and then testing reopen/revision lineage; TypeScript build passed. Existing E2E had an ambiguous duplicated test-id assertion, scoped to the opened result and the same route then passed."
+    "alpha_behavior_spec_create_mutex": "PASS: BehaviorSpec create-and-run, exact creation recovery, explicitly confirmed creation retry, and result-execution recovery share one synchronous guard; creation recovery retains the exact run and request definition. EvidenceWorkspace component tests: 7 passed; focused PRODUCT-06 Studio E2E passed (1/1), verifying two synchronous submit events produce one BehaviorSpec POST and then testing reopen/revision lineage; TypeScript build passed. Existing E2E had an ambiguous duplicated test-id assertion, scoped to the opened result and the same route then passed.",
+    "alpha_behavior_revision_comparison_mutex": "PASS: BehaviorSpec revision comparison, exact pair lookup recovery, and explicit repeat share a synchronous action guard; the original baseline/candidate IDs remain bound throughout uncertainty. EvidenceWorkspace component tests: 8 passed; focused PRODUCT-06 Studio E2E passed (1/1), including synchronous duplicate comparison events with one POST and reopen/lineage inspection; TypeScript build and diff check passed."
   }
 }

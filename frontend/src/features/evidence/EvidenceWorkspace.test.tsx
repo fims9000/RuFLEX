@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom/vitest";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ButtonHTMLAttributes } from "react";
 
@@ -9,6 +9,7 @@ const { studioApi } = vi.hoisted(() => ({ studioApi: {
   createBehaviorSpec: vi.fn(),
   listBehaviorSpecs: vi.fn().mockResolvedValue([]),
   runBehaviorSpec: vi.fn(),
+  compareBehaviorResults: vi.fn(),
   getLatestConditionMonitoringDemo: vi.fn().mockResolvedValue(null),
   runConditionMonitoringDemo: vi.fn(),
   listPosthocExplanationJobs: vi.fn().mockResolvedValue([]),
@@ -55,6 +56,7 @@ beforeEach(() => {
   studioApi.createBehaviorSpec.mockReset();
   studioApi.listBehaviorSpecs.mockReset().mockResolvedValue([]);
   studioApi.runBehaviorSpec.mockReset();
+  studioApi.compareBehaviorResults.mockReset();
   studioApi.getLatestConditionMonitoringDemo.mockReset().mockResolvedValue(null);
   studioApi.runConditionMonitoringDemo.mockReset();
   studioApi.listPosthocExplanationJobs.mockReset().mockResolvedValue([]);
@@ -72,6 +74,31 @@ beforeEach(() => {
 });
 
 describe("EvidenceWorkspace persisted explanation jobs", () => {
+  it("submits one comparison for the selected persisted result pair", async () => {
+    studioApi.listBehaviorResults.mockReset().mockResolvedValue([
+      { result_id: "result-a", spec_id: "spec-1", status: "PASS" },
+      { result_id: "result-b", spec_id: "spec-1", status: "FAIL" },
+    ] as never);
+    let rejectComparison!: (error: Error) => void;
+    studioApi.compareBehaviorResults.mockImplementationOnce(() => new Promise((_resolve, reject) => { rejectComparison = reject; }));
+    renderEvidence();
+
+    const baseline = await screen.findByRole("combobox", { name: "Behavior baseline result" });
+    const candidate = screen.getByRole("combobox", { name: "Behavior candidate result" });
+    fireEvent.change(baseline, { target: { value: "result-a" } });
+    fireEvent.change(candidate, { target: { value: "result-b" } });
+    const compare = await screen.findByRole("button", { name: "Compare revisions" });
+    await waitFor(() => expect(compare).toBeEnabled());
+    act(() => {
+      compare.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      compare.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(studioApi.compareBehaviorResults).toHaveBeenCalledTimes(1);
+    expect(studioApi.compareBehaviorResults).toHaveBeenCalledWith("session", "result-a", "result-b");
+    await act(async () => { rejectComparison(new Error("comparison response unavailable")); });
+    expect(await screen.findByTestId("behavior-comparison-recovery")).toHaveTextContent("comparison response unavailable");
+  });
+
   it("creates a single BehaviorSpec when submit events arrive before React rerenders", async () => {
     let rejectCreate!: (error: Error) => void;
     studioApi.createBehaviorSpec.mockImplementationOnce(() => new Promise((_resolve, reject) => { rejectCreate = reject; }));

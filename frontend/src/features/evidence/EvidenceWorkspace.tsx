@@ -177,6 +177,7 @@ export function EvidenceWorkspace({
   const [direction, setDirection] = useState<"nondecreasing" | "nonincreasing">("nondecreasing");
   const [behaviorSpec, setBehaviorSpec] = useState<BehaviorSpec | null>(restoredBehaviorSpec);
   const behaviorSpecActionInFlightRef = useRef(false);
+  const behaviorComparisonActionInFlightRef = useRef(false);
   const [behaviorResult, setBehaviorResult] = useState<BehaviorSpecResult | null>(restoredBehaviorResult);
   const [behaviorExecutionRecoveryError, setBehaviorExecutionRecoveryError] = useState<string | null>(null);
   const [behaviorSpecCreationRecoveryRequest, setBehaviorSpecCreationRecoveryRequest] = useState<{ runId: string; payload: Parameters<typeof studioApi.createBehaviorSpec>[1] } | null>(null);
@@ -709,8 +710,9 @@ export function EvidenceWorkspace({
   }
 
   async function compareBehaviorRevisions() {
-    if (!baselineBehaviorResultId || !candidateBehaviorResultId) return;
+    if (behaviorComparisonActionInFlightRef.current || behaviorComparisonRecoveryPair || !baselineBehaviorResultId || !candidateBehaviorResultId) return;
     const pair = { baselineResultId: baselineBehaviorResultId, candidateResultId: candidateBehaviorResultId };
+    behaviorComparisonActionInFlightRef.current = true;
     setBusy(true); setError(null);
     try {
       await submitBehaviorRevisionComparison(pair);
@@ -720,7 +722,7 @@ export function EvidenceWorkspace({
       setBehaviorComparisonRecoveryNotFound(false);
       setError(reason instanceof Error ? reason.message : "Could not compare BehaviorSpec revisions");
     }
-    finally { setBusy(false); }
+    finally { behaviorComparisonActionInFlightRef.current = false; setBusy(false); }
   }
 
   async function submitBehaviorRevisionComparison(pair: { baselineResultId: string; candidateResultId: string }) {
@@ -730,8 +732,10 @@ export function EvidenceWorkspace({
   }
 
   async function recoverBehaviorRevisionComparison() {
+    if (behaviorComparisonActionInFlightRef.current) return;
     const pair = behaviorComparisonRecoveryPair;
     if (!pair) return;
+    behaviorComparisonActionInFlightRef.current = true;
     setBusy(true); setError(null);
     try {
       const comparisons = await studioApi.listBehaviorRevisionComparisons(project.session_id);
@@ -747,18 +751,20 @@ export function EvidenceWorkspace({
       setBehaviorComparisonRecoveryError(reason instanceof Error ? reason.message : "Could not recover the exact revision comparison.");
       setBehaviorComparisonRecoveryNotFound(false);
       setError(reason instanceof Error ? reason.message : String(reason));
-    } finally { setBusy(false); }
+    } finally { behaviorComparisonActionInFlightRef.current = false; setBusy(false); }
   }
 
   async function explicitlyRestartBehaviorRevisionComparison() {
+    if (behaviorComparisonActionInFlightRef.current) return;
     if (!behaviorComparisonRecoveryPair || !behaviorComparisonRecoveryNotFound) return;
+    behaviorComparisonActionInFlightRef.current = true;
     setBusy(true); setError(null);
     try { await submitBehaviorRevisionComparison(behaviorComparisonRecoveryPair); }
     catch (reason) {
       setBehaviorComparisonRecoveryError(reason instanceof Error ? reason.message : "The replacement comparison could not be confirmed.");
       setBehaviorComparisonRecoveryNotFound(false);
       setError(reason instanceof Error ? reason.message : String(reason));
-    } finally { setBusy(false); }
+    } finally { behaviorComparisonActionInFlightRef.current = false; setBusy(false); }
   }
 
   async function compareReproducibility() {

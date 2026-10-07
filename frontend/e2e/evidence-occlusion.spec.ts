@@ -136,7 +136,7 @@ test("PRODUCT-06 persists revision-bound BehaviorSpec evidence through reopen", 
     await route.fetch();
     await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Revision comparison response lost after persistence" }) });
   });
-  await page.getByRole("button", { name: "Compare revisions", exact: true }).click();
+  await page.getByRole("button", { name: "Compare revisions", exact: true }).evaluate((button) => { button.dispatchEvent(new MouseEvent("click", { bubbles: true })); button.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
   await expect(page.getByTestId("behavior-comparison-recovery")).toContainText("Revision comparison response lost after persistence");
   await expect(page.getByRole("button", { name: "Compare revisions", exact: true })).toBeDisabled();
   await page.getByRole("button", { name: "Retry saved comparison lookup", exact: true }).click();
