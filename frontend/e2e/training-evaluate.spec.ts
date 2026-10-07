@@ -139,6 +139,11 @@ test("PRODUCT-02 performs real neuro-fuzzy training, validation evaluation and r
   await page.getByRole("button", { name: "Save validation evidence", exact: true }).click();
   await expect(page.getByText("Validation ROC curve · raw model", { exact: true })).toBeVisible();
   await expect(page.getByText("Validation precision–recall curve · raw model", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: /Select F1 threshold \(raw\)/ }).click();
+  await expect(page.getByRole("heading", { name: /Frozen policy threshold/ })).toBeVisible();
+  await page.getByLabel("Selective confidence cutoff").fill("0.80");
+  await page.getByRole("button", { name: "Save ACCEPT / REVIEW policy", exact: true }).click();
+  await expect(page.getByText("REVIEW BELOW 0.80", { exact: false })).toBeVisible();
 
   await page.getByRole("button", { name: "Close", exact: true }).click();
   await page.getByLabel("Project path").fill(path);
@@ -164,6 +169,8 @@ test("PRODUCT-02 performs real neuro-fuzzy training, validation evaluation and r
   await page.getByRole("button", { name: "A", exact: true }).click();
   await expect(page.getByText("VALIDATION EVIDENCE", { exact: true })).toBeVisible();
   await expect(page.getByText("Validation ROC curve · raw model", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Frozen policy threshold/ })).toBeVisible();
+  await expect(page.getByText("REVIEW BELOW 0.80", { exact: false })).toBeVisible();
 
   const reopened = await page.request.post("http://127.0.0.1:8010/api/projects/open", { data: { path } });
   expect(reopened.status()).toBe(200);

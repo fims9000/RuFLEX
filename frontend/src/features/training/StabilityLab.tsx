@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { EChartsOption } from "echarts";
 import { AnalysisEvaluation, DecisionThresholdPolicy, ProductApiError, ProjectSummary, StabilityGatePolicy, StudyStabilityAnalysis, TrainingStudy, studioApi } from "../../api";
 import { ChartSurface } from "../../charts/ChartSurface";
@@ -36,6 +36,10 @@ export function StabilityLab({ project, study, theme, onAnalysisChange, onPolicy
   const [gateRecoveryRequest, setGateRecoveryRequest] = useState<{ analysisId: string; evaluationId: string } | null>(null);
   const [gateRecoveryError, setGateRecoveryError] = useState<string | null>(null);
   const [gateRecoveryNotFound, setGateRecoveryNotFound] = useState(false);
+  const onAnalysisChangeRef = useRef(onAnalysisChange);
+  const onPolicyChangeRef = useRef(onPolicyChange);
+  onAnalysisChangeRef.current = onAnalysisChange;
+  onPolicyChangeRef.current = onPolicyChange;
   useEffect(() => {
     let active = true;
     setAnalysisLoadState("loading");
@@ -46,12 +50,12 @@ export function StabilityLab({ project, study, theme, onAnalysisChange, onPolicy
       if (!active) return;
       const latest = items.at(-1) ?? null;
       setAnalysis(latest);
-      onAnalysisChange?.(latest);
+      onAnalysisChangeRef.current?.(latest);
       setAnalysisLoadState("loaded");
     }).catch((reason: unknown) => {
       if (!active) return;
       setAnalysis(null);
-      onAnalysisChange?.(null);
+      onAnalysisChangeRef.current?.(null);
       setAnalysisLoadError(reason instanceof Error ? reason.message : "Saved StudyStabilityAnalysis could not be verified.");
       setAnalysisLoadState("error");
     });
@@ -59,17 +63,17 @@ export function StabilityLab({ project, study, theme, onAnalysisChange, onPolicy
       if (!active) return;
       const latest = items.at(-1) ?? null;
       setPolicy(latest);
-      onPolicyChange?.(latest);
+      onPolicyChangeRef.current?.(latest);
       setPolicyLoadState("loaded");
     }).catch((reason: unknown) => {
       if (!active) return;
       setPolicy(null);
-      onPolicyChange?.(null);
+      onPolicyChangeRef.current?.(null);
       setPolicyLoadError(reason instanceof Error ? reason.message : "Saved StabilityGatePolicy could not be verified.");
       setPolicyLoadState("error");
     });
     return () => { active = false; };
-  }, [project.session_id, reload, onAnalysisChange, onPolicyChange]);
+  }, [project.session_id, reload]);
   const selected = useMemo(() => analysis?.cases.find((x) => x.case_id === caseId) ?? analysis?.cases[0] ?? null, [analysis, caseId]);
   const decision = selected ? policy?.decisions.find((x) => x.case_id === selected.case_id) : undefined;
   const applicable = analysis?.applicability === "APPLICABLE";

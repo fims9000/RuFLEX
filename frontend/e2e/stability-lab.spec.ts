@@ -58,7 +58,9 @@ test("Stability Lab persists fixed-split multi-run evidence and its validation-o
   await mkdir(resolve(screenshotPath, ".."), { recursive: true });
   await page.screenshot({ path: screenshotPath });
   let stabilityListFailures = 2;
-  await page.route("**/api/projects/*/analyses/stability", async (route) => {
+  let stabilityListRequests = 0;
+  await page.route(/\/api\/projects\/[^/]+\/analyses\/stability$/, async (route) => {
+    stabilityListRequests += 1;
     if (stabilityListFailures > 0) {
       stabilityListFailures -= 1;
       await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Temporary StabilityAnalysis read failure" }) });
@@ -67,7 +69,7 @@ test("Stability Lab persists fixed-split multi-run evidence and its validation-o
     await route.continue();
   });
   let gateListFailures = 2;
-  await page.route("**/api/projects/*/analyses/stability-policies", async (route) => {
+  await page.route(/\/api\/projects\/[^/]+\/analyses\/stability-policies$/, async (route) => {
     if (gateListFailures > 0) {
       gateListFailures -= 1;
       await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Temporary StabilityGatePolicy read failure" }) });
@@ -76,6 +78,7 @@ test("Stability Lab persists fixed-split multi-run evidence and its validation-o
     await route.continue();
   });
   await page.getByRole("button", { name: "Close", exact: true }).click(); await page.getByLabel("Project path").fill(root); await page.getByRole("button", { name: "Open project", exact: true }).click(); await page.getByRole("button", { name: "S", exact: true }).click();
+  expect(stabilityListRequests).toBeGreaterThan(0);
   await expect(page.getByTestId("stability-analysis-load-error")).toContainText("Temporary StabilityAnalysis read failure");
   await expect(page.getByTestId("stability-policy-load-error")).toContainText("Temporary StabilityGatePolicy read failure");
   await expect(page.getByRole("button", { name: "Create Study Stability Analysis", exact: true })).toBeDisabled();
@@ -88,5 +91,5 @@ test("Stability Lab persists fixed-split multi-run evidence and its validation-o
   await expect(frozenPolicyNode).toBeVisible();
   await frozenPolicyNode.click({ force: true });
   await expect(page.getByText("Opened lineage object: Stability-aware review", { exact: true })).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText(/Stability Gate .* is validation-derived and will be bound/)).toBeVisible();
+  await expect(page.getByText("The saved Stability Gate is bound to a different run, Evaluation, threshold or dataset and will not be applied here.", { exact: true })).toBeVisible();
 });
