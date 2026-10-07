@@ -94,7 +94,9 @@ Target branch: `feature/v1.3-data-governance-runtime`.
 - An empty writable Data workspace can load an explicitly synthetic 80-row
   practice CSV into the editor. The user must still inspect and confirm the
   DatasetContract before training. A real Studio route persisted a logistic
-  TrainingRun and restored its dataset and model evidence after close/reopen;
+  TrainingRun, validation Evaluation, post-hoc Explanation and ExplanationCheck,
+  AssuranceCase, and VerificationBundle. After close/reopen it restored the
+  evidence chain; the saved bundle can be reopened from Lineage.
   read-only sessions do not offer the practice loader. This is training
   practice data, not frozen research evidence. Exact source-byte SHA-256 keeps
   this practice designation visible after project reopen.

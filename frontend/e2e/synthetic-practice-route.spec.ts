@@ -2,8 +2,8 @@ import { expect, test } from "@playwright/test";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-test("a first-time user can turn the synthetic practice draft into a persisted training run", async ({ page }) => {
-  test.setTimeout(45_000);
+test("a first-time user can persist synthetic training, validation and explanation evidence", async ({ page }) => {
+  test.setTimeout(60_000);
   const path = join(tmpdir(), `ruflex-practice-route-${Date.now()}-${Math.random().toString(16).slice(2)}`);
   await page.goto("/");
   await page.getByLabel("Project path").fill(path);
@@ -33,6 +33,21 @@ test("a first-time user can turn the synthetic practice draft into a persisted t
   expect((await response).status()).toBe(201);
   await expect(page.locator(".run-provenance")).toContainText("model artifact persisted");
 
+  await page.getByRole("button", { name: "A", exact: true }).click();
+  await page.getByRole("button", { name: "Save validation evidence", exact: true }).click();
+  await expect(page.getByText("Validation ROC curve · raw model", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "E", exact: true }).click();
+  await page.getByRole("button", { name: "Generate explanation", exact: true }).click();
+  await expect(page.getByTestId("explanation-job")).toContainText("SUCCEEDED");
+  await expect(page.getByText("POST-HOC ATTRIBUTION", { exact: true }).first()).toBeVisible();
+  await page.getByRole("button", { name: "Run explanation checks", exact: true }).click();
+  await expect(page.getByText("PASSED_AVAILABLE_CHECKS", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Build AssuranceCase", exact: true }).click();
+  await expect(page.getByTestId("assurance-case")).toContainText("dataset contract");
+  await page.getByRole("button", { name: "Export and validate bundle", exact: true }).click();
+  await expect(page.getByTestId("verification-bundle")).toContainText("Portable validation");
+  await expect(page.getByTestId("verification-bundle")).toContainText("PASS");
+
   await page.getByRole("button", { name: "Close", exact: true }).click();
   await page.getByLabel("Project path").fill(path);
   await page.getByRole("button", { name: "Open project", exact: true }).click();
@@ -42,6 +57,15 @@ test("a first-time user can turn the synthetic practice draft into a persisted t
   await expect(page.getByTestId("synthetic-practice-provenance")).toContainText("synthetic practice fixture");
   await page.getByRole("button", { name: "S", exact: true }).click();
   await expect(page.locator(".run-provenance")).toContainText("model artifact persisted");
+  await page.getByRole("button", { name: "A", exact: true }).click();
+  await expect(page.getByText("Validation ROC curve · raw model", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "E", exact: true }).click();
+  await expect(page.getByTestId("explanation-job")).toContainText("SUCCEEDED");
+  await expect(page.getByText("PASSED_AVAILABLE_CHECKS", { exact: true })).toBeVisible();
+  await expect(page.getByTestId("assurance-case")).toContainText("dataset contract");
+  await page.getByRole("button", { name: "P", exact: true }).click();
+  await page.locator(".lineage-verification_bundle").first().click({ force: true });
+  await expect(page.getByTestId("verification-bundle-record")).toContainText("Persisted VerificationBundle");
 });
 
 test("synthetic practice loading is unavailable in a read-only project", async ({ page }) => {
