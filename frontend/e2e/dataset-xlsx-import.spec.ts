@@ -143,6 +143,59 @@ test("Studio invalidates a stale CSV inspection when the candidate is edited", a
   await expect(page.getByText("Rows: 2 · columns: 2", { exact: false })).toHaveCount(0);
 });
 
+test("Studio drops roles for columns removed from a re-inspected CSV draft", async ({ page }) => {
+  const path = projectPath();
+  await page.goto("/");
+  await page.getByLabel("Project path").fill(path);
+  await page.getByLabel("Project name").fill("CSV schema roles");
+  await page.getByRole("button", { name: "Create project", exact: true }).click();
+  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+
+  await page.getByLabel("CSV data").fill("old_id,old_feature,old_target\na,1,0\nb,2,1\n");
+  await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
+  await page.getByRole("combobox", { name: "Role for old_id" }).selectOption("id");
+  await page.getByRole("combobox", { name: "Role for old_feature" }).selectOption("excluded");
+  await page.getByRole("combobox", { name: "Role for old_target" }).selectOption("target");
+
+  await page.getByLabel("CSV data").fill("new_feature,new_target\n3,0\n4,1\n");
+  await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
+  await expect(page.getByRole("textbox", { name: "ID columns" })).toHaveValue("");
+  await expect(page.getByRole("textbox", { name: "Exclude from model" })).toHaveValue("");
+  await expect(page.getByRole("textbox", { name: "Target" })).toHaveValue("");
+  await expect(page.getByRole("button", { name: "Confirm dataset contract", exact: true })).toBeDisabled();
+});
+
+test("Studio does not carry ID and exclusion roles into a different selected file", async ({ page }) => {
+  const path = projectPath();
+  await page.goto("/");
+  await page.getByLabel("Project path").fill(path);
+  await page.getByLabel("Project name").fill("File roles");
+  await page.getByRole("button", { name: "Create project", exact: true }).click();
+  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+
+  await page.getByLabel("Dataset CSV or XLSX file").setInputFiles({
+    name: "first.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from("record_id,leak_hint,target\na,1,0\nb,0,1\n"),
+  });
+  await expect(page.getByLabel("Selected file schema preview")).toContainText("record_id");
+  await page.getByRole("combobox", { name: "Role for record_id" }).selectOption("id");
+  await page.getByRole("combobox", { name: "Role for leak_hint" }).selectOption("excluded");
+  await expect(page.getByRole("textbox", { name: "ID columns" })).toHaveValue("record_id");
+  await expect(page.getByRole("textbox", { name: "Exclude from model" })).toHaveValue("leak_hint");
+
+  await page.getByLabel("Dataset CSV or XLSX file").setInputFiles({
+    name: "second.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from("record_id,leak_hint,target\nc,3,0\nd,4,1\n"),
+  });
+  await expect(page.getByLabel("Selected file schema preview")).toContainText("second.csv");
+  await expect(page.getByRole("textbox", { name: "ID columns" })).toHaveValue("");
+  await expect(page.getByRole("textbox", { name: "Exclude from model" })).toHaveValue("");
+  await expect(page.getByRole("combobox", { name: "Role for record_id" })).toHaveValue("feature");
+  await expect(page.getByRole("combobox", { name: "Role for leak_hint" })).toHaveValue("feature");
+});
+
 test("Studio excludes an ordinary feature without assigning it an ID role and reopens the frozen choice", async ({ page }) => {
   const path = projectPath();
   await page.goto("/");

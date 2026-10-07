@@ -1333,8 +1333,12 @@ export function App() {
     try {
       const inspected = (await studioApi.inspectCsv(sessionId, csvText)).profile;
       if (!isCurrent()) return;
+      const availableColumns = new Set(inspected.columns.map((column) => column.name));
+      const retainedRoles = (value: string) => value.split(",").map((column) => column.trim()).filter((column) => availableColumns.has(column));
       setProfile(inspected);
-      setIdColumns((current) => current || inspected.id_candidates.join(", "));
+      setTarget((current) => availableColumns.has(current) ? current : "");
+      setIdColumns((current) => retainedRoles(current).join(", ") || inspected.id_candidates.join(", "));
+      setExcludedColumns((current) => retainedRoles(current).join(", "));
       setStatus("Dataset schema inspected");
     } catch (reason) {
       if (!isCurrent()) return;
@@ -1478,6 +1482,8 @@ export function App() {
     setError(null);
     if (!project || !file || (datasetStateStatus !== "none" && datasetStateStatus !== "available")) return;
     setTarget("");
+    setIdColumns("");
+    setExcludedColumns("");
     setInspectingDatasetFile(true);
     setStatus(`Inspecting ${file.name} without saving it`);
     try {
