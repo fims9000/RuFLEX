@@ -55,6 +55,11 @@ def test_project_integrity_survives_reopen_and_reports_missing_frozen_model_arti
     stale_run_pointer = client.get(f"/api/projects/{session_id}/integrity").json()
     assert any(issue["code"] == "TRAINING_RUN_ACTIVE_POINTER_INVALID" for issue in stale_run_pointer["issues"])
     active_run_path.write_text(json.dumps({"run_id": second_trained.json()["run_id"]}), encoding="utf-8")
+    active_run_contents = active_run_path.read_text(encoding="utf-8")
+    active_run_path.unlink()
+    missing_run_pointer = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert any(issue["code"] == "TRAINING_RUN_ACTIVE_POINTER_INVALID" for issue in missing_run_pointer["issues"])
+    active_run_path.write_text(active_run_contents, encoding="utf-8")
     assert client.post("/api/projects/close", json={"session_id": session_id}).status_code == 204
     reopened = client.post("/api/projects/open", json={"path": str(root), "read_only": True}).json()["session_id"]
     assert client.get(f"/api/projects/{reopened}/integrity").json()["status"] == "PASS"

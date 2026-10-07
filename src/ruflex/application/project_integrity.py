@@ -790,6 +790,8 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
         runs = []
         issues.append(ProjectIntegrityIssue(code="TRAINING_EVIDENCE_MALFORMED", status="FAIL", path="runs", detail=str(error)))
     active_run_path = base / "runs" / "active-training-run.json"
+    if runs and not active_run_path.exists():
+        issues.append(ProjectIntegrityIssue(code="TRAINING_RUN_ACTIVE_POINTER_INVALID", status="FAIL", path="runs/active-training-run.json", detail="Persisted TrainingRuns exist but the active-run pointer required by latest-run hydration is missing."))
     if active_run_path.exists():
         checked += 1
         try:

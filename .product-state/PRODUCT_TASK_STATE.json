@@ -228,12 +228,13 @@
     "alpha_assurance_active_pointer_integrity",
     "alpha_verification_bundle_active_pointer_integrity",
     "alpha_training_study_active_pointer_integrity",
-    "alpha_training_run_active_pointer_integrity"
+    "alpha_training_run_active_pointer_integrity",
+    "alpha_training_run_missing_pointer_integrity"
   ],
-  "active_capability": "alpha_training_run_active_pointer_integrity",
+  "active_capability": "alpha_training_run_missing_pointer_integrity",
   "active_acceptance": [
-    "The active TrainingRun pointer resolves to the latest persisted run under deterministic created_at/identity ordering.",
-    "Malformed, dangling, or stale run pointers fail Project Integrity instead of breaking latest-run hydration later."
+    "Persisted TrainingRuns require the active pointer needed by latest-run hydration.",
+    "Missing, malformed, dangling, or stale run pointers fail Project Integrity and can be restored without rewriting run evidence."
   ],
   "blockers": [],
   "next_executable_work": "Continue lightweight project-integrity audit for stale active pointers on other persisted analysis/evidence families; preserve unrelated article files.",
@@ -468,6 +469,7 @@
     "alpha_assurance_active_pointer_integrity": "PASS: Active AssuranceCase pointer must identify the latest persisted claim/gate snapshot; stale valid pointer fails integrity using two generated Assurance cases.",
     "alpha_verification_bundle_active_pointer_integrity": "PASS: Active VerificationBundle pointer must identify the latest persisted bundle after verifying linked AssuranceCase and archive SHA; stale valid bundle pointer fails integrity in a temporary project.",
     "alpha_training_study_active_pointer_integrity": "PASS: Active TrainingStudy pointer must identify the latest persisted study; rollback to the earlier fully valid study fails integrity using two real 3-run fixed-split studies.",
-    "alpha_training_run_active_pointer_integrity": "PASS: Active TrainingRun pointer must identify the latest persisted run; rollback to an older valid run fails Project Integrity before close/reopen. Focused lifecycle integrity test passed."
+    "alpha_training_run_active_pointer_integrity": "PASS: Active TrainingRun pointer must identify the latest persisted run; rollback to an older valid run fails Project Integrity before close/reopen. Focused lifecycle integrity test passed.",
+    "alpha_training_run_missing_pointer_integrity": "PASS: A missing active-training-run pointer with persisted runs now fails closed; recreating the pointer restores normal close/reopen behavior. Focused lifecycle integrity test passed."
   }
 }
