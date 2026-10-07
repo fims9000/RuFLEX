@@ -61,6 +61,14 @@ import { ProjectExplorer } from "../explorer/ProjectExplorer";
 
 type Panels = "explorer" | "inspector" | "bottom";
 const MAX_DATASET_UPLOAD_BYTES = 5_000_000;
+const SYNTHETIC_PRACTICE_CSV = [
+  "entity_id,temperature,torque,target",
+  ...Array.from({ length: 80 }, (_, index) => {
+    const temperature = 10 + index % 20;
+    const torque = 20 + index * 7 % 30;
+    return `practice-${String(index + 1).padStart(3, "0")},${temperature},${torque},${index % 20 >= 10 ? 1 : 0}`;
+  }),
+].join("\n") + "\n";
 type DataGovernanceObject =
   | { kind: "split_contract"; value: SplitContract }
   | { kind: "transform_pipeline"; value: TransformPipelineContract }
@@ -1989,6 +1997,18 @@ export function App() {
           <div className="data-layout">
             <div>
               {!dataset && datasetStateStatus === "none" && !pendingDatasetFile && <div className="info-message" role="status">This CSV is an editable draft only; inspect it and confirm the dataset contract to save it.</div>}
+              {datasetStateStatus === "none" && !project.read_only && <div className="info-message" role="group" aria-label="Synthetic practice dataset">
+                <p>The three-row editor example is for inspecting roles, not model training. For a first training run, load 80 deterministic synthetic practice rows or import your own dataset. Practice data is not research evidence.</p>
+                <Button view="outlined" disabled={importingDatasetFile || confirmingCsvDataset} onClick={() => {
+                  updateCsvText(SYNTHETIC_PRACTICE_CSV);
+                  setTarget("target");
+                  setTask("binary_classification");
+                  setIdColumns("");
+                  setExcludedColumns("");
+                  setStatus("Synthetic practice draft loaded; inspect and confirm it before training");
+                }}>Load synthetic practice CSV (80 rows)</Button>
+                <p className="property-description">This replaces only the unsaved CSV editor draft. Confirming it creates a normal persisted DatasetContract; it never starts training or opens the final test.</p>
+              </div>}
               <label className="field-label">
                 CSV data
                 <textarea

@@ -91,6 +91,12 @@ Target branch: `feature/v1.3-data-governance-runtime`.
   selected loopback Studio port as well as the built-in development ports.
   A live non-default-port launcher run created, closed and reopened a project;
   unrelated web origins remain outside the API CORS allowlist.
+- An empty writable Data workspace can load an explicitly synthetic 80-row
+  practice CSV into the editor. The user must still inspect and confirm the
+  DatasetContract before training. A real Studio route persisted a logistic
+  TrainingRun and restored its dataset and model evidence after close/reopen;
+  read-only sessions do not offer the practice loader. This is training
+  practice data, not frozen research evidence.
 - Project Integrity, Assurance and portable bundles reject missing or malformed
   manual-FIS comparison rows and mismatched semantic-revision provenance.
   A portable bundle excludes raw dataset rows, so it checks the frozen row's
