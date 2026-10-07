@@ -147,3 +147,67 @@ test("MATLAB FIS import completion does not overwrite an editor draft created wh
   await expect.poll(() => savedDraftResolution).toBe(draftResolution);
   expect(importRequests).toBe(2);
 });
+
+test("stale FIS diagnostics cannot replace a newer request result", async ({ page }) => {
+  const path = join(tmpdir(), `ruflex-fis-diagnostics-race-${Date.now()}`);
+  let requestCount = 0;
+  let releaseFirst: () => void = () => {};
+  let firstStarted: () => void = () => {};
+  const firstStartedPromise = new Promise<void>((resolve) => { firstStarted = resolve; });
+  await page.route("**/api/projects/fis/diagnostics", async (route) => {
+    requestCount += 1;
+    if (requestCount === 1) {
+      firstStarted();
+      await new Promise<void>((resolve) => { releaseFirst = resolve; });
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([{ code: "STALE_RESULT", severity: "warning", message: "Older diagnostics response" }]) });
+      return;
+    }
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([{ code: "LATEST_RESULT", severity: "info", message: "Newest diagnostics response" }]) });
+  });
+
+  await page.goto("/");
+  await page.getByLabel("Project path").fill(path);
+  await page.getByLabel("Project name").fill("FIS diagnostics race");
+  await page.getByRole("button", { name: "Create project", exact: true }).click();
+  await page.getByRole("button", { name: "M", exact: true }).click();
+  await page.getByLabel("MATLAB FIS file").setInputFiles({ name: "tipper.fis", mimeType: "text/plain", buffer: Buffer.from(matlabFis) });
+  await expect(page.getByRole("heading", { name: "tipper", exact: true })).toBeVisible();
+
+  const refresh = page.getByRole("button", { name: "Refresh diagnostics", exact: true });
+  await refresh.evaluate((button) => {
+    button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+  await firstStartedPromise;
+  await expect(page.getByText("LATEST_RESULT: Newest diagnostics response", { exact: true })).toBeVisible();
+  releaseFirst();
+  await expect(page.getByText("LATEST_RESULT: Newest diagnostics response", { exact: true })).toBeVisible();
+  await expect(page.getByText(/STALE_RESULT/)).toHaveCount(0);
+  expect(requestCount).toBe(2);
+});
+
+test("FIS edits invalidate diagnostics computed for the previous snapshot", async ({ page }) => {
+  const path = join(tmpdir(), `ruflex-fis-diagnostics-snapshot-${Date.now()}`);
+  let releaseDiagnostics: () => void = () => {};
+  let diagnosticsStarted: () => void = () => {};
+  const diagnosticsStartedPromise = new Promise<void>((resolve) => { diagnosticsStarted = resolve; });
+  await page.route("**/api/projects/fis/diagnostics", async (route) => {
+    diagnosticsStarted();
+    await new Promise<void>((resolve) => { releaseDiagnostics = resolve; });
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([{ code: "OLD_FIS_SNAPSHOT", severity: "warning", message: "Diagnostics for the prior FIS" }]) });
+  });
+
+  await page.goto("/");
+  await page.getByLabel("Project path").fill(path);
+  await page.getByLabel("Project name").fill("FIS diagnostics snapshot");
+  await page.getByRole("button", { name: "Create project", exact: true }).click();
+  await page.getByRole("button", { name: "M", exact: true }).click();
+  await page.getByLabel("MATLAB FIS file").setInputFiles({ name: "tipper.fis", mimeType: "text/plain", buffer: Buffer.from(matlabFis) });
+  await expect(page.getByRole("heading", { name: "tipper", exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "Refresh diagnostics", exact: true }).click();
+  await diagnosticsStartedPromise;
+  await page.getByLabel("FIS family").selectOption("sugeno");
+  releaseDiagnostics();
+  await expect(page.getByText(/OLD_FIS_SNAPSHOT/)).toHaveCount(0);
+});

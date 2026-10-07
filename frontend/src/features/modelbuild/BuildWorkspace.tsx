@@ -392,9 +392,14 @@ export function BuildWorkspace({
   const [diagnostics, setDiagnostics] = useState<
     Array<{ code: string; severity: string; message: string }>
   >([]);
+  const diagnosticsRequestRef = useRef(0);
   const [message, setMessage] = useState<string | null>(null);
   useEffect(() => {
     workingRef.current = working;
+  }, [working]);
+  useEffect(() => {
+    diagnosticsRequestRef.current += 1;
+    setDiagnostics([]);
   }, [working]);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => { setLastOutput(evaluation); }, [evaluation]);
@@ -1300,10 +1305,15 @@ export function BuildWorkspace({
   }
   async function refreshDiagnostics() {
     if (!working) return;
+    const requestId = ++diagnosticsRequestRef.current;
+    const requestedSpec = working;
     setError(null);
     try {
-      setDiagnostics(await studioApi.diagnoseFis(project.session_id, working));
+      const result = await studioApi.diagnoseFis(project.session_id, requestedSpec);
+      if (requestId !== diagnosticsRequestRef.current) return;
+      setDiagnostics(result);
     } catch (reason) {
+      if (requestId !== diagnosticsRequestRef.current) return;
       setError(reason instanceof Error ? reason.message : "FIS diagnostics failed");
     }
   }
