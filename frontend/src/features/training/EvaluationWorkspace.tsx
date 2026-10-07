@@ -358,16 +358,16 @@ export function EvaluationWorkspace({
     try {
       try {
         if (pending.kind === "calibration") {
-          const latest = await studioApi.getLatestAnalysisCalibration(project.session_id);
-          if (latest.evaluation_id !== pending.evaluationId) throw new Error("The latest calibration belongs to another Evaluation; no replacement was created.");
+          const latest = await studioApi.getLatestAnalysisCalibrationForEvaluation(project.session_id, pending.evaluationId);
+          if (latest.evaluation_id !== pending.evaluationId) throw new Error("Recovered calibration belongs to another Evaluation; no replacement was created.");
           onCalibration(latest); onThreshold(null);
         } else if (pending.kind === "threshold") {
           const latest = await studioApi.getLatestAnalysisThresholdForEvaluation(project.session_id, pending.evaluationId, pending.calibrationId);
           if (latest.evaluation_id !== pending.evaluationId || latest.calibration_id !== pending.calibrationId) throw new Error("The latest threshold belongs to another Evaluation or calibration; no replacement was created.");
           onThreshold(latest);
         } else {
-          const latest = await studioApi.getLatestSelectivePolicy(project.session_id);
-          if (latest.evaluation_id !== pending.evaluationId || latest.confidence_cutoff !== pending.confidenceCutoff || latest.calibration_id !== pending.calibrationId || latest.class_threshold_id !== pending.thresholdId) throw new Error("The latest selective policy does not match the exact Evaluation, cutoff, calibration and threshold; no replacement was created.");
+          const latest = await studioApi.getLatestSelectivePolicyForBinding(project.session_id, pending.evaluationId, pending.confidenceCutoff, pending.calibrationId, pending.thresholdId);
+          if (latest.evaluation_id !== pending.evaluationId || latest.confidence_cutoff !== pending.confidenceCutoff || latest.calibration_id !== pending.calibrationId || latest.class_threshold_id !== pending.thresholdId) throw new Error("Recovered selective policy does not match the exact Evaluation, cutoff, calibration and threshold; no replacement was created.");
           onSelectivePolicy(latest);
         }
         setPolicyRecovery(null);

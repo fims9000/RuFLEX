@@ -549,6 +549,11 @@ export const studioApi = {
   applyStabilityGatePolicy: (sessionId: string, policyId: string, sample: Record<string, number>, metadata: Record<string, unknown> = {}, generalizationContractId: string | null = null) => request<StabilityGateApplication>("/api/projects/analyses/stability-policies/apply", { session_id: sessionId, policy_id: policyId, sample, metadata, generalization_contract_id: generalizationContractId }),
   getLatestSelectivePolicy: (sessionId: string) =>
     request<SelectivePredictionPolicy>(`/api/projects/${sessionId}/analyses/selective-policies/latest`),
+  getLatestSelectivePolicyForBinding: (sessionId: string, evaluationId: string, confidenceCutoff: number, calibrationId: string | null, thresholdId: string) => {
+    const params = new URLSearchParams({ evaluation_id: evaluationId, confidence_cutoff: String(confidenceCutoff), threshold_id: thresholdId });
+    if (calibrationId !== null) params.set("calibration_id", calibrationId);
+    return request<SelectivePredictionPolicy>(`/api/projects/${sessionId}/analyses/selective-policies/by-binding/latest?${params.toString()}`);
+  },
   getSelectivePolicy: (sessionId: string, policyId: string) => request<SelectivePredictionPolicy>(`/api/projects/${sessionId}/analyses/selective-policies/${policyId}`),
   applySelectivePolicy: (sessionId: string, policyId: string, sample: Record<string, number>, metadata: Record<string, unknown> = {}, generalizationContractId: string | null = null) =>
     request<{ policy_id: string; probability: number; predicted_label: number; confidence: number; disposition: "ACCEPT" | "REVIEW" | "OUT_OF_SCOPE"; scope_disposition: string; reasons: string[] }>("/api/projects/analyses/selective-policies/apply", { session_id: sessionId, policy_id: policyId, sample, metadata, generalization_contract_id: generalizationContractId }),
@@ -631,6 +636,8 @@ export const studioApi = {
     }),
   getLatestAnalysisCalibration: (sessionId: string) =>
     request<CalibrationTransform>(`/api/projects/${sessionId}/analyses/calibrations/latest`),
+  getLatestAnalysisCalibrationForEvaluation: (sessionId: string, evaluationId: string) =>
+    request<CalibrationTransform>(`/api/projects/${sessionId}/analyses/calibrations/by-evaluation/${evaluationId}/latest`),
   getAnalysisCalibration: (sessionId: string, calibrationId: string) =>
     request<CalibrationTransform>(`/api/projects/${sessionId}/analyses/calibrations/${calibrationId}`),
   selectAnalysisThreshold: (sessionId: string, evaluationId: string, calibrationId?: string | null) =>

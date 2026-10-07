@@ -7,7 +7,9 @@ const { studioApi } = vi.hoisted(() => ({ studioApi: {
   evaluateFinalTest: vi.fn(),
   createAnalysisEvaluation: vi.fn(),
   getLatestAnalysisEvaluationForRun: vi.fn(),
+  getLatestAnalysisCalibrationForEvaluation: vi.fn(),
   getLatestAnalysisThresholdForEvaluation: vi.fn(),
+  getLatestSelectivePolicyForBinding: vi.fn(),
   fitAnalysisCalibration: vi.fn(),
   selectAnalysisThreshold: vi.fn(),
   createSelectivePolicy: vi.fn(),
@@ -69,14 +71,16 @@ function renderWorkspace(readOnly = false, overrides: {
   validationPolicyEvidenceError?: string | null;
   onRetryValidationPolicyEvidence?: () => void;
   onEvaluation?: (evaluation: unknown) => void;
+  onCalibration?: (calibration: unknown) => void;
   onThreshold?: (threshold: unknown) => void;
+  onSelectivePolicy?: (policy: unknown) => void;
 } = {}) {
   return render(<EvaluationWorkspace
     project={{ ...project, read_only: readOnly } as never} dataset={(overrides.dataset === undefined ? dataset : overrides.dataset) as never} datasetHydrationStatus={overrides.datasetHydrationStatus ?? "available"} datasetHydrationError={overrides.datasetHydrationError ?? null} onRetryDatasetHydration={overrides.onRetryDatasetHydration ?? vi.fn()} fis={null} run={(overrides.run === undefined ? run : overrides.run) as never} runs={(overrides.runs ?? [run]) as never} runListStatus={overrides.runListStatus ?? "loaded"} runListError={overrides.runListError ?? null} onRetryRunList={overrides.onRetryRunList ?? vi.fn()} study={null}
     evaluation={(overrides.evaluationStatus === "error" ? null : evaluation) as never} evaluationStatus={overrides.evaluationStatus ?? "available"} evaluationError={overrides.evaluationError ?? null} onRetryEvaluation={overrides.onRetryEvaluation ?? vi.fn()} validationPolicyEvidenceStatus={overrides.validationPolicyEvidenceStatus ?? "available"} validationPolicyEvidenceError={overrides.validationPolicyEvidenceError ?? null} onRetryValidationPolicyEvidence={overrides.onRetryValidationPolicyEvidence ?? vi.fn()} calibrationTransform={null} decisionThreshold={(overrides.decisionThreshold === undefined ? threshold : overrides.decisionThreshold) as never} finalTestEvaluation={(overrides.finalTestEvaluation ?? null) as never}
     finalTestEvidenceStatus={overrides.finalTestEvidenceStatus ?? "none"} finalTestEvidenceError={overrides.finalTestEvidenceError ?? null} onRetryFinalTestEvidence={overrides.onRetryFinalTestEvidence ?? vi.fn()}
     comparison={null} sliceAnalysis={null} selectivePolicy={(overrides.selectivePolicy ?? null) as never} stabilityGatePolicy={(overrides.stabilityGatePolicy ?? null) as never} theme={"light" as never}
-    onEvaluation={overrides.onEvaluation ?? vi.fn()} onCalibration={vi.fn()} onThreshold={overrides.onThreshold ?? vi.fn()} onFinalTest={vi.fn()} onComparison={vi.fn()} onSliceAnalysis={vi.fn()} onSelectivePolicy={vi.fn()}
+    onEvaluation={overrides.onEvaluation ?? vi.fn()} onCalibration={overrides.onCalibration ?? vi.fn()} onThreshold={overrides.onThreshold ?? vi.fn()} onFinalTest={vi.fn()} onComparison={vi.fn()} onSliceAnalysis={vi.fn()} onSelectivePolicy={overrides.onSelectivePolicy ?? vi.fn()}
   />);
 }
 
@@ -110,6 +114,36 @@ describe("EvaluationWorkspace final-test boundary", () => {
     await waitFor(() => expect(onThreshold).toHaveBeenCalledWith(threshold));
     expect(studioApi.getLatestAnalysisThresholdForEvaluation).toHaveBeenCalledWith("session", evaluation.evaluation_id, null);
     expect(screen.queryByTestId("validation-policy-recovery")).not.toBeInTheDocument();
+  });
+
+  it("recovers calibration only through the exact Evaluation lookup", async () => {
+    const calibration = { calibration_id: "calibration-1", evaluation_id: evaluation.evaluation_id, run_id: evaluation.run_id };
+    const onCalibration = vi.fn();
+    studioApi.fitAnalysisCalibration.mockRejectedValueOnce(new Error("calibration pointer write failed"));
+    studioApi.getLatestAnalysisCalibrationForEvaluation.mockResolvedValueOnce(calibration);
+    renderWorkspace(false, { onCalibration });
+
+    fireEvent.click(screen.getByRole("button", { name: "Fit validation calibration" }));
+    expect(await screen.findByTestId("validation-policy-recovery")).toHaveTextContent("calibration pointer write failed");
+    fireEvent.click(screen.getByRole("button", { name: "Retry exact saved policy lookup" }));
+
+    await waitFor(() => expect(onCalibration).toHaveBeenCalledWith(calibration));
+    expect(studioApi.getLatestAnalysisCalibrationForEvaluation).toHaveBeenCalledWith("session", evaluation.evaluation_id);
+  });
+
+  it("recovers selective policy using the exact Evaluation, cutoff, calibration and threshold", async () => {
+    const policy = { policy_id: "policy-1", evaluation_id: evaluation.evaluation_id, confidence_cutoff: .8, calibration_id: null, class_threshold_id: threshold.threshold_id };
+    const onSelectivePolicy = vi.fn();
+    studioApi.createSelectivePolicy.mockRejectedValueOnce(new Error("selective pointer write failed"));
+    studioApi.getLatestSelectivePolicyForBinding.mockResolvedValueOnce(policy);
+    renderWorkspace(false, { onSelectivePolicy });
+
+    fireEvent.click(screen.getByRole("button", { name: "Save ACCEPT / REVIEW policy" }));
+    expect(await screen.findByTestId("validation-policy-recovery")).toHaveTextContent("selective pointer write failed");
+    fireEvent.click(screen.getByRole("button", { name: "Retry exact saved policy lookup" }));
+
+    await waitFor(() => expect(onSelectivePolicy).toHaveBeenCalledWith(policy));
+    expect(studioApi.getLatestSelectivePolicyForBinding).toHaveBeenCalledWith("session", evaluation.evaluation_id, .8, null, threshold.threshold_id);
   });
 
   it("labels the default 0.50 confusion matrix as a preview rather than a frozen threshold policy", () => {

@@ -1504,6 +1504,31 @@ def load_latest_validation_calibration(project_root: Path) -> CalibrationTransfo
     return load_validation_calibration(project_root, UUID(pointer["calibration_id"]))
 
 
+def load_latest_validation_calibration_for_evaluation(
+    project_root: Path,
+    evaluation_id: UUID,
+) -> CalibrationTransform:
+    """Recover immutable calibration evidence for its exact validation Evaluation."""
+    latest: CalibrationTransform | None = None
+    for path in _calibrations_root(project_root).glob("*.json"):
+        if path.name == "active-calibration.json":
+            continue
+        try:
+            UUID(path.stem)
+        except ValueError:
+            continue
+        item = CalibrationTransform.model_validate_json(path.read_text(encoding="utf-8"))
+        if path.stem != str(item.calibration_id):
+            raise TrainingError(f"Persisted calibration identity does not match its filename: {path.name}.")
+        if item.evaluation_id != evaluation_id:
+            continue
+        if latest is None or (item.created_at, str(item.calibration_id)) > (latest.created_at, str(latest.calibration_id)):
+            latest = item
+    if latest is None:
+        raise FileNotFoundError(f"No validation calibration exists for Evaluation {evaluation_id}.")
+    return latest
+
+
 def _latest_calibration_for_run(project_root: Path, run_id: UUID) -> CalibrationTransform | None:
     matches: list[CalibrationTransform] = []
     for path in _calibrations_root(project_root).glob("*.json"):

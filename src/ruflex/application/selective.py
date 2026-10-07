@@ -94,3 +94,36 @@ def apply_selective_policy(project_root: Path, policy_id: UUID, sample: dict[str
 def load_latest_selective_policy(project_root: Path) -> SelectivePredictionPolicy:
     pointer = json.loads((_root(project_root) / "active-policy.json").read_text())
     return load_selective_policy(project_root, UUID(pointer["policy_id"]))
+
+
+def load_latest_selective_policy_for_binding(
+    project_root: Path,
+    evaluation_id: UUID,
+    confidence_cutoff: float,
+    calibration_id: UUID | None,
+    threshold_id: UUID,
+) -> SelectivePredictionPolicy:
+    """Recover immutable policy evidence by the exact request binding."""
+    latest: SelectivePredictionPolicy | None = None
+    for path in _root(project_root).glob("*.json"):
+        if path.name == "active-policy.json":
+            continue
+        try:
+            UUID(path.stem)
+        except ValueError:
+            continue
+        policy = SelectivePredictionPolicy.model_validate_json(path.read_text(encoding="utf-8"))
+        if path.stem != str(policy.policy_id):
+            raise TrainingError(f"Persisted selective-policy identity does not match its filename: {path.name}.")
+        if (
+            policy.evaluation_id != evaluation_id
+            or policy.confidence_cutoff != confidence_cutoff
+            or policy.calibration_id != calibration_id
+            or policy.class_threshold_id != threshold_id
+        ):
+            continue
+        if latest is None or (policy.created_at, str(policy.policy_id)) > (latest.created_at, str(latest.policy_id)):
+            latest = policy
+    if latest is None:
+        raise FileNotFoundError("No selective-review policy exists for the exact Evaluation, cutoff, calibration and threshold binding.")
+    return latest

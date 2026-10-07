@@ -1881,7 +1881,9 @@ def fit_analysis_calibration(request: FitAnalysisCalibrationRequest) -> Calibrat
         raise _project_error(error) from error
     except FileNotFoundError as error:
         raise HTTPException(status_code=404, detail="The selected validation evaluation does not exist in this project.") from error
-    except (TrainingError, ValueError, OSError) as error:
+    except OSError as error:
+        raise HTTPException(status_code=500, detail="Calibration persistence failed; look up the exact Evaluation before retrying.") from error
+    except (TrainingError, ValueError) as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
 
 
@@ -1894,6 +1896,21 @@ def get_latest_analysis_calibration(session_id: UUID) -> CalibrationTransform:
         raise _project_error(error) from error
     except FileNotFoundError as error:
         raise HTTPException(status_code=404, detail="No persisted calibration transform exists in this project.") from error
+
+
+@app.get("/api/projects/{session_id}/analyses/calibrations/by-evaluation/{evaluation_id}/latest", response_model=CalibrationTransform)
+def get_latest_analysis_calibration_for_evaluation(session_id: UUID, evaluation_id: UUID) -> CalibrationTransform:
+    from ruflex.application.training import TrainingError, load_latest_validation_calibration_for_evaluation
+    try:
+        return load_latest_validation_calibration_for_evaluation(service.get(session_id).project.root, evaluation_id)
+    except ProjectError as error:
+        raise _project_error(error) from error
+    except FileNotFoundError as error:
+        raise HTTPException(status_code=404, detail="No persisted calibration exists for this exact Evaluation.") from error
+    except (TrainingError, ValueError) as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    except OSError as error:
+        raise HTTPException(status_code=500, detail="Persisted calibration lookup failed.") from error
 
 
 @app.get("/api/projects/{session_id}/analyses/calibrations/{calibration_id}", response_model=CalibrationTransform)
@@ -1989,7 +2006,11 @@ def create_selective_policy_route(request: CreateSelectivePolicyRequest) -> Sele
         return create_selective_policy(session.project.root, request.evaluation_id, request.confidence_cutoff, request.calibration_id, request.threshold_id)
     except ProjectError as error:
         raise _project_error(error) from error
-    except (TrainingError, FileNotFoundError, ValueError, OSError) as error:
+    except FileNotFoundError as error:
+        raise HTTPException(status_code=404, detail="The selected validation evidence or bound policy object does not exist.") from error
+    except OSError as error:
+        raise HTTPException(status_code=500, detail="Selective-policy persistence failed; look up the exact request binding before retrying.") from error
+    except (TrainingError, ValueError) as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
 
 
@@ -2002,6 +2023,34 @@ def get_latest_selective_policy(session_id: UUID) -> SelectivePredictionPolicy:
         raise _project_error(error) from error
     except FileNotFoundError as error:
         raise HTTPException(status_code=404, detail="No persisted selective-review policy exists in this project.") from error
+
+
+@app.get("/api/projects/{session_id}/analyses/selective-policies/by-binding/latest", response_model=SelectivePredictionPolicy)
+def get_latest_selective_policy_for_binding(
+    session_id: UUID,
+    evaluation_id: UUID,
+    confidence_cutoff: float,
+    threshold_id: UUID,
+    calibration_id: UUID | None = None,
+) -> SelectivePredictionPolicy:
+    from ruflex.application.selective import load_latest_selective_policy_for_binding
+    from ruflex.application.training import TrainingError
+    try:
+        return load_latest_selective_policy_for_binding(
+            service.get(session_id).project.root,
+            evaluation_id,
+            confidence_cutoff,
+            calibration_id,
+            threshold_id,
+        )
+    except ProjectError as error:
+        raise _project_error(error) from error
+    except FileNotFoundError as error:
+        raise HTTPException(status_code=404, detail="No persisted selective policy exists for this exact request binding.") from error
+    except (TrainingError, ValueError) as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    except OSError as error:
+        raise HTTPException(status_code=500, detail="Persisted selective-policy lookup failed.") from error
 
 
 @app.get("/api/projects/{session_id}/analyses/selective-policies/{policy_id}", response_model=SelectivePredictionPolicy)

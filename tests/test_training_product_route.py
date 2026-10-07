@@ -403,6 +403,68 @@ def test_validation_threshold_recovers_by_evaluation_after_active_pointer_write_
     assert client.get(f"/api/projects/{session_id}/analyses/thresholds/latest").status_code == 404
 
 
+def test_calibration_and_selective_policy_recover_by_exact_binding_after_pointer_failure(tmp_path: Path, monkeypatch) -> None:
+    client = TestClient(app)
+    root = tmp_path / "validation-policy-recovery"
+    session_id = client.post("/api/projects", json={"path": str(root), "name": "Validation policy recovery"}).json()["session_id"]
+    confirmed = client.post("/api/projects/dataset/confirm", json={"session_id": session_id, "csv_text": _binary_frame().to_csv(index=False), "target": "target", "task": "binary_classification", "id_columns": []})
+    assert confirmed.status_code == 200, confirmed.text
+    trained = client.post("/api/projects/training/run", json={"session_id": session_id, "model_kind": "logistic_regression", "seed": 33, "max_epochs": 1, "learning_rate": .01, "batch_size": 16, "patience": 1, "validation_fraction": .2, "test_fraction": .2, "max_rules": 3})
+    assert trained.status_code == 201, trained.text
+    evaluation = client.post("/api/projects/analyses/evaluations", json={"session_id": session_id, "run_id": trained.json()["run_id"]})
+    assert evaluation.status_code == 201, evaluation.text
+    evaluation_id = evaluation.json()["evaluation_id"]
+
+    original_training_write = training_application._atomic_write_text
+
+    def fail_calibration_pointer(path, text):
+        if Path(path).name == "active-calibration.json":
+            raise OSError("simulated active calibration pointer failure")
+        return original_training_write(path, text)
+
+    monkeypatch.setattr(training_application, "_atomic_write_text", fail_calibration_pointer)
+    calibration_response = client.post("/api/projects/analyses/calibrations", json={"session_id": session_id, "evaluation_id": evaluation_id})
+    assert calibration_response.status_code == 500
+    assert "exact Evaluation" in calibration_response.json()["detail"]
+    calibration_lookup = f"/api/projects/{session_id}/analyses/calibrations/by-evaluation/{evaluation_id}/latest"
+    recovered_calibration = client.get(calibration_lookup)
+    assert recovered_calibration.status_code == 200, recovered_calibration.text
+    calibration_id = recovered_calibration.json()["calibration_id"]
+    assert recovered_calibration.json()["evaluation_id"] == evaluation_id
+    assert recovered_calibration.json()["source_split"] == "validation"
+    assert client.get(f"/api/projects/{session_id}/analyses/calibrations/latest").status_code == 404
+    other_evaluation = "00000000-0000-4000-8000-000000000001"
+    assert client.get(f"/api/projects/{session_id}/analyses/calibrations/by-evaluation/{other_evaluation}/latest").status_code == 404
+
+    threshold = client.post("/api/projects/analyses/thresholds", json={"session_id": session_id, "evaluation_id": evaluation_id, "calibration_id": calibration_id, "objective": "f1"})
+    assert threshold.status_code == 201, threshold.text
+    threshold_id = threshold.json()["threshold_id"]
+
+    from ruflex.application import selective as selective_application
+    original_selective_write = selective_application._atomic_write_text
+
+    def fail_selective_pointer(path, text):
+        if Path(path).name == "active-policy.json":
+            raise OSError("simulated active selective policy pointer failure")
+        return original_selective_write(path, text)
+
+    monkeypatch.setattr(selective_application, "_atomic_write_text", fail_selective_pointer)
+    policy_request = {"session_id": session_id, "evaluation_id": evaluation_id, "confidence_cutoff": .8, "calibration_id": calibration_id, "threshold_id": threshold_id}
+    policy_response = client.post("/api/projects/analyses/selective-policies", json=policy_request)
+    assert policy_response.status_code == 500
+    assert "exact request binding" in policy_response.json()["detail"]
+    lookup = f"/api/projects/{session_id}/analyses/selective-policies/by-binding/latest"
+    recovered_policy = client.get(lookup, params={key: value for key, value in policy_request.items() if key != "session_id"})
+    assert recovered_policy.status_code == 200, recovered_policy.text
+    assert recovered_policy.json()["evaluation_id"] == evaluation_id
+    assert recovered_policy.json()["calibration_id"] == calibration_id
+    assert recovered_policy.json()["class_threshold_id"] == threshold_id
+    assert recovered_policy.json()["confidence_cutoff"] == .8
+    assert client.get(f"/api/projects/{session_id}/analyses/selective-policies/latest").status_code == 404
+    mismatched = client.get(lookup, params={"evaluation_id": evaluation_id, "confidence_cutoff": .85, "calibration_id": calibration_id, "threshold_id": threshold_id})
+    assert mismatched.status_code == 404
+
+
 def test_validation_comparison_persists_compatible_seed_runs_and_rejects_duplicates(tmp_path: Path) -> None:
     client = TestClient(app)
     root = tmp_path / "comparison"
