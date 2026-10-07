@@ -29,6 +29,7 @@ const { studioApi } = vi.hoisted(() => ({ studioApi: {
   startStudyJob: vi.fn(),
   cancelStudyJob: vi.fn(),
   runTraining: vi.fn(),
+  getTrainingRuns: vi.fn().mockResolvedValue([]),
   getStudyJob: vi.fn(),
   resumeStudyJob: vi.fn(),
   getLatestTrainingStudy: vi.fn(),
@@ -69,6 +70,8 @@ beforeEach(() => {
   studioApi.startStudyJob.mockReset();
   studioApi.cancelStudyJob.mockReset();
   studioApi.runTraining.mockReset();
+  studioApi.getTrainingRuns.mockReset();
+  studioApi.getTrainingRuns.mockResolvedValue([]);
 });
 
 describe("ExperimentWorkspace dynamic model controls", () => {
@@ -164,6 +167,31 @@ describe("ExperimentWorkspace dynamic model controls", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Configured estimator parameter is invalid.");
     expect(screen.queryByTestId("training-run-recovery")).not.toBeInTheDocument();
     expect(runButton).toBeEnabled();
+  });
+
+  it("does not offer explicit single-fit retry while a restored StudyJob is active", async () => {
+    const activeJob = {
+      job_id: "job-running", name: "Active Study", model_kind: "logistic_regression", selection_metric: "f1",
+      status: "RUNNING", cancel_requested: false, seed_states: [{ seed: 3, status: "RUNNING", run_id: null, runtime_seconds: null, error: null }],
+      study_id: null, error: null, execution_backend: "LOCAL", execution_backend_key: "local_executor", execution_config: {}, recovery_count: 0, recovery_note: null,
+    };
+    studioApi.runTraining.mockRejectedValueOnce(new Error("training response lost"));
+    studioApi.listStudyJobs.mockResolvedValueOnce([]).mockResolvedValueOnce([activeJob]);
+    studioApi.getTrainingRuns.mockResolvedValueOnce([]);
+    const view = render(<ExperimentWorkspace project={project} dataset={dataset as never} run={null} study={null} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);
+
+    const runButton = await screen.findByRole("button", { name: "Run real training" });
+    await waitFor(() => expect(runButton).toBeEnabled());
+    fireEvent.click(runButton);
+    expect(await screen.findByTestId("training-run-recovery")).toBeVisible();
+
+    view.rerender(<ExperimentWorkspace project={{ ...project, session_id: "session-reopened" }} dataset={dataset as never} run={null} study={null} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);
+    await screen.findByText(/Study job RUNNING/);
+    fireEvent.click(screen.getByRole("button", { name: "Retry exact TrainingRun lookup" }));
+    const explicitRetry = await screen.findByRole("button", { name: "Explicitly start a new fit with these settings" });
+    await waitFor(() => expect(explicitRetry).toBeDisabled());
+    fireEvent.click(explicitRetry);
+    expect(studioApi.runTraining).toHaveBeenCalledTimes(1);
   });
 
   it("synchronously rejects duplicate single-run submissions before React can rerender", async () => {

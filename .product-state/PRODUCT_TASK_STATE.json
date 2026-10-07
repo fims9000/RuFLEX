@@ -282,13 +282,14 @@
     "alpha_training_study_execution_mutex",
     "alpha_study_resume_duplicate_guard",
     "alpha_study_submission_duplicate_guard",
-    "alpha_study_cancel_duplicate_guard"
+    "alpha_study_cancel_duplicate_guard",
+    "alpha_uncertain_training_retry_study_guard"
   ],
-  "active_capability": "alpha_study_cancel_duplicate_guard",
+  "active_capability": "alpha_uncertain_training_retry_study_guard",
   "active_acceptance": [
-    "Canceling one persisted StudyJob sends at most one request while that cancellation is unresolved.",
-    "The cancel control displays pending progress and disables during the write.",
-    "The synchronous guard releases in finally after success or failure, preserving explicit recovery."
+    "An uncertain single-fit recovery cannot expose an explicit repeat action while a persisted StudyJob is active.",
+    "The retry control stays visibly disabled during unresolved StudyJob hydration or QUEUED/RUNNING state.",
+    "The handler and visible control agree, and no second single-fit request can be sent."
   ],
   "blockers": [],
   "next_executable_work": "Inspect the next user-facing alpha workflow for an evidenced reliability/usability gap; use focused, low-resource checks and commit each verified slice locally.",
@@ -577,6 +578,7 @@
     "alpha_training_study_execution_mutex": "PASS: single-run fitting now fails closed until saved StudyJob status is restored and while any persisted StudyJob is QUEUED/RUNNING; the submit handler enforces the same guard as the disabled control. Explicit repeat of an uncertain single fit also refuses to overlap an active/unresolved Study. ExperimentWorkspace unit suite: 25 passed; TypeScript project build and git diff --check passed.",
     "alpha_study_resume_duplicate_guard": "PASS: Resume persisted study now has a synchronous in-flight guard, preventing duplicate backend resume requests before React updates; the guard releases in finally. ExperimentWorkspace unit suite: 26 passed; TypeScript project build and git diff --check passed.",
     "alpha_study_submission_duplicate_guard": "PASS: Initial Study creation and exact retry now use a synchronous request guard before API submission; single-run fit and Study submission reject overlapping writes. A rapid double-submit regression test confirms one backend request. ExperimentWorkspace unit suite: 27 passed; TypeScript project build and git diff --check passed.",
-    "alpha_study_cancel_duplicate_guard": "PASS: Cancel Study now rejects repeated in-flight cancellation at the handler, shows 'Requesting cancellation…', and disables the control until the persisted cancellation response arrives. Delayed double-click regression confirms exactly one API request. ExperimentWorkspace unit suite: 28 passed; TypeScript project build, state JSON parse and git diff --check passed."
+    "alpha_study_cancel_duplicate_guard": "PASS: Cancel Study now rejects repeated in-flight cancellation at the handler, shows 'Requesting cancellation…', and disables the control until the persisted cancellation response arrives. Delayed double-click regression confirms exactly one API request. ExperimentWorkspace unit suite: 28 passed; TypeScript project build, state JSON parse and git diff --check passed.",
+    "alpha_uncertain_training_retry_study_guard": "PASS: explicit repeat of an uncertain single TrainingRun is disabled after project reopen when an active StudyJob is restored; retry lookup remains available, and no second fit request is emitted. ExperimentWorkspace unit suite, TypeScript build, state JSON parse and git diff --check verified."
   }
 }
