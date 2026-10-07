@@ -739,6 +739,36 @@ def _active_latest_pointer_issue(
     return None
 
 
+def _dataset_contract_profile_mismatch(contract: DatasetContract, profile: DatasetProfile) -> str | None:
+    """Check that confirmed target/ID/feature roles agree with the profiled schema."""
+    columns = [column.name for column in profile.columns]
+    if len(columns) != len(set(columns)):
+        return "DatasetProfile contains duplicate column names."
+    if contract.target not in columns:
+        return "DatasetContract target is absent from the DatasetProfile."
+    if len(contract.id_columns) != len(set(contract.id_columns)) or not set(contract.id_columns) <= set(columns):
+        return "DatasetContract ID columns are duplicated or absent from the DatasetProfile."
+    if contract.target in contract.id_columns:
+        return "DatasetContract target cannot also be an ID column."
+    expected_features = [name for name in columns if name not in {contract.target, *contract.id_columns}]
+    if contract.feature_columns != expected_features:
+        return "DatasetContract feature columns/order do not match its confirmed target and ID roles."
+    if contract.role_decisions:
+        expected_roles = {
+            name: "target" if name == contract.target else "id" if name in contract.id_columns else "feature"
+            for name in columns
+        }
+        if contract.role_decisions != expected_roles:
+            return "DatasetContract role_decisions do not match its target, ID, and feature columns."
+    profile_payload = json.dumps([(column.name, column.dtype, column.semantic_type) for column in profile.columns]) + profile.source_artifact_sha256
+    expected_fingerprint = hashlib.sha256(profile_payload.encode()).hexdigest()
+    if profile.fingerprint != expected_fingerprint:
+        return "DatasetProfile fingerprint does not match its persisted column schema and source artifact identity."
+    if profile.source_artifact_sha256 != contract.source_artifact_sha256:
+        return "DatasetProfile source artifact identity does not match the DatasetContract."
+    return None
+
+
 def _load_pointer_collection(
     base: Path,
     relative_dir: str,
@@ -869,6 +899,9 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
             contract = load_dataset_contract(base); profile = load_dataset_profile(base); audit = load_data_audit(base); checked += 3
             if profile.fingerprint != contract.dataset_fingerprint or audit.dataset_fingerprint != contract.dataset_fingerprint:
                 issues.append(ProjectIntegrityIssue(code="DATASET_IDENTITY_MISMATCH", status="FAIL", path="data", detail="Dataset profile, audit, and contract do not share a dataset fingerprint."))
+            role_mismatch = _dataset_contract_profile_mismatch(contract, profile)
+            if role_mismatch is not None:
+                issues.append(ProjectIntegrityIssue(code="DATASET_ROLE_CONTRACT_MISMATCH", status="FAIL", path="data/dataset-contract.json", detail=role_mismatch))
             verification = ArtifactStore(base).verify(ArtifactRef(sha256=contract.source_artifact_sha256)); checked += 1
             if not verification.valid: issues.append(ProjectIntegrityIssue(code="DATASET_ARTIFACT_INVALID", status="FAIL", path="data/dataset-contract.json", detail=verification.message))
         except (FileNotFoundError, ValidationError, ValueError) as error:

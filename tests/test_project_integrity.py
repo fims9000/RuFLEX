@@ -89,11 +89,35 @@ def test_project_integrity_validates_active_split_contract_pointer(tmp_path: Pat
     pointer_path.write_text(json.dumps(pointer), encoding="utf-8")
     report = client.get(f"/api/projects/{session_id}/integrity").json()
     assert any(issue["code"] == "SPLIT_CONTRACT_ACTIVE_POINTER_INVALID" for issue in report["issues"])
-
     pointer_path.write_text(json.dumps(original), encoding="utf-8")
     pointer_path.unlink()
     report = client.get(f"/api/projects/{session_id}/integrity").json()
     assert any(issue["code"] == "SPLIT_CONTRACT_ACTIVE_POINTER_INVALID" for issue in report["issues"])
+
+
+def test_project_integrity_binds_dataset_roles_to_profile_and_reads_legacy_contract(tmp_path: Path) -> None:
+    client = TestClient(app)
+    root = tmp_path / "dataset-role-integrity"
+    session_id = client.post("/api/projects", json={"path": str(root), "name": "Dataset role integrity"}).json()["session_id"]
+    confirmed = client.post("/api/projects/dataset/confirm", json={"session_id": session_id, "csv_text": _frame(), "target": "target", "task": "binary_classification", "id_columns": []})
+    assert confirmed.status_code == 200, confirmed.text
+    contract_path = root / "data" / "dataset-contract.json"
+    original = json.loads(contract_path.read_text(encoding="utf-8"))
+    legacy = dict(original, role_decisions={})
+    contract_path.write_text(json.dumps(legacy), encoding="utf-8")
+    assert client.get(f"/api/projects/{session_id}/integrity").json()["status"] == "PASS"
+
+    corrupted = dict(original)
+    corrupted["feature_columns"] = corrupted["feature_columns"][1:]
+    contract_path.write_text(json.dumps(corrupted), encoding="utf-8")
+    report = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert any(issue["code"] == "DATASET_ROLE_CONTRACT_MISMATCH" for issue in report["issues"])
+
+    corrupted = dict(original)
+    corrupted["role_decisions"] = dict(original["role_decisions"], temperature="id")
+    contract_path.write_text(json.dumps(corrupted), encoding="utf-8")
+    report = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert any(issue["code"] == "DATASET_ROLE_CONTRACT_MISMATCH" for issue in report["issues"])
 
 def test_project_integrity_survives_reopen_and_reports_missing_frozen_model_artifact(tmp_path: Path) -> None:
     client = TestClient(app); root = tmp_path / "integrity"

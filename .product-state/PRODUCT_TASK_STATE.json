@@ -232,15 +232,17 @@
     "alpha_training_run_missing_pointer_integrity",
     "alpha_latest_object_pointer_completeness_integrity",
     "alpha_auxiliary_evidence_latest_pointer_integrity",
-    "alpha_split_contract_active_pointer_integrity"
+    "alpha_split_contract_active_pointer_integrity",
+    "alpha_dataset_role_profile_integrity"
   ],
-  "active_capability": "alpha_split_contract_active_pointer_integrity",
+  "active_capability": "alpha_dataset_role_profile_integrity",
   "active_acceptance": [
-    "Persisted SplitContract collections require a resolvable active-split pointer bound to the persisted split identity.",
-    "A missing, stale, malformed, or identity-mismatched split pointer fails Project Integrity; empty optional split collections remain valid."
+    "DatasetContract target/ID/feature roles and feature order must match the persisted DatasetProfile schema.",
+    "Non-empty role_decisions must match the confirmed roles; legacy contracts with omitted/empty role_decisions remain readable.",
+    "DatasetProfile fingerprint and source artifact identity must be recomputable from its persisted schema."
   ],
   "blockers": [],
-  "next_executable_work": "Continue a resource-light audit of data-governance/evidence reopen integrity beyond active pointers; preserve unrelated article files.",
+  "next_executable_work": "Continue a resource-light audit of dataset/split/transform/leakage evidence reopen paths; preserve unrelated article files.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -476,6 +478,7 @@
     "alpha_training_run_missing_pointer_integrity": "PASS: A missing active-training-run pointer with persisted runs now fails closed; recreating the pointer restores normal close/reopen behavior. Focused lifecycle integrity test passed.",
     "alpha_latest_object_pointer_completeness_integrity": "PASS: Latest-object pointer completeness is checked for persisted run/study/evaluation/policy/stability/final-test/explanation/assurance/bundle collections; missing Evaluation and TrainingRun pointers fail closed while empty collections remain optional. tests/test_project_integrity.py: 16 passed; adjacent training/Stability/Evidence routes: 56 passed.",
     "alpha_auxiliary_evidence_latest_pointer_integrity": "PASS: Project Integrity now checks latest/missing active pointers for AnalysisComparison, SliceAnalysis, ExplanationReproducibilityAnalysis, ExpertCorrectionRevision, ExhaustiveLabResult, BehaviorSpec/BehaviorSpecResult and referential latest pointer for TreePathEvidence. Regression verifies stale and missing comparison pointers; tests/test_project_integrity.py plus training/Stability/Evidence routes: 67 passed; compileall and git diff --check passed.",
-    "alpha_split_contract_active_pointer_integrity": "PASS: Project Integrity now requires the active split pointer to resolve to a persisted, dataset-bound SplitContract and checks its frozen split_identity. Regressions cover forged identity and missing pointer; tests/test_project_integrity.py: 18 passed, compileall and diff check passed."
+    "alpha_split_contract_active_pointer_integrity": "PASS: Project Integrity now requires the active split pointer to resolve to a persisted, dataset-bound SplitContract and checks its frozen split_identity. Regressions cover forged identity and missing pointer; tests/test_project_integrity.py: 18 passed, compileall and diff check passed.",
+    "alpha_dataset_role_profile_integrity": "PASS: DatasetContract role mapping/order is recomputed against DatasetProfile; non-empty role_decisions must agree and the profile fingerprint is recomputed. Legacy empty role_decisions remain readable. Project integrity + split + dataset contract tests: 49 passed; compileall and git diff --check passed."
   }
 }
