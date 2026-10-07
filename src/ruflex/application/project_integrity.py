@@ -7,6 +7,7 @@ import math
 from pathlib import Path
 from uuid import UUID
 
+import numpy as np
 from pydantic import ValidationError
 
 from ruflex.application.artifacts import ArtifactRecord, ArtifactRef, ArtifactStore
@@ -108,6 +109,47 @@ def _stability_analysis_cases_match(
 ) -> bool:
     if study is None or analysis.case_count != len(analysis.cases):
         return False
+    study_runs = study.seed_runs
+    if not study_runs:
+        return False
+    selected_run = next((run for run in study_runs if run.run_id == study.selected_run_id), None)
+    split_ids = {run.split.split_identity for run in study_runs}
+    split_seeds = [int(run.split.split_seed if run.split.split_seed is not None else run.split.seed) for run in study_runs]
+    training_seeds = [int(run.training_seed if run.training_seed is not None else run.seed) for run in study_runs]
+    expected_metrics = {
+        metric: [float(run.validation_metrics[metric]) for run in study_runs]
+        for metric in ("accuracy", "f1", "roc_auc", "pr_auc", "brier", "ece")
+        if all(metric in run.validation_metrics for run in study_runs)
+    }
+    if selected_run is None or (
+        analysis.mode != study.randomness_protocol
+        or analysis.dataset_fingerprint != selected_run.dataset_fingerprint
+        or analysis.dataset_artifact_sha256 != selected_run.dataset_artifact_sha256
+        or analysis.model_kind != study.model_kind
+        or analysis.task != study.task
+        or analysis.split_seeds != split_seeds
+        or analysis.training_seeds != training_seeds
+        or analysis.split_identity != (next(iter(split_ids)) if len(split_ids) == 1 else None)
+        or analysis.split_seed != (split_seeds[0] if len(set(split_seeds)) == 1 else None)
+        or set(analysis.metric_distributions) != set(expected_metrics)
+    ):
+        return False
+    for metric, values in expected_metrics.items():
+        array = np.asarray(values, dtype=float)
+        expected_summary = {
+            "mean": float(array.mean()),
+            "std": float(array.std(ddof=0)),
+            "minimum": float(array.min()),
+            "maximum": float(array.max()),
+            "median": float(np.median(array)),
+            "iqr": float(np.percentile(array, 75) - np.percentile(array, 25)),
+        }
+        actual_summary = analysis.metric_distributions[metric]
+        if any(
+            not math.isclose(getattr(actual_summary, field), expected, rel_tol=1e-12, abs_tol=1e-12)
+            for field, expected in expected_summary.items()
+        ):
+            return False
     if analysis.applicability != "APPLICABLE" or analysis.validation_alignment_status != "EXACT_MATCH":
         return not analysis.cases and analysis.case_count == 0 and analysis.high_confidence_case_count == 0 and analysis.high_confidence_unstable_case_count == 0 and analysis.high_confidence_instability_rate is None
     if not analysis.cases or len({case.case_id for case in analysis.cases}) != len(analysis.cases) or analysis.case_support_requirement > len(analysis.run_ids):
@@ -172,6 +214,8 @@ def _stability_analysis_cases_match(
             or not math.isclose(case.min_probability, min(actual_values), rel_tol=1e-12, abs_tol=1e-12)
             or not math.isclose(case.max_probability, max(actual_values), rel_tol=1e-12, abs_tol=1e-12)
             or not math.isclose(case.probability_range, max(actual_values) - min(actual_values), rel_tol=1e-12, abs_tol=1e-12)
+            or case.source_row != selected_row.source_row
+            or case.row_identity != selected_row.row_identity
             or case.target != int(selected_row.target >= 0.5)
         ):
             return False

@@ -202,15 +202,16 @@
     "alpha_final_test_all_stability_run_freeze_time_integrity",
     "alpha_final_test_stability_case_evidence_integrity",
     "alpha_stability_analysis_exact_run_support_integrity",
-    "alpha_stability_analysis_case_recomputation_integrity"
+    "alpha_stability_analysis_case_recomputation_integrity",
+    "alpha_stability_analysis_aggregate_provenance_integrity"
   ],
-  "active_capability": "alpha_stability_analysis_case_recomputation_integrity",
+  "active_capability": "alpha_stability_analysis_aggregate_provenance_integrity",
   "active_acceptance": [
-    "Project Integrity independently recomputes StabilityAnalysis per-case probabilities, labels, agreement, majority, dispersion, alignment, and HCIR from canonical run validation predictions plus frozen threshold.",
-    "Tampered case-level agreement or summary values fail closed; zero HCIR denominator remains null."
+    "Project Integrity recomputes persisted StabilityAnalysis metric distributions and run-level mode, dataset, artifact, split-seed, training-seed, and model provenance from canonical TrainingStudy runs.",
+    "Tampered metric summaries or run-seed provenance fail closed; case row identities remain bound to selected-run validation predictions."
   ],
   "blockers": [],
-  "next_executable_work": "Audit persisted StabilityAnalysis aggregate metric distributions and complete run provenance against canonical TrainingStudy metrics; preserve unrelated article files.",
+  "next_executable_work": "Continue focused audit of StabilityGate policy aggregates, risk-coverage summaries, and persisted reasons against frozen validation analysis; preserve unrelated article files.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -416,6 +417,7 @@
     "alpha_final_test_all_stability_run_freeze_time_integrity": "PASS: Project Integrity now verifies that the selected TrainingRun and every run used by the frozen Stability Gate predate final-test unlock. Regression moves selected and non-selected supporting run timestamps past unlock and observes FINAL_TEST_PROVENANCE_MISMATCH; focused end-to-end integrity test passed.",
     "alpha_final_test_stability_case_evidence_integrity": "PASS: Project Integrity binds final-test stability cases to prediction-row identity/order and exact frozen gate/threshold/run IDs, recomputes operational class, machine reasons, disposition, aggregate counts/coverage/risk/FNR, and the descriptive confidence baseline. Mutating a case class in persisted FinalTestEvaluation fails; focused final-test chain regression and compileall passed.",
     "alpha_stability_analysis_exact_run_support_integrity": "PASS: Project Integrity rejects duplicate participants in StabilityAnalysis.run_ids and requires schema-v3 run order to match its frozen TrainingStudy. Regression confirms valid gate chain PASS and duplicated participant FAIL.",
-    "alpha_stability_analysis_case_recomputation_integrity": "PASS: Project Integrity recomputes per-case probability mappings, class labels, selected/majority agreement, dispersion summaries, validation identity/alignment, and HCIR counts/rate from canonical run predictions and the frozen threshold. A tampered selected-run agreement is rejected; tests/test_project_integrity.py: 14 passed; compileall, task-state JSON parse, and git diff --check passed."
+    "alpha_stability_analysis_case_recomputation_integrity": "PASS: Project Integrity recomputes per-case probability mappings, class labels, selected/majority agreement, dispersion summaries, validation identity/alignment, and HCIR counts/rate from canonical run predictions and the frozen threshold. A tampered selected-run agreement is rejected; tests/test_project_integrity.py: 14 passed; compileall, task-state JSON parse, and git diff --check passed.",
+    "alpha_stability_analysis_aggregate_provenance_integrity": "PASS: Project Integrity recomputes all persisted aggregate metric distributions and binds StabilityAnalysis mode, dataset/artifact, model/task, split/training seeds, and case source identities to canonical TrainingStudy runs. Regression rejects a forged F1 mean and altered training-seed provenance; tests/test_project_integrity.py: 14 passed, compileall and diff checks passed."
   }
 }

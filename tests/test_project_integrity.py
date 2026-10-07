@@ -120,6 +120,18 @@ def test_project_integrity_validates_frozen_stability_analysis_and_gate_chain(tm
     corrupted_case_summary = client.get(f"/api/projects/{session_id}/integrity").json()
     assert any(issue["code"] == "STABILITY_ANALYSIS_PROVENANCE_MISMATCH" for issue in corrupted_case_summary["issues"])
     analysis_payload["cases"][0]["selected_run_agreement"] = original_agreement
+    original_f1_mean = analysis_payload["metric_distributions"]["f1"]["mean"]
+    analysis_payload["metric_distributions"]["f1"]["mean"] = original_f1_mean + 0.1
+    analysis_path.write_text(json.dumps(analysis_payload), encoding="utf-8")
+    corrupted_metric_summary = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert any(issue["code"] == "STABILITY_ANALYSIS_PROVENANCE_MISMATCH" for issue in corrupted_metric_summary["issues"])
+    analysis_payload["metric_distributions"]["f1"]["mean"] = original_f1_mean
+    original_training_seeds = list(analysis_payload["training_seeds"])
+    analysis_payload["training_seeds"][0] += 1000
+    analysis_path.write_text(json.dumps(analysis_payload), encoding="utf-8")
+    corrupted_seed_summary = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert any(issue["code"] == "STABILITY_ANALYSIS_PROVENANCE_MISMATCH" for issue in corrupted_seed_summary["issues"])
+    analysis_payload["training_seeds"] = original_training_seeds
     analysis_path.write_text(json.dumps(analysis_payload), encoding="utf-8")
     final_test = client.post("/api/projects/analyses/final-test", json={"session_id": session_id, "evaluation_id": evaluation_id, "threshold_id": threshold_id, "stability_gate_policy_id": policy_response.json()["policy_id"]})
     assert final_test.status_code == 201, final_test.text
