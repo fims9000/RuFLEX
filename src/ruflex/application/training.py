@@ -1052,6 +1052,15 @@ def _study_seed_pairs(*, seeds: list[int], randomness_protocol: str, split_seed:
     raise TrainingError(f"Unsupported randomness protocol {randomness_protocol!r}.")
 
 
+def _validate_study_selection_metric(selection_metric: str, task: str) -> None:
+    allowed = {
+        "binary_classification": {"accuracy", "precision", "recall", "f1"},
+        "regression": {"mse", "mae", "rmse", "r2"},
+    }
+    if selection_metric not in allowed.get(task, set()):
+        raise TrainingError(f"Selection metric {selection_metric!r} is unavailable for {task!r}; no Study fits were started.")
+
+
 def _select_study_run(values: list[tuple[TrainingRun, float | None]], selection_metric: str) -> tuple[TrainingRun, float, str]:
     """Select deterministically, including an explicit lowest-seed tie-break."""
     if any(value is None for _, value in values):
@@ -1077,6 +1086,7 @@ def _select_study_run(values: list[tuple[TrainingRun, float | None]], selection_
 def run_multi_seed_study(project_root: Path, *, name: str, model_kind: str = "flat_neuro_fuzzy", seeds: list[int], selection_metric: str = "f1", randomness_protocol: str = "LEGACY_COMBINED", split_seed: int | None = None, training_seed: int | None = None, adapter_key: str | None = None, adapter_version: str | None = None, **config) -> TrainingStudy:
     _ensure_validation_policy_selection_open(project_root)
     pairs = _study_seed_pairs(seeds=seeds, randomness_protocol=randomness_protocol, split_seed=split_seed, training_seed=training_seed)
+    _validate_study_selection_metric(selection_metric, load_dataset_contract(project_root).task)
     from ruflex.runtime.registry import builtin_runtime_registry
 
     registry = builtin_runtime_registry()
@@ -1088,8 +1098,6 @@ def run_multi_seed_study(project_root: Path, *, name: str, model_kind: str = "fl
     for run in runs:
         run.randomness_protocol = randomness_protocol
         persist_training_run(project_root, run, registry=registry)
-    if selection_metric not in {"accuracy", "precision", "recall", "f1", "mse", "mae", "rmse", "r2"}:
-        raise TrainingError(f"Unsupported selection metric {selection_metric!r}.")
     selected, value, rule = _select_study_run([(run, run.validation_metrics.get(selection_metric)) for run in runs], selection_metric)
     study = TrainingStudy(name=name, model_kind=model_kind, task=runs[0].task, selection_metric=selection_metric, selection_rule=rule, seed_runs=runs, selected_run_id=selected.run_id, selection_reason=f"Selected {model_kind} run by declared validation {selection_metric} ({rule}) = {value:.6g}; exact ties select lowest training_seed, then lowest split_seed; locked test was not used.", randomness_protocol=randomness_protocol, split_seed=(pairs[0][0] if len({pair[0] for pair in pairs}) == 1 else None), training_seeds=[pair[1] for pair in pairs], adapter_key=selected.adapter_key, adapter_version=selected.adapter_version, adapter_provider=selected.adapter_provider, runtime_capability_snapshot_hash=selected.runtime_capability_snapshot_hash)
     _atomic_write_text(_studies_root(project_root) / f"{study.study_id}.json", study.model_dump_json(indent=2))
@@ -1174,11 +1182,13 @@ def _execute_study_job(project_root: Path, job_id: UUID) -> None:
         _persist_study_job(project_root, job)
         return
     try:
-        active_dataset_fingerprint = load_dataset_contract(project_root).dataset_fingerprint
+        active_contract = load_dataset_contract(project_root)
+        active_dataset_fingerprint = active_contract.dataset_fingerprint
         if not job.dataset_fingerprint:
             raise TrainingError("Persisted StudyJob lacks a frozen DatasetContract identity; refusing to resume ambiguous training work.")
         if job.dataset_fingerprint != active_dataset_fingerprint:
             raise TrainingError("Active DatasetContract changed after this StudyJob was created; create a new Study for the new revision.")
+        _validate_study_selection_metric(job.selection_metric, active_contract.task)
         _ensure_validation_policy_selection_open(project_root, active_dataset_fingerprint)
     except (TrainingError, FileNotFoundError) as error:
         job.status = "FAILED"
@@ -1354,9 +1364,11 @@ def _submit_study_job(project_root: Path, job_id: UUID) -> StudyJob:
 
 def start_study_job(project_root: Path, *, client_request_id: UUID | None = None, name: str, model_kind: str, seeds: list[int], selection_metric: str, randomness_protocol: str = "LEGACY_COMBINED", split_seed: int | None = None, training_seed: int | None = None, execution_backend_key: str = "local_executor", adapter_key: str | None = None, adapter_version: str | None = None, **config) -> StudyJob:
     _ensure_validation_policy_selection_open(project_root)
-    dataset_fingerprint = load_dataset_contract(project_root).dataset_fingerprint
+    contract = load_dataset_contract(project_root)
+    dataset_fingerprint = contract.dataset_fingerprint
     if not dataset_fingerprint:
         raise TrainingError("A StudyJob requires a persisted DatasetContract fingerprint.")
+    _validate_study_selection_metric(selection_metric, contract.task)
     pairs = _study_seed_pairs(seeds=seeds, randomness_protocol=randomness_protocol, split_seed=split_seed, training_seed=training_seed)
     descriptor, _ = resolve_execution_backend(execution_backend_key)
     from ruflex.runtime.registry import builtin_runtime_registry

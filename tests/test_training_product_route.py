@@ -267,6 +267,38 @@ def test_study_rejects_duplicate_declared_seeds_before_execution(tmp_path: Path,
     assert not list((root / "runs").glob("*.json"))
 
 
+@pytest.mark.parametrize("endpoint", ["/api/projects/training/studies", "/api/projects/training/study-jobs"])
+@pytest.mark.parametrize("selection_metric", ["rmse", "not_a_metric"])
+def test_study_rejects_incompatible_selection_metric_before_fitting(tmp_path: Path, endpoint: str, selection_metric: str) -> None:
+    client = TestClient(app)
+    root = tmp_path / f"invalid-metric-{endpoint.rsplit('/', 1)[-1]}-{selection_metric}"
+    session_id = client.post("/api/projects", json={"path": str(root), "name": "Invalid Study metric"}).json()["session_id"]
+    confirmed = client.post("/api/projects/dataset/confirm", json={"session_id": session_id, "csv_text": _binary_frame().to_csv(index=False), "target": "target", "task": "binary_classification", "id_columns": []})
+    assert confirmed.status_code == 200, confirmed.text
+
+    response = client.post(endpoint, json={
+        "session_id": session_id, "name": "must not fit", "model_kind": "random_forest",
+        "seeds": [3, 5, 7], "selection_metric": selection_metric,
+        "randomness_protocol": "TRAINING_VARIABILITY", "split_seed": 42,
+    })
+
+    assert response.status_code == 422, response.text
+    assert "no Study fits were started" in response.text
+    assert not list((root / "runs").glob("*.json"))
+    assert not list((root / "studies" / "jobs").glob("*.json"))
+
+
+def test_study_metric_preflight_distinguishes_regression_from_classification() -> None:
+    from ruflex.application.training import TrainingError
+
+    training_application._validate_study_selection_metric("f1", "binary_classification")
+    training_application._validate_study_selection_metric("rmse", "regression")
+    with pytest.raises(TrainingError, match="unavailable for 'regression'"):
+        training_application._validate_study_selection_metric("f1", "regression")
+    with pytest.raises(TrainingError, match="unavailable for 'binary_classification'"):
+        training_application._validate_study_selection_metric("rmse", "binary_classification")
+
+
 def test_study_job_rejects_an_unregistered_execution_backend_with_typed_error(tmp_path: Path) -> None:
     client = TestClient(app)
     root = tmp_path / "unknown-backend-study"
@@ -334,6 +366,30 @@ def test_study_job_resume_rejects_changed_dataset_revision(tmp_path: Path) -> No
     persisted = client.get(f"/api/projects/{session_id}/training/study-jobs/{job.job_id}")
     assert persisted.status_code == 200
     assert persisted.json()["status"] == "QUEUED"
+
+
+def test_persisted_study_job_rejects_incompatible_metric_before_resume_fits(tmp_path: Path) -> None:
+    from ruflex.domain.training import StudyJob, StudySeedState
+
+    root = tmp_path / "invalid-resume-metric"
+    ProjectService().create(root, name="Invalid resume metric")
+    _confirm_dataset(root, _binary_frame())
+    contract = training_application.load_dataset_contract(root)
+    job = StudyJob(
+        name="old invalid request", model_kind="random_forest", selection_metric="rmse",
+        dataset_fingerprint=contract.dataset_fingerprint,
+        randomness_protocol="TRAINING_VARIABILITY", split_seed=42,
+        seed_states=[StudySeedState(seed=seed, split_seed=42, training_seed=seed) for seed in (3, 5, 7)],
+    )
+    training_application._persist_study_job(root, job)
+
+    training_application._execute_study_job(root, job.job_id)
+
+    restored = training_application.load_study_job(root, job.job_id)
+    assert restored.status == "FAILED"
+    assert "no Study fits were started" in (restored.error or "")
+    assert restored.study_id is None
+    assert not list((root / "runs").glob("*.json"))
 
 
 def test_study_job_aborts_if_dataset_revision_changes_during_seed_training(tmp_path: Path, monkeypatch) -> None:

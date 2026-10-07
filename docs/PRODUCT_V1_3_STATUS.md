@@ -143,6 +143,9 @@ Target branch: `feature/v1.3-data-governance-runtime`.
 - Study resume verifies each already-completed run against its declared seed
   pair, split provenance, dataset, adapter and model artifact before reuse.
   Duplicate seeds in a new Study request are rejected, not silently removed.
+- Study selection metrics are checked against the dataset task before any
+  synchronous fit or asynchronous StudyJob begins; an incompatible persisted
+  job also fails before resume rather than spending compute on unusable runs.
 - Project Integrity, Assurance and portable bundles reject missing or malformed
   manual-FIS comparison rows and mismatched semantic-revision provenance.
   A portable bundle excludes raw dataset rows, so it checks the frozen row's
