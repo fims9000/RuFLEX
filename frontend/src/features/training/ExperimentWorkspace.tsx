@@ -845,7 +845,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
           <dt>Features</dt><dd>{dataset.contract.feature_columns.join(", ")}</dd>
           {(dataset.contract.excluded_columns?.length ?? 0) > 0 && <><dt>Excluded from model</dt><dd>{dataset.contract.excluded_columns.join(", ")}</dd></>}
           <dt>Split</dt><dd>{Math.round((1 - validationFraction - testFraction) * 100)}% train · {Math.round(validationFraction * 100)}% validation · {Math.round(testFraction * 100)}% locked test</dd>
-          <dt>Frozen split</dt><dd>{splitContract ? `${splitContract.family} · ${splitContract.split_id.slice(0, 8)}` : "No explicit contract — legacy random holdout"}</dd>
+          <dt>Frozen split</dt><dd>{splitContract ? `${splitContract.family} · ${splitContract.split_id.slice(0, 8)}` : "No SplitContract saved; the selected split settings are not frozen as a contract"}</dd>
           <dt>Preprocessing</dt><dd>train-only median/mode fill + ordinal encoding + {normalization === "none" ? "no scaling" : normalization === "minmax" ? "min–max scaling" : "standardization"}</dd>
           {run && <><dt>Saved run scaling</dt><dd>{String(run.normalization?.mode ?? "unknown")}</dd></>}
         </dl>
@@ -933,7 +933,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
             {dataEvidenceState === "idle" && <p>No persisted transform or leakage-audit evidence is linked to this run.</p>}
             {dataEvidenceState === "loaded" && transformPipeline && leakageAudit && <>
               <dl className="compact-definition">
-                <dt>Split contract</dt><dd>{runSplitContract ? `${runSplitContract.family} · seed ${runSplitContract.split_seed}` : "Legacy / not linked to explicit contract"}</dd>
+                <dt>Split contract</dt><dd>{runSplitContract ? `${runSplitContract.family} · seed ${runSplitContract.split_seed}` : "No SplitContract linked; the run records its exact split seed and row identity"}</dd>
                 {runSplitContract && <>
                   <dt>Exact source rows</dt><dd>Train {runSplitContract.role_source_rows.train.length} · validation {runSplitContract.role_source_rows.validation.length} · locked test {runSplitContract.role_source_rows.test.length}</dd>
                   <dt>Split identity</dt><dd><code>{runSplitContract.split_identity}</code></dd>

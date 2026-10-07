@@ -29,6 +29,7 @@ test("a first-time user can persist synthetic evidence and apply a frozen final-
   await expect(page.getByTestId("synthetic-practice-context")).toContainText("not benchmark or research evidence");
 
   await page.getByRole("button", { name: "S", exact: true }).click();
+  await expect(page.locator(".compact-definition")).toContainText("No SplitContract saved; the selected split settings are not frozen as a contract");
   const workspaceBounds = await page.locator(".workspace").boundingBox();
   const trainingBounds = await page.locator(".training-config-panel").boundingBox();
   expect(workspaceBounds).not.toBeNull();
@@ -60,6 +61,8 @@ test("a first-time user can persist synthetic evidence and apply a frozen final-
   await expect(page.locator(".run-provenance")).toContainText("model artifact persisted");
   await expect(page.locator(".run-provenance")).toContainText("split seed 42");
   await expect(page.locator(".run-provenance")).toContainText("training seed 7");
+  await page.getByTestId("data-governance-evidence").locator("summary").click();
+  await expect(page.getByTestId("data-governance-evidence")).toContainText("No SplitContract linked; the run records its exact split seed and row identity");
   await expect(page.getByTestId("artifact-inventory")).toContainText(`SHA-256 ${frozenSha}`);
   await expect(page.getByTestId("artifact-inventory")).toContainText("logistic_regression");
   await page.getByTestId("artifact-inventory").screenshot({ path: testInfo.outputPath("artifact-inventory.png") });

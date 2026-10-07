@@ -132,6 +132,9 @@ Target branch: `feature/v1.3-data-governance-runtime`.
   until the required values are valid 32-bit non-negative integers. The API
   enforces the same range for new split, single-run and Study requests before
   touching a project; persisted historical evidence is unchanged.
+- When no SplitContract exists, Studio says so without calling a new
+  explicit-seed run “legacy”; the run's saved split seed and row identity remain
+  visible separately from contract provenance.
 - Project Integrity, Assurance and portable bundles reject missing or malformed
   manual-FIS comparison rows and mismatched semantic-revision provenance.
   A portable bundle excludes raw dataset rows, so it checks the frozen row's
