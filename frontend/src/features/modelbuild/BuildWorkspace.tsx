@@ -415,6 +415,7 @@ export function BuildWorkspace({
   const [revisionHistoryError, setRevisionHistoryError] = useState<string | null>(null);
   const [revisionHistoryReload, setRevisionHistoryReload] = useState(0);
   const importInputRef = useRef<HTMLInputElement>(null);
+  const preserveDraftOnHydrationFisIdRef = useRef<string | null>(null);
   const publishFisChange = onFisChange;
   const publishEvaluation = onEvaluation;
   const publishExpertCorrection = onExpertCorrection ?? (() => undefined);
@@ -426,18 +427,21 @@ export function BuildWorkspace({
     const nextFisIdentity = fis ? `${fis.fis_id}:${fis.semantic_hash ?? ""}` : null;
     const persistedModelChanged = hydratedProjectIdRef.current !== project.session_id ||
       hydratedFisIdentityRef.current !== nextFisIdentity;
+    const currentWorking = workingRef.current;
     const preserveNewerDraft = Boolean(
       persistedModelChanged &&
       fis?.semantic_hash &&
       preserveDraftOnHydrationHashRef.current === fis.semantic_hash &&
-      workingRef.current?.fis_id === fis.fis_id &&
-      !workingRef.current.semantic_hash,
+      currentWorking &&
+      !currentWorking.semantic_hash &&
+      (currentWorking.fis_id === fis.fis_id || preserveDraftOnHydrationFisIdRef.current === currentWorking.fis_id),
     );
     if (persistedModelChanged) {
       hydratedProjectIdRef.current = project.session_id;
       hydratedFisIdentityRef.current = nextFisIdentity;
       if (preserveNewerDraft) {
         preserveDraftOnHydrationHashRef.current = null;
+        preserveDraftOnHydrationFisIdRef.current = null;
       } else {
         setWorking(fis);
         setEditorHistory(fis ? [cloneFis(fis)] : []);
@@ -559,6 +563,7 @@ export function BuildWorkspace({
     const next = cloneFis(working);
     edit(next);
     next.semantic_hash = null;
+    workingRef.current = next;
     setWorking(next);
     const nextHistory = [
       ...editorHistory.slice(0, historyIndex + 1),
@@ -606,6 +611,7 @@ export function BuildWorkspace({
   }
   async function submitMatlabImport(source: string) {
     if (importMatlabFisInFlightRef.current) return;
+    const submittedWorking = workingRef.current;
     importMatlabFisInFlightRef.current = true;
     setImportingMatlabFis(true);
     setError(null);
@@ -617,9 +623,21 @@ export function BuildWorkspace({
         setFisImportRecovery(null);
         return;
       }
-      setWorking(result.spec);
+      const latestWorking = workingRef.current;
+      const newerDraftExists = Boolean(latestWorking && canonicalJson(latestWorking) !== canonicalJson(submittedWorking));
+      if (newerDraftExists) {
+        const importedIdentityWillHydrate = fis?.fis_id !== result.spec.fis_id || fis?.semantic_hash !== result.spec.semantic_hash;
+        if (result.spec.semantic_hash && importedIdentityWillHydrate) {
+          preserveDraftOnHydrationHashRef.current = result.spec.semantic_hash;
+          preserveDraftOnHydrationFisIdRef.current = latestWorking?.fis_id ?? null;
+        }
+      } else {
+        setWorking(result.spec);
+      }
       publishFisChange(result.spec);
-      setMessage(`MATLAB FIS imported as a canonical executable model${result.source_artifact_sha256 ? ` · source artifact ${result.source_artifact_sha256.slice(0, 12)}` : ""}.`);
+      setMessage(newerDraftExists
+        ? `MATLAB FIS import was persisted; newer editor changes remain unsaved. Save again to activate your draft${result.source_artifact_sha256 ? ` · source artifact ${result.source_artifact_sha256.slice(0, 12)}` : ""}.`
+        : `MATLAB FIS imported as a canonical executable model${result.source_artifact_sha256 ? ` · source artifact ${result.source_artifact_sha256.slice(0, 12)}` : ""}.`);
       setFisImportRecovery(null);
     } catch (reason) {
       setFisImportRecovery({ source, error: reason instanceof Error ? reason.message : "Import response was uncertain." });
