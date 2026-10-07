@@ -37,12 +37,23 @@ export function StabilityLab({ project, study, theme, onAnalysisChange, onPolicy
   const [gateRecoveryRequest, setGateRecoveryRequest] = useState<{ analysisId: string; evaluationId: string } | null>(null);
   const [gateRecoveryError, setGateRecoveryError] = useState<string | null>(null);
   const [gateRecoveryNotFound, setGateRecoveryNotFound] = useState(false);
+  const mutationInFlightRef = useRef(false);
   const onAnalysisChangeRef = useRef(onAnalysisChange);
   const onPolicyChangeRef = useRef(onPolicyChange);
   onAnalysisChangeRef.current = onAnalysisChange;
   onPolicyChangeRef.current = onPolicyChange;
   const activeAnalysis = isActiveStudyStabilityAnalysis(analysis, study) ? analysis : null;
   const activePolicy = isActiveStudyStabilityGate(policy, activeAnalysis, study) ? policy : null;
+  function beginMutation(): boolean {
+    if (mutationInFlightRef.current) return false;
+    mutationInFlightRef.current = true;
+    setBusy(true);
+    return true;
+  }
+  function endMutation() {
+    mutationInFlightRef.current = false;
+    setBusy(false);
+  }
   useEffect(() => {
     let active = true;
     setAnalysisLoadState("loading");
@@ -87,9 +98,9 @@ export function StabilityLab({ project, study, theme, onAnalysisChange, onPolicy
       : "Combined variability changes both split and training seeds; observed variability mixes data-partition and training effects."
 
   async function createAnalysis() {
-    if (!study) return;
+    if (!study || activeAnalysis || buildRecoveryRequest || !beginMutation()) return;
     let request: StabilityBuildRequest = { studyId: study.study_id, runId: study.selected_run_id };
-    setBusy(true); setError(null);
+    setError(null);
     try {
       const evaluation = await studioApi.createAnalysisEvaluation(project.session_id, request.runId);
       request = { ...request, evaluationId: evaluation.evaluation_id };
@@ -105,7 +116,7 @@ export function StabilityLab({ project, study, theme, onAnalysisChange, onPolicy
       setBuildRecoveryNotFound(false);
       setError(reason instanceof Error ? reason.message : "Could not create stability analysis");
     }
-    finally { setBusy(false); }
+    finally { endMutation(); }
   }
 
   function completeAnalysisBuild(next: StudyStabilityAnalysis) {
@@ -130,8 +141,8 @@ export function StabilityLab({ project, study, theme, onAnalysisChange, onPolicy
 
   async function recoverAnalysisBuild() {
     const original = buildRecoveryRequest;
-    if (!original) return;
-    setBusy(true); setError(null);
+    if (!original || !beginMutation()) return;
+    setError(null);
     try {
       let request = { ...original };
       if (!request.evaluationId) {
@@ -172,27 +183,28 @@ export function StabilityLab({ project, study, theme, onAnalysisChange, onPolicy
       setBuildRecoveryError(reason instanceof Error ? reason.message : "Could not recover the exact Stability Analysis chain.");
       setBuildRecoveryNotFound(false);
       setError(reason instanceof Error ? reason.message : String(reason));
-    } finally { setBusy(false); }
+    } finally { endMutation(); }
   }
 
   async function explicitlyContinueAnalysisBuild() {
-    if (!buildRecoveryRequest || !buildRecoveryNotFound) return;
-    setBusy(true); setError(null);
+    if (!buildRecoveryRequest || !buildRecoveryNotFound || !beginMutation()) return;
+    setError(null);
     try { await continueAnalysisBuild(buildRecoveryRequest); }
     catch (reason) {
       setBuildRecoveryError(reason instanceof Error ? reason.message : "The explicitly continued Stability Analysis chain could not be confirmed.");
       setBuildRecoveryNotFound(false);
       setError(reason instanceof Error ? reason.message : String(reason));
-    } finally { setBusy(false); }
+    } finally { endMutation(); }
   }
   async function createGate() {
     if (!activeAnalysis || activeAnalysis.study_id !== study?.study_id || activeAnalysis.selected_run_id !== study.selected_run_id) return;
-    if (!activeAnalysis.evaluation_id) { setError("Create threshold-bound validation stability evidence first."); return; }
+    if (activePolicy || gateRecoveryRequest || buildRecoveryRequest || !beginMutation()) return;
+    if (!activeAnalysis.evaluation_id) { endMutation(); setError("Create threshold-bound validation stability evidence first."); return; }
     const request = { analysisId: activeAnalysis.analysis_id, evaluationId: activeAnalysis.evaluation_id };
-    setBusy(true); setError(null);
+    setError(null);
     try { await submitGate(request); }
     catch (reason) { setGateRecoveryRequest(request); setGateRecoveryError(reason instanceof Error ? reason.message : "The saved Stability Gate could not be confirmed."); setGateRecoveryNotFound(false); setError(reason instanceof Error ? reason.message : "Could not freeze Stability Gate"); }
-    finally { setBusy(false); }
+    finally { endMutation(); }
   }
 
   async function submitGate(request: { analysisId: string; evaluationId: string }) {
@@ -201,8 +213,8 @@ export function StabilityLab({ project, study, theme, onAnalysisChange, onPolicy
   }
 
   async function recoverGate() {
-    if (!gateRecoveryRequest) return;
-    setBusy(true); setError(null);
+    if (!gateRecoveryRequest || !beginMutation()) return;
+    setError(null);
     try {
       const policies = await studioApi.listStabilityGatePolicies(project.session_id);
       const saved = policies.find((item) => item.stability_analysis_id === gateRecoveryRequest.analysisId && item.evaluation_id === gateRecoveryRequest.evaluationId && item.min_confidence === .9 && item.min_class_agreement === .8 && item.max_probability_std === .15 && item.probability_source === "raw");
@@ -211,15 +223,15 @@ export function StabilityLab({ project, study, theme, onAnalysisChange, onPolicy
     } catch (reason) {
       setGateRecoveryError(reason instanceof Error ? reason.message : "Could not recover the exact Stability Gate.");
       setGateRecoveryNotFound(false); setError(reason instanceof Error ? reason.message : String(reason));
-    } finally { setBusy(false); }
+    } finally { endMutation(); }
   }
 
   async function explicitlyFreezeGate() {
-    if (!gateRecoveryRequest || !gateRecoveryNotFound) return;
-    setBusy(true); setError(null);
+    if (!gateRecoveryRequest || !gateRecoveryNotFound || !beginMutation()) return;
+    setError(null);
     try { await submitGate(gateRecoveryRequest); }
     catch (reason) { setGateRecoveryError(reason instanceof Error ? reason.message : "The repeated Stability Gate request could not be confirmed."); setGateRecoveryNotFound(false); setError(reason instanceof Error ? reason.message : String(reason)); }
-    finally { setBusy(false); }
+    finally { endMutation(); }
   }
   if (!study) return <section className="feature-workspace"><EmptyState title="No multi-run study">Create a multi-run study before measuring aggregate variability. Case-level evidence requires a fixed split.</EmptyState></section>;
 
@@ -229,14 +241,14 @@ export function StabilityLab({ project, study, theme, onAnalysisChange, onPolicy
     {policyLoadState === "error" && <div className="error" role="alert" data-testid="stability-policy-load-error"><strong>Saved StabilityGatePolicy could not be verified.</strong><p>{policyLoadError}</p><Button view="outlined" onClick={() => setReload((current) => current + 1)}>Retry Stability Gate</Button></div>}
     {(analysisLoadState === "loading" || policyLoadState === "loading") && <p role="status">Resolving saved Stability Lab evidence before enabling new analysis or policy actions…</p>}
     {buildRecoveryRequest && <div className="error" role="alert" data-testid="stability-analysis-recovery"><strong>Stability Analysis chain outcome is uncertain; recover the same study/run before creating another.</strong><p>{buildRecoveryError}</p><Button view="outlined" disabled={busy} onClick={recoverAnalysisBuild}>Retry saved chain lookup</Button>{buildRecoveryNotFound && <Button view="outlined" disabled={busy} onClick={explicitlyContinueAnalysisBuild}>Continue this chain explicitly</Button>}</div>}
-    <div className="feature-toolbar compact-toolbar"><div><strong>{study.randomness_protocol}</strong> · split seeds {study.seed_runs.map((x) => x.split_seed).join(", ")} · training seeds {study.training_seeds.join(", ")}<p className="property-description">{protocolNote}</p></div><Button view="action" disabled={busy || !!buildRecoveryRequest || project.read_only || analysisLoadState !== "loaded" || policyLoadState !== "loaded"} onClick={createAnalysis} data-ruflex-action="stability.analysis.create">{busy ? "Building…" : "Create Study Stability Analysis"}</Button></div>
+    <div className="feature-toolbar compact-toolbar"><div><strong>{study.randomness_protocol}</strong> · split seeds {study.seed_runs.map((x) => x.split_seed).join(", ")} · training seeds {study.training_seeds.join(", ")}<p className="property-description">{protocolNote}</p></div><Button view="action" disabled={busy || !!activeAnalysis || !!buildRecoveryRequest || project.read_only || analysisLoadState !== "loaded" || policyLoadState !== "loaded"} onClick={createAnalysis} data-ruflex-action="stability.analysis.create">{busy ? "Building…" : activeAnalysis ? "Stability Analysis saved" : "Create Study Stability Analysis"}</Button></div>
     {activeAnalysis?.applicability === "NOT_APPLICABLE" && <div className="error" role="status">{activeAnalysis.applicability_reason} Aggregate distributions remain available; RuFLEX deliberately does not display HCIR or a Stability Gate for this protocol.</div>}
     {activeAnalysis && policy && !activePolicy && <p role="status">A saved Stability Gate exists, but its frozen run, validation, threshold, dataset, or criteria provenance does not match this analysis; it is not shown as active.</p>}
     {activeAnalysis?.warnings.map((warning) => <p key={warning} className="muted">Warning: {warning}</p>)}
     {activeAnalysis && <div className="run-summary-strip"><div><span>Validation cases</span><strong>{activeAnalysis.case_count}</strong></div><div><span>Frozen raw class threshold</span><strong>{activeAnalysis.decision_threshold === null ? "Not bound" : activeAnalysis.decision_threshold.toFixed(4)}</strong></div><div><span>HC instability rate (raw)</span><strong>{activeAnalysis.high_confidence_instability_rate === null ? "N/A" : `${(activeAnalysis.high_confidence_instability_rate * 100).toFixed(1)}%`}</strong></div><div><span>High-confidence denominator</span><strong>{activeAnalysis.high_confidence_case_count}</strong></div><div><span>Unstable among them</span><strong>{activeAnalysis.high_confidence_unstable_case_count}</strong></div></div>}
     {activeAnalysis && <div className="data-table-wrap"><table className="data-table"><thead><tr><th>metric</th><th>mean</th><th>std</th><th>median</th><th>IQR</th></tr></thead><tbody>{Object.entries(activeAnalysis.metric_distributions).map(([metric, values]) => <tr key={metric}><td>{metric}</td><td>{values.mean.toFixed(4)}</td><td>{values.std.toFixed(4)}</td><td>{values.median.toFixed(4)}</td><td>{values.iqr.toFixed(4)}</td></tr>)}</tbody></table></div>}
     {activeAnalysis && applicable && <ChartSurface title="Case Stability Map · selected-run agreement; red = high-confidence unstable" option={mapOption(activeAnalysis)} theme={theme}/>}
-    {activeAnalysis && applicable && <section className="comparison-card"><div className="feature-toolbar compact-toolbar"><div><span className="eyebrow">STABILITY-AWARE REVIEW GATE</span><p>Validation-derived raw probabilities: confidence &lt; 0.90, agreement &lt; 0.80, or probability std &gt; 0.15 ⇒ REVIEW. This is a capability comparison, not an A01 effectiveness result.</p></div><Button view="outlined" disabled={!activeAnalysis || busy || !!gateRecoveryRequest || !!buildRecoveryRequest || project.read_only || analysisLoadState !== "loaded" || policyLoadState !== "loaded"} onClick={createGate} data-ruflex-action="stability.freeze">{activePolicy ? "Create frozen Stability Gate" : "Freeze Stability Gate"}</Button></div>{gateRecoveryRequest && <div className="error" role="alert" data-testid="stability-gate-recovery"><strong>Stability Gate outcome is uncertain; recover by the exact analysis and frozen criteria.</strong><p>{gateRecoveryError}</p><Button view="outlined" disabled={busy} onClick={recoverGate}>Retry saved gate lookup</Button>{gateRecoveryNotFound && <Button view="outlined" disabled={busy} onClick={explicitlyFreezeGate}>Freeze this gate explicitly</Button>}</div>}{activePolicy && <><ChartSurface title="Risk–coverage comparison (same coverage)" option={riskOption(activePolicy)} theme={theme}/><div className="data-table-wrap"><table className="data-table"><thead><tr><th>policy</th><th>coverage</th><th>accepted risk</th></tr></thead><tbody>{activePolicy.risk_coverage.map((x) => <tr key={x.policy}><td>{x.policy}</td><td>{(x.coverage * 100).toFixed(1)}%</td><td>{x.accepted_risk === null ? "—" : `${(x.accepted_risk * 100).toFixed(1)}%`}</td></tr>)}</tbody></table></div></>}</section>}
+    {activeAnalysis && applicable && <section className="comparison-card"><div className="feature-toolbar compact-toolbar"><div><span className="eyebrow">STABILITY-AWARE REVIEW GATE</span><p>Validation-derived raw probabilities: confidence &lt; 0.90, agreement &lt; 0.80, or probability std &gt; 0.15 ⇒ REVIEW. This is a capability comparison, not an A01 effectiveness result.</p></div><Button view="outlined" disabled={!activeAnalysis || !!activePolicy || busy || !!gateRecoveryRequest || !!buildRecoveryRequest || project.read_only || analysisLoadState !== "loaded" || policyLoadState !== "loaded"} onClick={createGate} data-ruflex-action="stability.freeze">{activePolicy ? "Stability Gate frozen" : "Freeze Stability Gate"}</Button></div>{gateRecoveryRequest && <div className="error" role="alert" data-testid="stability-gate-recovery"><strong>Stability Gate outcome is uncertain; recover by the exact analysis and frozen criteria.</strong><p>{gateRecoveryError}</p><Button view="outlined" disabled={busy} onClick={recoverGate}>Retry saved gate lookup</Button>{gateRecoveryNotFound && <Button view="outlined" disabled={busy} onClick={explicitlyFreezeGate}>Freeze this gate explicitly</Button>}</div>}{activePolicy && <><ChartSurface title="Risk–coverage comparison (same coverage)" option={riskOption(activePolicy)} theme={theme}/><div className="data-table-wrap"><table className="data-table"><thead><tr><th>policy</th><th>coverage</th><th>accepted risk</th></tr></thead><tbody>{activePolicy.risk_coverage.map((x) => <tr key={x.policy}><td>{x.policy}</td><td>{(x.coverage * 100).toFixed(1)}%</td><td>{x.accepted_risk === null ? "—" : `${(x.accepted_risk * 100).toFixed(1)}%`}</td></tr>)}</tbody></table></div></>}</section>}
     {activeAnalysis && applicable && <section className="comparison-card"><span className="eyebrow">CASE INSPECTOR</span><select aria-label="Stability case" value={selected?.case_id ?? ""} onChange={(event) => setCaseId(event.target.value)}>{activeAnalysis.cases.map((x) => <option key={x.case_id} value={x.case_id}>{x.case_id}</option>)}</select>{selected && <><p><strong>Selected run: {selected.selected_run_class} at {confidence(selected.selected_run_probability).toFixed(2)} confidence</strong> · selected decision supported by {Math.round((selected.selected_run_agreement ?? 0) * selected.run_support_count)}/{selected.run_support_count} independent fits · selected-run agreement {((selected.selected_run_agreement ?? 0) * 100).toFixed(0)}% · majority consensus {((selected.majority_class_agreement ?? 0) * 100).toFixed(0)}% · std {selected.std_probability.toFixed(3)}</p>{decision && <p><strong>{decision.disposition}</strong> · reason: {decision.reasons.join(", ") || "all frozen criteria met"}</p>}<div className="data-table-wrap"><table className="data-table"><thead><tr><th>training run</th><th>probability</th><th>class at frozen threshold</th></tr></thead><tbody>{Object.entries(selected.run_probabilities).map(([runId, probability]) => <tr key={runId}><td>{runId.slice(0, 12)}</td><td>{probability.toFixed(4)}</td><td>{selected.run_labels[runId]}</td></tr>)}</tbody></table></div></>}</section>}
     {activeAnalysis && <small>{activeAnalysis.scientific_note}</small>}
     {error && <div className="error" role="alert">{error}</div>}

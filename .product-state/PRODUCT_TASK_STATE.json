@@ -286,16 +286,17 @@
     "alpha_uncertain_training_retry_study_guard",
     "alpha_split_contract_duplicate_freeze",
     "alpha_study_cancel_during_polling",
-    "alpha_training_study_cross_action_mutex"
+    "alpha_training_study_cross_action_mutex",
+    "alpha_stability_lab_write_serialization"
   ],
-  "active_capability": "alpha_training_study_cross_action_mutex",
+  "active_capability": "alpha_evidence_workspace_write_serialization",
   "active_acceptance": [
-    "Starting a single TrainingRun and a multi-seed Study in the same event-loop turn can start at most one operation.",
-    "Either selected operation holds a synchronous guard that rejects the competing fit path before rerender.",
-    "The accepted operation completes normally and creates no accidental second fit/job."
+    "Inspect Evidence Workspace multi-step artifact/job writes for rapid duplicate submission and uncertain-response paths.",
+    "Use only evidenced gaps; preserve exact request identity and recovery semantics where already implemented.",
+    "Verify with focused component tests and the smallest relevant UI route, then commit only explicit product files."
   ],
   "blockers": [],
-  "next_executable_work": "Inspect the next user-facing alpha workflow for an evidenced reliability/usability gap; use focused, low-resource checks and commit each verified slice locally.",
+  "next_executable_work": "Inspect EvidenceWorkspace persisted explanation/check/assurance/bundle job actions for handler-level duplicate guards and safe cancellation; choose one concrete gap before editing.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -585,6 +586,7 @@
     "alpha_uncertain_training_retry_study_guard": "PASS: explicit repeat of an uncertain single TrainingRun is disabled after project reopen when an active StudyJob is restored; retry lookup remains available, and no second fit request is emitted. ExperimentWorkspace unit suite, TypeScript build, state JSON parse and git diff --check verified.",
     "alpha_split_contract_duplicate_freeze": "PASS: when current split controls exactly match the persisted SplitContract, freeze is visibly disabled/labeled 'SplitContract frozen' and the handler refuses redundant immutable writes; changing split-defining controls allows a new contract. ExperimentWorkspace unit suite, TypeScript build, state JSON parse and git diff --check passed.",
     "alpha_study_cancel_during_polling": "PASS: Cancel remains available while Resume is polling an active persisted StudyJob; cancel request is sent, cancellation intent is reflected, and terminal CANCELLED state is observed. ExperimentWorkspace unit suite, TypeScript project build, state JSON parse and git diff --check passed.",
-    "alpha_training_study_cross_action_mutex": "PASS: cross-action race tests cover both orders of single TrainingRun vs multi-seed Study submission; the first action holds its synchronous ref and the competing path sends no request. ExperimentWorkspace unit suite, TypeScript build, state JSON parse and diff check passed."
+    "alpha_training_study_cross_action_mutex": "PASS: cross-action race tests cover both orders of single TrainingRun vs multi-seed Study submission; the first action holds its synchronous ref and the competing path sends no request. ExperimentWorkspace unit suite, TypeScript build, state JSON parse and diff check passed.",
+    "alpha_stability_lab_write_serialization": "PASS: a synchronous shared mutation guard serializes persisted Analysis build/recovery/continuation and Gate freeze/recovery; exact active Analysis/Gate objects are shown as saved and cannot be duplicated. New StabilityLab component tests: 2 passed; focused existing Stability Lab Studio E2E: 1 passed (11.5s); TypeScript project build, state JSON parse and git diff --check passed."
   }
 }
