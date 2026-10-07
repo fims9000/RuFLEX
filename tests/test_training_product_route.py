@@ -223,14 +223,50 @@ def test_study_job_list_exposes_legacy_model_runtime_identity_without_rewrite(tm
     assert job_path.read_bytes() == original_bytes
 
 
+def test_study_job_resume_rejects_changed_dataset_revision(tmp_path: Path) -> None:
+    from ruflex.domain.training import StudyJob, StudySeedState
+
+    client = TestClient(app)
+    root = tmp_path / "study-job-dataset-binding"
+    session_id = client.post("/api/projects", json={"path": str(root), "name": "Study dataset binding"}).json()["session_id"]
+    first = client.post("/api/projects/dataset/confirm", json={"session_id": session_id, "csv_text": _binary_frame(36).to_csv(index=False), "target": "target", "task": "binary_classification", "id_columns": []})
+    assert first.status_code == 200, first.text
+    old_fingerprint = first.json()["contract"]["dataset_fingerprint"]
+    job = StudyJob(
+        name="bound to old data",
+        model_kind="random_forest",
+        selection_metric="f1",
+        dataset_fingerprint=old_fingerprint,
+        randomness_protocol="TRAINING_VARIABILITY",
+        split_seed=42,
+        seed_states=[StudySeedState(seed=seed, split_seed=42, training_seed=seed) for seed in [31, 37, 41]],
+        execution_config={"max_epochs": 1, "learning_rate": .01, "batch_size": 16, "patience": 1, "validation_fraction": .2, "test_fraction": .2, "max_rules": 3},
+    )
+    path = root / "studies" / "jobs" / f"{job.job_id}.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(job.model_dump_json(), encoding="utf-8")
+
+    second = client.post("/api/projects/dataset/confirm", json={"session_id": session_id, "csv_text": _binary_frame(40).to_csv(index=False), "target": "target", "task": "binary_classification", "id_columns": []})
+    assert second.status_code == 200, second.text
+    resumed = client.post(f"/api/projects/{session_id}/training/study-jobs/{job.job_id}/resume")
+    assert resumed.status_code == 422
+    assert "DatasetContract changed" in resumed.text
+    persisted = client.get(f"/api/projects/{session_id}/training/study-jobs/{job.job_id}")
+    assert persisted.status_code == 200
+    assert persisted.json()["status"] == "QUEUED"
+
+
 def test_persisted_study_job_resumes_without_replacing_declared_seeds(tmp_path: Path) -> None:
     from ruflex.domain.training import StudyJob, StudySeedState
 
     client = TestClient(app); root = tmp_path / "resumable-study"
     session_id = client.post("/api/projects", json={"path": str(root), "name": "Resumable study"}).json()["session_id"]
     assert client.post("/api/projects/dataset/confirm", json={"session_id": session_id, "csv_text": _binary_frame().to_csv(index=False), "target": "target", "task": "binary_classification", "id_columns": []}).status_code == 200
+    dataset_fingerprint = client.get(f"/api/projects/{session_id}/dataset").json()["contract"]["dataset_fingerprint"]
     interrupted = StudyJob(
-        schema_version=4, name="interrupted forest", model_kind="random_forest", selection_metric="f1", randomness_protocol="TRAINING_VARIABILITY", split_seed=42,
+        schema_version=7, name="interrupted forest", model_kind="random_forest", selection_metric="f1", dataset_fingerprint=dataset_fingerprint, randomness_protocol="TRAINING_VARIABILITY", split_seed=42,
+        adapter_key="native_random_forest", adapter_version="1", adapter_provider="ruflex.builtin",
+        execution_backend_key="local_executor", execution_backend_version="1", execution_backend_provider="ruflex.builtin",
         seed_states=[StudySeedState(seed=seed, split_seed=42, training_seed=seed, status="RUNNING" if seed == 71 else "QUEUED") for seed in [71, 73, 79]],
         execution_config={"max_epochs": 1, "learning_rate": .01, "batch_size": 16, "patience": 1, "validation_fraction": .2, "test_fraction": .2, "max_rules": 3},
     )

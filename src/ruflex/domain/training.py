@@ -206,7 +206,7 @@ class StudyJob(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: int = 6
+    schema_version: int = 7
     job_id: UUID = Field(default_factory=uuid4)
     # Client-generated idempotency key. New Studio requests bind this to the
     # durable job id so a retried POST can recover the same persisted job.
@@ -217,6 +217,7 @@ class StudyJob(BaseModel):
     name: str
     model_kind: str = "flat_neuro_fuzzy"
     selection_metric: str
+    dataset_fingerprint: str | None = None
     status: Literal["QUEUED", "RUNNING", "SUCCEEDED", "FAILED", "CANCELLED"] = "QUEUED"
     cancel_requested: bool = False
     seed_states: list[StudySeedState]

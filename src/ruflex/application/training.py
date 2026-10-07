@@ -1156,20 +1156,25 @@ def _execute_study_job(project_root: Path, job_id: UUID) -> None:
     job = load_study_job(project_root, job_id)
     if job.status in {"SUCCEEDED", "FAILED", "CANCELLED"}:
         return
-    try:
-        _ensure_validation_policy_selection_open(project_root)
-    except TrainingError as error:
-        job.status = "FAILED"
-        job.error = str(error)
-        job.finished_at = datetime.now(timezone.utc)
-        _persist_study_job(project_root, job)
-        return
     if job.cancel_requested or cancellation.is_set():
         for state in job.seed_states:
             if state.status == "QUEUED":
                 state.status = "CANCELLED"
         job.status = "CANCELLED"
         job.finished_at = job.finished_at or datetime.now(timezone.utc)
+        _persist_study_job(project_root, job)
+        return
+    try:
+        active_dataset_fingerprint = load_dataset_contract(project_root).dataset_fingerprint
+        if not job.dataset_fingerprint:
+            raise TrainingError("Persisted StudyJob lacks a frozen DatasetContract identity; refusing to resume ambiguous training work.")
+        if job.dataset_fingerprint != active_dataset_fingerprint:
+            raise TrainingError("Active DatasetContract changed after this StudyJob was created; create a new Study for the new revision.")
+        _ensure_validation_policy_selection_open(project_root, active_dataset_fingerprint)
+    except (TrainingError, FileNotFoundError) as error:
+        job.status = "FAILED"
+        job.error = str(error)
+        job.finished_at = datetime.now(timezone.utc)
         _persist_study_job(project_root, job)
         return
     try:
@@ -1294,6 +1299,9 @@ def _submit_study_job(project_root: Path, job_id: UUID) -> StudyJob:
 
 def start_study_job(project_root: Path, *, client_request_id: UUID | None = None, name: str, model_kind: str, seeds: list[int], selection_metric: str, randomness_protocol: str = "LEGACY_COMBINED", split_seed: int | None = None, training_seed: int | None = None, execution_backend_key: str = "local_executor", adapter_key: str | None = None, adapter_version: str | None = None, **config) -> StudyJob:
     _ensure_validation_policy_selection_open(project_root)
+    dataset_fingerprint = load_dataset_contract(project_root).dataset_fingerprint
+    if not dataset_fingerprint:
+        raise TrainingError("A StudyJob requires a persisted DatasetContract fingerprint.")
     pairs = _study_seed_pairs(seeds=seeds, randomness_protocol=randomness_protocol, split_seed=split_seed, training_seed=training_seed)
     descriptor, _ = resolve_execution_backend(execution_backend_key)
     from ruflex.runtime.registry import builtin_runtime_registry
@@ -1319,6 +1327,7 @@ def start_study_job(project_root: Path, *, client_request_id: UUID | None = None
                 and [state.model_dump(exclude={"status", "run_id", "runtime_seconds", "error"}) for state in existing.seed_states]
                     == [state.model_dump(exclude={"status", "run_id", "runtime_seconds", "error"}) for state in seed_states]
                 and existing.execution_config == config
+                and existing.dataset_fingerprint == dataset_fingerprint
                 and (existing.adapter_key, existing.adapter_version, existing.adapter_provider)
                     == (identity.key, identity.version, identity.provider)
                 and (existing.execution_backend_key, existing.execution_backend_version, existing.execution_backend_provider)
@@ -1330,7 +1339,7 @@ def start_study_job(project_root: Path, *, client_request_id: UUID | None = None
                 return existing
             job = existing
         else:
-            job = StudyJob(job_id=request_id, client_request_id=request_id, name=name, model_kind=model_kind, selection_metric=selection_metric, seed_states=seed_states, randomness_protocol=randomness_protocol, split_seed=(pairs[0][0] if len({pair[0] for pair in pairs}) == 1 else None), execution_config=config, adapter_key=identity.key, adapter_version=identity.version, adapter_provider=identity.provider, execution_backend_key=descriptor.identity.key, execution_backend_version=descriptor.identity.version, execution_backend_provider=descriptor.identity.provider)
+            job = StudyJob(job_id=request_id, client_request_id=request_id, name=name, model_kind=model_kind, selection_metric=selection_metric, dataset_fingerprint=dataset_fingerprint, seed_states=seed_states, randomness_protocol=randomness_protocol, split_seed=(pairs[0][0] if len({pair[0] for pair in pairs}) == 1 else None), execution_config=config, adapter_key=identity.key, adapter_version=identity.version, adapter_provider=identity.provider, execution_backend_key=descriptor.identity.key, execution_backend_version=descriptor.identity.version, execution_backend_provider=descriptor.identity.provider)
             _persist_study_job(project_root, job)
     return _submit_study_job(project_root, job.job_id)
 
@@ -1341,6 +1350,11 @@ def resume_study_job(project_root: Path, job_id: UUID) -> StudyJob:
     job = load_study_job(project_root, job_id)
     if job.status in {"SUCCEEDED", "FAILED", "CANCELLED"}:
         raise TrainingError(f"Study job {job_id} is terminal ({job.status}) and cannot be resumed.")
+    active_dataset_fingerprint = load_dataset_contract(project_root).dataset_fingerprint
+    if not job.dataset_fingerprint:
+        raise TrainingError("Persisted StudyJob lacks a frozen DatasetContract identity; refusing to resume ambiguous training work.")
+    if job.dataset_fingerprint != active_dataset_fingerprint:
+        raise TrainingError("Active DatasetContract changed after this StudyJob was created; create a new Study for the new revision.")
     if job.cancel_requested:
         raise TrainingError("A cancelled Study job cannot be resumed; create a new declared Study instead.")
     _, backend = _study_execution_backend(job)
