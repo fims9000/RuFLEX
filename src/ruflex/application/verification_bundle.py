@@ -10,7 +10,7 @@ from typing import Any
 from pydantic import BaseModel, ValidationError
 
 from ruflex.application.assurance import load_latest_assurance_case
-from ruflex.application.behavior import _requirement_identity
+from ruflex.application.behavior import _requirement_identity, behavior_result_trace_bindings_match
 from ruflex.application.evidence import _atomic_write_text
 from ruflex.application.lineage import build_project_lineage
 from ruflex.domain.verification import VerificationBundle, VerificationBundleValidation
@@ -441,6 +441,10 @@ def _validate_relationships(objects: list[BaseModel]) -> list[str]:
                 or object_.transition != transition or object_.regression_detected != (transition == "PASS_TO_FAIL")
             ):
                 errors.append(f"Behavior revision comparison {object_.comparison_id} has broken result provenance.")
+        elif isinstance(object_, BehaviorSpecResult):
+            spec = objects_by_type.get(BehaviorSpec, {}).get(str(object_.spec_id))
+            if not isinstance(spec, BehaviorSpec) or not behavior_result_trace_bindings_match(spec, object_):
+                errors.append(f"BehaviorSpecResult {object_.result_id} has missing or mismatched specification and exact FIS trace provenance.")
         elif isinstance(object_, StudyStabilityAnalysis):
             study = studies.get(str(object_.study_id))
             evaluation = evaluations.get(str(object_.evaluation_id)) if object_.evaluation_id is not None else None
@@ -599,6 +603,10 @@ def validate_verification_bundle(path: Path | str) -> VerificationBundleValidati
         warnings.append("ExplanationReproducibilityAnalysis run, explanation, and case bindings were checked; aggregate agreement values are not independently recomputed by the portable bundle validator.")
     if any(isinstance(item, ConditionMonitoringDemo) for item in objects):
         warnings.append("ConditionMonitoringDemo policy and decision arithmetic were checked, but model inference cannot be replayed because executable/model artifacts are excluded from the inspection-first bundle.")
+    if any(isinstance(item, BehaviorSpecResult) and item.fis_id is not None and item.schema_version == 1 for item in objects):
+        warnings.append("Legacy FIS-bound BehaviorSpecResult evidence has no persisted exact computation trace; portable inspection cannot reconstruct one.")
+    if any(isinstance(item, BehaviorSpecResult) and item.exact_fis_traces for item in objects):
+        warnings.append("Embedded BehaviorSpec FIS traces were checked for typed input/revision/output binding, but the inspection-first bundle does not independently replay fuzzy inference.")
     assurance_objects = {str(item.assurance_id): item for item in objects if isinstance(item, AssuranceCase)}
     if not assurance_objects:
         errors.append("No typed AssuranceCase object was found in the bundle.")

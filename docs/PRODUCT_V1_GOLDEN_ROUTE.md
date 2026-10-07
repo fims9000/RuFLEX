@@ -8,7 +8,7 @@ The persisted Golden Route is exercised by the Product browser routes and integr
 4. For a fixed-split `TRAINING_VARIABILITY` Study, create persisted Stability Lab evidence, inspect HCIR and a case-level disagreement, then freeze a validation-derived Stability Gate before final-test access. `SPLIT_VARIABILITY` and `COMBINED_VARIABILITY` remain separate aggregate-sensitivity protocols and do not claim fully matched case-level evidence.
 4. Persist validation Evaluation, calibration, class threshold, compatible comparison, GeneralizationContract and slices.
 5. Generate capability-compatible explanation evidence/checks. For compatible repeated cases, run cross-run reproducibility; prediction and explanation agreement remain separate.
-6. Execute revision-bound BehaviorSpecs and a validation-only ACCEPT/REVIEW selective policy.
+6. Execute revision-bound BehaviorSpecs and a validation-only ACCEPT/REVIEW selective policy. A failed BehaviorSpec exposes its persisted input, expected condition, observed output and model identity as a counterexample. New FIS-bound results also retain the exact fuzzy computation trace for each evaluated input; old FIS results reopen with an explicit missing-trace warning rather than a fabricated trace.
 7. Use Exhaustive Lab only for `EXACT_FINITE_STRUCTURE` Decision Tree paths or `EXACT_ON_DECLARED_DISCRETE_GRID` FIS states.
 8. Freeze policy and explicitly evaluate the final test. Later selective-policy tuning is blocked.
 9. Build Lineage, AssuranceCase and the inspection-first VerificationBundle; validate its checksums, typed evidence and direct provenance references from the ZIP or a freshly extracted root; close and reopen the project.

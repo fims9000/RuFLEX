@@ -19,7 +19,7 @@ from ruflex.application.jobs import Job
 from ruflex.application.projects import ProjectService
 from ruflex.application.stability import _identity as _stability_identity
 from ruflex.application.training import _baseline_metrics, _calibration_bins_from_probabilities, _classification_metrics_at_threshold, _ece_from_bins, _operating_curves, _select_study_run, _stable_identity, _validation_sample_identity, list_training_runs
-from ruflex.application.behavior import _requirement_identity, evaluate_behavior_spec
+from ruflex.application.behavior import _requirement_identity, behavior_result_trace_bindings_match, evaluate_behavior_spec
 from ruflex.application.generalization import SliceAnalysis, load_generalization_contract
 from ruflex.domain.behavior import BehaviorRevisionComparison, BehaviorSpec, BehaviorSpecResult
 from ruflex.domain.evidence import ExplanationCheck, ExplanationContract, ExplanationReproducibilityAnalysis
@@ -1969,8 +1969,13 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                 if spec is None:
                     raise ValueError("BehaviorSpecResult references a missing BehaviorSpec.")
                 expected = evaluate_behavior_spec(base, spec)
-                if result.model_dump(mode="json", exclude={"result_id", "created_at"}) != expected.model_dump(mode="json", exclude={"result_id", "created_at"}):
+                legacy_exclusions = {"schema_version", "exact_fis_traces"} if result.schema_version == 1 else set()
+                excluded = {"result_id", "created_at", *legacy_exclusions}
+                if (not behavior_result_trace_bindings_match(spec, result)
+                        or result.model_dump(mode="json", exclude=excluded) != expected.model_dump(mode="json", exclude=excluded)):
                     raise ValueError("BehaviorSpecResult bindings or observations do not match the frozen requirement replay.")
+                if result.schema_version == 1 and spec.fis_id is not None:
+                    issues.append(ProjectIntegrityIssue(code="BEHAVIOR_RESULT_LEGACY_TRACE_UNAVAILABLE", status="WARN", path=relative_path, detail="Legacy FIS-bound BehaviorSpecResult has no persisted exact trace; its output was replayed, but trace inspection is unavailable."))
             except (OSError, ValidationError, ValueError, TypeError, KeyError, IndexError) as error:
                 issues.append(ProjectIntegrityIssue(code="BEHAVIOR_RESULT_PROVENANCE_MISMATCH", status="FAIL", path=relative_path, detail=str(error)))
         for path in behavior_comparison_paths:

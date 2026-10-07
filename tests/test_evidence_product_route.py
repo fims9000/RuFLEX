@@ -280,6 +280,116 @@ def test_fis_behavior_spec_integrity_requires_exact_persisted_revision(tmp_path:
     assert next(gate for gate in assurance.json()["gates"] if gate["key"] == "behavior_specs")["status"] == "FAIL"
 
 
+def test_fis_behavior_result_persists_exact_trace_and_rejects_trace_tampering(tmp_path: Path) -> None:
+    import hashlib
+    import shutil
+    from ruflex.application.project_integrity import inspect_project_integrity
+    from ruflex.application.verification_bundle import validate_verification_bundle
+
+    client = TestClient(app)
+    root = tmp_path / "fis-behavior-trace"
+    session_id = _project_with_data(client, root)
+    fis = client.post("/api/projects/fis/default", json={"session_id": session_id, "name": "Traced behavior FIS"}).json()
+    spec = client.post("/api/projects/evidence/behavior-specs", json={
+        "session_id": session_id, "fis_id": fis["fis_id"], "name": "Out-of-range FIS output",
+        "kind": "output_range", "sample": {"temperature": 25.0, "torque": 48.0, "vibration": 0.6},
+        "minimum": 200.0, "maximum": 300.0, "rationale": "Exercise a persisted failure trace.",
+    })
+    assert spec.status_code == 201, spec.text
+    response = client.post("/api/projects/evidence/behavior-specs/run", json={"session_id": session_id, "spec_id": spec.json()["spec_id"]})
+    assert response.status_code == 201, response.text
+    result = response.json()
+    assert result["schema_version"] == 2 and result["status"] == "FAIL"
+    assert list(result["exact_fis_traces"]) == ["primary"]
+    trace = result["exact_fis_traces"]["primary"]
+    assert trace["input_values"] == spec.json()["sample"]
+    assert trace["semantic_hash"] == fis["semantic_hash"]
+    assert trace["final_output"] == result["observed_output"]
+    assert client.get(f"/api/projects/{session_id}/integrity").json()["status"] == "PASS"
+    assert client.post("/api/projects/close", json={"session_id": session_id}).status_code == 204
+    reopened = client.post("/api/projects/open", json={"path": str(root), "read_only": True}).json()["session_id"]
+    assert client.get(f"/api/projects/{reopened}/evidence/behavior-specs/latest").json()["exact_fis_traces"] == result["exact_fis_traces"]
+    writable = client.post("/api/projects/open", json={"path": str(root), "read_only": False}).json()["session_id"]
+    assert client.post("/api/projects/evidence/assurance-cases", json={"session_id": writable}).status_code == 201
+    bundle = client.post("/api/projects/evidence/verification-bundles", json={"session_id": writable}).json()
+    extracted = tmp_path / "fis-behavior-bundle"
+    shutil.unpack_archive(bundle["path"], extracted, "zip")
+    assert validate_verification_bundle(extracted).status == "PASS"
+
+    result_path = root / "evidence" / "behavior-specs" / f"result-{result['result_id']}.json"
+    tampered = json.loads(result_path.read_text(encoding="utf-8"))
+    tampered["exact_fis_traces"]["primary"]["input_values"]["temperature"] = 99.0
+    result_path.write_text(json.dumps(tampered), encoding="utf-8")
+    integrity = inspect_project_integrity(root)
+    assert integrity.status == "FAIL"
+    assert any(issue.code == "BEHAVIOR_RESULT_PROVENANCE_MISMATCH" for issue in integrity.issues)
+    tampered_assurance = client.post("/api/projects/evidence/assurance-cases", json={"session_id": writable})
+    assert tampered_assurance.status_code == 201
+    assert next(gate for gate in tampered_assurance.json()["gates"] if gate["key"] == "project_integrity")["status"] == "FAIL"
+
+    bundled_result_path = extracted / "evidence" / "behavior-specs" / f"result-{result['result_id']}.json"
+    bundled_result_path.write_text(json.dumps(tampered), encoding="utf-8")
+    manifest_path = extracted / "verification-manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    relative = bundled_result_path.relative_to(extracted).as_posix()
+    manifest["checksums"][relative] = hashlib.sha256(bundled_result_path.read_bytes()).hexdigest()
+    manifest_bytes = json.dumps(manifest, indent=2, sort_keys=True).encode()
+    manifest_path.write_bytes(manifest_bytes)
+    (extracted / "verification-manifest.sha256").write_text(f"{hashlib.sha256(manifest_bytes).hexdigest()}  verification-manifest.json\n", encoding="utf-8")
+    portable = validate_verification_bundle(extracted)
+    assert portable.status == "FAIL"
+    assert any("exact FIS trace provenance" in error for error in portable.errors)
+
+    legacy_root = tmp_path / "legacy-fis-behavior"
+    shutil.copytree(root, legacy_root)
+    legacy_result_path = legacy_root / "evidence" / "behavior-specs" / f"result-{result['result_id']}.json"
+    legacy = json.loads(legacy_result_path.read_text(encoding="utf-8"))
+    legacy["exact_fis_traces"] = {}
+    from ruflex.domain.behavior import BehaviorSpecResult
+    with pytest.raises(ValidationError):
+        BehaviorSpecResult.model_validate(legacy)  # v2 cannot silently lose its trace
+    legacy["schema_version"] = 1
+    legacy_result_path.write_text(json.dumps(legacy), encoding="utf-8")
+    legacy_integrity = inspect_project_integrity(legacy_root)
+    assert legacy_integrity.status == "WARN"
+    assert any(issue.code == "BEHAVIOR_RESULT_LEGACY_TRACE_UNAVAILABLE" for issue in legacy_integrity.issues)
+
+
+def test_fis_behavior_pair_and_batch_keep_each_exact_input_trace(tmp_path: Path) -> None:
+    client = TestClient(app)
+    session_id = _project_with_data(client, tmp_path / "fis-behavior-multitrace")
+    fis = client.post("/api/projects/fis/default", json={"session_id": session_id, "name": "Multi-trace FIS"}).json()
+    sample = {"temperature": 25.0, "torque": 48.0, "vibration": 0.6}
+    comparison = {"temperature": 28.0, "torque": 50.0, "vibration": 0.7}
+    pair = client.post("/api/projects/evidence/behavior-specs", json={
+        "session_id": session_id, "fis_id": fis["fis_id"], "name": "Pair trace", "kind": "invariance_pair",
+        "sample": sample, "comparison_sample": comparison, "rationale": "Both exact computations must remain inspectable.",
+    }).json()
+    pair_result = client.post("/api/projects/evidence/behavior-specs/run", json={"session_id": session_id, "spec_id": pair["spec_id"]})
+    assert pair_result.status_code == 201, pair_result.text
+    traces = pair_result.json()["exact_fis_traces"]
+    assert set(traces) == {"primary", "comparison"}
+    assert traces["primary"]["input_values"] == sample
+    assert traces["comparison"]["input_values"] == comparison
+    assert traces["comparison"]["final_output"] == pair_result.json()["comparison_output"]
+
+    batch = client.post("/api/projects/evidence/behavior-specs", json={
+        "session_id": session_id, "fis_id": fis["fis_id"], "name": "Batch trace", "kind": "batch_regression_suite",
+        "sample": sample, "cases": [
+            {"name": "first", "sample": sample, "minimum": 0.0, "maximum": 1.0},
+            {"name": "second", "sample": comparison, "minimum": 0.0, "maximum": 1.0},
+        ], "rationale": "Each named case keeps its own exact computation.",
+    }).json()
+    batch_result = client.post("/api/projects/evidence/behavior-specs/run", json={"session_id": session_id, "spec_id": batch["spec_id"]})
+    assert batch_result.status_code == 201, batch_result.text
+    traces = batch_result.json()["exact_fis_traces"]
+    assert set(traces) == {"case:0", "case:1"}
+    assert traces["case:0"]["input_values"] == sample
+    assert traces["case:1"]["input_values"] == comparison
+    assert [traces[f"case:{index}"]["final_output"] for index in range(2)] == [item["output"] for item in batch_result.json()["observations"]]
+    assert client.get(f"/api/projects/{session_id}/integrity").json()["status"] == "PASS"
+
+
 def test_behavior_revision_comparison_is_persisted_and_rejects_changed_requirements(tmp_path: Path) -> None:
     client = TestClient(app); root = tmp_path / "behavior-comparison"; session_id = _project_with_data(client, root)
     run = _train(client, session_id, "logistic_regression")

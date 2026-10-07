@@ -26,6 +26,9 @@ Target branch: `feature/v1.3-data-governance-runtime`.
   presentation;
 - explicit Studio protocol text for training-, split- and combined-variability
   Stability Lab modes.
+- revision-bound BehaviorSpec failure counterexamples and schema-versioned,
+  persisted exact FIS computation traces, inspectable after project reopen;
+  portable bundles check trace bindings but do not independently replay inference.
 
 ## Boundaries
 

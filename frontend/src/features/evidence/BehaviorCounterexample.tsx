@@ -34,6 +34,6 @@ export function BehaviorCounterexample({ spec, result }: { spec: BehaviorSpec; r
       {spec.comparison_sample && <SampleValues sample={spec.comparison_sample} label="Comparison input" />}
     </>}
     <small>{result.run_id ? `TrainingRun ${result.run_id} · model artifact ${result.model_artifact_sha256}` : `FIS ${result.fis_id} · semantic revision ${result.fis_semantic_hash}`}</small>
-    <p className="property-description">This reports only the evaluated, revision-bound requirement. No exact computation trace is persisted with this BehaviorSpec result.</p>
+    <p className="property-description">This reports only the evaluated, revision-bound requirement.{result.fis_id ? " Its exact FIS computation is shown in the saved trace when available." : " A trained-model BehaviorSpec result has no native exact FIS trace."}</p>
   </div>;
 }

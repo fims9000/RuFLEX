@@ -5,6 +5,7 @@ from typing import Literal
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from ruflex.domain.fis import FISTrace
 
 
 class BehaviorSpec(BaseModel):
@@ -56,6 +57,7 @@ class BehaviorObservation(BaseModel):
 
 class BehaviorSpecResult(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    schema_version: Literal[1, 2] = 1
     result_id: UUID = Field(default_factory=uuid4)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     spec_id: UUID
@@ -68,6 +70,17 @@ class BehaviorSpecResult(BaseModel):
     comparison_output: float | None = None
     detail: str
     observations: list[BehaviorObservation] = Field(default_factory=list)
+    exact_fis_traces: dict[str, FISTrace] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def trace_schema(self) -> "BehaviorSpecResult":
+        if self.schema_version == 1 and self.exact_fis_traces:
+            raise ValueError("Legacy BehaviorSpecResult cannot claim new exact FIS traces.")
+        if self.run_id is not None and self.exact_fis_traces:
+            raise ValueError("TrainingRun-bound BehaviorSpecResult cannot claim native FIS traces.")
+        if self.schema_version == 2 and self.fis_id is not None and not self.exact_fis_traces:
+            raise ValueError("New FIS-bound BehaviorSpecResult requires its exact computation trace.")
+        return self
 
 
 class BehaviorRevisionComparison(BaseModel):

@@ -135,8 +135,9 @@ export type BehaviorSpec = {
   expected_direction: "nondecreasing" | "nonincreasing" | null; maximum_delta?: number | null; cases?: Array<{ name: string; sample: Record<string, number>; minimum?: number | null; maximum?: number | null }>; tolerance: number; rationale: string;
 };
 export type BehaviorSpecResult = {
-  result_id: string; created_at?: string; spec_id: string; run_id: string | null; model_artifact_sha256: string | null; fis_id: string | null; fis_semantic_hash: string | null;
+  schema_version?: 1 | 2; result_id: string; created_at?: string; spec_id: string; run_id: string | null; model_artifact_sha256: string | null; fis_id: string | null; fis_semantic_hash: string | null;
   status: "PASS" | "FAIL"; observed_output: number; comparison_output: number | null; detail: string; observations?: Array<{ name: string; output: number; status: "PASS" | "FAIL"; detail: string }>;
+  exact_fis_traces?: Record<string, FISTrace>;
 };
 export type BehaviorRevisionComparison = {
   comparison_id: string; requirement_identity: string; baseline_result_id: string; candidate_result_id: string;

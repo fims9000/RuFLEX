@@ -87,6 +87,7 @@ def create_behavior_spec(project_root: Path, payload: dict) -> BehaviorSpec:
 
 def evaluate_behavior_spec(project_root: Path, spec: BehaviorSpec) -> BehaviorSpecResult:
     """Recompute a frozen behavior requirement without persisting a result."""
+    exact_fis_traces = {}
     if spec.run_id is not None:
         run = load_training_run(project_root, spec.run_id)
         if run.model_artifact_sha256 != spec.model_artifact_sha256: raise BehaviorSpecError("BehaviorSpec model artifact identity no longer matches its TrainingRun.")
@@ -95,8 +96,14 @@ def evaluate_behavior_spec(project_root: Path, spec: BehaviorSpec) -> BehaviorSp
     else:
         fis = next((item for item in list_fis_revisions(project_root, str(spec.fis_id)) if item.semantic_hash == spec.fis_semantic_hash), None)
         if fis is None: raise BehaviorSpecError("Bound FIS semantic revision no longer exists.")
-        value = evaluate_fis(fis, spec.sample).output
-        other = evaluate_fis(fis, spec.comparison_sample).output if spec.comparison_sample else None
+        primary = evaluate_fis(fis, spec.sample)
+        value = primary.output
+        if spec.kind != "batch_regression_suite":
+            exact_fis_traces["primary"] = primary.trace
+        comparison = evaluate_fis(fis, spec.comparison_sample) if spec.comparison_sample else None
+        other = comparison.output if comparison else None
+        if comparison is not None and spec.kind != "batch_regression_suite":
+            exact_fis_traces["comparison"] = comparison.trace
     observations: list[BehaviorObservation] = []
     if spec.kind in {"output_range", "domain_constraint"}:
         passed = (spec.minimum is None or value >= spec.minimum - spec.tolerance) and (spec.maximum is None or value <= spec.maximum + spec.tolerance)
@@ -115,8 +122,13 @@ def evaluate_behavior_spec(project_root: Path, spec: BehaviorSpec) -> BehaviorSp
         detail = f"Output {value:.8g} is {'outside' if passed else 'inside'} forbidden region [{spec.minimum}, {spec.maximum}]."
     elif spec.kind == "batch_regression_suite":
         observations = []
-        for case in spec.cases:
-            output = predict_run_sample(project_root, spec.run_id, case.sample) if spec.run_id is not None else evaluate_fis(fis, case.sample).output
+        for index, case in enumerate(spec.cases):
+            if spec.run_id is not None:
+                output = predict_run_sample(project_root, spec.run_id, case.sample)
+            else:
+                case_evaluation = evaluate_fis(fis, case.sample)
+                output = case_evaluation.output
+                exact_fis_traces[f"case:{index}"] = case_evaluation.trace
             case_passed = (case.minimum is None or output >= case.minimum - spec.tolerance) and (case.maximum is None or output <= case.maximum + spec.tolerance)
             observations.append(BehaviorObservation(name=case.name, output=output, status="PASS" if case_passed else "FAIL", detail=f"Output {output:.8g}; accepted range [{case.minimum}, {case.maximum}]."))
         passed = all(item.status == "PASS" for item in observations)
@@ -125,7 +137,38 @@ def evaluate_behavior_spec(project_root: Path, spec: BehaviorSpec) -> BehaviorSp
     else:
         passed = (spec.minimum is None or value >= spec.minimum - spec.tolerance) and (spec.maximum is None or value <= spec.maximum + spec.tolerance)
         detail = f"Regression case output {value:.8g}; accepted range [{spec.minimum}, {spec.maximum}]."
-    return BehaviorSpecResult(spec_id=spec.spec_id, run_id=spec.run_id, model_artifact_sha256=spec.model_artifact_sha256, fis_id=spec.fis_id, fis_semantic_hash=spec.fis_semantic_hash, status="PASS" if passed else "FAIL", observed_output=value, comparison_output=other, detail=detail, observations=observations)
+    return BehaviorSpecResult(schema_version=2, spec_id=spec.spec_id, run_id=spec.run_id, model_artifact_sha256=spec.model_artifact_sha256, fis_id=spec.fis_id, fis_semantic_hash=spec.fis_semantic_hash, status="PASS" if passed else "FAIL", observed_output=value, comparison_output=other, detail=detail, observations=observations, exact_fis_traces=exact_fis_traces)
+
+
+def behavior_result_trace_bindings_match(spec: BehaviorSpec, result: BehaviorSpecResult) -> bool:
+    """Check portable trace provenance without replaying an excluded model artifact."""
+    if (result.spec_id != spec.spec_id or result.run_id != spec.run_id
+            or result.model_artifact_sha256 != spec.model_artifact_sha256
+            or result.fis_id != spec.fis_id or result.fis_semantic_hash != spec.fis_semantic_hash):
+        return False
+    if result.schema_version == 1:
+        return not result.exact_fis_traces
+    if spec.run_id is not None:
+        return not result.exact_fis_traces
+    if spec.kind == "batch_regression_suite":
+        expected = [(f"case:{index}", case.sample, result.observations[index].output) for index, case in enumerate(spec.cases)] if len(result.observations) == len(spec.cases) else []
+        if not expected:
+            return False
+    else:
+        expected = [("primary", spec.sample, result.observed_output)]
+        if spec.comparison_sample is not None:
+            if result.comparison_output is None:
+                return False
+            expected.append(("comparison", spec.comparison_sample, result.comparison_output))
+    if set(result.exact_fis_traces) != {key for key, _, _ in expected}:
+        return False
+    return all(
+        (trace := result.exact_fis_traces[key]).fis_id == spec.fis_id
+        and trace.semantic_hash == spec.fis_semantic_hash
+        and trace.input_values == sample
+        and abs(trace.final_output - output) <= 1e-12
+        for key, sample, output in expected
+    )
 
 
 def run_behavior_spec(project_root: Path, spec_id: UUID) -> BehaviorSpecResult:
