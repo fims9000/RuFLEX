@@ -152,6 +152,21 @@ describe("EvaluationWorkspace final-test boundary", () => {
     expect(screen.queryByText("old slice response lost")).not.toBeInTheDocument();
   });
 
+  it("never carries final-test confirmation or a late opening error into another project", async () => {
+    let rejectRequest: (error: Error) => void = () => undefined;
+    studioApi.evaluateFinalTest.mockReset().mockImplementationOnce(() => new Promise((_resolve, reject) => { rejectRequest = reject; }));
+    const view = renderWorkspace();
+    fireEvent.click(screen.getByRole("checkbox", { name: /I confirm this policy was frozen/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Evaluate frozen final test" }));
+    await waitFor(() => expect(studioApi.evaluateFinalTest).toHaveBeenCalledTimes(1));
+    const newRun = { ...run, run_id: "new-run-123456789" };
+    view.rerender(workspaceElement(false, { project: { ...project, session_id: "another-session" }, run: newRun, runs: [newRun] }));
+    await act(async () => { rejectRequest(new Error("old final-test response lost")); });
+    expect(screen.getByRole("checkbox", { name: /I confirm this policy was frozen/ })).not.toBeChecked();
+    expect(screen.queryByTestId("final-test-recovery")).not.toBeInTheDocument();
+    expect(screen.queryByText("old final-test response lost")).not.toBeInTheDocument();
+  });
+
   it("compares one selected run with one saved manual FIS on validation", async () => {
     studioApi.createAnalysisComparison.mockClear().mockResolvedValueOnce({ comparison_id: "comparison-1", fis_id: "fis-1", fis_semantic_hash: "saved-semantic-hash" } as never);
     renderWorkspace(false, { fis: { fis_id: "fis-1", semantic_hash: "saved-semantic-hash", system_type: "mamdani", rules: [] } });

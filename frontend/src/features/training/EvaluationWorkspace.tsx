@@ -217,6 +217,10 @@ export function EvaluationWorkspace({
   const [finalTestRecovery, setFinalTestRecovery] = useState<FinalTestRecovery | null>(null);
   const [recoveringFinalTest, setRecoveringFinalTest] = useState(false);
   const [finalTestConfirmed, setFinalTestConfirmed] = useState(false);
+  useEffect(() => {
+    setFinalTestConfirmed(false);
+    setFinalTestRecovery(null);
+  }, [project.session_id]);
   const [comparing, setComparing] = useState(false);
   const [comparisonRecovery, setComparisonRecovery] = useState<ComparisonRecovery | null>(null);
   const [recoveringComparison, setRecoveringComparison] = useState(false);
@@ -520,6 +524,7 @@ export function EvaluationWorkspace({
   }
 
   async function evaluateFinalTest() {
+    const requestSessionId = project.session_id;
     if (finalTestRecovery) return;
     if (policyRecovery) {
       setError("Resolve the pending validation policy save before any final-test access.");
@@ -553,17 +558,19 @@ export function EvaluationWorkspace({
     };
     try {
       const result = await studioApi.evaluateFinalTest(
-        project.session_id,
+        requestSessionId,
         request.evaluationId,
         request.calibrationId,
         request.thresholdId,
         request.selectivePolicyId,
         request.stabilityGatePolicyId,
       );
+      if (workspaceSessionRef.current !== requestSessionId) return;
       onFinalTest(result);
       setFinalTestConfirmed(false);
       setFinalTestRecovery(null);
     } catch (reason) {
+      if (workspaceSessionRef.current !== requestSessionId) return;
       setFinalTestRecovery({ ...request, error: reason instanceof Error ? reason.message : "Final-test response was uncertain. Do not resubmit this request." });
       setError(reason instanceof Error ? reason.message : "Could not evaluate frozen final-test split");
     } finally {
@@ -575,15 +582,18 @@ export function EvaluationWorkspace({
   async function recoverFinalTest() {
     const pending = finalTestRecovery;
     if (!pending) return;
+    const requestSessionId = project.session_id;
     setRecoveringFinalTest(true); setError(null);
     try {
-      const latest = await studioApi.getLatestFinalTestEvaluation(project.session_id);
+      const latest = await studioApi.getLatestFinalTestEvaluation(requestSessionId);
+      if (workspaceSessionRef.current !== requestSessionId) return;
       if (latest.evaluation_id !== pending.evaluationId || latest.calibration_id !== pending.calibrationId || latest.threshold_id !== pending.thresholdId || latest.selective_policy_id !== pending.selectivePolicyId || latest.stability_gate_policy_id !== pending.stabilityGatePolicyId) {
         setFinalTestRecovery({ ...pending, error: "The latest FinalTestEvaluation has different frozen policy identities. No new final-test evaluation was submitted; inspect persisted lineage before proceeding." });
         return;
       }
       onFinalTest(latest); setFinalTestRecovery(null); setFinalTestConfirmed(false);
     } catch (reason) {
+      if (workspaceSessionRef.current !== requestSessionId) return;
       const message = reason instanceof ProductApiError && reason.status === 404
         ? "No matching FinalTestEvaluation is visible yet. The dataset boundary may still have opened; do not submit another test request. Retry this lookup or reopen and inspect persisted evidence."
         : reason instanceof Error ? reason.message : "Could not recover FinalTestEvaluation; do not resubmit.";

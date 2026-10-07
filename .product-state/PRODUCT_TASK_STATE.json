@@ -322,7 +322,8 @@
     "alpha_manual_fis_single_run_comparison",
     "alpha_manual_fis_comparison_evidence_integrity",
     "alpha_analysis_comparison_project_session_isolation",
-    "alpha_slice_analysis_project_session_isolation"
+    "alpha_slice_analysis_project_session_isolation",
+    "alpha_final_test_confirmation_session_isolation"
   ],
   "active_capability": "alpha_master_spec_gap_audit",
   "active_acceptance": [
@@ -330,8 +331,9 @@
     "Select the next concrete, low-resource, end-to-end product gap and implement it without broad refactoring."
   ],
   "blockers": [],
-  "next_executable_work": "Continue the alpha product gap audit. Inspect validation policy or final-test authoring for cross-project local-state carryover and late-response behavior, and use focused negative tests before changing a scientific boundary. Preserve unrelated docs/article edits.",
+  "next_executable_work": "Continue the alpha product gap audit. Inspect remaining validation-policy request/recovery state for exact project-session isolation; preserve frozen final-test semantics and unrelated docs/article edits. Add focused negative checks before a code change.",
   "qa": {
+    "final_test_confirmation_session_isolation": "PASS: The Analysis workspace remounts for each project session and clears local final-test confirmation/recovery on session change; old final-test create/lookup responses cannot populate the new project's UI. Component tests 23 passed including late-response regression, TypeScript/Vite build and two focused real Studio browser routes passed. Backend final-test evaluation and policy semantics were not changed; full browser matrix deferred to release QA.",
     "slice_analysis_project_session_isolation": "PASS: Slice Lab resets its draft and exact save-recovery state on project-session change; delayed create, lookup and explicit-repeat responses from an earlier project cannot update the active project's local UI. EvaluationWorkspace component tests 22 passed including delayed slice failure, TypeScript/Vite build passed, and the real Analysis browser route saved a validation slice and reopened it after project close/open. Full suites deferred to release QA.",
     "analysis_comparison_project_session_isolation": "PASS: Analysis resets selected-run/manual-FIS draft and exact comparison recovery when the project session changes; late comparison create/lookup responses are ignored if they belong to the former session. EvaluationWorkspace unit tests 21 passed including draft, uncertain recovery and late-response regressions; TypeScript/Vite build and real manual-FIS comparison browser route passed. Full browser suite deferred to release QA.",
     "manual_fis_comparison_evidence_integrity": "PASS: Project Integrity requires exactly one FIS metric row per FIS-bound comparison, validates its semantic revision, raw-input mapping, validation identity, declared score semantics and numeric structure; portable VerificationBundle uses the same provenance check. Tampered and missing FIS rows fail project integrity; malformed evidence makes the Assurance project_integrity gate FAIL; a re-checksummed portable bundle still fails. Focused comparison/integrity tests passed. Portable verification does not replay numeric scores without raw dataset rows.",
