@@ -83,6 +83,9 @@ test("Studio authors an exact FIS-bound requirement and recovers a lost creation
   await page.getByLabel("Behavior maximum").fill("3");
   await page.getByRole("button", { name: "Create and run BehaviorSpec" }).click();
   await expect(page.getByTestId("behavior-spec-create-recovery")).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Name", exact: true })).toBeDisabled();
+  await expect(page.getByLabel("Behavior minimum")).toBeDisabled();
+  await expect(page.getByLabel("Behavior model source")).toBeDisabled();
   const newerRevision = await page.request.post(`${api}/fis/save`, { data: {
     session_id: sessionId,
     spec: { ...fis, operators: { ...fis.operators, centroid_resolution: fis.operators.centroid_resolution + 1 } },
