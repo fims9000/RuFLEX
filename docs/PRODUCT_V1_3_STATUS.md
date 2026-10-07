@@ -29,6 +29,9 @@ Target branch: `feature/v1.3-data-governance-runtime`.
 - revision-bound BehaviorSpec failure counterexamples and schema-versioned,
   persisted exact FIS computation traces, inspectable after project reopen;
   portable bundles check trace bindings but do not independently replay inference.
+- Studio authoring of BehaviorSpecs against either a persisted TrainingRun or
+  an exact saved FIS semantic revision, with explicit FIS inputs, uncertain
+  creation recovery and close/reopen inspection.
 
 ## Boundaries
 

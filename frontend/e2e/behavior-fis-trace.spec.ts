@@ -83,14 +83,56 @@ test("Studio authors an exact FIS-bound requirement and recovers a lost creation
   await page.getByLabel("Behavior maximum").fill("3");
   await page.getByRole("button", { name: "Create and run BehaviorSpec" }).click();
   await expect(page.getByTestId("behavior-spec-create-recovery")).toBeVisible();
+  const newerRevision = await page.request.post(`${api}/fis/save`, { data: {
+    session_id: sessionId,
+    spec: { ...fis, operators: { ...fis.operators, centroid_resolution: fis.operators.centroid_resolution + 1 } },
+  } });
+  expect(newerRevision.ok()).toBeTruthy();
+  expect((await newerRevision.json()).semantic_hash).not.toBe(fis.semantic_hash);
   await page.getByRole("button", { name: "Retry saved requirement lookup" }).click();
   await expect(page.getByTestId("behavior-spec")).toContainText("FIS-bound requirement");
   await expect(page.getByTestId("behavior-exact-traces")).toContainText("Persisted exact FIS trace");
   expect(writes).toBe(1);
   const specs = await page.request.get(`${api}/${sessionId}/evidence/behavior-specs`);
   expect(specs.ok()).toBeTruthy();
-  expect((await specs.json()).filter((item: { name: string }) => item.name === "Studio FIS range")).toHaveLength(1);
+  const matching = (await specs.json()).filter((item: { name: string }) => item.name === "Studio FIS range");
+  expect(matching).toHaveLength(1);
+  expect(matching[0].fis_semantic_hash).toBe(fis.semantic_hash);
 
+  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await page.getByLabel("Project path").fill(path);
+  await page.getByRole("button", { name: "Open project", exact: true }).click();
+  await page.getByRole("button", { name: "E", exact: true }).click();
+  await expect(page.getByTestId("behavior-exact-traces")).toContainText("Persisted exact FIS trace");
+});
+
+test("Studio binds a pairwise FIS requirement to both explicit inputs and its saved revision", async ({ page }) => {
+  const path = join(tmpdir(), `ruflex-behavior-fis-pair-${Date.now()}`);
+  const api = "http://127.0.0.1:8010/api/projects";
+  const created = await page.request.post(api, { data: { path, name: "Pairwise FIS requirement" } });
+  expect(created.ok()).toBeTruthy();
+  const sessionId = (await created.json()).session_id as string;
+  const confirmed = await page.request.post(`${api}/dataset/confirm`, { data: {
+    session_id: sessionId, csv_text: "temperature,target\n10,0\n20,1\n30,1\n40,0\n", target: "target", task: "binary_classification", id_columns: [],
+  } });
+  expect(confirmed.ok()).toBeTruthy();
+  const fisResponse = await page.request.post(`${api}/fis/default`, { data: { session_id: sessionId, name: "Pairwise FIS source" } });
+  expect(fisResponse.ok()).toBeTruthy();
+  const fis = await fisResponse.json();
+
+  await page.goto("/");
+  await page.getByLabel("Project path").fill(path);
+  await page.getByRole("button", { name: "Open project", exact: true }).click();
+  await page.getByRole("button", { name: "E", exact: true }).click();
+  await page.getByLabel("Behavior spec type").selectOption("monotonic_pair");
+  await page.getByLabel("Behavior input temperature").fill("20");
+  await page.getByLabel("Behavior comparison temperature").fill("30");
+  await page.getByRole("button", { name: "Create and run BehaviorSpec" }).click();
+  await expect(page.getByTestId("behavior-exact-traces")).toContainText("Persisted exact FIS trace");
+  const specsResponse = await page.request.get(`${api}/${sessionId}/evidence/behavior-specs`);
+  expect(specsResponse.ok()).toBeTruthy();
+  const spec = (await specsResponse.json()).find((item: { kind: string }) => item.kind === "monotonic_pair");
+  expect(spec).toMatchObject({ run_id: null, fis_id: fis.fis_id, fis_semantic_hash: fis.semantic_hash, sample: { temperature: 20 }, comparison_sample: { temperature: 30 } });
   await page.getByRole("button", { name: "Close", exact: true }).click();
   await page.getByLabel("Project path").fill(path);
   await page.getByRole("button", { name: "Open project", exact: true }).click();

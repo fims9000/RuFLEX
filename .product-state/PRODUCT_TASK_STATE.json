@@ -314,7 +314,8 @@
     "alpha_behavior_failure_counterexample_inspection",
     "alpha_behavior_fis_exact_trace_binding",
     "alpha_behavior_fis_studio_authoring",
-    "alpha_behavior_spec_numeric_draft_validation"
+    "alpha_behavior_spec_numeric_draft_validation",
+    "alpha_behavior_fis_pairwise_revision_regression"
   ],
   "active_capability": "alpha_master_spec_gap_audit",
   "active_acceptance": [
@@ -322,8 +323,9 @@
     "Select the next concrete, low-resource, end-to-end product gap and implement it without broad refactoring."
   ],
   "blockers": [],
-  "next_executable_work": "Continue the bounded alpha product gap audit with a focused saved-FIS authoring edge-case review: verify pairwise BehaviorSpec input editing and exact revision binding when the working FIS changes before an uncertain response is recovered. Preserve unrelated docs/article edits and do not alter frozen scientific semantics.",
+  "next_executable_work": "Continue the bounded alpha product gap audit. Focus next on the BehaviorSpec authoring form's unresolved-request edit lock: source selection is disabled during uncertain creation but name/kind/range controls can still be edited, making the visible draft diverge from the exact frozen recovery request. Keep recovery bound to the submitted payload, and preserve unrelated docs/article edits.",
   "qa": {
+    "behavior_fis_pairwise_revision_regression": "PASS: Real Studio browser test creates a pairwise FIS-bound BehaviorSpec with separate primary/comparison inputs and exact saved semantic hash, persists both exact traces, and reopens the project. Lost-response recovery also remains bound to the original FIS semantic hash after a newer FIS revision is saved externally. Focused FIS browser suite 3/3 passed; no product scientific semantics changed.",
     "behavior_spec_numeric_draft_validation": "PASS: Empty or non-finite run/FIS BehaviorSpec inputs and numeric bounds are rejected before a persistence request; reversed range and negative perturbation limit are also rejected. Focused browser suite 5/5 confirms blank FIS input/bound sends zero BehaviorSpec writes while successful FIS authoring, lost-response recovery, reopen and run-bound regression still pass. EvidenceWorkspace component tests 10/10, TypeScript/Vite build and diff check passed.",
     "behavior_fis_studio_authoring": "PASS: EvidenceWorkspace now authors BehaviorSpecs against an exact saved FIS semantic revision, with explicit numeric FIS input controls and the existing run-bound route retained. Lost creation response resolves by exact source revision and request definition without duplicate persistence; saved result and exact trace survive close/reopen. Focused FIS browser route 2/2, run-bound Evidence browser route 3/3, EvidenceWorkspace component tests 10/10, TypeScript/Vite build and git diff --check passed. Full suites deferred to release QA.",
     "behavior_fis_exact_trace_binding": "PASS: New schema-v2 FIS-bound BehaviorSpecResults persist typed exact traces for primary, comparison and indexed batch inputs; run-bound results claim none. Project integrity replays exact FIS traces and fails on mutation, Assurance project_integrity fails on corrupted trace, and portable bundle validation checks typed revision/input/output bindings while explicitly not claiming inference replay. Legacy trace-less FIS results reopen with WARN. Studio exposes traces even when no TrainingRun is selected. Focused Python evidence/integrity tests 46 passed, frontend unit 87 passed, TypeScript/Vite build and four focused Evidence browser routes passed, including FIS trace close/reopen. Full suites deferred to release QA.",
