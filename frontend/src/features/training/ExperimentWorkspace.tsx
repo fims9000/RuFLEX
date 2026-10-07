@@ -812,6 +812,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
           <dt>Target</dt><dd>{dataset.contract.target}</dd>
           <dt>Task</dt><dd>{dataset.contract.task}</dd>
           <dt>Features</dt><dd>{dataset.contract.feature_columns.join(", ")}</dd>
+          {dataset.contract.excluded_columns.length > 0 && <><dt>Excluded from model</dt><dd>{dataset.contract.excluded_columns.join(", ")}</dd></>}
           <dt>Split</dt><dd>{Math.round((1 - validationFraction - testFraction) * 100)}% train · {Math.round(validationFraction * 100)}% validation · {Math.round(testFraction * 100)}% locked test</dd>
           <dt>Frozen split</dt><dd>{splitContract ? `${splitContract.family} · ${splitContract.split_id.slice(0, 8)}` : "No explicit contract — legacy random holdout"}</dd>
           <dt>Preprocessing</dt><dd>train-only median/mode fill + ordinal encoding + standardization</dd>

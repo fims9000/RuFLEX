@@ -94,6 +94,7 @@ class ConfirmDatasetRequest(SessionRequest):
     target: str = Field(min_length=1)
     task: str
     id_columns: list[str] = Field(default_factory=list)
+    excluded_columns: list[str] = Field(default_factory=list)
 
 
 class ImportDatasetRequest(SessionRequest):
@@ -102,6 +103,7 @@ class ImportDatasetRequest(SessionRequest):
     target: str = Field(min_length=1)
     task: str
     id_columns: list[str] = Field(default_factory=list)
+    excluded_columns: list[str] = Field(default_factory=list)
 
 
 class InspectDatasetFileRequest(SessionRequest):
@@ -737,7 +739,7 @@ def confirm_csv_dataset(request: ConfirmDatasetRequest) -> DatasetConfirmation:
         frame = pd.read_csv(StringIO(request.csv_text))
         digest = hashlib.sha256(raw).hexdigest()
         profile = inspect_dataset(frame, source_artifact_sha256=digest)
-        contract = build_dataset_contract(profile, target=request.target, task=request.task, id_columns=request.id_columns)
+        contract = build_dataset_contract(profile, target=request.target, task=request.task, id_columns=request.id_columns, excluded_columns=request.excluded_columns)
         audit = run_data_audit(contract, frame)
         reference = persist_dataset_bytes(session.project.root, raw, original_name="studio-dataset.csv")
         if reference.sha256 != digest:
@@ -757,7 +759,7 @@ def import_dataset(request: ImportDatasetRequest) -> DatasetConfirmation:
         raw, frame, source_format, media_type = _read_dataset_upload(request.filename, request.content_base64)
         digest = hashlib.sha256(raw).hexdigest()
         profile = inspect_dataset(frame, source_artifact_sha256=digest)
-        contract = build_dataset_contract(profile, target=request.target, task=request.task, id_columns=request.id_columns, source_format=source_format)
+        contract = build_dataset_contract(profile, target=request.target, task=request.task, id_columns=request.id_columns, excluded_columns=request.excluded_columns, source_format=source_format)
         audit = run_data_audit(contract, frame)
         reference = persist_dataset_bytes(session.project.root, raw, original_name=Path(request.filename).name, media_type=media_type)
         if reference.sha256 != digest:

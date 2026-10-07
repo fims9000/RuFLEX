@@ -118,6 +118,12 @@ def _validate_relationships(objects: list[BaseModel]) -> list[str]:
     def exists(model: type[BaseModel], value: Any) -> bool: return value is None or str(value) in by_type.get(model, set())
     errors: list[str] = []
     contracts = objects_by_type.get(DatasetContract, {})
+    profiles = [item for item in objects if isinstance(item, DatasetProfile)]
+    if contracts:
+        from ruflex.application.project_integrity import _dataset_contract_profile_mismatch
+        for contract in contracts.values():
+            if not profiles or any(_dataset_contract_profile_mismatch(contract, profile) for profile in profiles):
+                errors.append("DatasetContract feature roles do not match the bundled DatasetProfile.")
     splits = objects_by_type.get(SplitContract, {})
     transforms = objects_by_type.get(TransformPipelineContract, {})
     audits = objects_by_type.get(LeakageAuditReport, {})

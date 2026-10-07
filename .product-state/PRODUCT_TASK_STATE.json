@@ -306,16 +306,18 @@
     "alpha_fis_dataset_range_response_guard",
     "alpha_fis_cross_action_write_mutex",
     "alpha_fis_import_file_read_draft_baseline",
-    "alpha_fis_editor_history_async_integrity"
+    "alpha_fis_editor_history_async_integrity",
+    "alpha_explicit_model_feature_exclusion"
   ],
   "active_capability": "alpha_master_spec_gap_audit",
   "active_acceptance": [
-    "Resume a bounded master-spec gap audit after the verified FIS lifecycle race fixes.",
-    "Select one concrete, low-resource, end-to-end product gap and implement it without broad refactoring."
+    "Continue a bounded master-spec gap audit after the verified feature-scope workflow.",
+    "Select the next concrete, low-resource, end-to-end product gap and implement it without broad refactoring."
   ],
   "blockers": [],
-  "next_executable_work": "Review the next unresolved user-facing workflow in 02_RuFLEX_FULL_TECHNICAL_SPEC_v1.md against its route/API/tests, choose a small falsifiable gap, then implement and verify one Studio user path.",
+  "next_executable_work": "Inspect the next unresolved Studio user workflow against the master spec and choose a small falsifiable product gap; preserve the existing unrelated docs/article worktree changes.",
   "qa": {
+    "explicit_model_feature_exclusion": "PASS: DatasetContract persists distinct excluded role, API CSV/XLSX accepts it, training omits excluded features, project/bundle integrity fail closed, Studio displays and reopens the choice. Focused Python dataset/integrity/evidence tests: 69 passed; TypeScript/Vite build and focused real Studio close/reopen E2E passed. No full suite run for this resource-aware slice.",
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
     "frontend_build": "PASS: npm run build",

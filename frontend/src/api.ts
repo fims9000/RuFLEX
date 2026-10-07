@@ -79,9 +79,10 @@ export type DatasetConfirmation = {
     task: string;
     feature_columns: string[];
     id_columns: string[];
+    excluded_columns: string[];
     source_format: "csv" | "xlsx";
     row_identity_scheme: string;
-    role_decisions: Record<string, "target" | "feature" | "id">;
+    role_decisions: Record<string, "target" | "feature" | "id" | "excluded">;
   };
   audit: {
     findings: Array<{
@@ -298,6 +299,7 @@ export const studioApi = {
     target: string,
     task: string,
     idColumns: string[],
+    excludedColumns: string[] = [],
   ) =>
     request<DatasetConfirmation>("/api/projects/dataset/confirm", {
       session_id: sessionId,
@@ -305,6 +307,7 @@ export const studioApi = {
       target,
       task,
       id_columns: idColumns,
+      excluded_columns: excludedColumns,
     }),
   importDataset: (
     sessionId: string,
@@ -313,6 +316,7 @@ export const studioApi = {
     target: string,
     task: string,
     idColumns: string[],
+    excludedColumns: string[] = [],
   ) =>
     request<DatasetConfirmation>("/api/projects/dataset/import", {
       session_id: sessionId,
@@ -321,6 +325,7 @@ export const studioApi = {
       target,
       task,
       id_columns: idColumns,
+      excluded_columns: excludedColumns,
     }),
   createGeneralization: (
     sessionId: string,

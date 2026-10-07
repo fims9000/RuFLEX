@@ -134,7 +134,7 @@ def lint_generalization_contract(contract: GeneralizationContract, dataset: Data
     findings: list[LintFinding] = []
     if contract.dataset_fingerprint != dataset.dataset_fingerprint:
         findings.append(LintFinding(code="DATASET_FINGERPRINT_MISMATCH", severity="error", message="The contract belongs to a different dataset version.", next_action="Create a new contract for this DatasetContract."))
-    names = {name.lower() for name in (*dataset.feature_columns, *dataset.id_columns, dataset.target)}
+    names = {name.lower() for name in (*dataset.feature_columns, *dataset.id_columns, *dataset.excluded_columns, dataset.target)}
     for axis in contract.novelty_axes:
         if axis.axis == "custom":
             if not any(rule.operator == "custom" for rule in (*contract.supported_scope, *contract.forbidden_scope)):

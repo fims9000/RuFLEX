@@ -104,12 +104,19 @@ def test_project_integrity_binds_dataset_roles_to_profile_and_reads_legacy_contr
     contract_path = root / "data" / "dataset-contract.json"
     original = json.loads(contract_path.read_text(encoding="utf-8"))
     legacy = dict(original, role_decisions={})
+    legacy.pop("excluded_columns", None)
     contract_path.write_text(json.dumps(legacy), encoding="utf-8")
     assert client.get(f"/api/projects/{session_id}/integrity").json()["status"] == "PASS"
 
     corrupted = dict(original)
     corrupted["feature_columns"] = corrupted["feature_columns"][1:]
     contract_path.write_text(json.dumps(corrupted), encoding="utf-8")
+    report = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert any(issue["code"] == "DATASET_ROLE_CONTRACT_MISMATCH" for issue in report["issues"])
+
+    excluded = dict(original)
+    excluded["excluded_columns"] = ["temperature"]
+    contract_path.write_text(json.dumps(excluded), encoding="utf-8")
     report = client.get(f"/api/projects/{session_id}/integrity").json()
     assert any(issue["code"] == "DATASET_ROLE_CONTRACT_MISMATCH" for issue in report["issues"])
 

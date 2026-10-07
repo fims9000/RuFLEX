@@ -751,16 +751,22 @@ def _dataset_contract_profile_mismatch(contract: DatasetContract, profile: Datas
         return "DatasetContract ID columns are duplicated or absent from the DatasetProfile."
     if contract.target in contract.id_columns:
         return "DatasetContract target cannot also be an ID column."
-    expected_features = [name for name in columns if name not in {contract.target, *contract.id_columns}]
+    if len(contract.excluded_columns) != len(set(contract.excluded_columns)) or not set(contract.excluded_columns) <= set(columns):
+        return "DatasetContract excluded columns are duplicated or absent from the DatasetProfile."
+    if contract.target in contract.excluded_columns or set(contract.id_columns) & set(contract.excluded_columns):
+        return "DatasetContract target, ID, and excluded feature roles overlap."
+    expected_features = [name for name in columns if name not in {contract.target, *contract.id_columns, *contract.excluded_columns}]
     if contract.feature_columns != expected_features:
-        return "DatasetContract feature columns/order do not match its confirmed target and ID roles."
+        return "DatasetContract feature columns/order do not match its confirmed target, ID, and excluded roles."
+    if contract.excluded_columns and not contract.role_decisions:
+        return "DatasetContract excluded columns require explicit persisted role decisions."
     if contract.role_decisions:
         expected_roles = {
-            name: "target" if name == contract.target else "id" if name in contract.id_columns else "feature"
+            name: "target" if name == contract.target else "id" if name in contract.id_columns else "excluded" if name in contract.excluded_columns else "feature"
             for name in columns
         }
         if contract.role_decisions != expected_roles:
-            return "DatasetContract role_decisions do not match its target, ID, and feature columns."
+            return "DatasetContract role_decisions do not match its target, ID, excluded, and feature columns."
     profile_payload = json.dumps([(column.name, column.dtype, column.semantic_type) for column in profile.columns]) + profile.source_artifact_sha256
     expected_fingerprint = hashlib.sha256(profile_payload.encode()).hexdigest()
     if profile.fingerprint != expected_fingerprint:

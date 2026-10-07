@@ -41,6 +41,50 @@ def test_id_candidate_is_excluded_only_when_user_confirms_id_role() -> None:
     assert confirmed_as_id.role_decisions["entity_id"] == "id"
 
 
+def test_ordinary_column_can_be_excluded_without_mislabeling_it_as_id() -> None:
+    from ruflex.application.verification_bundle import _validate_relationships
+    frame = pd.DataFrame({"entity_id": ["a", "b"], "temperature": [10, 20], "leak_hint": [0, 1], "target": [0, 1]})
+    profile = inspect_dataset(frame, source_artifact_sha256="9" * 64)
+    contract = build_dataset_contract(
+        profile, target="target", task="binary_classification",
+        id_columns=["entity_id"], excluded_columns=["leak_hint"],
+    )
+    assert contract.feature_columns == ["temperature"]
+    assert contract.id_columns == ["entity_id"]
+    assert contract.excluded_columns == ["leak_hint"]
+    assert contract.role_decisions["leak_hint"] == "excluded"
+    assert contract.compare_schema(frame).compatible
+    assert not contract.compare_schema(frame.drop(columns="leak_hint")).compatible
+    assert _validate_relationships([profile, contract]) == []
+    altered = contract.model_copy(update={"excluded_columns": [], "feature_columns": ["temperature"]})
+    assert any("feature roles" in message for message in _validate_relationships([profile, altered]))
+
+
+@pytest.mark.parametrize(
+    ("excluded_columns", "message"),
+    [
+        (["missing"], "absent from the dataset"),
+        (["target"], "cannot also be excluded"),
+        (["entity_id"], "must not overlap"),
+        (["mode", "mode"], "must be unique"),
+        (["temperature", "mode"], "At least one model feature"),
+    ],
+)
+def test_invalid_feature_exclusions_fail_before_contract_persistence(excluded_columns: list[str], message: str) -> None:
+    profile = inspect_dataset(_fixture(), source_artifact_sha256="8" * 64)
+    with pytest.raises(DatasetConfirmationError, match=message):
+        build_dataset_contract(profile, target="target", task="binary_classification", id_columns=["entity_id"], excluded_columns=excluded_columns)
+
+
+def test_legacy_dataset_contract_without_exclusions_deserializes() -> None:
+    profile = inspect_dataset(_fixture(), source_artifact_sha256="7" * 64)
+    contract = build_dataset_contract(profile, target="target", task="binary_classification", id_columns=["entity_id"])
+    historical = contract.model_dump(mode="json", exclude={"excluded_columns"})
+    restored = type(contract).model_validate(historical)
+    assert restored.excluded_columns == []
+    assert restored.feature_columns == contract.feature_columns
+
+
 @pytest.mark.parametrize(
     ("id_columns", "message"),
     [
@@ -134,6 +178,36 @@ def test_csv_inspect_confirm_and_reopen_contract_through_api(tmp_path) -> None:
     assert inspected.status_code == 200 and "entity_id" in inspected.json()["profile"]["id_candidates"]
     assert confirmed.status_code == 200 and (root / "data" / "dataset-contract.json").is_file()
     assert load_dataset_contract(root).target == "target"
+
+
+def test_excluded_feature_is_persisted_reopened_and_omitted_from_training(tmp_path) -> None:
+    client = TestClient(app)
+    root = tmp_path / "excluded-feature-project"
+    session_id = client.post("/api/projects", json={"path": str(root), "name": "Excluded feature"}).json()["session_id"]
+    rows = [f"{index},{index % 7},{index % 2},{index % 2}" for index in range(40)]
+    csv_text = "entity_id,temperature,leak_hint,target\n" + "\n".join(rows) + "\n"
+    confirmed = client.post("/api/projects/dataset/confirm", json={
+        "session_id": session_id, "csv_text": csv_text, "target": "target",
+        "task": "binary_classification", "id_columns": ["entity_id"], "excluded_columns": ["leak_hint"],
+    })
+    assert confirmed.status_code == 200, confirmed.text
+    assert confirmed.json()["contract"]["feature_columns"] == ["temperature"]
+    assert client.get(f"/api/projects/{session_id}/integrity").json()["status"] == "PASS"
+    trained = client.post("/api/projects/training/run", json={
+        "session_id": session_id, "model_kind": "logistic_regression", "seed": 42,
+        "max_epochs": 1, "learning_rate": .01, "batch_size": 16, "patience": 1,
+        "validation_fraction": .2, "test_fraction": .2, "max_rules": 3,
+    })
+    assert trained.status_code == 201, trained.text
+    assert trained.json()["feature_columns"] == ["temperature"]
+    assert client.post("/api/projects/close", json={"session_id": session_id}).status_code == 204
+    reopened = client.post("/api/projects/open", json={"path": str(root), "read_only": True})
+    assert reopened.status_code == 200, reopened.text
+    reopened_id = reopened.json()["session_id"]
+    state = client.get(f"/api/projects/{reopened_id}/dataset").json()
+    assert state["contract"]["excluded_columns"] == ["leak_hint"]
+    assert state["contract"]["feature_columns"] == ["temperature"]
+    assert client.get(f"/api/projects/{reopened_id}/integrity").json()["status"] == "PASS"
 
 
 def test_xlsx_import_is_persisted_as_an_artifact_and_reopens(tmp_path) -> None:

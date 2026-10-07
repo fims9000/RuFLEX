@@ -20,9 +20,9 @@ class FeatureSpec(BaseModel): name:str; semantic_type:str; dtype:str; nullable:b
 class DatasetProfile(BaseModel): columns:list[FeatureSpec]; row_count:int; source_artifact_sha256:str; fingerprint:str; id_candidates:list[str]
 class SchemaComparison(BaseModel): compatible:bool; missing_columns:list[str]; unexpected_columns:list[str]
 class DatasetContract(BaseModel):
- dataset_fingerprint:str; source_artifact_sha256:str; target:str; task:Literal['regression','binary_classification','multiclass_classification']; feature_columns:list[str]; id_columns:list[str]=Field(default_factory=list); source_format:Literal['csv','xlsx']='csv'; row_identity_scheme:str=ROW_IDENTITY_SCHEME; role_decisions:dict[str,Literal['target','feature','id']]=Field(default_factory=dict)
+ dataset_fingerprint:str; source_artifact_sha256:str; target:str; task:Literal['regression','binary_classification','multiclass_classification']; feature_columns:list[str]; id_columns:list[str]=Field(default_factory=list); excluded_columns:list[str]=Field(default_factory=list); source_format:Literal['csv','xlsx']='csv'; row_identity_scheme:str=ROW_IDENTITY_SCHEME; role_decisions:dict[str,Literal['target','feature','id','excluded']]=Field(default_factory=dict)
  def compare_schema(self,frame:pd.DataFrame):
-  expected=set(self.feature_columns)|set(self.id_columns)|{self.target}; actual=set(frame.columns); return SchemaComparison(compatible=expected==actual,missing_columns=sorted(expected-actual),unexpected_columns=sorted(actual-expected))
+  expected=set(self.feature_columns)|set(self.id_columns)|set(self.excluded_columns)|{self.target}; actual=set(frame.columns); return SchemaComparison(compatible=expected==actual,missing_columns=sorted(expected-actual),unexpected_columns=sorted(actual-expected))
 class SplitContract(BaseModel):
  """Immutable, dataset-bound membership contract for a scientific split.
 
@@ -102,18 +102,27 @@ def inspect_dataset(frame:pd.DataFrame,*,source_artifact_sha256:str)->DatasetPro
   columns.append(FeatureSpec(name=str(name),semantic_type=kind,dtype=str(s.dtype),nullable=bool(s.isna().any()),categories=categories,proposed_role='id_candidate' if is_id else 'feature',role_confidence=.95 if is_id else .85,role_reason='Explicit identifier token: exact id or _id suffix.' if is_id else 'No explicit identifier token; retain as a feature candidate pending DatasetContract confirmation.'))
  payload=json.dumps([(c.name,c.dtype,c.semantic_type) for c in columns])+source_artifact_sha256
  return DatasetProfile(columns=columns,row_count=len(frame),source_artifact_sha256=source_artifact_sha256,fingerprint=hashlib.sha256(payload.encode()).hexdigest(),id_candidates=ids)
-def build_dataset_contract(profile:DatasetProfile,*,target:str|None,task:Literal['regression','binary_classification','multiclass_classification'],id_columns:list[str]|None=None,source_format:Literal['csv','xlsx']='csv')->DatasetContract:
+def build_dataset_contract(profile:DatasetProfile,*,target:str|None,task:Literal['regression','binary_classification','multiclass_classification'],id_columns:list[str]|None=None,excluded_columns:list[str]|None=None,source_format:Literal['csv','xlsx']='csv')->DatasetContract:
  if not target: raise DatasetConfirmationError('Target requires explicit confirmation.')
- names={x.name for x in profile.columns}
+ names=[column.name for column in profile.columns]
+ if len(names)!=len(set(names)): raise DatasetConfirmationError('Dataset columns must be unique before roles can be confirmed.')
  if target not in names: raise DatasetConfirmationError(f'Target column is absent: {target}')
  ids=id_columns or []
  if len(ids)!=len(set(ids)): raise DatasetConfirmationError('ID columns must be unique; remove duplicate column names.')
- unknown_ids=sorted(set(ids)-names)
+ unknown_ids=sorted(set(ids)-set(names))
  if unknown_ids: raise DatasetConfirmationError(f'ID columns are absent from the dataset: {", ".join(unknown_ids)}')
  if target in ids: raise DatasetConfirmationError('The target column cannot also be declared as an ID column.')
- features=[x.name for x in profile.columns if x.name not in {target,*ids}]
- decisions={name:('target' if name==target else 'id' if name in ids else 'feature') for name in names}
- return DatasetContract(dataset_fingerprint=profile.fingerprint,source_artifact_sha256=profile.source_artifact_sha256,target=target,task=task,feature_columns=features,id_columns=ids,source_format=source_format,role_decisions=decisions)
+ excluded=excluded_columns or []
+ if len(excluded)!=len(set(excluded)): raise DatasetConfirmationError('Excluded columns must be unique; remove duplicate column names.')
+ unknown_excluded=sorted(set(excluded)-set(names))
+ if unknown_excluded: raise DatasetConfirmationError(f'Excluded columns are absent from the dataset: {", ".join(unknown_excluded)}')
+ if target in excluded: raise DatasetConfirmationError('The target column cannot also be excluded from model features.')
+ overlap=sorted(set(ids)&set(excluded))
+ if overlap: raise DatasetConfirmationError(f'ID and excluded feature roles must not overlap: {", ".join(overlap)}')
+ features=[name for name in names if name not in {target,*ids,*excluded}]
+ if not features: raise DatasetConfirmationError('At least one model feature must remain after excluding columns.')
+ decisions={name:('target' if name==target else 'id' if name in ids else 'excluded' if name in excluded else 'feature') for name in names}
+ return DatasetContract(dataset_fingerprint=profile.fingerprint,source_artifact_sha256=profile.source_artifact_sha256,target=target,task=task,feature_columns=features,id_columns=ids,excluded_columns=excluded,source_format=source_format,role_decisions=decisions)
 def run_data_audit(contract:DatasetContract,frame:pd.DataFrame)->DataAuditReport:
  findings=[]
  if frame.duplicated().any(): findings.append(AuditFinding(code='DUPLICATE_ROWS',severity='warning',scope='dataset',evidence={'count':int(frame.duplicated().sum())},remediation='Review duplicate records before protocol freeze.'))

@@ -75,6 +75,7 @@ type PendingDatasetWrite = {
   target: string;
   task: string;
   idColumns: string[];
+  excludedColumns: string[];
   sourceFormat: "csv" | "xlsx";
   draftKind: "csv_text" | "file";
   draftRevision: number;
@@ -146,6 +147,7 @@ export function App() {
   const [target, setTarget] = useState("target");
   const [task, setTask] = useState("binary_classification");
   const [idColumns, setIdColumns] = useState("");
+  const [excludedColumns, setExcludedColumns] = useState("");
   const [intendedUse, setIntendedUse] = useState("New entities");
   const [noveltyAxis, setNoveltyAxis] = useState("entity");
   const [generalization, setGeneralization] =
@@ -855,6 +857,7 @@ export function App() {
             && pendingWrite.task === state.contract.task
             && pendingWrite.sourceFormat === state.contract.source_format
             && JSON.stringify(pendingWrite.idColumns) === JSON.stringify(state.contract.id_columns)
+            && JSON.stringify(pendingWrite.excludedColumns) === JSON.stringify(state.contract.excluded_columns)
           )
         );
       if (pendingWriteMatches && pendingWrite) {
@@ -877,6 +880,7 @@ export function App() {
       setTarget(state.contract.target);
       setTask(state.contract.task);
       setIdColumns(state.contract.id_columns.join(", "));
+      setExcludedColumns(state.contract.excluded_columns.join(", "));
       setDatasetStateStatus("available");
     }).catch((reason: unknown) => {
       if (!active) return;
@@ -1296,6 +1300,8 @@ export function App() {
     setDatasetState(null);
     setPendingDatasetFile(null);
     setPendingDatasetProfile(null);
+    setIdColumns("");
+    setExcludedColumns("");
     pendingDatasetWriteRef.current = null;
     setInspectingDatasetFile(false);
     setImportingDatasetFile(false);
@@ -1354,6 +1360,7 @@ export function App() {
     let confirmationResponseReceived = false;
     let sourceArtifactSha256: string | null = null;
     const requestedIdColumns = idColumns.split(",").map((column) => column.trim()).filter(Boolean);
+    const requestedExcludedColumns = excludedColumns.split(",").map((column) => column.trim()).filter(Boolean);
     try {
       const csvBytes = new TextEncoder().encode(csvText);
       const digestBuffer = new Uint8Array(csvBytes.byteLength);
@@ -1366,6 +1373,7 @@ export function App() {
         target,
         task,
         idColumns: requestedIdColumns,
+        excludedColumns: requestedExcludedColumns,
         sourceFormat: "csv",
         draftKind: "csv_text",
         draftRevision: csvDraftRevisionRef.current,
@@ -1376,6 +1384,7 @@ export function App() {
         target,
         task,
         requestedIdColumns,
+        requestedExcludedColumns,
       );
       confirmationResponseReceived = true;
       if (!isCurrent()) return;
@@ -1397,6 +1406,7 @@ export function App() {
             && persisted.contract.target === target
             && persisted.contract.task === task
             && JSON.stringify(persisted.contract.id_columns) === JSON.stringify(requestedIdColumns)
+            && JSON.stringify(persisted.contract.excluded_columns) === JSON.stringify(requestedExcludedColumns)
             && persisted.contract.source_format === "csv";
           setDatasetState(persisted);
           setDataset({ contract: persisted.contract, audit: persisted.audit });
@@ -1477,6 +1487,7 @@ export function App() {
     let importResponseReceived = false;
     let sourceArtifactSha256: string | null = null;
     const requestedIdColumns = idColumns.split(",").map((column) => column.trim()).filter(Boolean);
+    const requestedExcludedColumns = excludedColumns.split(",").map((column) => column.trim()).filter(Boolean);
     try {
       const fileBytes = await file.arrayBuffer();
       const bytes = new Uint8Array(fileBytes);
@@ -1488,6 +1499,7 @@ export function App() {
         target,
         task,
         idColumns: requestedIdColumns,
+        excludedColumns: requestedExcludedColumns,
         sourceFormat: file.name.toLowerCase().endsWith(".xlsx") ? "xlsx" : "csv",
         draftKind: "file",
         draftRevision: datasetFileSelectionId.current,
@@ -1501,6 +1513,7 @@ export function App() {
         target,
         task,
         requestedIdColumns,
+        requestedExcludedColumns,
       );
       importResponseReceived = true;
       if (!isCurrent()) return;
@@ -1529,7 +1542,8 @@ export function App() {
           const sameContract = persisted.contract.source_artifact_sha256 === sourceArtifactSha256
             && persisted.contract.target === target
             && persisted.contract.task === task
-            && JSON.stringify(persisted.contract.id_columns) === JSON.stringify(requestedIdColumns);
+            && JSON.stringify(persisted.contract.id_columns) === JSON.stringify(requestedIdColumns)
+            && JSON.stringify(persisted.contract.excluded_columns) === JSON.stringify(requestedExcludedColumns);
           setDatasetState(persisted);
           setDataset({ contract: persisted.contract, audit: persisted.audit });
           setProfile(persisted.profile);
@@ -1932,7 +1946,12 @@ export function App() {
                   ID columns
                   <TextInput aria-label="ID columns" value={idColumns} onUpdate={setIdColumns} placeholder={profile?.id_candidates.join(", ") || "comma-separated, optional"} disabled={!datasetStateResolved || importingDatasetFile || confirmingCsvDataset} />
                 </label>
+                <label className="field-label">
+                  Exclude from model
+                  <TextInput aria-label="Excluded feature columns" value={excludedColumns} onUpdate={setExcludedColumns} placeholder="column names, comma-separated" disabled={!datasetStateResolved || importingDatasetFile || confirmingCsvDataset} />
+                </label>
               </div>
+              <p className="property-description">Excluded columns remain in the source dataset but are not passed to model fitting. Confirm the exact names before saving the contract.</p>
               <div className="form-actions">
                 <Button view="outlined" disabled={!datasetStateResolved || importingDatasetFile || confirmingCsvDataset} onClick={inspectCsv} data-ruflex-action="dataset.inspect">
                   Inspect dataset
@@ -1980,7 +1999,7 @@ export function App() {
                 <div className="data-summary">
                   Rows: {profile.row_count} · columns: {profile.columns.length}{" "}
                   · ID candidates: {profile.id_candidates.join(", ") || "none"}
-                  <div className="info-message">Role proposals are advisory: choose target and ID columns before freezing the authoritative DatasetContract.</div>
+                  <div className="info-message">Role proposals are advisory: choose target, ID columns, and any features to exclude before freezing the authoritative DatasetContract.</div>
                   <div className="data-table-wrap"><table className="data-table"><thead><tr><th>column</th><th>proposal</th><th>confidence</th><th>reason</th></tr></thead><tbody>{profile.columns.map((column) => <tr key={column.name}><td>{column.name}</td><td>{column.proposed_role}</td><td>{Math.round(column.role_confidence * 100)}%</td><td>{column.role_reason}</td></tr>)}</tbody></table></div>
                 </div>
               )}
@@ -2015,9 +2034,10 @@ export function App() {
               <small> · Row identity: {dataset.contract.row_identity_scheme}</small>
               <small> · Source: {dataset.contract.source_format.toUpperCase()} · SHA-256: <code>{dataset.contract.source_artifact_sha256}</code></small>
               <details aria-label="Frozen dataset roles">
-                <summary>Confirmed roles · {dataset.contract.feature_columns.length} model features · {dataset.contract.id_columns.length} IDs excluded</summary>
+                <summary>Confirmed roles · {dataset.contract.feature_columns.length} model features · {dataset.contract.id_columns.length} IDs · {dataset.contract.excluded_columns.length} other columns excluded</summary>
                 <p><strong>Model features:</strong> {dataset.contract.feature_columns.join(", ") || "none"}</p>
-                <p><strong>Excluded IDs:</strong> {dataset.contract.id_columns.join(", ") || "none"}</p>
+                <p><strong>ID columns:</strong> {dataset.contract.id_columns.join(", ") || "none"}</p>
+                <p><strong>Excluded from model:</strong> {dataset.contract.excluded_columns.join(", ") || "none"}</p>
               </details>
             </div>
           )}

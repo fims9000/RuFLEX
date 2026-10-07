@@ -138,3 +138,29 @@ test("Studio invalidates a stale CSV inspection when the candidate is edited", a
   await expect(page.getByText("CSV changed; inspect again before confirming", { exact: true })).toBeVisible();
   await expect(page.getByText("Rows: 2 · columns: 2", { exact: false })).toHaveCount(0);
 });
+
+test("Studio excludes an ordinary feature without assigning it an ID role and reopens the frozen choice", async ({ page }) => {
+  const path = projectPath();
+  await page.goto("/");
+  await page.getByLabel("Project path").fill(path);
+  await page.getByLabel("Project name").fill("Feature scope");
+  await page.getByRole("button", { name: "Create project", exact: true }).click();
+  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByLabel("CSV data").fill("entity_id,temperature,leak_hint,target\na,10,1,0\nb,20,0,1\n");
+  await page.getByLabel("ID columns").fill("entity_id");
+  await page.getByRole("textbox", { name: "Exclude from model" }).fill("leak_hint");
+  await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Confirm dataset contract", exact: true })).toBeEnabled();
+  await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
+  const roles = page.getByLabel("Frozen dataset roles");
+  await expect(roles).toContainText("1 model features · 1 IDs · 1 other columns excluded");
+  await roles.locator("summary").click();
+  await expect(roles).toContainText("Model features: temperature");
+  await expect(roles).toContainText("Excluded from model: leak_hint");
+
+  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await page.getByLabel("Project path").fill(path);
+  await page.getByRole("button", { name: "Open project", exact: true }).click();
+  await expect(page.getByRole("textbox", { name: "Exclude from model" })).toHaveValue("leak_hint");
+  await expect(page.getByLabel("Frozen dataset roles")).toContainText("1 model features · 1 IDs · 1 other columns excluded");
+});
