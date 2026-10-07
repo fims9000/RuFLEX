@@ -97,7 +97,14 @@ test("PRODUCT-07 persists a validation-only ACCEPT / REVIEW policy separately fr
   await page.getByRole("button", { name: "Save validation evidence", exact: true }).click();
   await page.getByRole("button", { name: /Select F1 threshold \(raw\)/, exact: true }).click();
   let policyPosts = 0;
-  await page.route("**/api/projects/analyses/selective-policies", async (route) => { policyPosts += 1; await route.continue(); });
+  let rejectFirstValidPolicy = true;
+  await page.route("**/api/projects/analyses/selective-policies", async (route) => {
+    policyPosts += 1;
+    if (rejectFirstValidPolicy) {
+      rejectFirstValidPolicy = false;
+      await route.fulfill({ status: 422, contentType: "application/json", body: JSON.stringify({ code: "VALIDATION_FAILED", detail: "DecisionThreshold does not belong to this Evaluation." }) });
+    } else await route.continue();
+  });
   await page.getByLabel("Selective confidence cutoff").fill("");
   await page.getByRole("button", { name: "Save ACCEPT / REVIEW policy", exact: true }).click();
   await expect(page.getByText(/confidence cutoff must be a finite number between 0.5 and 1.0/)).toBeVisible();
@@ -106,6 +113,10 @@ test("PRODUCT-07 persists a validation-only ACCEPT / REVIEW policy separately fr
   await page.getByLabel("Selective confidence cutoff").fill("0.80");
   await page.getByRole("button", { name: "Save ACCEPT / REVIEW policy", exact: true }).click();
   expect(policyPosts).toBe(1);
+  await expect(page.getByText("DecisionThreshold does not belong to this Evaluation.")).toBeVisible();
+  await expect(page.getByTestId("validation-policy-recovery")).toHaveCount(0);
+  await page.getByRole("button", { name: "Save ACCEPT / REVIEW policy", exact: true }).click();
+  expect(policyPosts).toBe(2);
   await expect(page.getByText("REVIEW BELOW 0.80", { exact: false })).toBeVisible();
   await expect(page.getByText(/class threshold/)).toHaveCount(2);
   await expect(page.getByText(/independent of the class threshold/)).toBeVisible();

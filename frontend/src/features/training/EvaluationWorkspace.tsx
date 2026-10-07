@@ -518,6 +518,7 @@ export function EvaluationWorkspace({
       const calibrationId = activeCalibration?.calibration_id ?? null;
       try { onSelectivePolicy(await studioApi.createSelectivePolicy(project.session_id, current.evaluation_id, confidenceCutoff, calibrationId, activeThreshold.threshold_id)); }
       catch (reason) {
+        if (reason instanceof ProductApiError && reason.status === 422) throw reason;
         setPolicyRecovery({ kind: "selective", evaluationId: current.evaluation_id, confidenceCutoff, calibrationId, thresholdId: activeThreshold.threshold_id, error: reason instanceof Error ? reason.message : "Selective policy response was uncertain.", notFound: false });
         throw reason;
       }

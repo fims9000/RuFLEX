@@ -3,7 +3,10 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest";
 import type { ButtonHTMLAttributes } from "react";
 
-const { studioApi } = vi.hoisted(() => ({ studioApi: {
+const { studioApi, ProductApiError } = vi.hoisted(() => ({ ProductApiError: class ProductApiError extends Error {
+  status: number;
+  constructor(status: number, message: string) { super(message); this.status = status; }
+}, studioApi: {
   evaluateFinalTest: vi.fn(),
   createAnalysisEvaluation: vi.fn(),
   getLatestAnalysisEvaluationForRun: vi.fn(),
@@ -19,7 +22,7 @@ const { studioApi } = vi.hoisted(() => ({ studioApi: {
   createSliceAnalysis: vi.fn(),
 } }));
 
-vi.mock("../../api", () => ({ studioApi }));
+vi.mock("../../api", () => ({ studioApi, ProductApiError }));
 vi.mock("../../components/StudioPrimitives", () => ({
   Button: ({ children, view: _view, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { view?: string }) => <button {...props}>{children}</button>,
   EmptyState: ({ title, children }: { title: string; children: React.ReactNode }) => <div><strong>{title}</strong>{children}</div>,
@@ -269,6 +272,15 @@ describe("EvaluationWorkspace final-test boundary", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save ACCEPT / REVIEW policy" }));
     expect(studioApi.createSelectivePolicy).not.toHaveBeenCalled();
     view.unmount();
+  });
+
+  it("treats a definite selective-policy validation rejection as correctable, not an uncertain save", async () => {
+    studioApi.createSelectivePolicy.mockReset().mockRejectedValueOnce(new ProductApiError(422, "DecisionThreshold does not belong to this Evaluation."));
+    renderWorkspace();
+    fireEvent.click(screen.getByRole("button", { name: "Save ACCEPT / REVIEW policy" }));
+    expect(await screen.findByText("DecisionThreshold does not belong to this Evaluation.")).toBeVisible();
+    expect(screen.queryByTestId("validation-policy-recovery")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save ACCEPT / REVIEW policy" })).toBeEnabled();
   });
 
   it("labels the default 0.50 confusion matrix as a preview rather than a frozen threshold policy", () => {

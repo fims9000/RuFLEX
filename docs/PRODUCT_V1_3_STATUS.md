@@ -52,6 +52,10 @@ Target branch: `feature/v1.3-data-governance-runtime`.
 - The validation-only selective-policy form rejects blank, non-finite and
   out-of-range confidence cutoffs before any evaluation or policy write. A
   rejected draft does not enter uncertain-write recovery and can be corrected.
+- A definitive HTTP 422 when creating a selective policy is shown as a
+  correctable validation refusal, not as an uncertain persistence outcome.
+  Lost responses and server-side persistence failures still use exact-binding
+  lookup before any explicit repeat.
 - Project Integrity, Assurance and portable bundles reject missing or malformed
   manual-FIS comparison rows and mismatched semantic-revision provenance.
   A portable bundle excludes raw dataset rows, so it checks the frozen row's
