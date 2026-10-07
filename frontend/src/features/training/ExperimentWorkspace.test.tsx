@@ -98,6 +98,7 @@ describe("ExperimentWorkspace dynamic model controls", () => {
     await act(async () => { finishSplit(frozenSplit as never); });
     await waitFor(() => expect(screen.getByText(/RANDOM · split-on/)).toBeVisible());
     expect(studioApi.createSplitContract).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "SplitContract frozen" })).toBeDisabled();
   });
 
   it("keeps split validation errors editable instead of treating them as uncertain writes", async () => {

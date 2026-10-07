@@ -288,6 +288,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
       && splitContract.split_seed === splitSeed
       && identityFields.every((field) => splitContract[field] === (field === selectedIdentityField ? groupColumn || null : null));
   }, [dataset?.contract.dataset_fingerprint, dataset?.contract.source_artifact_sha256, groupColumn, splitContract, splitFamily, splitSeed]);
+  const splitContractAlreadyFrozen = Boolean(splitContract && splitSelectionMatchesFrozenContract);
   useEffect(() => {
     setStudy(restoredStudy);
   }, [restoredStudy?.study_id]);
@@ -572,6 +573,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
   }
   async function freezeSplitContract() {
     if (splitContractRecovery || running || splitContractMutationInFlightRef.current || singleTrainingInFlightRef.current) return;
+    if (splitContractAlreadyFrozen) return;
     if (!dataset) { setError("Confirm a DatasetContract before freezing split provenance."); return; }
     splitContractMutationInFlightRef.current = true;
     setSplitContractMutationInFlight(true);
@@ -840,7 +842,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
         {catalogStatus === "loaded" && compatibleModels.length === 0 && <div className="info-message" role="status"><strong>No compatible model is available.</strong> The catalog loaded, but no available adapter declares fit support for {datasetTask}. Training remains disabled; install/register a compatible adapter or choose a dataset for a supported task.</div>}
         {splitContractRecovery && <div className="error" role="alert" data-testid="split-contract-recovery"><strong>SplitContract save is uncertain; training is paused.</strong><p>{splitContractRecovery.error}</p><Button view="outlined" disabled={recoveringSplitContract} onClick={recoverSplitContract}>Retry exact SplitContract lookup</Button>{splitContractRecovery.notFound && <Button view="outlined" disabled={recoveringSplitContract || running || project.read_only} onClick={explicitlyRepeatSplitContract}>Explicitly repeat these exact split settings</Button>}</div>}
         {!splitSelectionMatchesFrozenContract && !splitContractRecovery && <p className="error" role="status">The selected split settings do not match a frozen SplitContract. Freeze this configuration before training; no legacy RANDOM fallback will be used.</p>}
-        <Button view="outlined" disabled={running || !!splitContractRecovery || project.read_only || splitEvidenceStatus !== "loaded"} onClick={freezeSplitContract} data-ruflex-action="split.freeze">{splitContractMutationInFlight ? "Freezing split…" : `Freeze ${splitFamily} SplitContract`}</Button>
+        <Button view="outlined" disabled={running || !!splitContractRecovery || project.read_only || splitEvidenceStatus !== "loaded" || splitContractAlreadyFrozen} onClick={freezeSplitContract} data-ruflex-action="split.freeze">{splitContractMutationInFlight ? "Freezing split…" : splitContractAlreadyFrozen ? "SplitContract frozen" : `Freeze ${splitFamily} SplitContract`}</Button>
         <section className="info-message" aria-label="Training choices">
           <strong>Choose how to start</strong>
           <p><strong>Run real training</strong> creates one fitted TrainingRun for the current settings.</p>
