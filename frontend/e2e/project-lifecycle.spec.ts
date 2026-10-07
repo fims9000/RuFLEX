@@ -340,9 +340,45 @@ test("E2E-09 declares and freezes the new-entity generalization contract", async
   await page.getByRole("button", { name: /Data.*No dataset/ }).click();
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
+  let releaseDeclaration!: () => void;
+  let markDeclarationStarted!: () => void;
+  const declarationGate = new Promise<void>((resolve) => { releaseDeclaration = resolve; });
+  const declarationStarted = new Promise<void>((resolve) => { markDeclarationStarted = resolve; });
+  let declarationRequests = 0;
+  await page.route("**/api/projects/generalization/contracts", async (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    declarationRequests += 1;
+    markDeclarationStarted();
+    await declarationGate;
+    await route.continue();
+  });
   await page.getByRole("button", { name: "Declare generalization contract", exact: true }).click();
+  await declarationStarted;
+  await expect(page.getByRole("button", { name: "Declaring…", exact: true })).toBeDisabled();
+  await expect(page.getByLabel("Intended use")).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Freeze evaluation contract", exact: true })).toBeDisabled();
+  expect(declarationRequests).toBe(1);
+  releaseDeclaration();
   await expect(page.getByText("Split recommendation: group · Ready to freeze", { exact: true })).toBeVisible();
+  let releaseFreeze!: () => void;
+  let markFreezeStarted!: () => void;
+  const freezeGate = new Promise<void>((resolve) => { releaseFreeze = resolve; });
+  const freezeStarted = new Promise<void>((resolve) => { markFreezeStarted = resolve; });
+  let freezeRequests = 0;
+  await page.route("**/api/projects/generalization/contracts/*/freeze", async (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    freezeRequests += 1;
+    markFreezeStarted();
+    await freezeGate;
+    await route.continue();
+  });
   await page.getByRole("button", { name: "Freeze evaluation contract", exact: true }).click();
+  await freezeStarted;
+  await expect(page.getByRole("button", { name: "Freezing…", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Declare generalization contract", exact: true })).toBeDisabled();
+  await expect(page.getByLabel("Supported values")).toBeDisabled();
+  expect(freezeRequests).toBe(1);
+  releaseFreeze();
   await expect(page.getByText("Split recommendation: group · Frozen", { exact: true })).toBeVisible();
 
   let releasePreview!: () => void;

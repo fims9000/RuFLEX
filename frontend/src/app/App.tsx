@@ -267,6 +267,8 @@ export function App() {
   const datasetMutationRequestRef = useRef(0);
   const pendingDatasetWriteRef = useRef<PendingDatasetWrite | null>(null);
   const generalizationMutationRequestRef = useRef(0);
+  const generalizationMutationInFlightRef = useRef(false);
+  const [generalizationMutationOperation, setGeneralizationMutationOperation] = useState<"declare" | "freeze" | null>(null);
   const scopeClassificationRequestRef = useRef(0);
   const artifactInventoryRequestRef = useRef(0);
   projectSessionRef.current = project?.session_id ?? null;
@@ -1557,7 +1559,9 @@ export function App() {
     }
   }
   async function createGeneralization() {
-    if (!project) return;
+    if (!project || generalizationMutationInFlightRef.current) return;
+    generalizationMutationInFlightRef.current = true;
+    setGeneralizationMutationOperation("declare");
     const requestId = ++generalizationMutationRequestRef.current;
     const sessionId = project.session_id;
     const isCurrent = () => requestId === generalizationMutationRequestRef.current && projectSessionRef.current === sessionId;
@@ -1589,10 +1593,15 @@ export function App() {
           ? reason.message
           : "Generalization declaration failed",
       );
+    } finally {
+      generalizationMutationInFlightRef.current = false;
+      setGeneralizationMutationOperation(null);
     }
   }
   async function freezeGeneralization() {
-    if (!project || !generalization) return;
+    if (!project || !generalization || generalizationMutationInFlightRef.current) return;
+    generalizationMutationInFlightRef.current = true;
+    setGeneralizationMutationOperation("freeze");
     const requestId = ++generalizationMutationRequestRef.current;
     const sessionId = project.session_id;
     const contractId = generalization.contract.contract_id;
@@ -1611,6 +1620,9 @@ export function App() {
           ? reason.message
           : "Generalization freeze failed",
       );
+    } finally {
+      generalizationMutationInFlightRef.current = false;
+      setGeneralizationMutationOperation(null);
     }
   }
   async function checkScope(candidateMode: "preview" | "candidate") {
@@ -2045,6 +2057,7 @@ export function App() {
                   <TextInput
                     aria-label="Intended use"
                     value={intendedUse}
+                    disabled={generalizationMutationOperation !== null}
                     onUpdate={setIntendedUse}
                   />
                 </label>
@@ -2053,6 +2066,7 @@ export function App() {
                   <select
                     aria-label="Novelty axis"
                     value={noveltyAxis}
+                    disabled={generalizationMutationOperation !== null}
                     onChange={(event) => setNoveltyAxis(event.target.value)}
                   >
                     <option value="entity">Entity</option>
@@ -2067,6 +2081,7 @@ export function App() {
                   <select
                     aria-label="Generalization scope field"
                     value={scopeField || datasetState?.contract.id_columns[0] || datasetState?.contract.feature_columns[0] || ""}
+                    disabled={generalizationMutationOperation !== null}
                     onChange={(event) => setScopeField(event.target.value)}
                   >
                     {datasetState?.profile.columns.map((column) => (
@@ -2079,6 +2094,7 @@ export function App() {
                   <TextInput
                     aria-label="Generalization candidate value"
                     value={scopeCandidateValue}
+                    disabled={generalizationMutationOperation !== null}
                     onUpdate={setScopeCandidateValue}
                     placeholder="north or external-lab"
                   />
@@ -2088,6 +2104,7 @@ export function App() {
                   <TextInput
                     aria-label="Supported scope values"
                     value={supportedScopeValues}
+                    disabled={generalizationMutationOperation !== null}
                     onUpdate={setSupportedScopeValues}
                     placeholder="north, south"
                   />
@@ -2097,6 +2114,7 @@ export function App() {
                   <TextInput
                     aria-label="Forbidden scope values"
                     value={forbiddenScopeValues}
+                    disabled={generalizationMutationOperation !== null}
                     onUpdate={setForbiddenScopeValues}
                     placeholder="external-lab"
                   />
@@ -2106,6 +2124,7 @@ export function App() {
                   <select
                     aria-label="Unsupported scope action"
                     value={unsupportedAction}
+                    disabled={generalizationMutationOperation !== null}
                     onChange={(event) => setUnsupportedAction(event.target.value as "BLOCK" | "REVIEW")}
                   >
                     <option value="BLOCK">Block</option>
@@ -2116,16 +2135,17 @@ export function App() {
               <div className="form-actions">
                 <Button
                   view="outlined"
-                  disabled={project.read_only || generalizationHydrationStatus === "loading" || generalizationHydrationStatus === "error"}
+                  disabled={project.read_only || generalizationHydrationStatus === "loading" || generalizationHydrationStatus === "error" || generalizationMutationOperation !== null}
                   onClick={createGeneralization}
                   data-ruflex-action="generalization.declare"
                 >
-                  Declare generalization contract
+                  {generalizationMutationOperation === "declare" ? "Declaring…" : "Declare generalization contract"}
                 </Button>
                 <Button
                   view="action"
                   disabled={
                     project.read_only ||
+                    generalizationMutationOperation !== null ||
                     generalizationHydrationStatus !== "available" ||
                     !generalization?.lint.can_freeze ||
                     !!generalization.contract.frozen_at
@@ -2133,7 +2153,7 @@ export function App() {
                   onClick={freezeGeneralization}
                   data-ruflex-action="generalization.freeze"
                 >
-                  Freeze evaluation contract
+                  {generalizationMutationOperation === "freeze" ? "Freezing…" : "Freeze evaluation contract"}
                 </Button>
               </div>
               {generalization && (
