@@ -188,9 +188,15 @@ test("E2E-08 confirms a dataset contract in Data workspace and preserves it acro
   await expect(page.getByText(/Rows: 3/)).toBeVisible();
   await expect(page.getByText("Role proposals are advisory: choose target and ID columns before freezing the authoritative DatasetContract.", { exact: true })).toBeVisible();
   await expect(page.getByLabel("ID columns")).toHaveValue("entity_id");
+  await page.getByLabel("ID columns").fill("");
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
   await expect(page.getByText(/Contract: target/)).toBeVisible();
   await expect(page.getByText(/Row identity: dataset-fingerprint\/source-row\/v1/)).toBeVisible();
+  const frozenRoles = page.getByLabel("Frozen dataset roles");
+  await expect(frozenRoles.locator("summary")).toContainText("3 model features · 0 IDs excluded");
+  await frozenRoles.locator("summary").click();
+  await expect(frozenRoles).toContainText("Model features: entity_id, temperature, torque");
+  await expect(frozenRoles).toContainText("Excluded IDs: none");
   await page.getByRole("button", { name: "Close", exact: true }).click();
   await page.getByLabel("Project path").fill(path);
   await page.getByRole("button", { name: "Open project", exact: true }).click();

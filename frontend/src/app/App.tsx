@@ -1967,6 +1967,11 @@ export function App() {
               Contract: {dataset.contract.target} · {dataset.contract.task}
               <small> · Row identity: {dataset.contract.row_identity_scheme}</small>
               <small> · Source: {dataset.contract.source_format.toUpperCase()} · SHA-256: <code>{dataset.contract.source_artifact_sha256}</code></small>
+              <details aria-label="Frozen dataset roles">
+                <summary>Confirmed roles · {dataset.contract.feature_columns.length} model features · {dataset.contract.id_columns.length} IDs excluded</summary>
+                <p><strong>Model features:</strong> {dataset.contract.feature_columns.join(", ") || "none"}</p>
+                <p><strong>Excluded IDs:</strong> {dataset.contract.id_columns.join(", ") || "none"}</p>
+              </details>
             </div>
           )}
           {datasetState && (
