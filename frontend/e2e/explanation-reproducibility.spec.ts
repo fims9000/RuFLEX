@@ -13,7 +13,12 @@ test("PRODUCT-08 persists separate cross-run prediction and explanation reproduc
   await page.getByRole("button", {name:"E",exact:true}).click(); const generate=page.getByRole("button", {name:"Generate explanation",exact:true}); await generate.click(); await expect(generate).toBeEnabled(); await page.getByLabel("temperature").fill("30"); await generate.click(); await expect(generate).toBeEnabled();
   await page.getByRole("button", {name:"S",exact:true}).click(); await page.getByLabel("Training model").selectOption("decision_tree"); await page.getByRole("button", {name:"Run real training",exact:true}).click(); await expect(page.locator(".run-provenance")).toContainText("model artifact persisted",{timeout:30000});
   await page.getByRole("button", {name:"E",exact:true}).click(); await generate.click(); await expect(generate).toBeEnabled(); await page.getByLabel("temperature").fill("30"); await generate.click(); await expect(generate).toBeEnabled();
-  const checks=page.locator('.comparison-choice input[type="checkbox"]'); await expect(checks).toHaveCount(4); for(let i=0;i<4;i+=1) await checks.nth(i).check(); await page.getByRole("button", {name:"Compare explanation reproducibility",exact:true}).click();
+  const checks=page.locator('.comparison-choice input[type="checkbox"]'); await expect(checks).toHaveCount(4); for(let i=0;i<4;i+=1) await checks.nth(i).check();
+  let reproducibilityPostCount = 0;
+  await page.route("**/api/projects/evidence/explanation-reproducibility", async (route) => { if (route.request().method() === "POST") reproducibilityPostCount += 1; await route.continue(); });
+  await page.getByRole("button", {name:"Compare explanation reproducibility",exact:true}).evaluate((button) => { button.dispatchEvent(new MouseEvent("click", { bubbles: true })); button.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
+  await expect(page.getByTestId("reproducibility-result")).toContainText("PREDICTION AGREEMENT", { timeout: 15000 });
+  expect(reproducibilityPostCount).toBe(1);
   await expect(page.getByTestId("reproducibility-result")).toContainText("PREDICTION AGREEMENT",{timeout:15000}); await expect(page.getByTestId("reproducibility-result")).toContainText("EXPLANATION AGREEMENT"); await expect(page.getByText(/must not be interpreted as explanation stability/)).toBeVisible();
   let reproducibilityReadFailed = false;
   await page.route(`**/api/projects/*/evidence/explanation-reproducibility/latest`, async (route) => {

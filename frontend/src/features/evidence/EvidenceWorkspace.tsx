@@ -178,6 +178,7 @@ export function EvidenceWorkspace({
   const [behaviorSpec, setBehaviorSpec] = useState<BehaviorSpec | null>(restoredBehaviorSpec);
   const behaviorSpecActionInFlightRef = useRef(false);
   const behaviorComparisonActionInFlightRef = useRef(false);
+  const reproducibilityActionInFlightRef = useRef(false);
   const [behaviorResult, setBehaviorResult] = useState<BehaviorSpecResult | null>(restoredBehaviorResult);
   const [behaviorExecutionRecoveryError, setBehaviorExecutionRecoveryError] = useState<string | null>(null);
   const [behaviorSpecCreationRecoveryRequest, setBehaviorSpecCreationRecoveryRequest] = useState<{ runId: string; payload: Parameters<typeof studioApi.createBehaviorSpec>[1] } | null>(null);
@@ -768,6 +769,8 @@ export function EvidenceWorkspace({
   }
 
   async function compareReproducibility() {
+    if (reproducibilityActionInFlightRef.current || reproducibilityRecoveryIds || selectedExplanationIds.length < 4) return;
+    reproducibilityActionInFlightRef.current = true;
     setBusy(true); setError(null);
     const explanationIds = [...selectedExplanationIds];
     try {
@@ -778,7 +781,7 @@ export function EvidenceWorkspace({
       setReproducibilityRecoveryNotFound(false);
       setError(reason instanceof Error ? reason.message : String(reason));
     }
-    finally { setBusy(false); }
+    finally { reproducibilityActionInFlightRef.current = false; setBusy(false); }
   }
 
   async function submitReproducibility(explanationIds: string[]) {
@@ -790,7 +793,9 @@ export function EvidenceWorkspace({
   }
 
   async function recoverReproducibility() {
+    if (reproducibilityActionInFlightRef.current) return;
     if (!reproducibilityRecoveryIds) return;
+    reproducibilityActionInFlightRef.current = true;
     setBusy(true); setError(null);
     try {
       let result: ExplanationReproducibilityAnalysis;
@@ -816,11 +821,13 @@ export function EvidenceWorkspace({
       setReproducibilityRecoveryError(reason instanceof Error ? reason.message : "Could not recover the exact saved reproducibility analysis.");
       setReproducibilityRecoveryNotFound(false);
       setError(reason instanceof Error ? reason.message : String(reason));
-    } finally { setBusy(false); }
+    } finally { reproducibilityActionInFlightRef.current = false; setBusy(false); }
   }
 
   async function explicitlyRestartReproducibility() {
+    if (reproducibilityActionInFlightRef.current) return;
     if (!reproducibilityRecoveryIds || !reproducibilityRecoveryNotFound) return;
+    reproducibilityActionInFlightRef.current = true;
     setBusy(true); setError(null);
     try {
       await submitReproducibility(reproducibilityRecoveryIds);
@@ -828,7 +835,7 @@ export function EvidenceWorkspace({
       setReproducibilityRecoveryError(reason instanceof Error ? reason.message : "The replacement comparison could not be confirmed.");
       setReproducibilityRecoveryNotFound(false);
       setError(reason instanceof Error ? reason.message : String(reason));
-    } finally { setBusy(false); }
+    } finally { reproducibilityActionInFlightRef.current = false; setBusy(false); }
   }
 
   async function submitExhaustive(request: { kind: ExhaustiveLabResult["kind"]; runId: string | null; gridPoints: number; maxStates: number }) {

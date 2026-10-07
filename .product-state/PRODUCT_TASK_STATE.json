@@ -293,16 +293,17 @@
     "alpha_evidence_job_cancel_mutex",
     "alpha_condition_demo_write_serialization",
     "alpha_behavior_spec_create_mutex",
-    "alpha_behavior_revision_comparison_mutex"
+    "alpha_behavior_revision_comparison_mutex",
+    "alpha_explanation_reproducibility_write_serialization"
   ],
-  "active_capability": "alpha_explanation_reproducibility_write_serialization",
+  "active_capability": "alpha_exhaustive_lab_write_mutex",
   "active_acceptance": [
-    "Cross-run explanation reproducibility creation, exact recovery, and explicitly confirmed retry share one synchronous guard.",
-    "Repeated event dispatch before React rerenders sends at most one comparison request for the frozen selected explanation IDs.",
-    "Recovery and retry retain the original selected IDs without silently incorporating current UI selection."
+    "Exhaustive result creation, exact request lookup, explicit retry, and execution recovery share one synchronous guard.",
+    "Repeated event dispatch before React rerenders emits at most one exhaustive calculation for the frozen request.",
+    "The saved request kind, run identity, grid resolution and state budget remain unchanged through recovery."
   ],
   "blockers": [],
-  "next_executable_work": "Inspect compareReproducibility/recoverReproducibility/explicitlyRestartReproducibility for duplicate/cross-action submissions; guard the immutable explanation ID set and add a focused delayed-response regression plus browser verification.",
+  "next_executable_work": "Inspect runExhaustive/recoverExhaustive/explicitlyRestartExhaustive/resume paths for duplicate submissions; guard the exact request and test lost-response recovery plus a focused browser route.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -599,6 +600,7 @@
     "alpha_evidence_job_cancel_mutex": "PASS: queued explanation-job cancellation uses a synchronous cancellation guard and visibly disables the cancel action while its request is unresolved; cancellation remains enabled during ordinary job polling so the user can still cancel queued work. EvidenceWorkspace component tests: 5 passed, including cancellation during polling and duplicate synchronous cancellation dispatch; TypeScript project build and git diff --check passed.",
     "alpha_condition_demo_write_serialization": "PASS: condition-monitoring demo run, exact saved-request recovery and explicit rerun share a synchronous guard while preserving original policy, telemetry and GeneralizationContract identities. EvidenceWorkspace component tests: 6 passed; focused real Studio PRODUCT-11 Playwright route passed (1/1) with double synchronous event dispatch and exactly one persisted demo POST; TypeScript build and git diff --check passed.",
     "alpha_behavior_spec_create_mutex": "PASS: BehaviorSpec create-and-run, exact creation recovery, explicitly confirmed creation retry, and result-execution recovery share one synchronous guard; creation recovery retains the exact run and request definition. EvidenceWorkspace component tests: 7 passed; focused PRODUCT-06 Studio E2E passed (1/1), verifying two synchronous submit events produce one BehaviorSpec POST and then testing reopen/revision lineage; TypeScript build passed. Existing E2E had an ambiguous duplicated test-id assertion, scoped to the opened result and the same route then passed.",
-    "alpha_behavior_revision_comparison_mutex": "PASS: BehaviorSpec revision comparison, exact pair lookup recovery, and explicit repeat share a synchronous action guard; the original baseline/candidate IDs remain bound throughout uncertainty. EvidenceWorkspace component tests: 8 passed; focused PRODUCT-06 Studio E2E passed (1/1), including synchronous duplicate comparison events with one POST and reopen/lineage inspection; TypeScript build and diff check passed."
+    "alpha_behavior_revision_comparison_mutex": "PASS: BehaviorSpec revision comparison, exact pair lookup recovery, and explicit repeat share a synchronous action guard; the original baseline/candidate IDs remain bound throughout uncertainty. EvidenceWorkspace component tests: 8 passed; focused PRODUCT-06 Studio E2E passed (1/1), including synchronous duplicate comparison events with one POST and reopen/lineage inspection; TypeScript build and diff check passed.",
+    "alpha_explanation_reproducibility_write_serialization": "PASS: reproducibility analysis creation, exact-set lookup recovery, and explicitly confirmed retry share a synchronous action guard; the handler snapshots selected explanation IDs before submission. EvidenceWorkspace component tests: 9 passed; focused PRODUCT-08 real Studio E2E passed (1/1), synchronous duplicate dispatch produced exactly one comparison POST and persisted evidence reopened through lineage; TypeScript build and diff check passed."
   }
 }

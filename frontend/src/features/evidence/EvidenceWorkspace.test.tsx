@@ -10,6 +10,7 @@ const { studioApi } = vi.hoisted(() => ({ studioApi: {
   listBehaviorSpecs: vi.fn().mockResolvedValue([]),
   runBehaviorSpec: vi.fn(),
   compareBehaviorResults: vi.fn(),
+  createExplanationReproducibility: vi.fn(),
   getLatestConditionMonitoringDemo: vi.fn().mockResolvedValue(null),
   runConditionMonitoringDemo: vi.fn(),
   listPosthocExplanationJobs: vi.fn().mockResolvedValue([]),
@@ -57,6 +58,7 @@ beforeEach(() => {
   studioApi.listBehaviorSpecs.mockReset().mockResolvedValue([]);
   studioApi.runBehaviorSpec.mockReset();
   studioApi.compareBehaviorResults.mockReset();
+  studioApi.createExplanationReproducibility.mockReset();
   studioApi.getLatestConditionMonitoringDemo.mockReset().mockResolvedValue(null);
   studioApi.runConditionMonitoringDemo.mockReset();
   studioApi.listPosthocExplanationJobs.mockReset().mockResolvedValue([]);
@@ -74,6 +76,26 @@ beforeEach(() => {
 });
 
 describe("EvidenceWorkspace persisted explanation jobs", () => {
+  it("submits one reproducibility analysis for the frozen selected explanation IDs", async () => {
+    const explanations = ["exp-a", "exp-b", "exp-c", "exp-d"].map((explanation_id, index) => ({ explanation_id, run_id: `run-${index % 2}`, method: "occlusion", sample_identity: "case-1" }));
+    studioApi.listExplanations.mockReset().mockResolvedValue(explanations as never);
+    let rejectAnalysis!: (error: Error) => void;
+    studioApi.createExplanationReproducibility.mockImplementationOnce(() => new Promise((_resolve, reject) => { rejectAnalysis = reject; }));
+    renderEvidence();
+
+    const checkboxes = await screen.findAllByRole("checkbox");
+    for (const checkbox of checkboxes) fireEvent.click(checkbox);
+    const compare = await screen.findByRole("button", { name: "Compare explanation reproducibility" });
+    act(() => {
+      compare.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      compare.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(studioApi.createExplanationReproducibility).toHaveBeenCalledTimes(1);
+    expect(studioApi.createExplanationReproducibility).toHaveBeenCalledWith("session", explanations.map((item) => item.explanation_id));
+    await act(async () => { rejectAnalysis(new Error("analysis response unavailable")); });
+    expect(await screen.findByTestId("reproducibility-recovery")).toHaveTextContent("analysis response unavailable");
+  });
+
   it("submits one comparison for the selected persisted result pair", async () => {
     studioApi.listBehaviorResults.mockReset().mockResolvedValue([
       { result_id: "result-a", spec_id: "spec-1", status: "PASS" },
