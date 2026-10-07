@@ -356,6 +356,8 @@ export function BuildWorkspace({
 }) {
   const [working, setWorking] = useState<FISSpec | null>(fis);
   const workingRef = useRef<FISSpec | null>(working);
+  const hydratedProjectIdRef = useRef(project.session_id);
+  const hydratedFisIdentityRef = useRef(fis ? `${fis.fis_id}:${fis.semantic_hash ?? ""}` : null);
   const preserveDraftOnHydrationHashRef = useRef<string | null>(null);
   const [editorHistory, setEditorHistory] = useState<FISSpec[]>(
     fis ? [cloneFis(fis)] : [],
@@ -420,18 +422,26 @@ export function BuildWorkspace({
   }, [sourceExplanationId]);
   useEffect(() => {
     let active = true;
+    const nextFisIdentity = fis ? `${fis.fis_id}:${fis.semantic_hash ?? ""}` : null;
+    const persistedModelChanged = hydratedProjectIdRef.current !== project.session_id ||
+      hydratedFisIdentityRef.current !== nextFisIdentity;
     const preserveNewerDraft = Boolean(
+      persistedModelChanged &&
       fis?.semantic_hash &&
       preserveDraftOnHydrationHashRef.current === fis.semantic_hash &&
       workingRef.current?.fis_id === fis.fis_id &&
       !workingRef.current.semantic_hash,
     );
-    if (preserveNewerDraft) {
-      preserveDraftOnHydrationHashRef.current = null;
-    } else {
-      setWorking(fis);
-      setEditorHistory(fis ? [cloneFis(fis)] : []);
-      setHistoryIndex(0);
+    if (persistedModelChanged) {
+      hydratedProjectIdRef.current = project.session_id;
+      hydratedFisIdentityRef.current = nextFisIdentity;
+      if (preserveNewerDraft) {
+        preserveDraftOnHydrationHashRef.current = null;
+      } else {
+        setWorking(fis);
+        setEditorHistory(fis ? [cloneFis(fis)] : []);
+        setHistoryIndex(0);
+      }
     }
     if (fis) {
       setRevisions([]);
@@ -966,7 +976,7 @@ export function BuildWorkspace({
       const latestWorking = workingRef.current;
       const newerDraftExists = Boolean(
         latestWorking &&
-        canonicalJson(fisSemanticPayload(latestWorking)) !== canonicalJson(fisSemanticPayload(requestedSpec)),
+        canonicalJson(latestWorking) !== canonicalJson(requestedSpec),
       );
       if (!newerDraftExists) {
         setWorking(saved);
