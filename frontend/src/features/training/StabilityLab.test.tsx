@@ -23,7 +23,7 @@ vi.mock("../../components/StudioPrimitives", () => ({
 import { StabilityLab } from "./StabilityLab";
 
 const project = { session_id: "session", project_id: "project", name: "Test", description: null, root: "/tmp/test", schema_version: 1, read_only: false, modified_at: "2026-01-01T00:00:00Z" };
-const study = { study_id: "study-1", name: "Study", model_kind: "flat_neuro_fuzzy", task: "binary_classification", selection_metric: "f1", selection_split: "validation", selection_rule: "max", seed_runs: [{ run_id: "run-1", split_seed: 42 }], selected_run_id: "run-1", selection_reason: "Highest validation F1", randomness_protocol: "TRAINING_VARIABILITY", split_seed: 42, training_seeds: [1, 2, 3] };
+const study = { study_id: "study-1", name: "Study", model_kind: "flat_neuro_fuzzy", task: "binary_classification", selection_metric: "f1", selection_split: "validation", selection_rule: "max", seed_runs: [1, 2, 3].map((seed) => ({ run_id: `run-${seed}`, split_seed: 42, dataset_fingerprint: "dataset-fingerprint", dataset_artifact_sha256: "a".repeat(64) })), selected_run_id: "run-1", selection_reason: "Highest validation F1", randomness_protocol: "TRAINING_VARIABILITY", split_seed: 42, training_seeds: [1, 2, 3] };
 const analysis = {
   schema_version: 2, analysis_id: "analysis-1", study_id: "study-1", dataset_fingerprint: "dataset-fingerprint", dataset_artifact_sha256: "a".repeat(64),
   mode: "TRAINING_VARIABILITY", split_identity: "split-identity", split_seeds: [42], model_kind: "flat_neuro_fuzzy", task: "binary_classification",
@@ -48,6 +48,15 @@ beforeEach(() => {
 });
 
 describe("StabilityLab persisted evidence writes", () => {
+  it("fails closed on a saved analysis with mismatched dataset provenance", async () => {
+    renderStability({ ...analysis, dataset_fingerprint: "other-dataset" });
+    expect(await screen.findByTestId("stability-analysis-provenance-error")).toHaveTextContent("does not match the selected Study");
+    expect(screen.queryByTestId("stability-map-option")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create Study Stability Analysis" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Create Study Stability Analysis" }));
+    expect(studioApi.createAnalysisEvaluation).not.toHaveBeenCalled();
+  });
+
   it("shows confident minority support below 0.5 and never plots undefined agreement as zero", async () => {
     const minorityCase = {
       case_id: "minority", selected_run_probability: 0.9, selected_run_class: 1, selected_run_agreement: 0.05,

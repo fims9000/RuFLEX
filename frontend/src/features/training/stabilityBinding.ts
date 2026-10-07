@@ -4,9 +4,17 @@ export function isActiveStudyStabilityAnalysis(
   analysis: StudyStabilityAnalysis | null,
   study: TrainingStudy | null,
 ): analysis is StudyStabilityAnalysis {
-  return Boolean(analysis && study
+  const selected = study?.seed_runs.find((run) => run.run_id === study.selected_run_id);
+  return Boolean(analysis && study && selected
     && analysis.study_id === study.study_id
-    && analysis.selected_run_id === study.selected_run_id);
+    && analysis.selected_run_id === study.selected_run_id
+    && analysis.model_kind === study.model_kind
+    && analysis.task === study.task
+    && analysis.mode === study.randomness_protocol
+    && analysis.dataset_fingerprint === selected.dataset_fingerprint
+    && analysis.dataset_artifact_sha256 === selected.dataset_artifact_sha256
+    && analysis.run_ids.length === study.seed_runs.length
+    && analysis.run_ids.every((runId, index) => runId === study.seed_runs[index].run_id));
 }
 
 export function isActiveStudyStabilityGate(

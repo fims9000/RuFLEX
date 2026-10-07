@@ -65,11 +65,18 @@ test("Stability Lab persists fixed-split multi-run evidence and its validation-o
   await mkdir(resolve(screenshotPath, ".."), { recursive: true });
   await page.screenshot({ path: screenshotPath });
   let rejectStabilityListReads = true;
+  let corruptStabilityListRead = true;
   let stabilityListRequests = 0;
   await page.route(/\/api\/projects\/[^/]+\/analyses\/stability$/, async (route) => {
     stabilityListRequests += 1;
     if (rejectStabilityListReads) {
       await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Temporary StabilityAnalysis read failure" }) });
+      return;
+    }
+    if (corruptStabilityListRead) {
+      const response = await route.fetch();
+      const analyses = await response.json() as Array<Record<string, unknown>>;
+      await route.fulfill({ response, json: analyses.map((item) => ({ ...item, dataset_fingerprint: "different-dataset-revision" })) });
       return;
     }
     await route.continue();
@@ -90,6 +97,11 @@ test("Stability Lab persists fixed-split multi-run evidence and its validation-o
   rejectStabilityListReads = false;
   rejectGateListReads = false;
   await page.getByRole("button", { name: "Retry Stability Analysis", exact: true }).click();
+  await expect(page.getByTestId("stability-analysis-provenance-error")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Create Study Stability Analysis", exact: true })).toBeDisabled();
+  await expect(page.getByText("Case Stability Map · selected-run agreement; red = high-confidence unstable", { exact: true })).toHaveCount(0);
+  corruptStabilityListRead = false;
+  await page.getByTestId("stability-analysis-provenance-error").getByRole("button", { name: "Retry Stability Analysis" }).click();
   await expect(page.getByText("Case Stability Map · selected-run agreement; red = high-confidence unstable", { exact: true })).toBeVisible();
   await expect(page.getByTestId("stability-analysis-load-error")).toHaveCount(0);
   await expect(page.getByTestId("stability-policy-load-error")).toHaveCount(0);

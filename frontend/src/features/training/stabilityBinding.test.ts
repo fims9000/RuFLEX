@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest";
 import type { StabilityGatePolicy, StudyStabilityAnalysis, TrainingStudy } from "../../api";
 import { isActiveStudyStabilityAnalysis, isActiveStudyStabilityGate } from "./stabilityBinding";
 
-const study = { study_id: "study-1", selected_run_id: "run-1" } as TrainingStudy;
+const study = { study_id: "study-1", selected_run_id: "run-1", model_kind: "random_forest", task: "binary_classification", randomness_protocol: "TRAINING_VARIABILITY", seed_runs: ["run-1", "run-2", "run-3"].map((run_id) => ({ run_id, dataset_fingerprint: "dataset-fingerprint", dataset_artifact_sha256: "dataset-sha" })) } as TrainingStudy;
 const analysis = {
   analysis_id: "analysis-1", study_id: "study-1", selected_run_id: "run-1", evaluation_id: "evaluation-1",
   class_threshold_id: "threshold-1", decision_threshold: .63, dataset_fingerprint: "dataset-fingerprint",
-  dataset_artifact_sha256: "dataset-sha", model_kind: "random_forest", evaluation_case_identity: "validation-cases",
+  dataset_artifact_sha256: "dataset-sha", model_kind: "random_forest", task: "binary_classification", mode: "TRAINING_VARIABILITY", evaluation_case_identity: "validation-cases",
   run_ids: ["run-1", "run-2", "run-3"], case_support_requirement: 3, schema_version: 3,
 } as StudyStabilityAnalysis;
 const policy = {
@@ -27,6 +27,11 @@ describe("Stability Lab evidence binding", () => {
   it("rejects analysis from another study or selected run", () => {
     expect(isActiveStudyStabilityAnalysis({ ...analysis, study_id: "other-study" }, study)).toBe(false);
     expect(isActiveStudyStabilityAnalysis({ ...analysis, selected_run_id: "other-run" }, study)).toBe(false);
+    expect(isActiveStudyStabilityAnalysis({ ...analysis, dataset_fingerprint: "other-dataset" }, study)).toBe(false);
+    expect(isActiveStudyStabilityAnalysis({ ...analysis, dataset_artifact_sha256: "other-artifact" }, study)).toBe(false);
+    expect(isActiveStudyStabilityAnalysis({ ...analysis, model_kind: "decision_tree" }, study)).toBe(false);
+    expect(isActiveStudyStabilityAnalysis({ ...analysis, mode: "COMBINED_VARIABILITY" }, study)).toBe(false);
+    expect(isActiveStudyStabilityAnalysis({ ...analysis, run_ids: ["run-1", "run-3", "run-2"] }, study)).toBe(false);
   });
 
   it("rejects a gate with altered threshold, run order, or gate criteria", () => {

@@ -80,6 +80,10 @@ Target branch: `feature/v1.3-data-governance-runtime`.
 - Stability Lab's local case selection and uncertain-save recovery remount with
   the project session, so a pending chain from a closed project cannot be
   offered as a recovery action in the next project.
+- A reopened Stability Analysis must match the selected Study's exact runs,
+  model/task, randomness protocol and dataset/source-artifact identities before
+  Studio displays it as active. A mismatch is shown as an integrity problem and
+  blocks new analysis writes until the saved read is retried or investigated.
 - Project Integrity, Assurance and portable bundles reject missing or malformed
   manual-FIS comparison rows and mismatched semantic-revision provenance.
   A portable bundle excludes raw dataset rows, so it checks the frozen row's
