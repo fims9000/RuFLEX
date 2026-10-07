@@ -10,7 +10,7 @@ from uuid import UUID
 
 import numpy as np
 from pydantic import ValidationError
-from sklearn.metrics import average_precision_score, roc_auc_score
+from sklearn.metrics import average_precision_score, f1_score, roc_auc_score
 
 from ruflex.application.artifacts import ArtifactRecord, ArtifactRef, ArtifactStore
 from ruflex.application.datasets import DatasetConfirmationError, DatasetContract, DatasetProfile, LeakageAuditReport, SplitContract, TransformPipelineContract, load_data_audit, load_dataset_contract, load_dataset_profile, load_leakage_audit, load_split_contract, load_transform_pipeline_contract, row_identity
@@ -161,6 +161,78 @@ def _final_test_metrics_match(
         and [item.model_dump() for item in final_test.roc_curve] == [item.model_dump() for item in curves[0]]
         and [item.model_dump() for item in final_test.precision_recall_curve] == [item.model_dump() for item in curves[1]]
     )
+
+
+def _threshold_evidence_matches(
+    threshold: DecisionThresholdPolicy,
+    evaluation: AnalysisEvaluation | None,
+    calibration: CalibrationTransform | None,
+) -> bool:
+    if evaluation is None or evaluation.task != "binary_classification" or evaluation.split != "validation" or not evaluation.prediction_preview:
+        return False
+    rows = evaluation.prediction_preview
+    targets = np.asarray([int(row.target >= 0.5) for row in rows], dtype=int)
+    raw_probabilities = np.asarray([
+        float(row.probability) if row.probability is not None
+        else float(1.0 / (1.0 + np.exp(-np.clip(row.prediction, -60.0, 60.0))))
+        for row in rows
+    ], dtype=float)
+    if threshold.probability_source == "raw":
+        if calibration is not None or threshold.calibration_id is not None:
+            return False
+        probabilities = raw_probabilities
+        sample_identity = _stable_identity(
+            "validation-threshold",
+            {"evaluation_id": str(evaluation.evaluation_id), "run_id": str(evaluation.run_id), "targets": targets.tolist(), "probabilities": probabilities.tolist()},
+        )
+    else:
+        if calibration is None or calibration.calibration_id != threshold.calibration_id or calibration.evaluation_id != evaluation.evaluation_id or calibration.run_id != evaluation.run_id:
+            return False
+        if len(calibration.predictions) != len(rows):
+            return False
+        for row, calibrated in zip(rows, calibration.predictions, strict=True):
+            if (
+                row.row != calibrated.row
+                or row.source_row != calibrated.source_row
+                or row.row_identity != calibrated.row_identity
+                or not math.isclose(row.target, calibrated.target, rel_tol=1e-12, abs_tol=1e-12)
+                or row.probability is None
+                or not math.isclose(row.probability, calibrated.raw_probability, rel_tol=1e-12, abs_tol=1e-12)
+            ):
+                return False
+        probabilities = np.asarray([item.calibrated_probability for item in calibration.predictions], dtype=float)
+        sample_identity = calibration.fit_sample_identity
+    candidates = np.round(np.arange(0.01, 1.0, 0.01), 2)
+    scores = np.asarray([f1_score(targets, probabilities >= candidate, zero_division=0) for candidate in candidates], dtype=float)
+    best_score = float(scores.max())
+    best_candidates = candidates[np.isclose(scores, best_score, rtol=0.0, atol=1e-12)]
+    selected = float(sorted(best_candidates.tolist(), key=lambda value: (abs(value - 0.5), value))[0])
+    expected_metrics, expected_confusion, expected_labels = _classification_metrics_at_threshold(targets, probabilities, selected)
+    if (
+        threshold.objective != "f1"
+        or threshold.source_split != "validation"
+        or threshold.test_status != "LOCKED_NOT_EVALUATED"
+        or threshold.candidate_rule != "thresholds 0.01 through 0.99; maximize validation F1; ties choose closest to 0.50, then lower threshold"
+        or threshold.selected_threshold != selected
+        or not math.isclose(threshold.selection_result, best_score, rel_tol=1e-12, abs_tol=1e-12)
+        or threshold.fit_sample_identity != sample_identity
+        or threshold.confusion_matrix != expected_confusion
+        or set(threshold.metrics) != set(expected_metrics)
+        or any(not math.isclose(float(threshold.metrics[name]), value, rel_tol=1e-12, abs_tol=1e-12) for name, value in expected_metrics.items())
+    ):
+        return False
+    if threshold.decisions:
+        if len(threshold.decisions) != len(rows):
+            return False
+        for decision, row, target, probability, label in zip(threshold.decisions, rows, targets, probabilities, expected_labels, strict=True):
+            if (
+                decision.row != row.row
+                or decision.target != int(target)
+                or not math.isclose(decision.probability, float(probability), rel_tol=1e-12, abs_tol=1e-12)
+                or decision.predicted_label != int(label)
+            ):
+                return False
+    return True
 
 
 def _stability_analysis_cases_match(
@@ -647,6 +719,7 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                     or (threshold.probability_source == "raw" and threshold.calibration_id is not None)
                     or (threshold.probability_source == "calibrated" and threshold.calibration_id is None)
                     or (threshold.decisions and len(threshold.decisions) != evaluation.validation_row_count)
+                    or not _threshold_evidence_matches(threshold, evaluation, calibration)
                 ):
                     issues.append(ProjectIntegrityIssue(code="DECISION_THRESHOLD_PROVENANCE_MISMATCH", status="FAIL", path=relative_path, detail="Decision threshold does not match its exact validation Evaluation, calibration, probability source, or case support."))
             except (ValidationError, ValueError, OSError, json.JSONDecodeError) as error:

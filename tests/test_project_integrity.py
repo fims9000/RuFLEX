@@ -108,6 +108,15 @@ def test_project_integrity_validates_frozen_stability_analysis_and_gate_chain(tm
     calibration_response = client.post("/api/projects/analyses/calibrations", json={"session_id": session_id, "evaluation_id": evaluation_id})
     assert calibration_response.status_code == 201, calibration_response.text
     assert client.get(f"/api/projects/{session_id}/integrity").json()["status"] == "PASS"
+    threshold_path = root / "analyses" / "thresholds" / f"{threshold_id}.json"
+    threshold_payload = json.loads(threshold_path.read_text(encoding="utf-8"))
+    original_selection_result = threshold_payload["selection_result"]
+    threshold_payload["selection_result"] = 0.0 if original_selection_result > 0.0 else 1.0
+    threshold_path.write_text(json.dumps(threshold_payload), encoding="utf-8")
+    forged_threshold_result = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert any(issue["code"] == "DECISION_THRESHOLD_PROVENANCE_MISMATCH" for issue in forged_threshold_result["issues"])
+    threshold_payload["selection_result"] = original_selection_result
+    threshold_path.write_text(json.dumps(threshold_payload), encoding="utf-8")
     analysis_path = root / "analyses" / "stability-analyses" / f"{analysis['analysis_id']}.json"
     analysis_payload = json.loads(analysis_path.read_text(encoding="utf-8"))
     original_run_ids = list(analysis_payload["run_ids"])
