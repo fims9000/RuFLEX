@@ -1575,8 +1575,10 @@ def _latest_calibration_for_run(project_root: Path, run_id: UUID) -> Calibration
             continue
         try:
             item = CalibrationTransform.model_validate_json(path.read_text(encoding="utf-8"))
-        except (ValueError, OSError):
-            continue
+        except (ValueError, OSError) as error:
+            raise TrainingError(f"Persisted calibration evidence is malformed; comparison cannot infer calibration state: {path.name}.") from error
+        if path.stem != str(item.calibration_id):
+            raise TrainingError(f"Persisted calibration identity does not match its filename: {path.name}.")
         if item.run_id == run_id:
             matches.append(item)
     return max(matches, key=lambda item: item.created_at) if matches else None
@@ -1705,8 +1707,10 @@ def _latest_threshold_for_run(project_root: Path, run_id: UUID) -> DecisionThres
             continue
         try:
             item = DecisionThresholdPolicy.model_validate_json(path.read_text(encoding="utf-8"))
-        except (ValueError, OSError):
-            continue
+        except (ValueError, OSError) as error:
+            raise TrainingError(f"Persisted threshold evidence is malformed; comparison cannot infer threshold state: {path.name}.") from error
+        if path.stem != str(item.threshold_id):
+            raise TrainingError(f"Persisted threshold identity does not match its filename: {path.name}.")
         if item.run_id == run_id:
             matches.append(item)
     return max(matches, key=lambda item: item.created_at) if matches else None

@@ -495,6 +495,27 @@ def test_validation_comparison_persists_compatible_seed_runs_and_rejects_duplica
     assert duplicate.status_code == 422
 
 
+def test_validation_comparison_fails_closed_on_malformed_policy_evidence(tmp_path: Path) -> None:
+    client = TestClient(app)
+    root = tmp_path / "comparison-policy-integrity"
+    session_id = client.post("/api/projects", json={"path": str(root), "name": "Comparison policy integrity"}).json()["session_id"]
+    assert client.post("/api/projects/dataset/confirm", json={"session_id": session_id, "csv_text": _binary_frame().to_csv(index=False), "target": "target", "task": "binary_classification", "id_columns": []}).status_code == 200
+    runs = []
+    for seed in [61, 62]:
+        trained = client.post("/api/projects/training/run", json={"session_id": session_id, "model_kind": "logistic_regression", "seed": seed, "max_epochs": 1, "learning_rate": .01, "batch_size": 16, "patience": 1, "validation_fraction": .2, "test_fraction": .2, "max_rules": 3})
+        assert trained.status_code == 201, trained.text
+        runs.append(trained.json())
+    evaluation = client.post("/api/projects/analyses/evaluations", json={"session_id": session_id, "run_id": runs[0]["run_id"]})
+    assert evaluation.status_code == 201, evaluation.text
+    threshold = client.post("/api/projects/analyses/thresholds", json={"session_id": session_id, "evaluation_id": evaluation.json()["evaluation_id"], "objective": "f1"})
+    assert threshold.status_code == 201, threshold.text
+    (root / "analyses" / "thresholds" / f"{threshold.json()['threshold_id']}.json").write_text("{ malformed", encoding="utf-8")
+
+    comparison = client.post("/api/projects/analyses/comparisons", json={"session_id": session_id, "run_ids": [run["run_id"] for run in runs]})
+    assert comparison.status_code == 422
+    assert "threshold evidence is malformed" in comparison.text
+
+
 
 def test_validation_comparison_marks_same_cases_for_same_seed_cross_model_runs(tmp_path: Path) -> None:
     client = TestClient(app)
