@@ -11,6 +11,7 @@ const { studioApi } = vi.hoisted(() => ({ studioApi: {
   runBehaviorSpec: vi.fn(),
   compareBehaviorResults: vi.fn(),
   createExplanationReproducibility: vi.fn(),
+  runExhaustiveLab: vi.fn(),
   getLatestConditionMonitoringDemo: vi.fn().mockResolvedValue(null),
   runConditionMonitoringDemo: vi.fn(),
   listPosthocExplanationJobs: vi.fn().mockResolvedValue([]),
@@ -41,9 +42,9 @@ import { EvidenceWorkspace } from "./EvidenceWorkspace";
 const project = { session_id: "session", project_id: "project", name: "Test", description: null, root: "/tmp/test", schema_version: 1, read_only: false, modified_at: "2026-01-01T00:00:00Z" };
 const run = { run_id: "run-1", model_kind: "flat_neuro_fuzzy", task: "binary_classification", feature_columns: ["x"], validation_metrics: {}, prediction_preview: [], seed: 7 };
 
-function renderEvidence(assurance: unknown = null, selectivePolicy: unknown = null) {
+function renderEvidence(assurance: unknown = null, selectivePolicy: unknown = null, trainingRun: unknown = run) {
   return render(<EvidenceWorkspace
-    project={project as never} dataset={null} run={run as never} evaluation={null} previousEvaluation={null} treeEvidence={null}
+    project={project as never} dataset={null} run={trainingRun as never} evaluation={null} previousEvaluation={null} treeEvidence={null}
     explanation={null} explanationCheck={null} behaviorSpec={null} lineageBehaviorComparison={null} behaviorResult={null}
     reproducibility={null} exhaustive={null} assurance={assurance as never} verificationBundleRecord={null} selectivePolicy={selectivePolicy as never} generalization={null}
     theme={"light" as never} onExplanation={vi.fn()} onExplanationCheck={vi.fn()} onBehaviorResult={vi.fn()} onReproducibility={vi.fn()}
@@ -58,6 +59,7 @@ beforeEach(() => {
   studioApi.listBehaviorSpecs.mockReset().mockResolvedValue([]);
   studioApi.runBehaviorSpec.mockReset();
   studioApi.compareBehaviorResults.mockReset();
+  studioApi.runExhaustiveLab.mockReset();
   studioApi.createExplanationReproducibility.mockReset();
   studioApi.getLatestConditionMonitoringDemo.mockReset().mockResolvedValue(null);
   studioApi.runConditionMonitoringDemo.mockReset();
@@ -76,6 +78,23 @@ beforeEach(() => {
 });
 
 describe("EvidenceWorkspace persisted explanation jobs", () => {
+  it("submits one exhaustive analysis for duplicate synchronous events", async () => {
+    let rejectExhaustive!: (error: Error) => void;
+    studioApi.runExhaustiveLab.mockImplementationOnce(() => new Promise((_resolve, reject) => { rejectExhaustive = reject; }));
+    renderEvidence(null, null, { ...run, model_kind: "decision_tree" });
+
+    const enumerate = await screen.findByRole("button", { name: "Enumerate exact Decision Tree paths" });
+    act(() => {
+      enumerate.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      enumerate.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(studioApi.runExhaustiveLab).toHaveBeenCalledTimes(1);
+    expect(studioApi.runExhaustiveLab).toHaveBeenCalledWith("session", "decision_tree_structure", "run-1", 3, 10000);
+    expect(enumerate).toBeDisabled();
+    await act(async () => { rejectExhaustive(new Error("result response unavailable")); });
+    expect(await screen.findByTestId("exhaustive-recovery")).toHaveTextContent("result response unavailable");
+  });
+
   it("submits one reproducibility analysis for the frozen selected explanation IDs", async () => {
     const explanations = ["exp-a", "exp-b", "exp-c", "exp-d"].map((explanation_id, index) => ({ explanation_id, run_id: `run-${index % 2}`, method: "occlusion", sample_identity: "case-1" }));
     studioApi.listExplanations.mockReset().mockResolvedValue(explanations as never);

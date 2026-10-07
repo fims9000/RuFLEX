@@ -8,7 +8,12 @@ test("PRODUCT-09 persists exact finite Decision Tree Exhaustive Lab evidence", a
   await page.goto("/"); await page.getByLabel("Project path").fill(path); await page.getByLabel("Project name").fill("Exhaustive route"); await page.getByRole("button",{name:"Create project",exact:true}).click();
   await page.getByRole("button",{name:/Data.*No dataset/}).click(); await page.getByLabel("CSV data").fill(`${rows.join("\n")}\n`); await page.getByRole("button",{name:"Inspect dataset",exact:true}).click(); await page.getByRole("button",{name:"Confirm dataset contract",exact:true}).click();
   await page.getByRole("button",{name:"S",exact:true}).click(); await page.getByLabel("Training model").selectOption("decision_tree"); await page.getByRole("button",{name:"Run real training",exact:true}).click(); await expect(page.locator(".run-provenance")).toContainText("model artifact persisted",{timeout:30000});
-  await page.getByRole("button",{name:"E",exact:true}).click(); await page.getByRole("button",{name:"Enumerate exact Decision Tree paths",exact:true}).click(); await expect(page.getByTestId("exhaustive-result")).toContainText("EXACT_FINITE_STRUCTURE",{timeout:15000}); await expect(page.getByText(/does not claim exhaustive explanation/)).toBeVisible();
+  await page.getByRole("button",{name:"E",exact:true}).click();
+  let exhaustivePostCount = 0;
+  await page.route("**/api/projects/evidence/exhaustive-lab", async (route) => { if (route.request().method() === "POST") exhaustivePostCount += 1; await route.continue(); });
+  await page.getByRole("button",{name:"Enumerate exact Decision Tree paths",exact:true}).evaluate((button) => { button.dispatchEvent(new MouseEvent("click", { bubbles: true })); button.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
+  await expect(page.getByTestId("exhaustive-result")).toContainText("EXACT_FINITE_STRUCTURE",{timeout:15000}); await expect(page.getByText(/does not claim exhaustive explanation/)).toBeVisible();
+  expect(exhaustivePostCount).toBe(1);
   let exhaustiveReadFailed = false;
   await page.route(`**/api/projects/*/evidence/exhaustive-lab/latest`, async (route) => {
     if (!exhaustiveReadFailed) {

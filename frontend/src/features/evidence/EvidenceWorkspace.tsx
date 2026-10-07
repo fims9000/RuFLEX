@@ -209,6 +209,7 @@ export function EvidenceWorkspace({
   const [exhaustive, setExhaustive] = useState<ExhaustiveLabResult | null>(restoredExhaustive);
   const [gridPoints, setGridPoints] = useState("3");
   const [exhaustiveRecoveryRequest, setExhaustiveRecoveryRequest] = useState<{ kind: ExhaustiveLabResult["kind"]; runId: string | null; gridPoints: number; maxStates: number } | null>(null);
+  const exhaustiveActionInFlightRef = useRef(false);
   const [exhaustiveRecoveryError, setExhaustiveRecoveryError] = useState<string | null>(null);
   const [exhaustiveRecoveryNotFound, setExhaustiveRecoveryNotFound] = useState(false);
   const [assurance, setAssurance] = useState<AssuranceCase | null>(restoredAssurance);
@@ -845,7 +846,9 @@ export function EvidenceWorkspace({
   }
 
   async function runExhaustive(kind: ExhaustiveLabResult["kind"]) {
+    if (exhaustiveActionInFlightRef.current || exhaustiveRecoveryRequest) return;
     const request = { kind, runId: kind === "decision_tree_structure" ? run?.run_id ?? null : null, gridPoints: Number(gridPoints), maxStates: 10000 };
+    exhaustiveActionInFlightRef.current = true;
     setBusy(true); setError(null);
     try { await submitExhaustive(request); }
     catch (reason) {
@@ -853,12 +856,14 @@ export function EvidenceWorkspace({
       setExhaustiveRecoveryError(reason instanceof Error ? reason.message : "The exhaustive result could not be confirmed.");
       setExhaustiveRecoveryNotFound(false);
       setError(reason instanceof Error ? reason.message : String(reason));
-    } finally { setBusy(false); }
+    } finally { exhaustiveActionInFlightRef.current = false; setBusy(false); }
   }
 
   async function recoverExhaustive() {
+    if (exhaustiveActionInFlightRef.current) return;
     const request = exhaustiveRecoveryRequest;
     if (!request) return;
+    exhaustiveActionInFlightRef.current = true;
     setBusy(true); setError(null);
     try {
       let result: ExhaustiveLabResult;
@@ -881,18 +886,20 @@ export function EvidenceWorkspace({
       setExhaustiveRecoveryError(reason instanceof Error ? reason.message : "Could not recover the exact saved exhaustive result.");
       setExhaustiveRecoveryNotFound(false);
       setError(reason instanceof Error ? reason.message : String(reason));
-    } finally { setBusy(false); }
+    } finally { exhaustiveActionInFlightRef.current = false; setBusy(false); }
   }
 
   async function explicitlyRestartExhaustive() {
+    if (exhaustiveActionInFlightRef.current) return;
     if (!exhaustiveRecoveryRequest || !exhaustiveRecoveryNotFound) return;
+    exhaustiveActionInFlightRef.current = true;
     setBusy(true); setError(null);
     try { await submitExhaustive(exhaustiveRecoveryRequest); }
     catch (reason) {
       setExhaustiveRecoveryError(reason instanceof Error ? reason.message : "The replacement exhaustive request could not be confirmed.");
       setExhaustiveRecoveryNotFound(false);
       setError(reason instanceof Error ? reason.message : String(reason));
-    } finally { setBusy(false); }
+    } finally { exhaustiveActionInFlightRef.current = false; setBusy(false); }
   }
   async function waitForEvidenceOperation(job: ProductJob) {
     setEvidenceOperationJob(job);
