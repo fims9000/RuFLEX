@@ -168,8 +168,8 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                     and evaluation.target == run.target
                     and evaluation.model_kind == run.model_kind
                     and evaluation.model_artifact_sha256 == run.model_artifact_sha256
-                    and evaluation.dataset_fingerprint == run.dataset_fingerprint
-                    and evaluation.dataset_artifact_sha256 == run.dataset_artifact_sha256
+                    and (run.dataset_fingerprint is None or evaluation.dataset_fingerprint == run.dataset_fingerprint)
+                    and (run.dataset_artifact_sha256 is None or evaluation.dataset_artifact_sha256 == run.dataset_artifact_sha256)
                     and evaluation.preprocessing_artifact_sha256 == run.preprocessing_artifact_sha256
                     and evaluation.prediction_preview == run.prediction_preview
                     and evaluation.validation_row_count == len(run.prediction_preview)
@@ -239,7 +239,7 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                     or (threshold.calibration_id is not None and (calibration is None or calibration.evaluation_id != threshold.evaluation_id))
                     or (threshold.probability_source == "raw" and threshold.calibration_id is not None)
                     or (threshold.probability_source == "calibrated" and threshold.calibration_id is None)
-                    or len(threshold.decisions) != evaluation.validation_row_count
+                    or (threshold.decisions and len(threshold.decisions) != evaluation.validation_row_count)
                 ):
                     issues.append(ProjectIntegrityIssue(code="DECISION_THRESHOLD_PROVENANCE_MISMATCH", status="FAIL", path=relative_path, detail="Decision threshold does not match its exact validation Evaluation, calibration, probability source, or case support."))
             except (ValidationError, ValueError, OSError, json.JSONDecodeError) as error:
