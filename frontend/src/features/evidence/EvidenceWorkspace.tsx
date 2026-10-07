@@ -164,6 +164,7 @@ export function EvidenceWorkspace({
   const [method, setMethod] = useState("occlusion");
   const [busy, setBusy] = useState(false);
   const explanationJobActionInFlightRef = useRef(false);
+  const evidenceOperationActionInFlightRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [behaviorKind, setBehaviorKind] = useState<BehaviorSpec["kind"]>("output_range");
   const [behaviorName, setBehaviorName] = useState("Output remains in declared range");
@@ -896,29 +897,34 @@ export function EvidenceWorkspace({
     throw new Error(`Unsupported persisted evidence operation kind: ${job.kind}`);
   }
   async function resumeEvidenceOperation() {
-    if (!evidenceOperationJob || !["queued", "running"].includes(evidenceOperationJob.status)) return;
+    if (evidenceOperationActionInFlightRef.current || !evidenceOperationJob || !["queued", "running"].includes(evidenceOperationJob.status)) return;
+    evidenceOperationActionInFlightRef.current = true;
     setBusy(true); setError(null); setEvidenceOperationPollError(null);
     try {
       const job = await waitForEvidenceOperation(evidenceOperationJob);
       if (job.status === "succeeded") await applyEvidenceOperationResult(job);
     } catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
-    finally { setBusy(false); }
+    finally { evidenceOperationActionInFlightRef.current = false; setBusy(false); }
   }
   async function buildAssurance() {
+    if (evidenceOperationActionInFlightRef.current || evidenceOperationPending) return;
+    evidenceOperationActionInFlightRef.current = true;
     setBusy(true); setError(null); setEvidenceOperationPollError(null);
     try {
       const job = await waitForEvidenceOperation(await studioApi.startAssuranceCaseJob(project.session_id, executionBackendKey));
       if (job.status === "succeeded") await applyEvidenceOperationResult(job);
     } catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
-    finally { setBusy(false); }
+    finally { evidenceOperationActionInFlightRef.current = false; setBusy(false); }
   }
   async function exportBundle() {
+    if (evidenceOperationActionInFlightRef.current || evidenceOperationPending) return;
+    evidenceOperationActionInFlightRef.current = true;
     setBusy(true); setError(null); setEvidenceOperationPollError(null);
     try {
       const job = await waitForEvidenceOperation(await studioApi.startVerificationBundleJob(project.session_id, executionBackendKey));
       if (job.status === "succeeded") await applyEvidenceOperationResult(job);
     } catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
-    finally { setBusy(false); }
+    finally { evidenceOperationActionInFlightRef.current = false; setBusy(false); }
   }
 
   const hasExact = Boolean(evaluation || treeEvidence);

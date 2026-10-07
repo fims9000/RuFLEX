@@ -14,6 +14,8 @@ const { studioApi } = vi.hoisted(() => ({ studioApi: {
   getRuntimeValidators: vi.fn().mockResolvedValue([]),
   getRuntimeBackends: vi.fn().mockResolvedValue([{ identity: { key: "local_executor", provider: "ruflex.builtin" } }]),
   getTrainingRunCapabilities: vi.fn().mockResolvedValue({ decisions: [{ capability: "occlusion", status: "AVAILABLE", detail: "native method" }] }),
+  startAssuranceCaseJob: vi.fn(),
+  startVerificationBundleJob: vi.fn(),
   startPosthocExplanationJob: vi.fn(),
   getPosthocExplanationJob: vi.fn(),
 } }));
@@ -32,11 +34,11 @@ import { EvidenceWorkspace } from "./EvidenceWorkspace";
 const project = { session_id: "session", project_id: "project", name: "Test", description: null, root: "/tmp/test", schema_version: 1, read_only: false, modified_at: "2026-01-01T00:00:00Z" };
 const run = { run_id: "run-1", model_kind: "flat_neuro_fuzzy", task: "binary_classification", feature_columns: ["x"], validation_metrics: {}, prediction_preview: [], seed: 7 };
 
-function renderEvidence() {
+function renderEvidence(assurance: unknown = null) {
   return render(<EvidenceWorkspace
     project={project as never} dataset={null} run={run as never} evaluation={null} previousEvaluation={null} treeEvidence={null}
     explanation={null} explanationCheck={null} behaviorSpec={null} lineageBehaviorComparison={null} behaviorResult={null}
-    reproducibility={null} exhaustive={null} assurance={null} verificationBundleRecord={null} selectivePolicy={null} generalization={null}
+    reproducibility={null} exhaustive={null} assurance={assurance as never} verificationBundleRecord={null} selectivePolicy={null} generalization={null}
     theme={"light" as never} onExplanation={vi.fn()} onExplanationCheck={vi.fn()} onBehaviorResult={vi.fn()} onReproducibility={vi.fn()}
     onExhaustive={vi.fn()} onAssurance={vi.fn()}
   />);
@@ -53,11 +55,47 @@ beforeEach(() => {
   studioApi.getRuntimeValidators.mockReset().mockResolvedValue([]);
   studioApi.getRuntimeBackends.mockReset().mockResolvedValue([{ identity: { key: "local_executor", provider: "ruflex.builtin" } }]);
   studioApi.getTrainingRunCapabilities.mockReset().mockResolvedValue({ decisions: [{ capability: "occlusion", status: "AVAILABLE", detail: "native method" }] });
-  studioApi.startPosthocExplanationJob.mockReset();
+  studioApi.startAssuranceCaseJob.mockReset();
+  studioApi.startVerificationBundleJob.mockReset();
   studioApi.getPosthocExplanationJob.mockReset();
+  studioApi.startPosthocExplanationJob.mockReset();
 });
 
 describe("EvidenceWorkspace persisted explanation jobs", () => {
+  it("serializes AssuranceCase and VerificationBundle submissions across actions", async () => {
+    studioApi.startAssuranceCaseJob.mockResolvedValueOnce({ job_id: "assurance-job", kind: "assurance_case", status: "failed", message: "Failed", error: "temporary failure", output: {} });
+    renderEvidence({ gates: [], claims: [], unresolved_risks: [] } as never);
+
+    const assurance = await screen.findByRole("button", { name: "Build AssuranceCase" });
+    const bundle = screen.getByRole("button", { name: "Export and validate bundle" });
+    act(() => {
+      assurance.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      assurance.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      bundle.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(studioApi.startAssuranceCaseJob).toHaveBeenCalledTimes(1);
+    expect(studioApi.startVerificationBundleJob).not.toHaveBeenCalled();
+    expect(await screen.findByRole("alert")).toHaveTextContent("temporary failure");
+  });
+
+  it("serializes exact AssuranceCase job resume after an uncertain status read", async () => {
+    const queuedJob = { job_id: "assurance-job", kind: "assurance_case", status: "queued", message: "Queued", error: null, output: {} };
+    studioApi.startAssuranceCaseJob.mockResolvedValueOnce(queuedJob as never);
+    studioApi.getPosthocExplanationJob.mockRejectedValue(new Error("temporary status read failure"));
+    renderEvidence();
+
+    const build = await screen.findByRole("button", { name: "Build AssuranceCase" });
+    await act(async () => { build.click(); });
+    const resume = await screen.findByRole("button", { name: "Resume saved evidence job" });
+    await waitFor(() => expect(screen.getByTestId("evidence-operation-resume")).toHaveTextContent("temporary status read failure"));
+    act(() => {
+      resume.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      resume.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await waitFor(() => expect(studioApi.getPosthocExplanationJob).toHaveBeenCalledTimes(2));
+    expect(studioApi.startAssuranceCaseJob).toHaveBeenCalledTimes(1);
+  });
+
   it("serializes exact saved-job resume before React rerenders", async () => {
     const savedJob = { job_id: "job-saved", kind: "explanation_generation", status: "queued", message: "Queued", error: null, output: {} };
     studioApi.listPosthocExplanationJobs.mockResolvedValueOnce([savedJob] as never);
