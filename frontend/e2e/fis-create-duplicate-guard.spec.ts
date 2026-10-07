@@ -5,8 +5,14 @@ import { join } from "node:path";
 test("default FIS creation disables duplicate requests while the model is being created", async ({ page }) => {
   const projectPath = join(tmpdir(), `ruflex-fis-create-${Date.now()}`);
   let createRequests = 0;
+  let saveRequests = 0;
   await page.route("**/api/projects/fis/default", async (route) => {
     createRequests += 1;
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    await route.continue();
+  });
+  await page.route("**/api/projects/fis/save", async (route) => {
+    saveRequests += 1;
     await new Promise((resolve) => setTimeout(resolve, 400));
     await route.continue();
   });
@@ -26,4 +32,10 @@ test("default FIS creation disables duplicate requests while the model is being 
   expect(createRequests).toBe(1);
   await expect(page.getByRole("button", { name: /Risk FIS.*mamdani/ })).toBeVisible();
   expect(createRequests).toBe(1);
+
+  await page.getByRole("button", { name: "Save FIS", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Saving FIS…", exact: true })).toBeDisabled();
+  expect(saveRequests).toBe(1);
+  await expect(page.getByRole("button", { name: "Save FIS", exact: true })).toBeEnabled();
+  expect(saveRequests).toBe(1);
 });

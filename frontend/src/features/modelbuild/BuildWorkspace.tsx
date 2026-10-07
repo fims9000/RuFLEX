@@ -380,6 +380,8 @@ export function BuildWorkspace({
   const responseSurfaceRequestRef = useRef(0);
   const [creatingDefaultFis, setCreatingDefaultFis] = useState(false);
   const createDefaultFisInFlightRef = useRef(false);
+  const [savingFis, setSavingFis] = useState(false);
+  const saveFisInFlightRef = useRef(false);
   const [diagnostics, setDiagnostics] = useState<
     Array<{ code: string; severity: string; message: string }>
   >([]);
@@ -926,9 +928,11 @@ export function BuildWorkspace({
   }
 
   async function save() {
-    if (!working || fisSaveRecovery) return;
+    if (!working || fisSaveRecovery || fisImportRecovery || saveFisInFlightRef.current) return;
     setError(null);
     const requestedSpec = cloneFis(working);
+    saveFisInFlightRef.current = true;
+    setSavingFis(true);
     try {
       const saved = await studioApi.saveFis(project.session_id, requestedSpec);
       setWorking(saved);
@@ -944,6 +948,9 @@ export function BuildWorkspace({
     } catch (reason) {
       setFisSaveRecovery({ spec: requestedSpec, error: reason instanceof Error ? reason.message : "FIS save response was uncertain.", notFound: false });
       setError(reason instanceof Error ? reason.message : "FIS save failed");
+    } finally {
+      saveFisInFlightRef.current = false;
+      setSavingFis(false);
     }
   }
   async function recoverFisSave() {
@@ -1298,8 +1305,8 @@ export function BuildWorkspace({
               <option value="sugeno">Type-1 Sugeno</option>
             </select>
           </label>
-          <Button view="outlined" disabled={project.read_only || !!fisImportRecovery || !!fisSaveRecovery} onClick={save} data-ruflex-action="fis.save_revision">
-            Save FIS
+          <Button view="outlined" disabled={project.read_only || !!fisImportRecovery || !!fisSaveRecovery || savingFis} onClick={save} data-ruflex-action="fis.save_revision">
+            {savingFis ? "Saving FIS…" : "Save FIS"}
           </Button>
           <input
             ref={importInputRef}
