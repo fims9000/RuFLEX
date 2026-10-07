@@ -91,6 +91,13 @@ def test_project_integrity_rejects_validation_evaluation_detached_from_frozen_ru
     assert any(issue["code"] == "SELECTIVE_POLICY_PROVENANCE_MISMATCH" for issue in forged_selective_identity["issues"])
     selective_payload["fit_sample_identity"] = original_fit_identity
     selective_path.write_text(json.dumps(selective_payload), encoding="utf-8")
+    newer_selective = client.post("/api/projects/analyses/selective-policies", json={"session_id": session_id, "evaluation_id": evaluation_id, "confidence_cutoff": .8, "calibration_id": None, "threshold_id": threshold.json()["threshold_id"]})
+    assert newer_selective.status_code == 201, newer_selective.text
+    active_policy_path = root / "analyses" / "selective-policies" / "active-policy.json"
+    active_policy_path.write_text(json.dumps({"policy_id": selective.json()["policy_id"]}), encoding="utf-8")
+    stale_selective_pointer = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert any(issue["code"] == "SELECTIVE_POLICY_ACTIVE_POINTER_INVALID" for issue in stale_selective_pointer["issues"])
+    active_policy_path.write_text(json.dumps({"policy_id": newer_selective.json()["policy_id"]}), encoding="utf-8")
     path = root / "analyses" / "evaluations" / f"{evaluation_id}.json"
     payload = json.loads(path.read_text(encoding="utf-8"))
     payload["model_artifact_sha256"] = "0" * 64

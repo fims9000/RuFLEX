@@ -1000,6 +1000,9 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                 active_id = json.loads(active_path.read_text(encoding="utf-8"))["policy_id"]
                 if str(active_id) not in {str(key) for key in selective_policies}:
                     raise ValueError("Active selective-policy pointer does not resolve to persisted evidence.")
+                latest_policy = max(selective_policies.values(), key=lambda item: (item.created_at, str(item.policy_id)), default=None)
+                if latest_policy is not None and str(latest_policy.policy_id) != str(active_id):
+                    raise ValueError("Active selective-policy pointer does not identify the latest persisted policy.")
             except (KeyError, TypeError, ValueError, OSError, json.JSONDecodeError) as error:
                 issues.append(ProjectIntegrityIssue(code="SELECTIVE_POLICY_ACTIVE_POINTER_INVALID", status="FAIL", path="analyses/selective-policies/active-policy.json", detail=str(error)))
     for run in runs:
