@@ -567,6 +567,7 @@ def train_decision_tree(
     test_fraction: float = 0.2, max_depth: int | None = None,
 ) -> TrainingRun:
     """Train and persist an executable tree as inspectable JSON, never pickle."""
+    _ensure_validation_policy_selection_open(project_root)
     contract = load_dataset_contract(project_root)
     frame = load_dataset_frame(project_root)
     feature_columns = list(contract.feature_columns)
@@ -611,6 +612,7 @@ def train_random_forest(
     test_fraction: float = 0.2, n_estimators: int = 25, max_depth: int | None = None,
 ) -> TrainingRun:
     """Train a real forest while retaining every constituent tree declaratively."""
+    _ensure_validation_policy_selection_open(project_root)
     contract = load_dataset_contract(project_root); frame = load_dataset_frame(project_root)
     columns = list(contract.feature_columns)
     if not columns or any(not pd.api.types.is_numeric_dtype(frame[column].dropna()) for column in columns):
@@ -642,6 +644,7 @@ def train_random_forest(
 
 def train_gradient_boosting(project_root: Path, *, seed: int | None = None, split_seed: int | None = None, training_seed: int | None = None, validation_fraction: float = .2, test_fraction: float = .2, n_estimators: int = 50, learning_rate: float = .1, max_depth: int = 3) -> TrainingRun:
     """Train gradient boosting and retain its fitted regression trees declaratively."""
+    _ensure_validation_policy_selection_open(project_root)
     contract = load_dataset_contract(project_root); frame = load_dataset_frame(project_root); columns = list(contract.feature_columns)
     if not columns or any(not pd.api.types.is_numeric_dtype(frame[column].dropna()) for column in columns): raise TrainingError("Gradient Boosting requires numeric DatasetContract feature columns.")
     resolved_split_seed, resolved_training_seed, randomness_protocol = _resolve_randomness(seed=seed, split_seed=split_seed, training_seed=training_seed)
@@ -773,6 +776,7 @@ def train_flat_neuro_fuzzy(
     test_fraction: float = 0.2,
     max_rules: int = 8,
 ) -> TrainingRun:
+    _ensure_validation_policy_selection_open(project_root)
     if max_epochs <= 0:
         raise TrainingError("max_epochs must be positive.")
     if batch_size <= 0:
@@ -973,6 +977,7 @@ def train_model(project_root: Path, *, model_kind: str, adapter_key: str | None 
     This common entry point makes Study execution use exactly the same adapter
     identity and protocol constraints as a single Studio training run.
     """
+    _ensure_validation_policy_selection_open(project_root)
     started = time.perf_counter()
     config = dict(config)
     # Preserve old API callers while allowing the explicit provenance contract.
@@ -1047,6 +1052,7 @@ def _select_study_run(values: list[tuple[TrainingRun, float | None]], selection_
 
 
 def run_multi_seed_study(project_root: Path, *, name: str, model_kind: str = "flat_neuro_fuzzy", seeds: list[int], selection_metric: str = "f1", randomness_protocol: str = "LEGACY_COMBINED", split_seed: int | None = None, training_seed: int | None = None, adapter_key: str | None = None, adapter_version: str | None = None, **config) -> TrainingStudy:
+    _ensure_validation_policy_selection_open(project_root)
     pairs = _study_seed_pairs(seeds=seeds, randomness_protocol=randomness_protocol, split_seed=split_seed, training_seed=training_seed)
     from ruflex.runtime.registry import builtin_runtime_registry
 
@@ -1135,6 +1141,14 @@ def _execute_study_job(project_root: Path, job_id: UUID) -> None:
     cancellation = _study_job_cancellations.setdefault(job_id, Event())
     job = load_study_job(project_root, job_id)
     if job.status in {"SUCCEEDED", "FAILED", "CANCELLED"}:
+        return
+    try:
+        _ensure_validation_policy_selection_open(project_root)
+    except TrainingError as error:
+        job.status = "FAILED"
+        job.error = str(error)
+        job.finished_at = datetime.now(timezone.utc)
+        _persist_study_job(project_root, job)
         return
     if job.cancel_requested or cancellation.is_set():
         for state in job.seed_states:
@@ -1265,6 +1279,7 @@ def _submit_study_job(project_root: Path, job_id: UUID) -> StudyJob:
 
 
 def start_study_job(project_root: Path, *, client_request_id: UUID | None = None, name: str, model_kind: str, seeds: list[int], selection_metric: str, randomness_protocol: str = "LEGACY_COMBINED", split_seed: int | None = None, training_seed: int | None = None, execution_backend_key: str = "local_executor", adapter_key: str | None = None, adapter_version: str | None = None, **config) -> StudyJob:
+    _ensure_validation_policy_selection_open(project_root)
     pairs = _study_seed_pairs(seeds=seeds, randomness_protocol=randomness_protocol, split_seed=split_seed, training_seed=training_seed)
     descriptor, _ = resolve_execution_backend(execution_backend_key)
     from ruflex.runtime.registry import builtin_runtime_registry
@@ -1308,6 +1323,7 @@ def start_study_job(project_root: Path, *, client_request_id: UUID | None = None
 
 def resume_study_job(project_root: Path, job_id: UUID) -> StudyJob:
     """Resume only an interrupted persisted request; never replace its seeds or config."""
+    _ensure_validation_policy_selection_open(project_root)
     job = load_study_job(project_root, job_id)
     if job.status in {"SUCCEEDED", "FAILED", "CANCELLED"}:
         raise TrainingError(f"Study job {job_id} is terminal ({job.status}) and cannot be resumed.")

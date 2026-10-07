@@ -15,7 +15,7 @@ from ruflex.application.artifacts import ArtifactMetadata, ArtifactStore
 from ruflex.application.datasets import create_transform_pipeline_contract, load_dataset_contract, load_dataset_frame, load_split_contract, run_leakage_audit
 from ruflex.application.training import (
     _baseline_metrics, _normalization_dict, _persist_preprocessing_artifact,
-    _provenance, _resolve_randomness, _split_identity, _validation_payload,
+    _ensure_validation_policy_selection_open, _provenance, _resolve_randomness, _split_identity, _validation_payload,
     persist_training_run,
 )
 from ruflex.core.enums import NormalizationMode
@@ -34,6 +34,7 @@ def train_with_adapter(
     split_contract_id: str | None = None, declared_training_config: dict | None = None,
 ) -> TrainingRun:
     """Execute one trusted adapter while retaining the core data firewall."""
+    _ensure_validation_policy_selection_open(project_root)
     adapter = registry.resolve_model_adapter(adapter_key, version=adapter_version)
     if model_kind not in adapter.descriptor.training_model_kinds:
         raise RuntimeIncompatibleError(f"Adapter {adapter_key!r} cannot train model kind {model_kind!r}.")

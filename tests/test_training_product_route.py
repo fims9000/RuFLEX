@@ -830,6 +830,66 @@ def test_final_test_requires_frozen_validation_policy_and_persists_separate_evid
     assert alternate_threshold.status_code == 422
     assert "Final-test evidence already exists" in alternate_threshold.text
 
+    late_fit = client.post(
+        "/api/projects/training/run",
+        json={
+            "session_id": session_id,
+            "model_kind": "logistic_regression",
+            "seed": 99,
+            "max_epochs": 1,
+            "learning_rate": .01,
+            "batch_size": 16,
+            "patience": 1,
+            "validation_fraction": .2,
+            "test_fraction": .2,
+            "max_rules": 3,
+        },
+    )
+    assert late_fit.status_code == 422
+    assert "Final-test evidence already exists" in late_fit.text
+    late_study = client.post(
+        "/api/projects/training/studies",
+        json={
+            "session_id": session_id,
+            "name": "late study must not start",
+            "model_kind": "logistic_regression",
+            "seeds": [101, 102, 103],
+            "selection_metric": "f1",
+            "randomness_protocol": "TRAINING_VARIABILITY",
+            "split_seed": 71,
+            "max_epochs": 1,
+            "learning_rate": .01,
+            "batch_size": 16,
+            "patience": 1,
+            "validation_fraction": .2,
+            "test_fraction": .2,
+            "max_rules": 3,
+        },
+    )
+    assert late_study.status_code == 422
+    assert "Final-test evidence already exists" in late_study.text
+    late_study_job = client.post(
+        "/api/projects/training/study-jobs",
+        json={
+            "session_id": session_id,
+            "name": "late queued study must not start",
+            "model_kind": "logistic_regression",
+            "seeds": [201, 202, 203],
+            "selection_metric": "f1",
+            "randomness_protocol": "TRAINING_VARIABILITY",
+            "split_seed": 71,
+            "max_epochs": 1,
+            "learning_rate": .01,
+            "batch_size": 16,
+            "patience": 1,
+            "validation_fraction": .2,
+            "test_fraction": .2,
+            "max_rules": 3,
+        },
+    )
+    assert late_study_job.status_code == 422
+    assert "Final-test evidence already exists" in late_study_job.text
+
     # The immutable TrainingRun remains explicitly validation-oriented; final-test
     # evidence exists only in its separate, explicit analysis object.
     run_after = client.get(f"/api/projects/{session_id}/training/runs/{run['run_id']}").json()
