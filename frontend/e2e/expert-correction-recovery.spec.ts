@@ -41,7 +41,7 @@ test("PRODUCT-13 recovers a persisted TRAIN-only Sugeno correction without refit
     expect(response.status()).toBe(201);
     await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Expert correction response lost after persistence" }) });
   });
-  await page.getByRole("button", { name: "Refit unlocked consequents on TRAIN", exact: true }).click();
+  await page.getByRole("button", { name: "Refit unlocked consequents on TRAIN", exact: true }).evaluate((button) => { button.dispatchEvent(new MouseEvent("click", { bubbles: true })); button.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
   const recovery = page.getByTestId("expert-refit-recovery");
   await expect(recovery).toContainText("Expert correction response lost after persistence");
   await page.getByRole("button", { name: "Retry exact correction lookup", exact: true }).click();

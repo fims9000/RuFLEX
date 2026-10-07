@@ -295,16 +295,17 @@
     "alpha_behavior_spec_create_mutex",
     "alpha_behavior_revision_comparison_mutex",
     "alpha_explanation_reproducibility_write_serialization",
-    "alpha_exhaustive_lab_write_mutex"
+    "alpha_exhaustive_lab_write_mutex",
+    "alpha_expert_correction_action_mutex"
   ],
-  "active_capability": "alpha_expert_correction_action_mutex",
+  "active_capability": "alpha_fis_evaluation_recovery_mutex",
   "active_acceptance": [
-    "Expert-correction preview, train-only refit, and retry/recovery cannot produce duplicate or cross-action writes before React rerenders.",
-    "Any asynchronous confirmation remains bound to the exact frozen correction draft and source run.",
-    "Do not broaden this into new correction capability; preserve all existing leakage/provenance gates."
+    "FIS inference, exact persisted-trace lookup, and explicit identical-input retry share one synchronous guard.",
+    "Repeated retry events before React rerenders issue at most one inference and never change the persisted FIS revision or input snapshot.",
+    "Recovery lookup and regular inference cannot overlap."
   ],
   "blockers": [],
-  "next_executable_work": "Inspect TraceWorkspace expert-correction handler paths for any remaining duplicate, stale-draft or cross-action race not already covered; select one evidenced gap and add a focused regression plus browser check.",
+  "next_executable_work": "Inspect BuildWorkspace FIS run/recover/explicit-repeat handlers; share the existing inference guard across all three, preserve the exact trace identity on retry, and verify a focused E2E lost-response path.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -603,6 +604,7 @@
     "alpha_behavior_spec_create_mutex": "PASS: BehaviorSpec create-and-run, exact creation recovery, explicitly confirmed creation retry, and result-execution recovery share one synchronous guard; creation recovery retains the exact run and request definition. EvidenceWorkspace component tests: 7 passed; focused PRODUCT-06 Studio E2E passed (1/1), verifying two synchronous submit events produce one BehaviorSpec POST and then testing reopen/revision lineage; TypeScript build passed. Existing E2E had an ambiguous duplicated test-id assertion, scoped to the opened result and the same route then passed.",
     "alpha_behavior_revision_comparison_mutex": "PASS: BehaviorSpec revision comparison, exact pair lookup recovery, and explicit repeat share a synchronous action guard; the original baseline/candidate IDs remain bound throughout uncertainty. EvidenceWorkspace component tests: 8 passed; focused PRODUCT-06 Studio E2E passed (1/1), including synchronous duplicate comparison events with one POST and reopen/lineage inspection; TypeScript build and diff check passed.",
     "alpha_explanation_reproducibility_write_serialization": "PASS: reproducibility analysis creation, exact-set lookup recovery, and explicitly confirmed retry share a synchronous action guard; the handler snapshots selected explanation IDs before submission. EvidenceWorkspace component tests: 9 passed; focused PRODUCT-08 real Studio E2E passed (1/1), synchronous duplicate dispatch produced exactly one comparison POST and persisted evidence reopened through lineage; TypeScript build and diff check passed.",
-    "alpha_exhaustive_lab_write_mutex": "PASS: Exhaustive Lab exact-tree/FIS analysis, request lookup, and explicit retry share a synchronous guard while retaining the frozen request identity. EvidenceWorkspace component tests: 10 passed; focused PRODUCT-09 Studio E2E passed (1/1) with duplicate synchronous click dispatch and one persisted exhaustive request, followed by reopen/lineage checks; TypeScript build and diff check passed."
+    "alpha_exhaustive_lab_write_mutex": "PASS: Exhaustive Lab exact-tree/FIS analysis, request lookup, and explicit retry share a synchronous guard while retaining the frozen request identity. EvidenceWorkspace component tests: 10 passed; focused PRODUCT-09 Studio E2E passed (1/1) with duplicate synchronous click dispatch and one persisted exhaustive request, followed by reopen/lineage checks; TypeScript build and diff check passed.",
+    "alpha_expert_correction_action_mutex": "PASS: TRAIN-only expert-consequent refit, exact correction recovery and explicit exact retry share one synchronous guard; source FIS/locked rules/explanation reference remain frozen and the UI reports fitting state. Focused PRODUCT-13 browser E2E passed (1/1) with two synchronous click events, one persisted correction, exact uncertain-response recovery and no second fit; TypeScript build and diff check passed."
   }
 }
