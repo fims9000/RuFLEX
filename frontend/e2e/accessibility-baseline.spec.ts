@@ -11,6 +11,8 @@ async function assertBaseline(page: Page, workspace: string): Promise<void> {
   const results = await new AxeBuilder({ page }).analyze();
   const blocking = results.violations.filter((violation) => ["critical", "serious"].includes(violation.impact ?? ""));
   expect(blocking, `${workspace}: ${blocking.map((item) => item.id).join(", ")}`).toEqual([]);
+  const horizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  expect(horizontalOverflow, `${workspace}: page-level horizontal overflow`).toBeLessThanOrEqual(1);
 }
 
 test("accessibility baseline covers the primary Studio workspaces", async ({ page }, testInfo) => {
