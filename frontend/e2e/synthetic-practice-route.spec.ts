@@ -78,6 +78,11 @@ test("a first-time user can persist synthetic evidence and apply a frozen final-
   await page.getByRole("button", { name: "P", exact: true }).click();
   await page.locator(".lineage-verification_bundle").first().click({ force: true });
   await expect(page.getByTestId("verification-bundle-record")).toContainText("Persisted VerificationBundle");
+  const downloadedBundle = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download verified ZIP", exact: true }).click();
+  const bundleZip = await downloadedBundle;
+  expect(bundleZip.suggestedFilename()).toMatch(/^ruflex-verification-bundle-[0-9a-f-]+\.zip$/);
+  expect(await bundleZip.failure()).toBeNull();
 
   await page.getByRole("button", { name: "A", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Final test remains closed", exact: true })).toBeVisible();
