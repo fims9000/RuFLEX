@@ -10,13 +10,14 @@ from uuid import UUID
 
 import numpy as np
 from pydantic import ValidationError
+from sklearn.metrics import average_precision_score, roc_auc_score
 
 from ruflex.application.artifacts import ArtifactRecord, ArtifactRef, ArtifactStore
 from ruflex.application.datasets import DatasetConfirmationError, DatasetContract, DatasetProfile, LeakageAuditReport, SplitContract, TransformPipelineContract, load_data_audit, load_dataset_contract, load_dataset_profile, load_leakage_audit, load_split_contract, load_transform_pipeline_contract, row_identity
 from ruflex.application.fis import list_fis_revisions, load_fis
 from ruflex.application.jobs import Job
 from ruflex.application.projects import ProjectService
-from ruflex.application.training import _select_study_run, _stable_identity, list_training_runs
+from ruflex.application.training import _baseline_metrics, _calibration_bins_from_probabilities, _classification_metrics_at_threshold, _ece_from_bins, _operating_curves, _select_study_run, _stable_identity, list_training_runs
 from ruflex.application.behavior import _requirement_identity
 from ruflex.domain.behavior import BehaviorRevisionComparison, BehaviorSpec, BehaviorSpecResult
 from ruflex.domain.evidence import ExplanationCheck, ExplanationContract
@@ -99,6 +100,66 @@ def _final_test_stability_evidence_matches(final_test: FinalTestEvaluation, poli
         and evidence.accepted_false_negative_rate == (None if accepted_positives == 0 else accepted_fn / accepted_positives)
         and evidence.confidence_only_accepted_count == len(confidence_only)
         and evidence.confidence_only_accepted_error == confidence_error
+    )
+
+
+def _final_test_metrics_match(
+    final_test: FinalTestEvaluation,
+    threshold: DecisionThresholdPolicy | None,
+    calibration: CalibrationTransform | None,
+) -> bool:
+    if not final_test.prediction_rows:
+        return False
+    targets = np.asarray([row.target for row in final_test.prediction_rows], dtype=float)
+    predictions = np.asarray([row.prediction for row in final_test.prediction_rows], dtype=float)
+    if final_test.task == "binary_classification":
+        if threshold is None:
+            return False
+        truth = (targets >= 0.5).astype(int)
+        raw_probabilities = 1.0 / (1.0 + np.exp(-np.clip(predictions, -60.0, 60.0)))
+        probabilities = raw_probabilities
+        if calibration is not None:
+            calibrated_logits = calibration.coefficient * predictions + calibration.intercept
+            calibrated_probabilities = 1.0 / (1.0 + np.exp(-np.clip(calibrated_logits, -60.0, 60.0)))
+            probabilities = calibrated_probabilities if threshold.probability_source == "calibrated" else raw_probabilities
+        elif threshold.probability_source == "calibrated":
+            return False
+        for index, row in enumerate(final_test.prediction_rows):
+            if (
+                row.probability is None
+                or not math.isclose(row.probability, float(raw_probabilities[index]), rel_tol=1e-12, abs_tol=1e-12)
+                or (calibration is None and row.calibrated_probability is not None)
+                or (calibration is not None and row.calibrated_probability is None)
+                or (calibration is not None and not math.isclose(row.calibrated_probability, float(calibrated_probabilities[index]), rel_tol=1e-12, abs_tol=1e-12))
+            ):
+                return False
+        metrics, confusion, labels = _classification_metrics_at_threshold(truth, probabilities, threshold.selected_threshold)
+        metrics["brier"] = float(np.mean((probabilities - truth) ** 2))
+        bins = _calibration_bins_from_probabilities(truth, probabilities)
+        metrics["ece"] = _ece_from_bins(bins, len(truth))
+        if len(np.unique(truth)) == 2:
+            metrics["roc_auc"] = float(roc_auc_score(truth, probabilities))
+            metrics["pr_auc"] = float(average_precision_score(truth, probabilities))
+        curves = _operating_curves(truth, probabilities)
+        if final_test.confusion_matrix != confusion or [row.predicted_label for row in final_test.prediction_rows] != labels.tolist():
+            return False
+    else:
+        if threshold is not None or calibration is not None or any(row.probability is not None or row.calibrated_probability is not None for row in final_test.prediction_rows):
+            return False
+        metrics = _baseline_metrics(final_test.task, targets, predictions)
+        bins = []
+        curves = ([], [])
+        if final_test.confusion_matrix is not None or any(row.residual is None or not math.isclose(row.residual, float(row.target - row.prediction), rel_tol=1e-12, abs_tol=1e-12) for row in final_test.prediction_rows):
+            return False
+    if set(metrics) != set(final_test.metrics) or any(
+        not math.isclose(float(final_test.metrics[name]), value, rel_tol=1e-12, abs_tol=1e-12)
+        for name, value in metrics.items()
+    ):
+        return False
+    return (
+        [item.model_dump() for item in final_test.calibration_bins] == [item.model_dump() for item in bins]
+        and [item.model_dump() for item in final_test.roc_curve] == [item.model_dump() for item in curves[0]]
+        and [item.model_dump() for item in final_test.precision_recall_curve] == [item.model_dump() for item in curves[1]]
     )
 
 
@@ -978,6 +1039,7 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                         or (final_test.calibration_id is not None and (calibration is None or calibration.evaluation_id != final_test.evaluation_id or calibration.run_id != final_test.run_id))
                         or (final_test.selective_policy_id is not None and (selective_policy is None or selective_policy.evaluation_id != final_test.evaluation_id or selective_policy.run_id != final_test.run_id or selective_policy.class_threshold_id != final_test.threshold_id))
                         or (final_test.stability_gate_policy_id is not None and (stability_policy is None or stability_policy.evaluation_id != final_test.evaluation_id or stability_policy.selected_run_id != final_test.run_id or stability_policy.class_threshold_id != final_test.threshold_id))
+                        or not _final_test_metrics_match(final_test, threshold, calibration)
                         or not _final_test_stability_evidence_matches(final_test, stability_policy)
                     ):
                         issues.append(ProjectIntegrityIssue(code="FINAL_TEST_PROVENANCE_MISMATCH", status="FAIL", path=relative_path, detail="FinalTestEvaluation does not match its frozen validation Evaluation, model, dataset, threshold, calibration, or selective/stability policy bindings."))

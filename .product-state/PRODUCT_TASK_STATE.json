@@ -206,15 +206,16 @@
     "alpha_stability_analysis_aggregate_provenance_integrity",
     "alpha_stability_gate_recomputed_decisions_and_risk_coverage_integrity",
     "alpha_final_test_freeze_timestamp_reconstruction_integrity",
-    "alpha_dataset_revision_first_unlock_consistency_integrity"
+    "alpha_dataset_revision_first_unlock_consistency_integrity",
+    "alpha_final_test_metric_and_curve_recomputation_integrity"
   ],
-  "active_capability": "alpha_dataset_revision_first_unlock_consistency_integrity",
+  "active_capability": "alpha_final_test_metric_and_curve_recomputation_integrity",
   "active_acceptance": [
-    "All FinalTestEvaluations for one dataset fingerprint share a single immutable dataset_test_unlock_at.",
-    "The unlock timestamp is timezone-aware and no later than every persisted evaluation creation time for that dataset revision."
+    "Project Integrity recomputes final-test classification/regression metrics, confusion, calibration bins, and operating curves from persisted prediction rows and exact frozen policy inputs.",
+    "Binary raw/calibrated probabilities and labels are consistent with persisted logits/calibration; forged metric summaries fail closed."
   ],
   "blockers": [],
-  "next_executable_work": "Continue the focused integrity audit on final-test policy/output aggregation and recovery boundaries; preserve unrelated article files.",
+  "next_executable_work": "Audit final-test persistence pointer and duplicate-evaluation recovery behavior; preserve unrelated article files.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -424,6 +425,7 @@
     "alpha_stability_analysis_aggregate_provenance_integrity": "PASS: Project Integrity recomputes all persisted aggregate metric distributions and binds StabilityAnalysis mode, dataset/artifact, model/task, split/training seeds, and case source identities to canonical TrainingStudy runs. Regression rejects a forged F1 mean and altered training-seed provenance; tests/test_project_integrity.py: 14 passed, compileall and diff checks passed.",
     "alpha_stability_gate_recomputed_decisions_and_risk_coverage_integrity": "PASS: Project Integrity re-derives ordered gate case reasons/dispositions and all four deterministic risk-coverage rows from frozen analysis cases and policy thresholds. Regression rejects altered selected-run agreement in a case decision and forged no-review risk; tests/test_project_integrity.py: 14 passed, compileall and diff checks passed.",
     "alpha_final_test_freeze_timestamp_reconstruction_integrity": "PASS: Project Integrity reconstructs policy_frozen_at as the exact maximum creation time of bound objects, requires Stability Analysis/support runs to predate Gate creation, and requires frozen sources to predate first test unlock. Regressions forge late gate/analysis creation and a false frozen timestamp; tests/test_project_integrity.py: 14 passed, compileall and diff checks passed.",
-    "alpha_dataset_revision_first_unlock_consistency_integrity": "PASS: Project Integrity requires all FinalTestEvaluations for one dataset revision to retain the same timezone-aware first-unlock timestamp and rejects unlock times later than evaluation creation. Regression adds a second persisted evaluation with a forged revision unlock; tests/test_project_integrity.py: 14 passed, compileall and diff checks passed."
+    "alpha_dataset_revision_first_unlock_consistency_integrity": "PASS: Project Integrity requires all FinalTestEvaluations for one dataset revision to retain the same timezone-aware first-unlock timestamp and rejects unlock times later than evaluation creation. Regression adds a second persisted evaluation with a forged revision unlock; tests/test_project_integrity.py: 14 passed, compileall and diff checks passed.",
+    "alpha_final_test_metric_and_curve_recomputation_integrity": "PASS: Project Integrity reconstructs raw/calibrated probabilities from persisted logits and frozen calibration, recomputes thresholded metrics/confusion, Brier/ECE/AUC/PR-AUC, calibration bins, operating curves, and regression residual/metrics. A forged persisted final-test F1 is rejected; tests/test_project_integrity.py: 14 passed, compileall and diff checks passed."
   }
 }
