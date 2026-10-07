@@ -472,6 +472,6 @@
     "alpha_training_study_active_pointer_integrity": "PASS: Active TrainingStudy pointer must identify the latest persisted study; rollback to the earlier fully valid study fails integrity using two real 3-run fixed-split studies.",
     "alpha_training_run_active_pointer_integrity": "PASS: Active TrainingRun pointer must identify the latest persisted run; rollback to an older valid run fails Project Integrity before close/reopen. Focused lifecycle integrity test passed.",
     "alpha_training_run_missing_pointer_integrity": "PASS: A missing active-training-run pointer with persisted runs now fails closed; recreating the pointer restores normal close/reopen behavior. Focused lifecycle integrity test passed.",
-    "alpha_latest_object_pointer_completeness_integrity": "PASS: Latest-object pointer completeness is checked for persisted run/study/evaluation/policy/stability/final-test/explanation/assurance/bundle collections; missing Evaluation and TrainingRun pointers fail closed while empty collections remain optional. tests/test_project_integrity.py: 16 passed."
+    "alpha_latest_object_pointer_completeness_integrity": "PASS: Latest-object pointer completeness is checked for persisted run/study/evaluation/policy/stability/final-test/explanation/assurance/bundle collections; missing Evaluation and TrainingRun pointers fail closed while empty collections remain optional. tests/test_project_integrity.py: 16 passed; adjacent training/Stability/Evidence routes: 56 passed."
   }
 }
