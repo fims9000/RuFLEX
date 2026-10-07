@@ -256,6 +256,54 @@ def test_study_job_resume_rejects_changed_dataset_revision(tmp_path: Path) -> No
     assert persisted.json()["status"] == "QUEUED"
 
 
+def test_study_job_aborts_if_dataset_revision_changes_during_seed_training(tmp_path: Path, monkeypatch) -> None:
+    from ruflex.domain.training import StudyJob, StudySeedState
+
+    root = tmp_path / "study-job-mid-run-dataset-change"
+    ProjectService().create(root, name="Mid-run dataset change")
+    _confirm_dataset(root, _binary_frame(36))
+    original_contract = training_application.load_dataset_contract(root)
+    job = StudyJob(
+        schema_version=7,
+        name="must not mix revisions",
+        model_kind="random_forest",
+        selection_metric="f1",
+        dataset_fingerprint=original_contract.dataset_fingerprint,
+        randomness_protocol="TRAINING_VARIABILITY",
+        split_seed=42,
+        adapter_key="native_random_forest",
+        adapter_version="1",
+        adapter_provider="ruflex.builtin",
+        execution_backend_key="local_executor",
+        execution_backend_version="1",
+        execution_backend_provider="ruflex.builtin",
+        seed_states=[StudySeedState(seed=seed, split_seed=42, training_seed=seed) for seed in (31, 37, 41)],
+        execution_config={"n_estimators": 5, "max_depth": 3, "validation_fraction": .2, "test_fraction": .2},
+    )
+    training_application._persist_study_job(root, job)
+    real_train_model = training_application.train_model
+    calls = 0
+
+    def train_then_replace_dataset(*args, **kwargs):
+        nonlocal calls
+        run = real_train_model(*args, **kwargs)
+        calls += 1
+        if calls == 1:
+            _confirm_dataset(root, _binary_frame(40))
+        return run
+
+    monkeypatch.setattr(training_application, "train_model", train_then_replace_dataset)
+    training_application._execute_study_job(root, job.job_id)
+
+    persisted = training_application.load_study_job(root, job.job_id)
+    assert calls == 1
+    assert persisted.status == "FAILED"
+    assert "changed during StudyJob execution" in (persisted.error or "")
+    assert persisted.study_id is None
+    assert [state.status for state in persisted.seed_states] == ["FAILED", "FAILED", "FAILED"]
+    assert not (root / "studies" / "active-study.json").exists()
+
+
 def test_persisted_study_job_resumes_without_replacing_declared_seeds(tmp_path: Path) -> None:
     from ruflex.domain.training import StudyJob, StudySeedState
 

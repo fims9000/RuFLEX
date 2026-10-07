@@ -1205,12 +1205,34 @@ def _execute_study_job(project_root: Path, job_id: UUID) -> None:
     successful_runs: list[TrainingRun] = []
     for state in job.seed_states:
         job.cancel_requested = job.cancel_requested or load_study_job(project_root, job_id).cancel_requested
+        try:
+            active_dataset_fingerprint = load_dataset_contract(project_root).dataset_fingerprint
+            dataset_error = None if job.dataset_fingerprint and active_dataset_fingerprint == job.dataset_fingerprint else (
+                "Active DatasetContract changed during StudyJob execution; no mixed-revision TrainingStudy was created."
+            )
+        except (TrainingError, FileNotFoundError) as error:
+            dataset_error = f"Active DatasetContract became unavailable during StudyJob execution: {error}"
+        if dataset_error:
+            if state.status not in {"SUCCEEDED", "FAILED", "CANCELLED"}:
+                state.status = "FAILED"
+                state.error = dataset_error
+            for pending in job.seed_states:
+                if pending.status == "QUEUED":
+                    pending.status = "FAILED"
+                    pending.error = dataset_error
+            job.status = "FAILED"
+            job.error = dataset_error
+            job.finished_at = datetime.now(timezone.utc)
+            _persist_study_job(project_root, job)
+            return
         if state.status == "SUCCEEDED":
             if state.run_id is None:
                 state.status = "FAILED"; state.error = "Persisted successful seed has no TrainingRun identity."
             else:
                 try:
                     completed_run = load_training_run(project_root, state.run_id)
+                    if completed_run.dataset_fingerprint != job.dataset_fingerprint:
+                        raise TrainingError("Completed seed run uses a different DatasetContract revision than its persisted StudyJob.")
                     from ruflex.runtime.compatibility import resolve_run_adapter
 
                     completed_adapter = resolve_run_adapter(completed_run, registry=registry)
@@ -1236,6 +1258,10 @@ def _execute_study_job(project_root: Path, job_id: UUID) -> None:
         _persist_study_job(project_root, job)
         try:
             run = train_model(project_root, model_kind=job.model_kind, adapter_key=adapter.descriptor.identity.key, adapter_version=adapter.descriptor.identity.version, split_seed=state.split_seed, training_seed=state.training_seed, **job.execution_config)
+            if run.dataset_fingerprint != job.dataset_fingerprint:
+                raise TrainingError("TrainingRun was produced from a different DatasetContract revision than its StudyJob.")
+            if load_dataset_contract(project_root).dataset_fingerprint != job.dataset_fingerprint:
+                raise TrainingError("Active DatasetContract changed while a StudyJob seed was training; refusing to persist or aggregate the run.")
             run.randomness_protocol = job.randomness_protocol
             persist_training_run(project_root, run, registry=registry)
             state.status = "SUCCEEDED"
@@ -1259,6 +1285,12 @@ def _execute_study_job(project_root: Path, job_id: UUID) -> None:
         if len(successful_runs) < 3:
             job.status = "FAILED"
             job.error = "Fewer than three seed runs succeeded; no scientific selection was produced."
+        elif any(run.dataset_fingerprint != job.dataset_fingerprint for run in successful_runs):
+            job.status = "FAILED"
+            job.error = "Successful seed runs do not share the StudyJob's frozen DatasetContract revision; no TrainingStudy was created."
+        elif load_dataset_contract(project_root).dataset_fingerprint != job.dataset_fingerprint:
+            job.status = "FAILED"
+            job.error = "Active DatasetContract changed before Study aggregation; no mixed-revision TrainingStudy was created."
         else:
             try:
                 selection_metric = job.selection_metric

@@ -183,12 +183,13 @@
     "alpha_final_test_latest_pointer_integrity",
     "alpha_dataset_revision_scoped_final_test_boundary",
     "alpha_comparison_policy_evidence_integrity",
-    "alpha_study_job_dataset_binding"
+    "alpha_study_job_dataset_binding",
+    "alpha_study_job_midrun_dataset_revision_guard"
   ],
-  "active_capability": "alpha_study_job_dataset_binding",
+  "active_capability": "alpha_study_job_midrun_dataset_revision_guard",
   "active_acceptance": [
-    "A new StudyJob persists the exact DatasetContract fingerprint used when it was created.",
-    "Execution and resume refuse to train if active dataset identity differs or the historical job has no provable dataset binding."
+    "StudyJob verifies the bound DatasetContract before each seed, validates reopened and newly trained runs against that identity, and checks again before Study aggregation.",
+    "A dataset revision change during execution fails the job without persisting or aggregating a mixed-revision run set."
   ],
   "blockers": [],
   "next_executable_work": "Continue resource-aware alpha audit of persisted validation/final-test object provenance and retry boundaries, preserving unrelated article files.",
@@ -378,6 +379,7 @@
     "alpha_final_test_latest_pointer_integrity": "PASS: Latest final-test recovery now fails closed on malformed active pointers while preserving 404 for a genuinely absent pointer. Regression corrupts both object and pointer paths and verifies HTTP 422 rather than false absence; focused test, compileall and diff check passed.",
     "alpha_dataset_revision_scoped_final_test_boundary": "PASS: Final-test policy/training locks now match the exact dataset fingerprint; a new DatasetContract revision can continue the Studio workflow while the old revision remains frozen. Same-revision late training, Study, StudyJob, calibration, threshold and selective policy remain rejected; malformed history fails closed. Backend route/Stability/runtime focused suites 55 passed; compileall and diff check passed.",
     "alpha_comparison_policy_evidence_integrity": "PASS: Validation comparison now fails closed if immutable calibration/threshold evidence is malformed or its filename identity disagrees with the object, rather than presenting a false not-fitted/not-selected status. API regression corrupts a persisted threshold and verifies HTTP 422. Focused backend route/Stability/runtime suites 56 passed; compileall and diff check passed.",
-    "alpha_study_job_dataset_binding": "PASS: StudyJob schema v7 binds the active DatasetContract fingerprint; submission persists it, execution verifies it before adapter resolution/fitting, and resume rejects stale or unbound jobs. Regression proves changed-dataset resume is refused without modifying queued state. Focused backend route/Stability/runtime suites 57 passed; compileall and diff check passed."
+    "alpha_study_job_dataset_binding": "PASS: StudyJob schema v7 binds the active DatasetContract fingerprint; submission persists it, execution verifies it before adapter resolution/fitting, and resume rejects stale or unbound jobs. Regression proves changed-dataset resume is refused without modifying queued state. Focused backend route/Stability/runtime suites 57 passed; compileall and diff check passed.",
+    "alpha_study_job_midrun_dataset_revision_guard": "PASS: StudyJob revalidates the bound DatasetContract before each seed, checks new and reopened TrainingRuns against the frozen fingerprint, and verifies the active revision before aggregation. Mid-seed revision-change regression confirms one fit only, remaining seeds fail, and no TrainingStudy is created; focused StudyJob regression tests passed."
   }
 }
