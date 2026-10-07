@@ -454,6 +454,35 @@ def test_study_job_rejects_mismatched_completed_run_on_resume(tmp_path: Path, co
     assert not (root / "studies" / "active-study.json").exists()
 
 
+def test_study_job_resume_accepts_legacy_seed_alias_without_rewriting_run(tmp_path: Path) -> None:
+    from ruflex.domain.training import StudyJob, StudySeedState
+
+    root = tmp_path / "legacy-completed-seed"
+    ProjectService().create(root, name="Legacy completed seed")
+    _confirm_dataset(root, _binary_frame())
+    run = training_application.train_model(root, model_kind="random_forest", seed=5, n_estimators=5, max_depth=3)
+    run_path = root / "runs" / f"{run.run_id}.json"
+    original_run_bytes = run_path.read_bytes()
+    job = StudyJob(
+        schema_version=4, name="legacy resume", model_kind="random_forest", selection_metric="f1",
+        dataset_fingerprint=run.dataset_fingerprint,
+        seed_states=[
+            StudySeedState(seed=5, status="SUCCEEDED", run_id=run.run_id),
+            StudySeedState(seed=7, status="FAILED", error="historical failure"),
+            StudySeedState(seed=9, status="FAILED", error="historical failure"),
+        ],
+    )
+    training_application._persist_study_job(root, job)
+
+    training_application._execute_study_job(root, job.job_id)
+
+    restored = training_application.load_study_job(root, job.job_id)
+    assert restored.status == "FAILED"  # one valid fit cannot produce a Study
+    assert restored.seed_states[0].status == "SUCCEEDED"
+    assert restored.seed_states[0].error is None
+    assert run_path.read_bytes() == original_run_bytes
+
+
 def test_validation_evaluation_is_a_persistent_run_bound_analysis_object(tmp_path: Path) -> None:
     client = TestClient(app)
     root = tmp_path / "evaluation"

@@ -1246,7 +1246,9 @@ def _execute_study_job(project_root: Path, job_id: UUID) -> None:
                         raise TrainingError("Completed seed run uses a different DatasetContract revision than its persisted StudyJob.")
                     if completed_run.model_kind != job.model_kind:
                         raise TrainingError("Completed seed run uses a different model kind than its persisted StudyJob.")
-                    if completed_run.split_seed != state.split_seed or completed_run.training_seed != state.training_seed:
+                    expected_split_seed = state.split_seed if state.split_seed is not None else state.seed
+                    expected_training_seed = state.training_seed if state.training_seed is not None else state.seed
+                    if completed_run.split_seed != expected_split_seed or completed_run.training_seed != expected_training_seed:
                         raise TrainingError("Completed seed run does not match its declared split_seed/training_seed pair.")
                     if completed_run.split.split_seed != completed_run.split_seed:
                         raise TrainingError("Completed seed run split provenance disagrees with its declared split_seed.")
