@@ -41,6 +41,54 @@ test("E2E-02 saves metadata, closes, and reopens it", async ({ page }) => {
   await expect(page.getByTestId("project-integrity")).toContainText("PASS");
 });
 
+test("serializes create and recent-project open requests", async ({ page }) => {
+  const path = projectPath("lifecycle-serialization");
+  let createRequests = 0;
+  let openRequests = 0;
+  let releaseCreate: () => void = () => {};
+  let releaseOpen: () => void = () => {};
+  let createStarted: () => void = () => {};
+  let openStarted: () => void = () => {};
+  const createStartedPromise = new Promise<void>((resolve) => { createStarted = resolve; });
+  const openStartedPromise = new Promise<void>((resolve) => { openStarted = resolve; });
+
+  await page.route("**/api/projects", async (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    createRequests += 1;
+    createStarted();
+    await new Promise<void>((resolve) => { releaseCreate = resolve; });
+    await route.continue();
+  });
+  await page.route("**/api/projects/open", async (route) => {
+    openRequests += 1;
+    openStarted();
+    await new Promise<void>((resolve) => { releaseOpen = resolve; });
+    await route.continue();
+  });
+
+  await page.goto("/");
+  await page.getByLabel("Project path").fill(path);
+  await page.getByLabel("Project name").fill("Lifecycle serialization");
+  await page.getByRole("button", { name: "Create project", exact: true }).click();
+  await createStartedPromise;
+  await expect(page.getByRole("button", { name: "Creating project…", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Open project", exact: true })).toBeDisabled();
+  releaseCreate();
+  await expect(page.locator(".project-identity")).toContainText("Lifecycle serialization");
+  expect(createRequests).toBe(1);
+
+  await page.getByRole("button", { name: "Close", exact: true }).click();
+  const recentProject = page.locator(".recent-project-item").filter({ hasText: "Lifecycle serialization" });
+  await recentProject.click();
+  await openStartedPromise;
+  await expect(recentProject).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Create project", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Open project", exact: true })).toBeDisabled();
+  releaseOpen();
+  await expect(page.locator(".project-identity")).toContainText("Lifecycle serialization");
+  expect(openRequests).toBe(1);
+});
+
 test("E2E-02b keeps dataset import paused on a state-read failure and enables it after retry confirms absence", async ({ page }) => {
   let datasetReads = 0;
   await page.route("**/api/projects/*/dataset", async (route) => {

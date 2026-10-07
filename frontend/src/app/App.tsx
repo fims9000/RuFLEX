@@ -113,6 +113,7 @@ export function App() {
   const [backendHealthError, setBackendHealthError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [projectFormError, setProjectFormError] = useState<string | null>(null);
+  const [projectLifecycleOperation, setProjectLifecycleOperation] = useState<"create" | "open" | "recent" | null>(null);
   const [theme, setTheme] = useState<StudioTheme>(initialTheme);
   const [active, setActive] = useState("PROJECT");
   const [collapsed, setCollapsed] = useState<Record<Panels, boolean>>({
@@ -257,6 +258,7 @@ export function App() {
   const datasetFileSelectionId = useRef(0);
   const projectSessionRef = useRef<string | null>(null);
   const projectLifecycleRequestRef = useRef(0);
+  const projectLifecycleInFlightRef = useRef(false);
   const backendHealthRequestRef = useRef(0);
   const csvInspectionRequestRef = useRef(0);
   const csvDraftRevisionRef = useRef(0);
@@ -310,6 +312,9 @@ export function App() {
     }
   }
   async function openRecentProject(recent: RecentProject) {
+    if (backendStatus !== "available" || projectLifecycleInFlightRef.current) return;
+    projectLifecycleInFlightRef.current = true;
+    setProjectLifecycleOperation("recent");
     const requestId = ++projectLifecycleRequestRef.current;
     setError(null);
     setRecentProjectError(null);
@@ -330,6 +335,9 @@ export function App() {
         return;
       }
       setError(reason instanceof Error ? reason.message : "Could not reopen this recent project.");
+    } finally {
+      projectLifecycleInFlightRef.current = false;
+      setProjectLifecycleOperation(null);
     }
   }
   const refreshArtifactInventory = useCallback(async (sessionId: string) => {
@@ -1179,7 +1187,7 @@ export function App() {
     setCollapsed((current) => ({ ...current, [panel]: !current[panel] }));
   async function submit(event: FormEvent, operation: "create" | "open") {
     event.preventDefault();
-    if (backendStatus !== "available") return;
+    if (backendStatus !== "available" || projectLifecycleInFlightRef.current) return;
     setProjectFormError(null);
     if (!path.trim()) {
       setProjectFormError("Enter a project folder path before creating or opening a project.");
@@ -1189,6 +1197,8 @@ export function App() {
       setProjectFormError("Enter a project name before creating a project.");
       return;
     }
+    projectLifecycleInFlightRef.current = true;
+    setProjectLifecycleOperation(operation);
     const requestId = ++projectLifecycleRequestRef.current;
     setError(null);
     try {
@@ -1212,6 +1222,9 @@ export function App() {
       setProjectFormError(operation === "create" && message.includes("Refusing to create a project over an existing path:")
         ? `A project already exists at this path. Choose Open project to reopen it, or enter a different path.`
         : message);
+    } finally {
+      projectLifecycleInFlightRef.current = false;
+      setProjectLifecycleOperation(null);
     }
   }
   async function save() {
@@ -1776,19 +1789,19 @@ export function App() {
               Open read-only
             </label>
             <div className="form-actions">
-              <Button view="action" type="submit" data-ruflex-action="project.create" disabled={backendStatus === "unavailable"}>
-                Create project
+              <Button view="action" type="submit" data-ruflex-action="project.create" disabled={backendStatus !== "available" || projectLifecycleOperation !== null}>
+                {projectLifecycleOperation === "create" ? "Creating project…" : "Create project"}
               </Button>
               <Button
                 view="outlined"
                 type="button"
                 data-ruflex-action="project.open"
-                disabled={backendStatus === "unavailable"}
+                disabled={backendStatus !== "available" || projectLifecycleOperation !== null}
                 onClick={(event) =>
                   submit(event as unknown as FormEvent, "open")
                 }
               >
-                Open project
+                {projectLifecycleOperation === "open" ? "Opening project…" : "Open project"}
               </Button>
             </div>
           </form>
@@ -1796,7 +1809,7 @@ export function App() {
           {recentProjects.length > 0 && <section className="recent-projects" aria-label="Recent projects">
             <div className="recent-projects-heading"><strong>Recent projects</strong><Button view="outlined" size="s" type="button" onClick={forgetRecentProjects}>Forget history</Button></div>
             <div className="recent-project-list">{recentProjects.map((recent) => <div key={recent.path} className="recent-project-row">
-              <button type="button" className="recent-project-item" onClick={() => void openRecentProject(recent)} disabled={backendStatus === "unavailable"}>
+              <button type="button" className="recent-project-item" onClick={() => void openRecentProject(recent)} disabled={backendStatus !== "available" || projectLifecycleOperation !== null}>
                 <span>{recent.name}</span><small>{recent.path}</small>
               </button>
               <Button view="outlined" size="s" type="button" aria-label={`Forget ${recent.name}`} onClick={() => forgetRecentProject(recent.path)}>Forget</Button>
