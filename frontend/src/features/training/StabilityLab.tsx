@@ -4,6 +4,7 @@ import { AnalysisEvaluation, DecisionThresholdPolicy, ProductApiError, ProjectSu
 import { ChartSurface } from "../../charts/ChartSurface";
 import { Button, EmptyState, StatusBadge } from "../../components/StudioPrimitives";
 import { StudioTheme } from "../../design/tokens";
+import { isActiveStudyStabilityAnalysis, isActiveStudyStabilityGate } from "./stabilityBinding";
 
 const confidence = (p: number) => Math.max(p, 1 - p);
 const mapOption = (a: StudyStabilityAnalysis): EChartsOption => ({
@@ -40,8 +41,8 @@ export function StabilityLab({ project, study, theme, onAnalysisChange, onPolicy
   const onPolicyChangeRef = useRef(onPolicyChange);
   onAnalysisChangeRef.current = onAnalysisChange;
   onPolicyChangeRef.current = onPolicyChange;
-  const activeAnalysis = analysis && study && analysis.study_id === study.study_id && analysis.selected_run_id === study.selected_run_id ? analysis : null;
-  const activePolicy = activeAnalysis && study && policy && policy.study_id === study.study_id && policy.selected_run_id === study.selected_run_id && policy.stability_analysis_id === activeAnalysis.analysis_id && policy.evaluation_id === activeAnalysis.evaluation_id && policy.class_threshold_id === activeAnalysis.class_threshold_id ? policy : null;
+  const activeAnalysis = isActiveStudyStabilityAnalysis(analysis, study) ? analysis : null;
+  const activePolicy = isActiveStudyStabilityGate(policy, activeAnalysis, study) ? policy : null;
   useEffect(() => {
     let active = true;
     setAnalysisLoadState("loading");
@@ -230,6 +231,7 @@ export function StabilityLab({ project, study, theme, onAnalysisChange, onPolicy
     {buildRecoveryRequest && <div className="error" role="alert" data-testid="stability-analysis-recovery"><strong>Stability Analysis chain outcome is uncertain; recover the same study/run before creating another.</strong><p>{buildRecoveryError}</p><Button view="outlined" disabled={busy} onClick={recoverAnalysisBuild}>Retry saved chain lookup</Button>{buildRecoveryNotFound && <Button view="outlined" disabled={busy} onClick={explicitlyContinueAnalysisBuild}>Continue this chain explicitly</Button>}</div>}
     <div className="feature-toolbar compact-toolbar"><div><strong>{study.randomness_protocol}</strong> · split seeds {study.seed_runs.map((x) => x.split_seed).join(", ")} · training seeds {study.training_seeds.join(", ")}<p className="property-description">{protocolNote}</p></div><Button view="action" disabled={busy || !!buildRecoveryRequest || project.read_only || analysisLoadState !== "loaded" || policyLoadState !== "loaded"} onClick={createAnalysis} data-ruflex-action="stability.analysis.create">{busy ? "Building…" : "Create Study Stability Analysis"}</Button></div>
     {activeAnalysis?.applicability === "NOT_APPLICABLE" && <div className="error" role="status">{activeAnalysis.applicability_reason} Aggregate distributions remain available; RuFLEX deliberately does not display HCIR or a Stability Gate for this protocol.</div>}
+    {activeAnalysis && policy && !activePolicy && <p role="status">A saved Stability Gate exists, but its frozen run, validation, threshold, dataset, or criteria provenance does not match this analysis; it is not shown as active.</p>}
     {activeAnalysis?.warnings.map((warning) => <p key={warning} className="muted">Warning: {warning}</p>)}
     {activeAnalysis && <div className="run-summary-strip"><div><span>Validation cases</span><strong>{activeAnalysis.case_count}</strong></div><div><span>Frozen raw class threshold</span><strong>{activeAnalysis.decision_threshold === null ? "Not bound" : activeAnalysis.decision_threshold.toFixed(4)}</strong></div><div><span>HC instability rate (raw)</span><strong>{activeAnalysis.high_confidence_instability_rate === null ? "N/A" : `${(activeAnalysis.high_confidence_instability_rate * 100).toFixed(1)}%`}</strong></div><div><span>High-confidence denominator</span><strong>{activeAnalysis.high_confidence_case_count}</strong></div><div><span>Unstable among them</span><strong>{activeAnalysis.high_confidence_unstable_case_count}</strong></div></div>}
     {activeAnalysis && <div className="data-table-wrap"><table className="data-table"><thead><tr><th>metric</th><th>mean</th><th>std</th><th>median</th><th>IQR</th></tr></thead><tbody>{Object.entries(activeAnalysis.metric_distributions).map(([metric, values]) => <tr key={metric}><td>{metric}</td><td>{values.mean.toFixed(4)}</td><td>{values.std.toFixed(4)}</td><td>{values.median.toFixed(4)}</td><td>{values.iqr.toFixed(4)}</td></tr>)}</tbody></table></div>}
