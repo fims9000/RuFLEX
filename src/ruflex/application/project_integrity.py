@@ -921,6 +921,9 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                 active_id = json.loads(active_path.read_text(encoding="utf-8"))["calibration_id"]
                 if str(active_id) not in {str(key) for key in calibrations}:
                     raise ValueError("Active calibration pointer does not resolve to persisted evidence.")
+                latest_calibration = max(calibrations.values(), key=lambda item: (item.created_at, str(item.calibration_id)), default=None)
+                if latest_calibration is not None and str(latest_calibration.calibration_id) != str(active_id):
+                    raise ValueError("Active calibration pointer does not identify the latest persisted transform.")
             except (KeyError, TypeError, ValueError, OSError, json.JSONDecodeError) as error:
                 issues.append(ProjectIntegrityIssue(code="CALIBRATION_ACTIVE_POINTER_INVALID", status="FAIL", path="analyses/calibrations/active-calibration.json", detail=str(error)))
     threshold_root = base / "analyses" / "thresholds"

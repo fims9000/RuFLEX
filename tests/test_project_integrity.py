@@ -107,6 +107,13 @@ def test_project_integrity_rejects_validation_evaluation_detached_from_frozen_ru
     stale_evaluation_pointer = client.get(f"/api/projects/{session_id}/integrity").json()
     assert any(issue["code"] == "VALIDATION_EVALUATION_ACTIVE_POINTER_INVALID" for issue in stale_evaluation_pointer["issues"])
     active_evaluation_path.write_text(json.dumps({"evaluation_id": second_evaluation.json()["evaluation_id"]}), encoding="utf-8")
+    second_calibration = client.post("/api/projects/analyses/calibrations", json={"session_id": session_id, "evaluation_id": second_evaluation.json()["evaluation_id"]})
+    assert second_calibration.status_code == 201, second_calibration.text
+    active_calibration_path = root / "analyses" / "calibrations" / "active-calibration.json"
+    active_calibration_path.write_text(json.dumps({"calibration_id": calibration.json()["calibration_id"]}), encoding="utf-8")
+    stale_calibration_pointer = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert any(issue["code"] == "CALIBRATION_ACTIVE_POINTER_INVALID" for issue in stale_calibration_pointer["issues"])
+    active_calibration_path.write_text(json.dumps({"calibration_id": second_calibration.json()["calibration_id"]}), encoding="utf-8")
     newer_threshold = client.post("/api/projects/analyses/thresholds", json={"session_id": session_id, "evaluation_id": second_evaluation.json()["evaluation_id"], "calibration_id": None, "objective": "f1"})
     assert newer_threshold.status_code == 201, newer_threshold.text
     active_threshold_path = root / "analyses" / "thresholds" / "active-threshold.json"
