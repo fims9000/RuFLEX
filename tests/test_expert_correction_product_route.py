@@ -100,3 +100,7 @@ def test_expert_correction_refits_only_unlocked_sugeno_consequents_on_train(tmp_
     correction_path.write_text(json.dumps(tampered), encoding="utf-8")
     report = inspect_project_integrity(root)
     assert any(issue.code == "EXPERT_CORRECTION_PROVENANCE_MISMATCH" for issue in report.issues)
+    assurance = client.post("/api/projects/evidence/assurance-cases", json={"session_id": reopened.json()["session_id"]})
+    assert assurance.status_code == 201, assurance.text
+    correction_gate = next(gate for gate in assurance.json()["gates"] if gate["key"] == "expert_correction")
+    assert correction_gate["status"] == "FAIL"

@@ -15,10 +15,11 @@ from ruflex.domain.assurance import AssuranceCase, AssuranceClaim, AssuranceGate
 from ruflex.application.behavior import _requirement_identity, evaluate_behavior_spec
 from ruflex.domain.behavior import BehaviorRevisionComparison, BehaviorSpec, BehaviorSpecResult
 from ruflex.domain.evidence import ExplanationCheck, ExplanationContract, ExplanationReproducibilityAnalysis
+from ruflex.domain.expert_correction import ExpertCorrectionRevision
 from ruflex.domain.exhaustive import ExhaustiveLabResult
 from ruflex.domain.selective import SelectivePredictionPolicy
 from ruflex.domain.stability import StabilityGatePolicy, StudyStabilityAnalysis
-from ruflex.domain.training import AnalysisEvaluation, CalibrationTransform, DecisionThresholdPolicy, FinalTestEvaluation, TrainingRun, TrainingStudy
+from ruflex.domain.training import AnalysisComparison, AnalysisEvaluation, CalibrationTransform, DecisionThresholdPolicy, FinalTestEvaluation, TrainingRun, TrainingStudy, TreePathEvidence
 
 ModelT = TypeVar("ModelT", bound=BaseModel)
 
@@ -292,6 +293,24 @@ def create_assurance_case(root: Path) -> AssuranceCase:
     slice_ok = bool(slices) and all(slice_matches(item) for item in slices)
     status, risk = _evidence_status(present=bool(slices), valid=bool(slice_ok), malformed=_has_malformed_object(slices_root, SliceAnalysis), unavailable="Slice evidence is absent.", invalid="Slice evidence is not linked to validation evidence.")
     gates.append(_gate("slice_evidence", status, [f"slice:{x.analysis_id}" for x in slices], risk))
+    for key, relative, model, issue_code, identity_name, identity_field, unavailable in (
+        ("analysis_comparisons", "analyses/comparisons", AnalysisComparison, "ANALYSIS_COMPARISON_PROVENANCE_MISMATCH", "comparison", "comparison_id", "No run/FIS comparison evidence exists."),
+        ("tree_path_evidence", "evidence/tree-paths", TreePathEvidence, "TREE_PATH_PROVENANCE_MISMATCH", "tree-path", "evidence_id", "No Decision Tree path evidence exists."),
+        ("expert_correction", "analyses/expert-corrections", ExpertCorrectionRevision, "EXPERT_CORRECTION_PROVENANCE_MISMATCH", "expert-correction", "correction_id", "No expert-correction revision evidence exists."),
+    ):
+        evidence_root = base / relative
+        typed = _objects(evidence_root, model)
+        malformed = _has_malformed_object(evidence_root, model)
+        mismatch = any(issue.code == issue_code for issue in project_integrity.issues)
+        valid = bool(typed) and not malformed and not mismatch
+        evidence_status, evidence_risk = _evidence_status(
+            present=bool(typed) or malformed,
+            valid=valid,
+            malformed=malformed,
+            unavailable=unavailable,
+            invalid=f"Persisted {identity_name} evidence does not resolve to its exact source objects.",
+        )
+        gates.append(_gate(key, evidence_status, [f"{identity_name}:{getattr(item, identity_field)}" for item in typed], evidence_risk))
     explanations_root = base / "evidence" / "explanations"; explanations = _objects(explanations_root, ExplanationContract)
     checks_root = base / "evidence" / "explanation-checks"; checks = _objects(checks_root, ExplanationCheck)
     check_by_explanation = {x.explanation_id: x for x in checks}

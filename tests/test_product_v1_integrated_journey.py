@@ -306,6 +306,10 @@ def test_product_v1_project_journey_persists_scientific_objects_and_provenance(t
 
     assurance = client.post("/api/projects/evidence/assurance-cases", json={"session_id": session_id})
     assert assurance.status_code == 201, assurance.text
+    assurance_gates = {gate["key"]: gate for gate in assurance.json()["gates"]}
+    assert assurance_gates["project_integrity"]["status"] == "PASS"
+    assert assurance_gates["analysis_comparisons"]["status"] == "PASS"
+    assert assurance_gates["tree_path_evidence"]["status"] == "PASS"
     bundle = client.post("/api/projects/evidence/verification-bundles", json={"session_id": session_id})
     assert bundle.status_code == 201 and len(bundle.json()["sha256"]) == 64
 
