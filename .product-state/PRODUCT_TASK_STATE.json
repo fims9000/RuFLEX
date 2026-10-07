@@ -192,12 +192,13 @@
     "alpha_stability_chain_project_integrity",
     "alpha_final_test_project_integrity",
     "alpha_stability_exact_reopen_identity",
-    "alpha_training_study_integrity_selection"
+    "alpha_training_study_integrity_selection",
+    "alpha_study_randomness_protocol_integrity"
   ],
-  "active_capability": "alpha_training_study_integrity_selection",
+  "active_capability": "alpha_study_randomness_protocol_integrity",
   "active_acceptance": [
-    "Project Integrity resolves every embedded TrainingStudy seed run to its canonical persisted TrainingRun and validates frozen runtime provenance.",
-    "Selection is independently recomputed from persisted validation metrics and the deterministic tie-break; active-study pointer must resolve."
+    "Project Integrity verifies TrainingStudy seed lists and per-run split/training seeds against the declared variability protocol.",
+    "TRAINING_VARIABILITY requires a common split identity; SPLIT_VARIABILITY requires fixed training seed; combined modes do not masquerade as isolated training variation."
   ],
   "blockers": [],
   "next_executable_work": "Continue resource-aware alpha audit of persisted validation/final-test object provenance and retry boundaries, preserving unrelated article files.",
@@ -396,6 +397,7 @@
     "alpha_stability_chain_project_integrity": "PASS: Project Integrity validates Stability Analysis/Gate bindings against the persisted Study, selected Evaluation, exact raw threshold and matching case/run support, including active pointers. Complete chain reports PASS; a corrupted Gate threshold binding reports FAIL; focused regression passed.",
     "alpha_final_test_project_integrity": "PASS: Project Integrity validates FinalTestEvaluation identity and case count, freeze/unlock timestamps, exact validation Evaluation/run/dataset/model/preprocessing, and frozen threshold/calibration/selective/Stability policy bindings. Full validation-to-Stability-to-final-test chain reports PASS; focused regression passed.",
     "alpha_stability_exact_reopen_identity": "PASS: Exact Stability Analysis and Gate API reads validate the requested ID against the persisted immutable object and return typed 422 integrity errors for malformed or mismatched objects. Corruption regressions for both IDs pass.",
-    "alpha_training_study_integrity_selection": "PASS: Project Integrity compares embedded Study seed-run identity/provenance with canonical run files, recomputes selected run from validation metrics and deterministic tie-break, and validates active-study pointer. Tampered embedded metrics and dangling pointer report FAIL."
+    "alpha_training_study_integrity_selection": "PASS: Project Integrity compares embedded Study seed-run identity/provenance with canonical run files, recomputes selected run from validation metrics and deterministic tie-break, and validates active-study pointer. Tampered embedded metrics and dangling pointer report FAIL.",
+    "alpha_study_randomness_protocol_integrity": "PASS: Project Integrity cross-checks Study seed lists, dataset revisions, split seeds/identities, and fixed-vs-varying randomness semantics. A Study relabeled from TRAINING_VARIABILITY to SPLIT_VARIABILITY fails closed."
   }
 }

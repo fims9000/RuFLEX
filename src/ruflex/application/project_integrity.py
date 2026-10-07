@@ -397,6 +397,19 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                     raise ValueError("TrainingStudy adapter does not support its declared model kind.")
                 if study.selected_run_id not in {item.run_id for item in study.seed_runs}:
                     raise ValueError("TrainingStudy selected run is absent from its declared seed runs.")
+                run_dataset_fingerprints = {item.dataset_fingerprint for item in study.seed_runs}
+                actual_training_seeds = [int(item.training_seed if item.training_seed is not None else item.seed) for item in study.seed_runs]
+                actual_split_seeds = [int(item.split_seed if item.split_seed is not None else item.seed) for item in study.seed_runs]
+                training_seed_list_valid = study.training_seeds == actual_training_seeds or (study.schema_version < 3 and not study.training_seeds)
+                randomness_valid = len(run_dataset_fingerprints) == 1 and training_seed_list_valid
+                if study.randomness_protocol == "TRAINING_VARIABILITY":
+                    randomness_valid = randomness_valid and study.split_seed is not None and all(seed == study.split_seed for seed in actual_split_seeds) and len({item.split.split_identity for item in study.seed_runs}) == 1
+                elif study.randomness_protocol == "SPLIT_VARIABILITY":
+                    randomness_valid = randomness_valid and len(set(actual_training_seeds)) == 1 and study.split_seed is None
+                elif study.randomness_protocol in {"COMBINED_VARIABILITY", "LEGACY_COMBINED"}:
+                    randomness_valid = randomness_valid and all(split_seed == training_seed for split_seed, training_seed in zip(actual_split_seeds, actual_training_seeds, strict=True))
+                if not randomness_valid:
+                    issues.append(ProjectIntegrityIssue(code="STUDY_RANDOMNESS_PROVENANCE_MISMATCH", status="FAIL", path=relative_path, detail="TrainingStudy seed fields or dataset identities do not match the declared variability protocol."))
                 for embedded in study.seed_runs:
                     persisted_run = runs_by_id.get(embedded.run_id)
                     if persisted_run is None:
