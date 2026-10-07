@@ -548,11 +548,14 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                     stability_analyses[analysis.analysis_id] = analysis
                     study = studies_by_id.get(analysis.study_id)
                     study_run_ids = set() if study is None else {run.run_id for run in study.seed_runs}
+                    expected_study_run_ids = [] if study is None else [run.run_id for run in study.seed_runs]
                     threshold = thresholds.get(analysis.class_threshold_id) if analysis.class_threshold_id else None
                     if (
                         study is None
                         or not study_run_ids
+                        or len(set(analysis.run_ids)) != len(analysis.run_ids)
                         or set(analysis.run_ids) != study_run_ids
+                        or (analysis.schema_version >= 3 and analysis.run_ids != expected_study_run_ids)
                         or analysis.selected_run_id != study.selected_run_id
                         or analysis.model_kind != study.model_kind
                         or any(run.dataset_fingerprint != analysis.dataset_fingerprint for run in study.seed_runs)

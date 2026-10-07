@@ -104,6 +104,15 @@ def test_project_integrity_validates_frozen_stability_analysis_and_gate_chain(tm
     policy_response = client.post("/api/projects/analyses/stability-policies", json={"session_id": session_id, "analysis_id": analysis["analysis_id"], "evaluation_id": evaluation_id, "min_confidence": .9, "min_class_agreement": .8, "max_probability_std": .15})
     assert policy_response.status_code == 201, policy_response.text
     assert client.get(f"/api/projects/{session_id}/integrity").json()["status"] == "PASS"
+    analysis_path = root / "analyses" / "stability-analyses" / f"{analysis['analysis_id']}.json"
+    analysis_payload = json.loads(analysis_path.read_text(encoding="utf-8"))
+    original_run_ids = list(analysis_payload["run_ids"])
+    analysis_payload["run_ids"][0] = analysis_payload["run_ids"][1]
+    analysis_path.write_text(json.dumps(analysis_payload), encoding="utf-8")
+    duplicate_support = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert any(issue["code"] == "STABILITY_ANALYSIS_PROVENANCE_MISMATCH" for issue in duplicate_support["issues"])
+    analysis_payload["run_ids"] = original_run_ids
+    analysis_path.write_text(json.dumps(analysis_payload), encoding="utf-8")
     final_test = client.post("/api/projects/analyses/final-test", json={"session_id": session_id, "evaluation_id": evaluation_id, "threshold_id": threshold_id, "stability_gate_policy_id": policy_response.json()["policy_id"]})
     assert final_test.status_code == 201, final_test.text
     assert client.get(f"/api/projects/{session_id}/integrity").json()["status"] == "PASS"
@@ -153,7 +162,6 @@ def test_project_integrity_validates_frozen_stability_analysis_and_gate_chain(tm
     payload["policy_id"] = policy_response.json()["policy_id"]
     payload["class_threshold_id"] = "00000000-0000-0000-0000-000000000001"
     policy_path.write_text(json.dumps(payload), encoding="utf-8")
-    analysis_path = root / "analyses" / "stability-analyses" / f"{analysis['analysis_id']}.json"
     analysis_payload = json.loads(analysis_path.read_text(encoding="utf-8"))
     analysis_payload["analysis_id"] = "00000000-0000-0000-0000-000000000003"
     analysis_path.write_text(json.dumps(analysis_payload), encoding="utf-8")
