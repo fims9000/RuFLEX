@@ -463,6 +463,7 @@ export const studioApi = {
       training_seed?: number | null;
       split_contract_id?: string | null;
       rigor_profile?: "EXPLORATORY" | "CONFIRMATORY" | "HIGH_ASSURANCE_LIKE";
+      normalization?: "none" | "standard" | "minmax";
       max_epochs: number;
       learning_rate: number;
       batch_size: number;
@@ -591,6 +592,7 @@ export const studioApi = {
       split_seed?: number | null;
       training_seed?: number | null;
       selection_metric: string;
+      normalization?: "none" | "standard" | "minmax";
       max_epochs: number;
       learning_rate: number;
       batch_size: number;
@@ -613,7 +615,7 @@ export const studioApi = {
   getRuntimeBackends: () => request<ExecutionBackendDescriptor[]>("/api/runtime/backends"),
   getRuntimeExplainers: () => request<RuntimeExplainerDescriptor[]>("/api/runtime/explainers"),
   getRuntimeValidators: () => request<RuntimeValidatorDescriptor[]>("/api/runtime/validators"),
-  startStudyJob: (sessionId: string, config: { client_request_id?: string; name: string; model_kind: string; adapter_key?: string | null; seeds: number[]; randomness_protocol?: "LEGACY_COMBINED" | "TRAINING_VARIABILITY" | "SPLIT_VARIABILITY" | "COMBINED_VARIABILITY"; split_seed?: number | null; training_seed?: number | null; split_contract_id?: string | null; execution_backend_key?: string; selection_metric: string; max_epochs: number; learning_rate: number; batch_size: number; patience: number | null; validation_fraction: number; test_fraction: number; max_rules: number; n_estimators?: number; max_depth?: number | null }) =>
+  startStudyJob: (sessionId: string, config: { client_request_id?: string; name: string; model_kind: string; adapter_key?: string | null; seeds: number[]; randomness_protocol?: "LEGACY_COMBINED" | "TRAINING_VARIABILITY" | "SPLIT_VARIABILITY" | "COMBINED_VARIABILITY"; split_seed?: number | null; training_seed?: number | null; split_contract_id?: string | null; execution_backend_key?: string; selection_metric: string; normalization?: "none" | "standard" | "minmax"; max_epochs: number; learning_rate: number; batch_size: number; patience: number | null; validation_fraction: number; test_fraction: number; max_rules: number; n_estimators?: number; max_depth?: number | null }) =>
     request<StudyJob>("/api/projects/training/study-jobs", { session_id: sessionId, ...config }),
   getStudyJob: (sessionId: string, jobId: string) =>
     request<StudyJob>(`/api/projects/${sessionId}/training/study-jobs/${jobId}`),

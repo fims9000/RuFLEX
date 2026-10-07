@@ -17,6 +17,35 @@ function trainingCsv(): string {
   return `${rows.join("\n")}\n`;
 }
 
+test("Studio freezes selected TRAIN-only scaling in a run and restores it after reopen", async ({ page }) => {
+  const path = projectPath();
+  await page.goto("/");
+  await page.getByLabel("Project path").fill(path);
+  await page.getByLabel("Project name").fill("Scaling selection");
+  await page.getByRole("button", { name: "Create project", exact: true }).click();
+  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByLabel("CSV data").fill(trainingCsv());
+  await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
+  await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
+  await page.getByRole("button", { name: "S", exact: true }).click();
+  await page.getByLabel("Training model").selectOption("logistic_regression");
+  await page.getByLabel("Training normalization").selectOption("minmax");
+  await expect(page.locator(".compact-definition")).toContainText("min–max scaling");
+  const trainingResponse = page.waitForResponse((response) => response.url().endsWith("/api/projects/training/run") && response.request().method() === "POST");
+  await page.getByRole("button", { name: "Run real training", exact: true }).click();
+  const trained = await trainingResponse;
+  expect(trained.status()).toBe(201);
+  expect(trained.request().postDataJSON().normalization).toBe("minmax");
+  expect((await trained.json()).normalization.mode).toBe("minmax");
+  await expect(page.locator(".run-provenance")).toContainText("model artifact persisted");
+  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await page.getByLabel("Project path").fill(path);
+  await page.getByRole("button", { name: "Open project", exact: true }).click();
+  await page.getByRole("button", { name: "S", exact: true }).click();
+  await expect(page.getByLabel("Training normalization")).toHaveValue("minmax");
+  await expect(page.locator(".compact-definition")).toContainText("Saved run scalingminmax");
+});
+
 test("a rejected GROUP split can be corrected without uncertain-write recovery", async ({ page }) => {
   const path = projectPath();
   const rows = ["group,x,target", "a,1,0", "a,2,1", "a,3,0", "b,4,1", "b,5,0", "b,6,1"];

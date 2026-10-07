@@ -752,7 +752,7 @@ def _persist_preprocessing_artifact(project_root: Path, contract, split) -> str:
         ),
         "feature_columns": list(split.feature_columns),
         "input_schema": {"feature_columns": list(split.feature_columns), "representation": "raw DatasetContract feature values"},
-        "output_schema": {"feature_columns": list(split.feature_columns), "representation": "finite normalized numeric feature values"},
+        "output_schema": {"feature_columns": list(split.feature_columns), "representation": "finite encoded numeric feature values" if split.normalization.mode is NormalizationMode.NONE else "finite normalized numeric feature values"},
         "missing_value_policy": "train_median_or_mode",
         "imputation_values": split.imputation_values,
         "categorical_encoding": {

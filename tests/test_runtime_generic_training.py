@@ -92,6 +92,26 @@ def test_generic_core_service_persists_external_adapter_without_project_access(t
     assert reopened.split.test_status == "LOCKED_NOT_EVALUATED"
 
 
+@pytest.mark.parametrize(("mode", "scaler"), [("none", None), ("minmax", "MinMaxScaler")])
+def test_generic_external_adapter_uses_declared_train_only_scaling(tmp_path: Path, monkeypatch, mode: str, scaler: str | None) -> None:
+    _project(tmp_path)
+    registry = RuntimeRegistry()
+    registry.register_model_adapter(FixtureAdapter())
+    registry.freeze()
+    run = train_with_adapter(
+        tmp_path, registry=registry, adapter_key="fixture_adapter", model_kind="fixture_model", seed=4,
+        parameters={"normalization": mode},
+    )
+    assert run.normalization["mode"] == mode
+    pipeline = load_transform_pipeline_contract(tmp_path, run.transform_pipeline_id)
+    assert [step.step_type for step in pipeline.steps if step.step_type in {"StandardScaler", "MinMaxScaler"}] == ([] if scaler is None else [scaler])
+    monkeypatch.setattr("ruflex.application.training.builtin_runtime_registry", lambda: registry)
+    from ruflex.application.training import create_validation_evaluation, evaluate_final_test, select_validation_threshold
+    evaluation = create_validation_evaluation(tmp_path, run.run_id)
+    threshold = select_validation_threshold(tmp_path, evaluation.evaluation_id)
+    assert evaluate_final_test(tmp_path, evaluation.evaluation_id, threshold_id=threshold.threshold_id).prediction_rows
+
+
 def test_runtime_training_persists_declared_request_config_in_first_run_record(tmp_path: Path) -> None:
     _project(tmp_path)
     registry = RuntimeRegistry()

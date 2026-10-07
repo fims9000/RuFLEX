@@ -247,6 +247,7 @@ class TrainModelRequest(SessionRequest):
     training_seed: int | None = None
     split_contract_id: UUID | None = None
     rigor_profile: Literal["EXPLORATORY", "CONFIRMATORY", "HIGH_ASSURANCE_LIKE"] = "CONFIRMATORY"
+    normalization: Literal["none", "standard", "minmax"] = "standard"
     max_epochs: int = Field(default=20, ge=1, le=2000)
     learning_rate: float = Field(default=0.01, gt=0.0, le=1.0)
     batch_size: int = Field(default=32, ge=1, le=100000)
@@ -1121,6 +1122,7 @@ def run_training(request: TrainModelRequest) -> TrainingRun:
             raise ProjectReadOnlyError("Project was opened read-only and cannot start a training run.")
         return train_model(
             session.project.root, model_kind=request.model_kind, adapter_key=request.adapter_key, seed=request.seed, split_seed=request.split_seed, training_seed=request.training_seed,
+            normalization=request.normalization,
             max_epochs=request.max_epochs, learning_rate=request.learning_rate,
             batch_size=request.batch_size, patience=request.patience,
             validation_fraction=request.validation_fraction, test_fraction=request.test_fraction,
@@ -1632,6 +1634,7 @@ def run_multi_seed_training_study(request: MultiSeedStudyRequest) -> TrainingStu
             raise ProjectReadOnlyError("Project was opened read-only and cannot start a study.")
         return run_multi_seed_study(
             session.project.root, name=request.name, model_kind=request.model_kind, seeds=request.seeds, randomness_protocol=request.randomness_protocol, split_seed=request.split_seed, training_seed=request.training_seed, adapter_key=request.adapter_key,
+            normalization=request.normalization,
             selection_metric=request.selection_metric, max_epochs=request.max_epochs,
             learning_rate=request.learning_rate, batch_size=request.batch_size,
             patience=request.patience, validation_fraction=request.validation_fraction,
@@ -1653,7 +1656,7 @@ def start_multi_seed_study_job(request: MultiSeedStudyRequest) -> StudyJob:
         _require_trainable_model(request.model_kind, request.adapter_key)
         if session.project.read_only:
             raise ProjectReadOnlyError("Project was opened read-only and cannot start a study.")
-        return start_study_job(session.project.root, client_request_id=request.client_request_id, name=request.name, model_kind=request.model_kind, seeds=request.seeds, selection_metric=request.selection_metric, randomness_protocol=request.randomness_protocol, split_seed=request.split_seed, training_seed=request.training_seed, execution_backend_key=request.execution_backend_key, adapter_key=request.adapter_key, split_contract_id=(None if request.split_contract_id is None else str(request.split_contract_id)), max_epochs=request.max_epochs, learning_rate=request.learning_rate, batch_size=request.batch_size, patience=request.patience, validation_fraction=request.validation_fraction, test_fraction=request.test_fraction, max_rules=request.max_rules, n_estimators=request.n_estimators, max_depth=request.max_depth)
+        return start_study_job(session.project.root, client_request_id=request.client_request_id, name=request.name, model_kind=request.model_kind, seeds=request.seeds, selection_metric=request.selection_metric, randomness_protocol=request.randomness_protocol, split_seed=request.split_seed, training_seed=request.training_seed, normalization=request.normalization, execution_backend_key=request.execution_backend_key, adapter_key=request.adapter_key, split_contract_id=(None if request.split_contract_id is None else str(request.split_contract_id)), max_epochs=request.max_epochs, learning_rate=request.learning_rate, batch_size=request.batch_size, patience=request.patience, validation_fraction=request.validation_fraction, test_fraction=request.test_fraction, max_rules=request.max_rules, n_estimators=request.n_estimators, max_depth=request.max_depth)
     except ProjectError as error:
         raise _project_error(error) from error
     except RuntimeErrorBase as error:

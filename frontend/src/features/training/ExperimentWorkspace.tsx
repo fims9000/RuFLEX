@@ -218,6 +218,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
   const [splitFamily, setSplitFamily] = useState<SplitContract["family"]>("RANDOM");
   const [groupColumn, setGroupColumn] = useState("");
   const [rigorProfile, setRigorProfile] = useState<"EXPLORATORY" | "CONFIRMATORY" | "HIGH_ASSURANCE_LIKE">("CONFIRMATORY");
+  const [normalization, setNormalization] = useState<"none" | "standard" | "minmax">("standard");
   const [splitContract, setSplitContract] = useState<SplitContract | null>(null);
   const [splitContractRecovery, setSplitContractRecovery] = useState<{ request: Parameters<typeof studioApi.createSplitContract>[1]; datasetFingerprint: string; datasetArtifactSha256: string; error: string; notFound: boolean } | null>(null);
   const [recoveringSplitContract, setRecoveringSplitContract] = useState(false);
@@ -271,6 +272,10 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
   const [runCapabilitiesReload, setRunCapabilitiesReload] = useState(0);
   const option = useMemo(() => run ? trajectoryOption(run) : null, [run]);
   const statistics = useMemo(() => study ? studyStatistics(study) : null, [study]);
+  useEffect(() => {
+    const mode = run?.normalization?.mode;
+    if (mode === "none" || mode === "standard" || mode === "minmax") setNormalization(mode);
+  }, [run?.run_id]);
   const studySeedValidation = useMemo(() => parseStudySeeds(seedList), [seedList]);
   const validationFraction = splitContract?.validation_fraction ?? 0.2;
   const testFraction = splitContract?.test_fraction ?? 0.2;
@@ -517,6 +522,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
       model_kind: trainingModelKind, adapter_key: selectedAdapterKey,
       seed, split_seed: splitContract?.split_seed ?? null, training_seed: seed, split_contract_id: splitContract?.split_id ?? null,
       rigor_profile: rigorProfile,
+      normalization,
       max_epochs: maxEpochs,
       learning_rate: learningRate,
       batch_size: batchSize,
@@ -688,7 +694,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
     try {
       const selectionMetric = dataset?.contract.task === "regression" ? "rmse" : "f1";
       if (splitContract && studyMode !== "TRAINING_VARIABILITY") throw new Error("A frozen SplitContract can be used only with fixed-split training variability studies.");
-      const request: Parameters<typeof studioApi.startStudyJob>[1] = { client_request_id: crypto.randomUUID(), name: `Study ${new Date().toLocaleString()}`, model_kind: trainingModelKind, adapter_key: selectedAdapterKey, seeds, randomness_protocol: studyMode, split_seed: splitContract?.split_seed ?? splitSeed, training_seed: splitSeed, split_contract_id: splitContract?.split_id ?? null, execution_backend_key: executionBackendKey, selection_metric: selectionMetric, max_epochs: maxEpochs, learning_rate: learningRate, batch_size: batchSize, patience, validation_fraction: validationFraction, test_fraction: testFraction, max_rules: maxRules, n_estimators: nEstimators, max_depth: maxDepth };
+      const request: Parameters<typeof studioApi.startStudyJob>[1] = { client_request_id: crypto.randomUUID(), name: `Study ${new Date().toLocaleString()}`, model_kind: trainingModelKind, adapter_key: selectedAdapterKey, seeds, randomness_protocol: studyMode, split_seed: splitContract?.split_seed ?? splitSeed, training_seed: splitSeed, split_contract_id: splitContract?.split_id ?? null, execution_backend_key: executionBackendKey, selection_metric: selectionMetric, normalization, max_epochs: maxEpochs, learning_rate: learningRate, batch_size: batchSize, patience, validation_fraction: validationFraction, test_fraction: testFraction, max_rules: maxRules, n_estimators: nEstimators, max_depth: maxDepth };
       pendingStudyRequestRef.current = request;
       setPendingStudyRequest(request);
       let job = await studioApi.startStudyJob(project.session_id, request);
@@ -812,13 +818,15 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
           <dt>Target</dt><dd>{dataset.contract.target}</dd>
           <dt>Task</dt><dd>{dataset.contract.task}</dd>
           <dt>Features</dt><dd>{dataset.contract.feature_columns.join(", ")}</dd>
-          {dataset.contract.excluded_columns.length > 0 && <><dt>Excluded from model</dt><dd>{dataset.contract.excluded_columns.join(", ")}</dd></>}
+          {(dataset.contract.excluded_columns?.length ?? 0) > 0 && <><dt>Excluded from model</dt><dd>{dataset.contract.excluded_columns.join(", ")}</dd></>}
           <dt>Split</dt><dd>{Math.round((1 - validationFraction - testFraction) * 100)}% train · {Math.round(validationFraction * 100)}% validation · {Math.round(testFraction * 100)}% locked test</dd>
           <dt>Frozen split</dt><dd>{splitContract ? `${splitContract.family} · ${splitContract.split_id.slice(0, 8)}` : "No explicit contract — legacy random holdout"}</dd>
-          <dt>Preprocessing</dt><dd>train-only median/mode fill + ordinal encoding + standardization</dd>
+          <dt>Preprocessing</dt><dd>train-only median/mode fill + ordinal encoding + {normalization === "none" ? "no scaling" : normalization === "minmax" ? "min–max scaling" : "standardization"}</dd>
+          {run && <><dt>Saved run scaling</dt><dd>{String(run.normalization?.mode ?? "unknown")}</dd></>}
         </dl>
         <div className="training-config-grid">
           <label className="field-label">Model<select aria-label="Training model" value={modelKind} disabled={running || project.read_only || !compatibleModels.length} onChange={(event) => setModelKind(event.target.value)}>{compatibleModels.map((entry) => <option key={entry.key} value={entry.key === "linear" ? (datasetTask === "regression" ? "linear_regression" : "logistic_regression") : entry.training_model_kinds[0]}>{entry.display_name}</option>)}</select></label>
+          <label className="field-label">Scaling<select aria-label="Training normalization" value={normalization} disabled={running || project.read_only || activeStudyJob} onChange={(event) => setNormalization(event.target.value as "none" | "standard" | "minmax")}><option value="standard">Standard (TRAIN only)</option><option value="minmax">Min–max (TRAIN only)</option><option value="none">None</option></select></label>
           <NumberField label="Seed" value={seed} step={1} disabled={running || project.read_only} onChange={setSeed} />
           <NumberField label="Study split seed" value={splitSeed} step={1} disabled={running || project.read_only} onChange={setSplitSeed} />
           <label className="field-label">Split family<select aria-label="Split family" value={splitFamily} disabled={running || project.read_only} onChange={(event) => setSplitFamily(event.target.value as SplitContract["family"])}><option value="RANDOM">Random holdout</option><option value="GROUP">Group holdout</option><option value="TEMPORAL">Temporal holdout</option><option value="SITE_HOLDOUT">Site holdout</option><option value="DEVICE_HOLDOUT">Device holdout</option><option value="SPATIAL">Spatial-block holdout</option><option value="REGIME">Regime holdout</option></select></label>

@@ -5,6 +5,7 @@ from pathlib import Path
 import time
 
 import pandas as pd
+import pytest
 from fastapi.testclient import TestClient
 
 from ruflex.api.main import app
@@ -19,6 +20,7 @@ from ruflex.application.projects import ProjectService
 from ruflex.application import training as training_application
 from ruflex.application.training import load_latest_training_run, train_flat_neuro_fuzzy, verify_training_model_artifact
 from ruflex.application.project_integrity import inspect_project_integrity
+from ruflex.application.datasets import load_transform_pipeline_contract
 
 
 def _binary_frame(rows: int = 36) -> pd.DataFrame:
@@ -102,6 +104,55 @@ def test_training_api_runs_and_reopens_latest_result(tmp_path: Path) -> None:
     assert latest.json()["run_id"] == trained.json()["run_id"]
 
 
+@pytest.mark.parametrize(("mode", "scaler"), [("none", None), ("minmax", "MinMaxScaler")])
+def test_selected_train_only_scaling_persists_and_replays_final_test(tmp_path: Path, mode: str, scaler: str | None) -> None:
+    client = TestClient(app)
+    root = tmp_path / mode
+    session_id = client.post("/api/projects", json={"path": str(root), "name": mode}).json()["session_id"]
+    confirmed = client.post("/api/projects/dataset/confirm", json={
+        "session_id": session_id, "csv_text": _binary_frame(60).to_csv(index=False),
+        "target": "target", "task": "binary_classification", "id_columns": [],
+    })
+    assert confirmed.status_code == 200, confirmed.text
+    trained = client.post("/api/projects/training/run", json={
+        "session_id": session_id, "model_kind": "logistic_regression", "seed": 31,
+        "normalization": mode, "validation_fraction": .2, "test_fraction": .2,
+    })
+    assert trained.status_code == 201, trained.text
+    run = trained.json()
+    assert run["normalization"]["mode"] == mode
+    assert run["declared_training_config"]["parameters"]["normalization"] == mode
+    pipeline = load_transform_pipeline_contract(root, run["transform_pipeline_id"])
+    assert [step.step_type for step in pipeline.steps if step.step_type in {"StandardScaler", "MinMaxScaler"}] == ([] if scaler is None else [scaler])
+    evaluation = client.post("/api/projects/analyses/evaluations", json={"session_id": session_id, "run_id": run["run_id"]})
+    assert evaluation.status_code == 201, evaluation.text
+    threshold = client.post("/api/projects/analyses/thresholds", json={
+        "session_id": session_id, "evaluation_id": evaluation.json()["evaluation_id"], "objective": "f1",
+    })
+    assert threshold.status_code == 201, threshold.text
+    final = client.post("/api/projects/analyses/final-test", json={
+        "session_id": session_id, "evaluation_id": evaluation.json()["evaluation_id"],
+        "threshold_id": threshold.json()["threshold_id"],
+    })
+    assert final.status_code == 201, final.text
+    assert final.json()["prediction_rows"]
+    assert client.get(f"/api/projects/{session_id}/integrity").json()["status"] == "PASS"
+    assert client.post("/api/projects/close", json={"session_id": session_id}).status_code == 204
+    reopened = client.post("/api/projects/open", json={"path": str(root), "read_only": True})
+    assert reopened.status_code == 200, reopened.text
+    reopened_id = reopened.json()["session_id"]
+    assert client.get(f"/api/projects/{reopened_id}/training/latest").json()["normalization"]["mode"] == mode
+    assert client.get(f"/api/projects/{reopened_id}/integrity").json()["status"] == "PASS"
+
+
+def test_training_api_rejects_unknown_scaling_before_fit(tmp_path: Path) -> None:
+    client = TestClient(app)
+    session_id = client.post("/api/projects", json={"path": str(tmp_path / "invalid-scaling"), "name": "Invalid scaling"}).json()["session_id"]
+    response = client.post("/api/projects/training/run", json={"session_id": session_id, "model_kind": "logistic_regression", "normalization": "quantile"})
+    assert response.status_code == 422
+    assert client.get(f"/api/projects/{session_id}/training/runs").json() == []
+
+
 def test_read_only_training_is_rejected(tmp_path: Path) -> None:
     client = TestClient(app)
     root = tmp_path / "read-only-training"
@@ -139,11 +190,12 @@ def test_multi_seed_study_uses_selected_catalog_adapter_and_compare_rows(tmp_pat
     session_id = client.post("/api/projects", json={"path": str(root), "name": "Forest study"}).json()["session_id"]
     assert client.post("/api/projects/dataset/confirm", json={"session_id": session_id, "csv_text": _binary_frame().to_csv(index=False), "target": "target", "task": "binary_classification", "id_columns": []}).status_code == 200
 
-    response = client.post("/api/projects/training/studies", json={"session_id": session_id, "name": "forest seeds", "model_kind": "random_forest", "seeds": [41, 43, 47], "selection_metric": "f1", "max_epochs": 1, "learning_rate": .01, "batch_size": 16, "patience": 1, "validation_fraction": .2, "test_fraction": .2, "max_rules": 3})
+    response = client.post("/api/projects/training/studies", json={"session_id": session_id, "name": "forest seeds", "model_kind": "random_forest", "seeds": [41, 43, 47], "selection_metric": "f1", "normalization": "minmax", "max_epochs": 1, "learning_rate": .01, "batch_size": 16, "patience": 1, "validation_fraction": .2, "test_fraction": .2, "max_rules": 3})
     assert response.status_code == 201, response.text
     study = response.json()
     assert study["model_kind"] == "random_forest"
     assert {run["model_kind"] for run in study["seed_runs"]} == {"random_forest"}
+    assert {run["normalization"]["mode"] for run in study["seed_runs"]} == {"minmax"}
     assert all(run["runtime_seconds"] >= 0 for run in study["seed_runs"])
 
     comparison = client.post("/api/projects/analyses/comparisons", json={"session_id": session_id, "run_ids": [run["run_id"] for run in study["seed_runs"]]})
@@ -162,9 +214,10 @@ def test_study_job_returns_immediately_and_persists_seed_lifecycle(tmp_path: Pat
     root = tmp_path / "study-job"
     session_id = client.post("/api/projects", json={"path": str(root), "name": "Study job"}).json()["session_id"]
     assert client.post("/api/projects/dataset/confirm", json={"session_id": session_id, "csv_text": _binary_frame().to_csv(index=False), "target": "target", "task": "binary_classification", "id_columns": []}).status_code == 200
-    started = client.post("/api/projects/training/study-jobs", json={"session_id": session_id, "name": "async forest", "model_kind": "random_forest", "seeds": [51, 53, 59], "selection_metric": "f1", "max_epochs": 1, "learning_rate": .01, "batch_size": 16, "patience": 1, "validation_fraction": .2, "test_fraction": .2, "max_rules": 3})
+    started = client.post("/api/projects/training/study-jobs", json={"session_id": session_id, "name": "async forest", "model_kind": "random_forest", "seeds": [51, 53, 59], "selection_metric": "f1", "normalization": "none", "max_epochs": 1, "learning_rate": .01, "batch_size": 16, "patience": 1, "validation_fraction": .2, "test_fraction": .2, "max_rules": 3})
     assert started.status_code == 202, started.text
     job = started.json()
+    assert job["execution_config"]["normalization"] == "none"
     assert len(job["seed_states"]) == 3
     for _ in range(80):
         job = client.get(f"/api/projects/{session_id}/training/study-jobs/{job['job_id']}").json()
@@ -177,6 +230,7 @@ def test_study_job_returns_immediately_and_persists_seed_lifecycle(tmp_path: Pat
     study = client.get(f"/api/projects/{session_id}/training/studies/{job['study_id']}")
     assert study.status_code == 200
     assert (study.json()["adapter_key"], study.json()["adapter_version"]) == ("native_random_forest", "1")
+    assert {run["normalization"]["mode"] for run in study.json()["seed_runs"]} == {"none"}
     listed = client.get(f"/api/projects/{session_id}/training/study-jobs")
     assert listed.status_code == 200 and [item["job_id"] for item in listed.json()] == [job["job_id"]]
     assert job["execution_backend"] == "LOCAL"

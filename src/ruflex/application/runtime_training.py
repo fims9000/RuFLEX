@@ -49,10 +49,14 @@ def train_with_adapter(
             raise RuntimeIncompatibleError("The requested split_seed does not match the immutable SplitContract.")
         if split_contract.validation_fraction != validation_fraction or split_contract.test_fraction != test_fraction:
             raise RuntimeIncompatibleError("Training fractions must match the immutable SplitContract.")
+    try:
+        normalization_mode = NormalizationMode((parameters or {}).get("normalization", NormalizationMode.STANDARD.value))
+    except ValueError as error:
+        raise RuntimeIncompatibleError("Unsupported normalization mode; use none, standard, or minmax.") from error
     split = TabularDataset.from_dataframe(frame).split(DatasetConfig(
         target_column=contract.target, feature_columns=tuple(contract.feature_columns),
         validation_fraction=validation_fraction, test_fraction=test_fraction,
-        normalization=NormalizationMode.STANDARD, fill_missing="median", random_state=resolved_split,
+        normalization=normalization_mode, fill_missing="median", random_state=resolved_split,
         explicit_split_source_rows=(None if split_contract is None else split_contract.role_source_rows),
     ))
     if split.validation_features.shape[0] == 0:
