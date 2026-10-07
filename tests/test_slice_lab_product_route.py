@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pandas as pd
 from fastapi.testclient import TestClient
 
 from ruflex.api.main import app
+from ruflex.application.project_integrity import inspect_project_integrity
 
 
 def _slice_frame(rows: int = 60) -> pd.DataFrame:
@@ -113,6 +115,17 @@ def test_slice_lab_uses_original_validation_source_rows_and_persists_all_slice_k
     assert any("Forbidden scope rule matched" in reason for reason in group_result["scope_reasons"])
     assert next(row for row in analysis["results"] if row["kind"] == "temporal")["n"] == len(evidence)
     assert next(row for row in analysis["results"] if row["kind"] == "manual")["n"] == 1
+
+    assert inspect_project_integrity(root).status == "PASS"
+    analysis_path = root / "analyses" / "slices" / f"{analysis['analysis_id']}.json"
+    analysis_payload = json.loads(analysis_path.read_text(encoding="utf-8"))
+    original_evaluation_id = analysis_payload["evaluation_id"]
+    analysis_payload["evaluation_id"] = "00000000-0000-0000-0000-000000000001"
+    analysis_path.write_text(json.dumps(analysis_payload), encoding="utf-8")
+    corrupted_slice = inspect_project_integrity(root)
+    assert any(issue.code == "SLICE_ANALYSIS_PROVENANCE_MISMATCH" for issue in corrupted_slice.issues)
+    analysis_payload["evaluation_id"] = original_evaluation_id
+    analysis_path.write_text(json.dumps(analysis_payload), encoding="utf-8")
 
     latest = client.get(f"/api/projects/{session_id}/analyses/slices/latest")
     assert latest.status_code == 200

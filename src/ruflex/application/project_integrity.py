@@ -17,9 +17,9 @@ from ruflex.application.datasets import DatasetConfirmationError, DatasetContrac
 from ruflex.application.fis import list_fis_revisions, load_fis
 from ruflex.application.jobs import Job
 from ruflex.application.projects import ProjectService
-from ruflex.application.training import _baseline_metrics, _calibration_bins_from_probabilities, _classification_metrics_at_threshold, _ece_from_bins, _operating_curves, _select_study_run, _stable_identity, list_training_runs
+from ruflex.application.training import _baseline_metrics, _calibration_bins_from_probabilities, _classification_metrics_at_threshold, _ece_from_bins, _operating_curves, _select_study_run, _stable_identity, _validation_sample_identity, list_training_runs
 from ruflex.application.behavior import _requirement_identity
-from ruflex.application.generalization import SliceAnalysis
+from ruflex.application.generalization import SliceAnalysis, load_generalization_contract
 from ruflex.domain.behavior import BehaviorRevisionComparison, BehaviorSpec, BehaviorSpecResult
 from ruflex.domain.evidence import ExplanationCheck, ExplanationContract, ExplanationReproducibilityAnalysis
 from ruflex.domain.expert_correction import ExpertCorrectionRevision
@@ -819,7 +819,12 @@ def _load_pointer_collection(
     return objects, issues, checked
 
 
-def _inspect_auxiliary_active_pointers(base: Path) -> tuple[list[ProjectIntegrityIssue], int]:
+def _inspect_auxiliary_evidence_integrity(
+    base: Path,
+    runs_by_id: dict,
+    evaluations: dict,
+    dataset_contract: DatasetContract | None,
+) -> tuple[list[ProjectIntegrityIssue], int]:
     """Check latest-object pointers for persisted evidence families not loaded above."""
     specs = (
         ("analyses/comparisons", AnalysisComparison, "active-comparison.json", "comparison_id", "comparison_id", "ANALYSIS_COMPARISON_ACTIVE_POINTER_INVALID"),
@@ -833,7 +838,7 @@ def _inspect_auxiliary_active_pointers(base: Path) -> tuple[list[ProjectIntegrit
     issues: list[ProjectIntegrityIssue] = []
     checked = 0
     for relative_dir, validator, pointer_name, pointer_key, identity_attribute, code in specs:
-        _, family_issues, family_checked = _load_pointer_collection(
+        objects, family_issues, family_checked = _load_pointer_collection(
             base,
             relative_dir,
             validator,
@@ -846,6 +851,74 @@ def _inspect_auxiliary_active_pointers(base: Path) -> tuple[list[ProjectIntegrit
         )
         issues.extend(family_issues)
         checked += family_checked
+        for item in objects:
+            relative_path = f"{relative_dir}/{getattr(item, identity_attribute)}.json"
+            try:
+                if isinstance(item, AnalysisComparison):
+                    compared_runs = [runs_by_id.get(run_id) for run_id in item.run_ids]
+                    if (
+                        len(set(item.run_ids)) != len(item.run_ids)
+                        or any(run is None for run in compared_runs)
+                        or any(run.task != item.task or run.target != item.target or run.evaluation_split != "validation" or run.split.test_status != "LOCKED_NOT_EVALUATED" for run in compared_runs if run is not None)
+                        or len({run.dataset_fingerprint for run in compared_runs if run is not None}) > 1
+                    ):
+                        raise ValueError("AnalysisComparison run, task, target, dataset, or validation provenance is inconsistent.")
+                    expected_dataset = next((run.dataset_fingerprint for run in compared_runs if run is not None and run.dataset_fingerprint is not None), None)
+                    if (item.dataset_fingerprint is not None and item.dataset_fingerprint != expected_dataset) or (dataset_contract is not None and expected_dataset is not None and expected_dataset != dataset_contract.dataset_fingerprint):
+                        raise ValueError("AnalysisComparison dataset fingerprint does not match its runs.")
+                    run_rows = [row for row in item.metric_rows if row.get("subject_type") == "training_run"]
+                    rows_by_run = {str(row.get("run_id")): row for row in run_rows}
+                    if len(run_rows) != len(item.run_ids) or len(rows_by_run) != len(run_rows) or set(rows_by_run) != {str(run_id) for run_id in item.run_ids}:
+                        raise ValueError("AnalysisComparison must contain exactly one metric row for each referenced TrainingRun.")
+                    for run in compared_runs:
+                        row = rows_by_run[str(run.run_id)]
+                        if row.get("subject_id") != f"run:{run.run_id}" or row.get("model_kind") != run.model_kind:
+                            raise ValueError("AnalysisComparison subject row does not match its TrainingRun identity.")
+                        for metric, expected_value in run.validation_metrics.items():
+                            if metric not in row or not math.isclose(float(row[metric]), float(expected_value), rel_tol=1e-12, abs_tol=1e-12):
+                                raise ValueError("AnalysisComparison validation metrics differ from the persisted TrainingRun.")
+                    if item.schema_version >= 2:
+                        expected_identities = {
+                            str(run.run_id): identity
+                            for run in compared_runs
+                            if (identity := _validation_sample_identity(run)) is not None
+                        }
+                        if item.fis_id is not None and item.validation_alignment == "same_cases" and expected_identities:
+                            expected_identities[f"fis:{item.fis_id}"] = next(iter(expected_identities.values()))
+                        if item.validation_sample_identities != expected_identities:
+                            raise ValueError("AnalysisComparison validation case identities do not match its referenced runs.")
+                        alignment = "unknown" if len(expected_identities) < len(compared_runs) else "same_cases" if len(set(expected_identities.values())) == 1 else "mixed_cases"
+                        if item.validation_alignment != alignment:
+                            raise ValueError("AnalysisComparison alignment label does not match its frozen validation identities.")
+                    if (item.fis_id is None) != (item.fis_semantic_hash is None):
+                        raise ValueError("AnalysisComparison manual FIS identity and semantic hash must be bound together.")
+                    if item.fis_id is not None:
+                        fis = load_fis(base, str(item.fis_id))
+                        if fis.semantic_hash != item.fis_semantic_hash:
+                            raise ValueError("AnalysisComparison manual FIS semantic hash does not match its persisted FIS.")
+                elif isinstance(item, SliceAnalysis):
+                    evaluation = evaluations.get(item.evaluation_id)
+                    if (
+                        evaluation is None
+                        or evaluation.run_id != item.run_id
+                        or evaluation.split != "validation"
+                        or evaluation.dataset_fingerprint != item.dataset_fingerprint
+                        or (dataset_contract is not None and item.dataset_fingerprint != dataset_contract.dataset_fingerprint)
+                        or item.source_split != "validation"
+                        or item.test_status != "LOCKED_NOT_EVALUATED"
+                    ):
+                        raise ValueError("SliceAnalysis does not resolve to its exact validation Evaluation, TrainingRun, and DatasetContract.")
+                    if item.generalization_contract_id is not None:
+                        scope = load_generalization_contract(base, item.generalization_contract_id)
+                        if scope.dataset_fingerprint != item.dataset_fingerprint:
+                            raise ValueError("SliceAnalysis GeneralizationContract belongs to a different dataset revision.")
+                    definition_names = [definition.name for definition in item.definitions]
+                    result_names = [result.name for result in item.results]
+                    if len(set(definition_names)) != len(definition_names) or set(result_names) != set(definition_names) or any(result.metric != item.metric for result in item.results):
+                        raise ValueError("SliceAnalysis result rows do not match their frozen definitions and metric.")
+            except (ValueError, TypeError, OSError, ValidationError, DatasetConfirmationError) as error:
+                code = "ANALYSIS_COMPARISON_PROVENANCE_MISMATCH" if isinstance(item, AnalysisComparison) else "SLICE_ANALYSIS_PROVENANCE_MISMATCH"
+                issues.append(ProjectIntegrityIssue(code=code, status="FAIL", path=relative_path, detail=str(error)))
     return issues, checked
 
 
@@ -2032,7 +2105,12 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                 issues.append(ProjectIntegrityIssue(code="JOB_OUTPUT_PROVENANCE_MISMATCH", status="FAIL", path=relative_path, detail=str(error)))
     except (ValidationError, ValueError, FileNotFoundError) as error:
         issues.append(ProjectIntegrityIssue(code="JOB_EVIDENCE_MALFORMED", status="FAIL", path="jobs", detail=str(error)))
-    auxiliary_pointer_issues, auxiliary_pointer_checks = _inspect_auxiliary_active_pointers(base)
+    auxiliary_pointer_issues, auxiliary_pointer_checks = _inspect_auxiliary_evidence_integrity(
+        base,
+        {run.run_id: run for run in runs},
+        evaluations,
+        contract,
+    )
     issues.extend(auxiliary_pointer_issues)
     checked += auxiliary_pointer_checks
     status = "FAIL" if any(issue.status == "FAIL" for issue in issues) else "WARN" if any(issue.status == "WARN" for issue in issues) else "PASS"

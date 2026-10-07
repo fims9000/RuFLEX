@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 
 from ruflex.api.main import app
 from ruflex.application.training import _stable_identity
-from ruflex.application.project_integrity import _inspect_auxiliary_active_pointers
+from ruflex.application.project_integrity import _inspect_auxiliary_evidence_integrity
 from ruflex.domain.training import AnalysisComparison
 from ruflex.sdk.studio import open_studio_project
 
@@ -63,15 +63,15 @@ def test_project_integrity_rejects_stale_or_missing_auxiliary_analysis_pointers(
     first_path.write_text(json.dumps(first_payload), encoding="utf-8")
     second_path.write_text(json.dumps(second_payload), encoding="utf-8")
 
-    issues, _ = _inspect_auxiliary_active_pointers(root)
+    issues, _ = _inspect_auxiliary_evidence_integrity(root, {}, {}, None)
     assert any(issue.code == "ANALYSIS_COMPARISON_ACTIVE_POINTER_INVALID" for issue in issues)
 
     pointer_path.write_text(json.dumps({"comparison_id": str(second.comparison_id)}), encoding="utf-8")
-    issues, _ = _inspect_auxiliary_active_pointers(root)
+    issues, _ = _inspect_auxiliary_evidence_integrity(root, {}, {}, None)
     assert not any(issue.code == "ANALYSIS_COMPARISON_ACTIVE_POINTER_INVALID" for issue in issues)
 
     pointer_path.unlink()
-    issues, _ = _inspect_auxiliary_active_pointers(root)
+    issues, _ = _inspect_auxiliary_evidence_integrity(root, {}, {}, None)
     assert any(issue.code == "ANALYSIS_COMPARISON_ACTIVE_POINTER_INVALID" for issue in issues)
 
 

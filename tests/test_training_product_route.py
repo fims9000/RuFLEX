@@ -18,6 +18,7 @@ from ruflex.application.datasets import (
 from ruflex.application.projects import ProjectService
 from ruflex.application import training as training_application
 from ruflex.application.training import load_latest_training_run, train_flat_neuro_fuzzy, verify_training_model_artifact
+from ruflex.application.project_integrity import inspect_project_integrity
 
 
 def _binary_frame(rows: int = 36) -> pd.DataFrame:
@@ -654,6 +655,16 @@ def test_validation_comparison_persists_compatible_seed_runs_and_rejects_duplica
     assert len(set(comparison["validation_sample_identities"].values())) > 1
     assert "not a paired same-case" in comparison["scientific_note"].lower()
     assert "locked" in comparison["scientific_note"].lower()
+    assert inspect_project_integrity(root).status == "PASS"
+    comparison_path = root / "analyses" / "comparisons" / f"{comparison['comparison_id']}.json"
+    comparison_payload = json.loads(comparison_path.read_text(encoding="utf-8"))
+    original_f1 = comparison_payload["metric_rows"][0]["f1"]
+    comparison_payload["metric_rows"][0]["f1"] = 0.0 if original_f1 > 0.0 else 1.0
+    comparison_path.write_text(json.dumps(comparison_payload), encoding="utf-8")
+    corrupted_comparison = inspect_project_integrity(root)
+    assert any(issue.code == "ANALYSIS_COMPARISON_PROVENANCE_MISMATCH" for issue in corrupted_comparison.issues)
+    comparison_payload["metric_rows"][0]["f1"] = original_f1
+    comparison_path.write_text(json.dumps(comparison_payload), encoding="utf-8")
 
     reopened = client.get(f"/api/projects/{session_id}/analyses/comparisons/latest")
     assert reopened.status_code == 200, reopened.text
