@@ -154,6 +154,23 @@ def test_training_variability_keeps_split_identity_and_persists_stability_gate(t
     final_test_validation = validate_verification_bundle(tampered_final_test_bundle)
     assert final_test_validation.status == "FAIL"
     assert any("Final-test evaluation" in error and "metrics" in error for error in final_test_validation.errors)
+    case_identity_entries = dict(entries)
+    case_identity_object = json.loads(case_identity_entries[final_test_entry])
+    case_identity_object["prediction_rows"][0]["row_identity"] = "forged-row-identity"
+    case_identity_entries[final_test_entry] = json.dumps(case_identity_object, indent=2).encode()
+    case_identity_manifest = json.loads(case_identity_entries["verification-manifest.json"])
+    case_identity_manifest["checksums"][final_test_entry] = hashlib.sha256(case_identity_entries[final_test_entry]).hexdigest()
+    case_identity_entries["verification-manifest.json"] = json.dumps(case_identity_manifest, indent=2, sort_keys=True).encode()
+    case_identity_entries["verification-manifest.sha256"] = (
+        f"{hashlib.sha256(case_identity_entries['verification-manifest.json']).hexdigest()}  verification-manifest.json\n".encode()
+    )
+    tampered_case_identity_bundle = tmp_path / "tampered-final-test-case-identity-bundle.zip"
+    with zipfile.ZipFile(tampered_case_identity_bundle, "w", zipfile.ZIP_DEFLATED) as archive:
+        for name, payload in case_identity_entries.items():
+            archive.writestr(name, payload)
+    case_identity_validation = validate_verification_bundle(tampered_case_identity_bundle)
+    assert case_identity_validation.status == "FAIL"
+    assert any("Final-test evaluation" in error and "case identities" in error for error in case_identity_validation.errors)
     assurance_id = json.loads(entries["verification-manifest.json"])["assurance_id"]
     assurance_entry = f"evidence/assurance/{assurance_id}.json"
     assurance_entries = dict(entries)

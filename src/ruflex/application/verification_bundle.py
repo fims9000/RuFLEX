@@ -288,6 +288,10 @@ def _validate_relationships(objects: list[BaseModel]) -> list[str]:
                 or not isinstance(run, TrainingRun)
                 or evaluation.run_id != object_.run_id
                 or evaluation.split != "validation"
+                or run.dataset_fingerprint != object_.dataset_fingerprint
+                or run.dataset_artifact_sha256 != object_.dataset_artifact_sha256
+                or run.model_artifact_sha256 != object_.model_artifact_sha256
+                or run.preprocessing_artifact_sha256 != object_.preprocessing_artifact_sha256
                 or object_.task != evaluation.task
                 or object_.target != evaluation.target
                 or object_.model_kind != evaluation.model_kind
@@ -300,6 +304,7 @@ def _validate_relationships(objects: list[BaseModel]) -> list[str]:
                 or len(set(source_rows)) != len(source_rows)
                 or len(set(case_ids)) != len(case_ids)
                 or any(row.source_row is None or row.row != index for index, row in enumerate(object_.prediction_rows))
+                or any(row.row_identity not in (None, row_identity(object_.dataset_fingerprint, int(row.source_row))) for row in object_.prediction_rows if row.source_row is not None)
                 or object_.test_sample_identity != expected_sample_identity
                 or object_.test_case_identity != expected_case_identity
                 or object_.policy_identity != _stable_identity("final-test-policy", {

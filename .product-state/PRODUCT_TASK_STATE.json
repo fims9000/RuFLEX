@@ -241,13 +241,14 @@
     "alpha_stability_assurance_bundle_semantic_integrity",
     "alpha_selective_policy_bundle_semantic_integrity",
     "alpha_final_test_bundle_semantic_integrity",
-    "alpha_assurance_bundle_claim_integrity"
+    "alpha_assurance_bundle_claim_integrity",
+    "alpha_final_test_bundle_case_identity_integrity"
   ],
-  "active_capability": "alpha_assurance_bundle_claim_integrity",
+  "active_capability": "alpha_final_test_bundle_case_identity_integrity",
   "active_acceptance": [
-    "Persisted AssuranceCase claims and unresolved risks must be derivable from its typed gate graph.",
-    "VerificationBundle manifest assurance_id and assurance-summary.json resolve to the exact typed persisted AssuranceCase.",
-    "A consistently re-checksummed forged claim in both summary and object fails semantic validation."
+    "Final-test bundle rows bind source_row and row_identity to the dataset fingerprint; duplicate or forged row identities fail closed.",
+    "Final-test bundle run model/dataset/preprocessing artifact references match the exact frozen TrainingRun and Evaluation.",
+    "Re-checksummed row-identity tampering fails bundle validation."
   ],
   "blockers": [],
   "next_executable_work": "Inspect the remaining persisted evidence families for summary fields that can be tampered without semantic revalidation; keep each change narrow and resource-light.",
@@ -495,6 +496,7 @@
     "alpha_stability_assurance_bundle_semantic_integrity": "PASS: Project Integrity and Assurance recompute stability case evidence and frozen gate decisions; VerificationBundle validates analysis/policy provenance and rejects re-checksummed semantic tampering. Fixed deterministic random-review baseline validation to use the product identity protocol. Focused Stability/Integrity tests: 8 passed; compileall and git diff --check passed.",
     "alpha_selective_policy_bundle_semantic_integrity": "PASS: VerificationBundle now resolves frozen confidence policy to exact validation run/evaluation/threshold/calibration, verifies probability-source consistency, and recomputes the policy fit identity and confidence risk-coverage curve. Re-checksummed curve tampering is rejected; tests/test_stability_lab.py: 7 passed; compileall and git diff --check passed.",
     "alpha_final_test_bundle_semantic_integrity": "PASS: VerificationBundle validates final-test frozen-policy bindings, case/sample/policy identities, freeze timestamps, metrics and Stability evidence. A re-checksummed final-test metric tamper is rejected; tests/test_stability_lab.py: 7 passed.",
-    "alpha_assurance_bundle_claim_integrity": "PASS: VerificationBundle recomputes AssuranceCase claim graph and binds manifest assurance_id plus assurance-summary.json to the typed persisted AssuranceCase. A forged claim copied consistently into both objects and re-checksummed still fails; tests/test_stability_lab.py: 7 passed."
+    "alpha_assurance_bundle_claim_integrity": "PASS: VerificationBundle recomputes AssuranceCase claim graph and binds manifest assurance_id plus assurance-summary.json to the typed persisted AssuranceCase. A forged claim copied consistently into both objects and re-checksummed still fails; tests/test_stability_lab.py: 7 passed.",
+    "alpha_final_test_bundle_case_identity_integrity": "PASS: Final-test bundle validation checks source row and dataset-bound case identity uniqueness and binds model/dataset/preprocessing artifact hashes to the frozen run/evaluation. Re-checksummed row-identity tampering fails; tests/test_stability_lab.py: 7 passed, compileall and diff check passed."
   }
 }
