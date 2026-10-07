@@ -97,14 +97,28 @@ test("PRODUCT-02 performs real neuro-fuzzy training, validation evaluation and r
   });
   let trainingPostCount = 0;
   let trainingRequestBody: Record<string, unknown> | null = null;
+  let releaseTrainingRequest!: () => void;
+  let markTrainingRequestStarted!: () => void;
+  const trainingRequestGate = new Promise<void>((resolve) => { releaseTrainingRequest = resolve; });
+  const trainingRequestStarted = new Promise<void>((resolve) => { markTrainingRequestStarted = resolve; });
   await page.route("**/api/projects/training/run", async (route) => {
     if (route.request().method() !== "POST") return route.continue();
     trainingPostCount += 1;
     trainingRequestBody = route.request().postDataJSON() as Record<string, unknown>;
+    markTrainingRequestStarted();
+    await trainingRequestGate;
     await route.fetch();
     await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "TrainingRun response lost after persistence" }) });
   });
   await page.getByRole("button", { name: "Run real training", exact: true }).click();
+  await trainingRequestStarted;
+  try {
+    await expect(page.locator('[data-ruflex-action="training.run"]')).toBeDisabled();
+    await expect(page.getByLabel("Training model")).toBeDisabled();
+    expect(trainingPostCount).toBe(1);
+  } finally {
+    releaseTrainingRequest();
+  }
 
   const trainingRecovery = page.getByTestId("training-run-recovery");
   await expect(trainingRecovery).toContainText("TrainingRun response lost after persistence");

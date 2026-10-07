@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom/vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ButtonHTMLAttributes } from "react";
 
@@ -137,6 +137,25 @@ describe("ExperimentWorkspace dynamic model controls", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Configured estimator parameter is invalid.");
     expect(screen.queryByTestId("training-run-recovery")).not.toBeInTheDocument();
     expect(runButton).toBeEnabled();
+  });
+
+  it("synchronously rejects duplicate single-run submissions before React can rerender", async () => {
+    let finishRun!: (value: never) => void;
+    studioApi.runTraining.mockImplementationOnce(() => new Promise((resolve) => { finishRun = resolve as (value: never) => void; }));
+    render(<ExperimentWorkspace project={project} dataset={dataset as never} run={null} study={null} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);
+
+    const runButton = await screen.findByRole("button", { name: "Run real training" });
+    await waitFor(() => expect(runButton).toBeEnabled());
+    act(() => {
+      runButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      runButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(studioApi.runTraining).toHaveBeenCalledTimes(1);
+    expect(runButton).toBeDisabled();
+    await act(async () => { finishRun({} as never); });
+    await waitFor(() => expect(runButton).toBeEnabled());
+    expect(studioApi.runTraining).toHaveBeenCalledTimes(1);
   });
 
   it("clears a rejected Study request so corrected parameters create a new request", async () => {

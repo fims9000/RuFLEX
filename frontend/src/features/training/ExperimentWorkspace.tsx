@@ -233,6 +233,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
   const [pendingStudyRequest, setPendingStudyRequest] = useState<Parameters<typeof studioApi.startStudyJob>[1] | null>(null);
   const pendingStudyRequestRef = useRef<Parameters<typeof studioApi.startStudyJob>[1] | null>(null);
   const [running, setRunning] = useState(false);
+  const singleTrainingInFlightRef = useRef(false);
   const [trainingRecovery, setTrainingRecovery] = useState<{ config: Parameters<typeof studioApi.runTraining>[1]; requestedAt: number; error: string; notFound: boolean } | null>(null);
   const [recoveringTraining, setRecoveringTraining] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -487,11 +488,12 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
   }
 
   async function train() {
-    if (splitContractRecovery || trainingRecovery) return;
+    if (singleTrainingInFlightRef.current || running || splitContractRecovery || trainingRecovery) return;
     if (!splitSelectionMatchesFrozenContract) {
       setError("Freeze a SplitContract matching the currently selected split family, identity column and seed before fitting.");
       return;
     }
+    singleTrainingInFlightRef.current = true;
     setRunning(true);
     setError(null);
     const config: Parameters<typeof studioApi.runTraining>[1] = {
@@ -518,6 +520,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
       }
       setError(reason instanceof Error ? reason.message : "Training failed");
     } finally {
+      singleTrainingInFlightRef.current = false;
       setRunning(false);
     }
   }
@@ -542,13 +545,14 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
   }
   async function explicitlyRepeatTraining() {
     const pending = trainingRecovery;
-    if (!pending?.notFound || project.read_only) return;
+    if (!pending?.notFound || project.read_only || running || singleTrainingInFlightRef.current) return;
+    singleTrainingInFlightRef.current = true;
     setRecoveringTraining(true); setRunning(true); setError(null);
     try { onRun(await studioApi.runTraining(project.session_id, pending.config)); setTrainingRecovery(null); }
     catch (reason) {
       const message = reason instanceof Error ? reason.message : "The explicitly repeated training request could not be confirmed.";
       setTrainingRecovery({ ...pending, notFound: false, error: message }); setError(message);
-    } finally { setRecoveringTraining(false); setRunning(false); }
+    } finally { singleTrainingInFlightRef.current = false; setRecoveringTraining(false); setRunning(false); }
   }
   async function freezeSplitContract() {
     if (splitContractRecovery) return;
