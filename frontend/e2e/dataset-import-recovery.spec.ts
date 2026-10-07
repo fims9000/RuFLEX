@@ -25,7 +25,7 @@ test("a persisted file import is reconciled after its confirmation read fails", 
     buffer: Buffer.from("sensor,target\na,0\nb,1\nc,0\nd,1\n"),
   });
   await expect(page.getByLabel("Selected file schema preview")).toBeVisible();
-  await page.getByLabel("Target").selectOption("target");
+  await page.getByLabel("Target", { exact: true }).selectOption("target");
   await page.getByRole("button", { name: "Confirm target and import file", exact: true }).click();
 
   const error = page.getByRole("alert").filter({ hasText: "Could not verify persisted dataset state" });
@@ -60,7 +60,7 @@ test("a committed file import is not repeated when its HTTP response is lost", a
     buffer: Buffer.from("sensor,target\na,0\nb,1\nc,0\nd,1\n"),
   });
   await expect(page.getByLabel("Selected file schema preview")).toBeVisible();
-  await page.getByLabel("Target").selectOption("target");
+  await page.getByLabel("Target", { exact: true }).selectOption("target");
   await page.getByRole("button", { name: "Confirm target and import file", exact: true }).click();
 
   await expect(page.getByText(/restored its confirmation after the upload response was lost/)).toBeVisible();
@@ -103,7 +103,7 @@ test("a lost import response and failed recovery read reconcile on the next data
     buffer: Buffer.from("sensor,target\na,0\nb,1\nc,0\nd,1\n"),
   });
   await expect(page.getByLabel("Selected file schema preview")).toBeVisible();
-  await page.getByLabel("Target").selectOption("target");
+  await page.getByLabel("Target", { exact: true }).selectOption("target");
   await page.getByRole("button", { name: "Confirm target and import file", exact: true }).click();
 
   const error = page.getByRole("alert").filter({ hasText: "Could not verify persisted dataset state" });

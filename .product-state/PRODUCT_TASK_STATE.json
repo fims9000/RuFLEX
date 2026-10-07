@@ -307,16 +307,18 @@
     "alpha_fis_cross_action_write_mutex",
     "alpha_fis_import_file_read_draft_baseline",
     "alpha_fis_editor_history_async_integrity",
-    "alpha_explicit_model_feature_exclusion"
+    "alpha_explicit_model_feature_exclusion",
+    "alpha_profile_column_role_selection"
   ],
   "active_capability": "alpha_master_spec_gap_audit",
   "active_acceptance": [
-    "Continue a bounded master-spec gap audit after the verified feature-scope workflow.",
+    "Continue a bounded master-spec gap audit after the verified profile-based column-role selection.",
     "Select the next concrete, low-resource, end-to-end product gap and implement it without broad refactoring."
   ],
   "blockers": [],
-  "next_executable_work": "Inspect the next unresolved Studio user workflow against the master spec and choose a small falsifiable product gap; preserve the existing unrelated docs/article worktree changes.",
+  "next_executable_work": "Inspect the next unresolved Golden Route workflow against its route/API/tests; prioritize a missing user-facing action over another cosmetic state guard, and preserve unrelated docs/article changes.",
   "qa": {
+    "profile_column_role_selection": "PASS: inspected CSV/XLSX column tables allow direct target/ID/excluded/feature choice; the same DatasetContract is persisted, and roles reopen identically. TypeScript/Vite build passed; 3 focused profile/first-project browser checks and 5 import-recovery browser checks passed. No scientific backend semantics changed.",
     "explicit_model_feature_exclusion": "PASS: DatasetContract persists distinct excluded role, API CSV/XLSX accepts it, training omits excluded features, project/bundle integrity fail closed, Studio displays and reopens the choice. Focused Python dataset/integrity/evidence tests: 69 passed; TypeScript/Vite build and focused real Studio close/reopen E2E passed. No full suite run for this resource-aware slice.",
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",

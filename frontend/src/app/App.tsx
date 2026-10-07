@@ -1347,6 +1347,23 @@ export function App() {
       setStatus("CSV changed; inspect again before confirming");
     }
   }
+  function columnRole(name: string): "target" | "id" | "excluded" | "feature" {
+    if (name === target) return "target";
+    if (idColumns.split(",").some((column) => column.trim() === name)) return "id";
+    if (excludedColumns.split(",").some((column) => column.trim() === name)) return "excluded";
+    return "feature";
+  }
+  function assignColumnRole(name: string, role: "target" | "id" | "excluded" | "feature") {
+    const withoutName = (value: string) => value.split(",").map((column) => column.trim()).filter((column) => column && column !== name);
+    const ids = withoutName(idColumns);
+    const excluded = withoutName(excludedColumns);
+    if (role === "target") setTarget(name);
+    else if (target === name) setTarget("");
+    if (role === "id") ids.push(name);
+    if (role === "excluded") excluded.push(name);
+    setIdColumns(ids.join(", "));
+    setExcludedColumns(excluded.join(", "));
+  }
   async function confirmCsv() {
     if (!project || datasetMutationInFlightRef.current || confirmingCsvDataset || importingDatasetFile || projectWriteInFlightRef.current || generalizationMutationInFlightRef.current || (datasetStateStatus !== "none" && datasetStateStatus !== "available")) return;
     datasetMutationInFlightRef.current = true;
@@ -1920,7 +1937,7 @@ export function App() {
                 <label className="field-label">
                   Target
                   {pendingDatasetProfile ? (
-                    <select aria-label="Target" disabled={!datasetStateResolved || importingDatasetFile || confirmingCsvDataset} value={target} onChange={(event) => setTarget(event.target.value)}>
+                    <select aria-label="Target" disabled={!datasetStateResolved || importingDatasetFile || confirmingCsvDataset} value={target} onChange={(event) => event.target.value ? assignColumnRole(event.target.value, "target") : setTarget("")}>
                       <option value="">Select target column</option>
                       {pendingDatasetProfile.columns.map((column) => <option key={column.name} value={column.name}>{column.name}</option>)}
                     </select>
@@ -1958,7 +1975,7 @@ export function App() {
                 </Button>
                 <Button
                   view="action"
-                  disabled={!datasetStateResolved || !profile || project.read_only || confirmingCsvDataset || importingDatasetFile}
+                  disabled={!datasetStateResolved || !profile || !target.trim() || project.read_only || confirmingCsvDataset || importingDatasetFile}
                   onClick={confirmCsv}
                   data-ruflex-action="dataset.confirm"
                 >
@@ -1992,15 +2009,15 @@ export function App() {
               {pendingDatasetProfile && (
                 <div className="data-summary" aria-label="Selected file schema preview">
                   Candidate preview · {pendingDatasetFile?.name} · {pendingDatasetProfile.row_count} rows · {pendingDatasetProfile.columns.length} columns · not saved
-                  <div className="data-table-wrap"><table className="data-table"><thead><tr><th>column</th><th>proposed role</th><th>type</th></tr></thead><tbody>{pendingDatasetProfile.columns.map((column) => <tr key={column.name}><td>{column.name}</td><td>{column.proposed_role}</td><td>{column.semantic_type} · {column.dtype}</td></tr>)}</tbody></table></div>
+                  <div className="data-table-wrap"><table className="data-table"><thead><tr><th>column</th><th>proposed role</th><th>confirmed role</th><th>type</th></tr></thead><tbody>{pendingDatasetProfile.columns.map((column) => <tr key={column.name}><td>{column.name}</td><td>{column.proposed_role}</td><td><select aria-label={`Role for ${column.name}`} value={columnRole(column.name)} disabled={!datasetStateResolved || project.read_only || importingDatasetFile || confirmingCsvDataset} onChange={(event) => assignColumnRole(column.name, event.target.value as "target" | "id" | "excluded" | "feature")}><option value="feature">Model feature</option><option value="target">Target</option><option value="id">ID</option><option value="excluded">Exclude from model</option></select></td><td>{column.semantic_type} · {column.dtype}</td></tr>)}</tbody></table></div>
                 </div>
               )}
               {profile && !pendingDatasetFile && (
                 <div className="data-summary">
                   Rows: {profile.row_count} · columns: {profile.columns.length}{" "}
                   · ID candidates: {profile.id_candidates.join(", ") || "none"}
-                  <div className="info-message">Role proposals are advisory: choose target, ID columns, and any features to exclude before freezing the authoritative DatasetContract.</div>
-                  <div className="data-table-wrap"><table className="data-table"><thead><tr><th>column</th><th>proposal</th><th>confidence</th><th>reason</th></tr></thead><tbody>{profile.columns.map((column) => <tr key={column.name}><td>{column.name}</td><td>{column.proposed_role}</td><td>{Math.round(column.role_confidence * 100)}%</td><td>{column.role_reason}</td></tr>)}</tbody></table></div>
+                  <div className="info-message">Role proposals are advisory. Select each column's role here or edit the fields above; changes remain a draft until you confirm the DatasetContract.</div>
+                  <div className="data-table-wrap"><table className="data-table"><thead><tr><th>column</th><th>proposal</th><th>confirmed role</th><th>confidence</th><th>reason</th></tr></thead><tbody>{profile.columns.map((column) => <tr key={column.name}><td>{column.name}</td><td>{column.proposed_role}</td><td><select aria-label={`Role for ${column.name}`} value={columnRole(column.name)} disabled={!datasetStateResolved || project.read_only || importingDatasetFile || confirmingCsvDataset} onChange={(event) => assignColumnRole(column.name, event.target.value as "target" | "id" | "excluded" | "feature")}><option value="feature">Model feature</option><option value="target">Target</option><option value="id">ID</option><option value="excluded">Exclude from model</option></select></td><td>{Math.round(column.role_confidence * 100)}%</td><td>{column.role_reason}</td></tr>)}</tbody></table></div>
                 </div>
               )}
             </div>

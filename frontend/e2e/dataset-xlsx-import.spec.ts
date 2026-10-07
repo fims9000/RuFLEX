@@ -16,7 +16,7 @@ function tinyWorkbook(): Buffer {
     "from io import BytesIO",
     "import base64, pandas as pd",
     "buffer = BytesIO()",
-    "pd.DataFrame({'temperature': [10, 20, 30], 'target': [0, 1, 1]}).to_excel(buffer, index=False)",
+    "pd.DataFrame({'temperature': [10, 20, 30], 'leak_hint': [1, 0, 1], 'target': [0, 1, 1]}).to_excel(buffer, index=False)",
     "print(base64.b64encode(buffer.getvalue()).decode())",
   ].join("; ");
   const encoded = execFileSync(python, ["-c", script], { encoding: "utf8" }).trim();
@@ -38,7 +38,7 @@ test("Studio imports XLSX with an explicit target and preserves it after rejecti
     if (request.url().endsWith("/api/projects/dataset/import")) importRequests += 1;
     if (request.url().endsWith("/api/projects/dataset/import/inspect")) inspectRequests += 1;
   });
-  await page.getByLabel("Target").fill("target");
+  await page.getByLabel("Target", { exact: true }).fill("target");
   const validInspection = page.waitForResponse((response) => response.url().endsWith("/api/projects/dataset/import/inspect") && response.request().method() === "POST");
   const validUpload = {
     name: "measurements.xlsx",
@@ -56,9 +56,11 @@ test("Studio imports XLSX with an explicit target and preserves it after rejecti
   expect(inspectionResponse.status()).toBe(200);
   await expect(page.getByLabel("Selected file schema preview")).toContainText("3 rows");
   await expect(page.getByLabel("Selected file schema preview")).toContainText("temperature");
+  await expect(page.getByLabel("Selected file schema preview")).toContainText("leak_hint");
   await expect(page.getByLabel("Selected file schema preview")).toContainText("target");
   await expect(page.getByText("Selected: measurements.xlsx · target: select from inspected columns", { exact: true })).toBeVisible();
-  await page.getByLabel("Target").selectOption("target");
+  await page.getByLabel("Target", { exact: true }).selectOption("target");
+  await page.getByRole("combobox", { name: "Role for leak_hint" }).selectOption("excluded");
   await expect(page.getByRole("button", { name: "Confirm target and import file", exact: true })).toBeEnabled();
   expect(inspectRequests).toBe(1);
   expect(importRequests).toBe(0);
@@ -78,6 +80,8 @@ test("Studio imports XLSX with an explicit target and preserves it after rejecti
   expect(imported.contract.target).toBe("target");
   expect(imported.contract.source_format).toBe("xlsx");
   expect(imported.contract.source_artifact_sha256).toMatch(/^[a-f0-9]{64}$/);
+  expect(imported.contract.feature_columns).toEqual(["temperature"]);
+  expect(imported.contract.excluded_columns).toEqual(["leak_hint"]);
   const frozenContract = imported.contract;
   await expect(page.getByText(new RegExp(`Source: XLSX · SHA-256: ${frozenContract.source_artifact_sha256}`))).toBeVisible();
 
@@ -146,10 +150,17 @@ test("Studio excludes an ordinary feature without assigning it an ID role and re
   await page.getByLabel("Project name").fill("Feature scope");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
   await page.getByRole("button", { name: /Data.*No dataset/ }).click();
-  await page.getByLabel("CSV data").fill("entity_id,temperature,leak_hint,target\na,10,1,0\nb,20,0,1\n");
-  await page.getByLabel("ID columns").fill("entity_id");
-  await page.getByRole("textbox", { name: "Exclude from model" }).fill("leak_hint");
+  await page.getByLabel("CSV data").fill("entity_id,temperature,leak_hint,outcome\na,10,1,0\nb,20,0,1\n");
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
+  await page.getByRole("combobox", { name: "Role for outcome" }).selectOption("target");
+  await page.getByRole("combobox", { name: "Role for entity_id" }).selectOption("id");
+  await page.getByRole("combobox", { name: "Role for leak_hint" }).selectOption("excluded");
+  await page.getByRole("combobox", { name: "Role for leak_hint" }).selectOption("feature");
+  await expect(page.getByRole("textbox", { name: "Exclude from model" })).toHaveValue("");
+  await page.getByRole("combobox", { name: "Role for leak_hint" }).selectOption("excluded");
+  await expect(page.getByRole("textbox", { name: "Target" })).toHaveValue("outcome");
+  await expect(page.getByRole("textbox", { name: "ID columns" })).toHaveValue("entity_id");
+  await expect(page.getByRole("textbox", { name: "Exclude from model" })).toHaveValue("leak_hint");
   await expect(page.getByRole("button", { name: "Confirm dataset contract", exact: true })).toBeEnabled();
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
   const roles = page.getByLabel("Frozen dataset roles");
@@ -162,5 +173,6 @@ test("Studio excludes an ordinary feature without assigning it an ID role and re
   await page.getByLabel("Project path").fill(path);
   await page.getByRole("button", { name: "Open project", exact: true }).click();
   await expect(page.getByRole("textbox", { name: "Exclude from model" })).toHaveValue("leak_hint");
+  await expect(page.getByRole("combobox", { name: "Role for leak_hint" })).toHaveValue("excluded");
   await expect(page.getByLabel("Frozen dataset roles")).toContainText("1 model features · 1 IDs · 1 other columns excluded");
 });

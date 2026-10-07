@@ -23,7 +23,7 @@ test("E2E-01 creates a project and exposes it in Explorer and Properties", async
   await expect(page.getByRole("region", { name: "Optional quick start" })).toContainText("does not start training or access the locked test split");
   await page.getByRole("button", { name: "Review or import data", exact: true }).click();
   await expect(page.locator(".data-workspace")).toBeVisible();
-  await expect(page.getByLabel("Target")).toHaveValue("target");
+  await expect(page.getByLabel("Target", { exact: true })).toHaveValue("target");
 });
 
 test("E2E-02 saves metadata, closes, and reopens it", async ({ page }) => {
