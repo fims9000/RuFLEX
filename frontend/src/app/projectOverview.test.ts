@@ -1,5 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { projectModelOverviewLabel, trainingStudyOverviewLabel } from "./projectOverview";
+import { analysisOverviewLabel, evidenceOverviewLabel, projectModelOverviewLabel, trainingStudyOverviewLabel } from "./projectOverview";
+
+describe("analysisOverviewLabel", () => {
+  it("does not infer that all analysis types are absent from a missing latest Evaluation", () => {
+    expect(analysisOverviewLabel({ hasValidationEvaluation: false, hasTrainingRun: false })).toBe("Open analyses workspace");
+    expect(analysisOverviewLabel({ hasValidationEvaluation: true, hasTrainingRun: false })).toBe("Saved validation evaluation");
+    expect(analysisOverviewLabel({ hasValidationEvaluation: false, hasTrainingRun: true })).toBe("Validation analysis ready");
+  });
+});
+
+describe("evidenceOverviewLabel", () => {
+  it("does not infer that the evidence workspace is empty from a missing exact FIS trace", () => {
+    expect(evidenceOverviewLabel(false)).toBe("Open evidence workspace");
+    expect(evidenceOverviewLabel(true)).toBe("Exact trace available");
+  });
+});
 
 describe("projectModelOverviewLabel", () => {
   it("keeps model loading and errors distinct from a verified empty project", () => {

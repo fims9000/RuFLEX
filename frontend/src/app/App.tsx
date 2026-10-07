@@ -10,7 +10,7 @@ import { ChartSurface } from "../charts/ChartSurface";
 import { chartFixtures } from "../charts/fixtureOptions";
 import { FlowGrammar } from "../flow/FlowGrammar";
 import { ProjectLineage } from "../flow/ProjectLineage";
-import { projectModelOverviewLabel, trainingStudyOverviewLabel } from "./projectOverview";
+import { analysisOverviewLabel, evidenceOverviewLabel, projectModelOverviewLabel, trainingStudyOverviewLabel } from "./projectOverview";
 import {
   ArtifactRecord,
   ProductApiError,
@@ -2349,14 +2349,17 @@ export function App() {
               Analyses
               <br />
               <small>
-                {analysisEvaluation ? "Saved validation evaluation" : trainingRun ? "Validation analysis ready" : "No analyses"}
+                {analysisOverviewLabel({
+                  hasValidationEvaluation: Boolean(analysisEvaluation),
+                  hasTrainingRun: Boolean(trainingRun),
+                })}
               </small>
             </button>
             <button onClick={() => setActive("EVIDENCE")}>
               Evidence
               <br />
               <small>
-                {fisEvaluation ? "Exact trace available" : "No evidence"}
+                {evidenceOverviewLabel(Boolean(fisEvaluation))}
               </small>
             </button>
           </div>

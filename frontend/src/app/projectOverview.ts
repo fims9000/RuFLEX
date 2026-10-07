@@ -1,6 +1,19 @@
 export type TrainingStudyOverviewState = "idle" | "loading" | "none" | "available" | "error";
 export type ProjectModelOverviewState = "idle" | "loading" | "loaded" | "error";
 
+export function analysisOverviewLabel(input: {
+  hasValidationEvaluation: boolean;
+  hasTrainingRun: boolean;
+}): string {
+  if (input.hasValidationEvaluation) return "Saved validation evaluation";
+  if (input.hasTrainingRun) return "Validation analysis ready";
+  return "Open analyses workspace";
+}
+
+export function evidenceOverviewLabel(hasExactTrace: boolean): string {
+  return hasExactTrace ? "Exact trace available" : "Open evidence workspace";
+}
+
 export function projectModelOverviewLabel(input: {
   status: ProjectModelOverviewState;
   fisName: string | null;
