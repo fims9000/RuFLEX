@@ -15,6 +15,7 @@ import {
   ExplanationContract,
   VerificationBundleValidation,
   FISEvaluation,
+  FISSpec,
   PluginDescriptor,
   RunCapabilityNegotiation,
   RuntimeExplainerDescriptor,
@@ -55,6 +56,7 @@ function canonicalJson(value: unknown): string {
 export function EvidenceWorkspace({
   project,
   dataset,
+  fis,
   run,
   evaluation,
   previousEvaluation,
@@ -104,6 +106,7 @@ export function EvidenceWorkspace({
 }: {
   project: ProjectSummary;
   dataset: DatasetState | null;
+  fis: FISSpec | null;
   run: TrainingRun | null;
   evaluation: FISEvaluation | null;
   previousEvaluation: FISEvaluation | null;
@@ -163,6 +166,10 @@ export function EvidenceWorkspace({
   }, [dataset, run?.run_id]);
   const [sample, setSample] = useState<Record<string, string>>(initialSample);
   const [comparisonSample, setComparisonSample] = useState<Record<string, string>>(initialSample);
+  const initialFisSample = useMemo(() => Object.fromEntries((fis?.inputs ?? []).map((input) => [input.name, String((input.minimum + input.maximum) / 2)])), [fis?.fis_id, fis?.semantic_hash]);
+  const [fisSample, setFisSample] = useState<Record<string, string>>(initialFisSample);
+  const [fisComparisonSample, setFisComparisonSample] = useState<Record<string, string>>(initialFisSample);
+  const [behaviorSource, setBehaviorSource] = useState<"run" | "fis">(run ? "run" : "fis");
   const [method, setMethod] = useState("occlusion");
   const [busy, setBusy] = useState(false);
   const conditionDemoActionInFlightRef = useRef(false);
@@ -183,7 +190,7 @@ export function EvidenceWorkspace({
   const reproducibilityActionInFlightRef = useRef(false);
   const [behaviorResult, setBehaviorResult] = useState<BehaviorSpecResult | null>(restoredBehaviorResult);
   const [behaviorExecutionRecoveryError, setBehaviorExecutionRecoveryError] = useState<string | null>(null);
-  const [behaviorSpecCreationRecoveryRequest, setBehaviorSpecCreationRecoveryRequest] = useState<{ runId: string; payload: Parameters<typeof studioApi.createBehaviorSpec>[1] } | null>(null);
+  const [behaviorSpecCreationRecoveryRequest, setBehaviorSpecCreationRecoveryRequest] = useState<{ payload: Parameters<typeof studioApi.createBehaviorSpec>[1] } | null>(null);
   const [behaviorSpecCreationRecoveryError, setBehaviorSpecCreationRecoveryError] = useState<string | null>(null);
   const [behaviorSpecCreationNotFound, setBehaviorSpecCreationNotFound] = useState(false);
   const [behaviorResults, setBehaviorResults] = useState<BehaviorSpecResult[]>([]);
@@ -249,6 +256,11 @@ export function EvidenceWorkspace({
   const [runtimeCatalogHydrationReload, setRuntimeCatalogHydrationReload] = useState(0);
 
   useEffect(() => { setSample(initialSample); setComparisonSample(initialSample); }, [initialSample]);
+  useEffect(() => { setFisSample(initialFisSample); setFisComparisonSample(initialFisSample); }, [initialFisSample]);
+  useEffect(() => {
+    if (behaviorSource === "run" && !run && fis) setBehaviorSource("fis");
+    if (behaviorSource === "fis" && !fis && run) setBehaviorSource("run");
+  }, [behaviorSource, run?.run_id, fis?.fis_id]);
   useEffect(() => setBehaviorResult(restoredBehaviorResult), [restoredBehaviorResult?.result_id]);
   useEffect(() => setBehaviorSpec(restoredBehaviorSpec), [restoredBehaviorSpec?.spec_id]);
   useEffect(() => {
@@ -421,6 +433,20 @@ export function EvidenceWorkspace({
       const value = Number(comparisonSample[feature]);
       if (!Number.isFinite(value)) throw new Error(`Comparison ${feature} must be a finite number.`);
       result[feature] = value;
+    }
+    return result;
+  }
+
+  function numericFisBehaviorSample(values: Record<string, string>, comparison = false) {
+    if (!fis?.semantic_hash) throw new Error("Save the FIS revision before creating a BehaviorSpec.");
+    const result: Record<string, number> = {};
+    for (const input of fis.inputs) {
+      const draft = values[input.name];
+      const value = Number(draft);
+      if (draft == null || draft.trim() === "" || !Number.isFinite(value) || value < input.minimum || value > input.maximum) {
+        throw new Error(`${comparison ? "Comparison " : ""}${input.name} must be a finite number in [${input.minimum}, ${input.maximum}].`);
+      }
+      result[input.name] = value;
     }
     return result;
   }
@@ -609,18 +635,21 @@ export function EvidenceWorkspace({
   }
 
   async function createAndRunBehavior() {
-    if (behaviorSpecActionInFlightRef.current || !run || behaviorSpecCreationRecoveryRequest) return;
+    if (behaviorSpecActionInFlightRef.current || behaviorSpecCreationRecoveryRequest || (behaviorSource === "run" ? !run : !fis?.semantic_hash)) return;
     behaviorSpecActionInFlightRef.current = true;
     setBusy(true); setError(null);
     let createdSpec: BehaviorSpec | null = null;
-    let request: { runId: string; payload: Parameters<typeof studioApi.createBehaviorSpec>[1] } | null = null;
+    let request: { payload: Parameters<typeof studioApi.createBehaviorSpec>[1] } | null = null;
     try {
-      const numeric = numericSample();
+      const numeric = behaviorSource === "fis" ? numericFisBehaviorSample(fisSample) : numericSample();
       const pairKinds = ["monotonic_pair", "invariance_pair", "symmetry_pair", "bounded_perturbation", "categorical_invariance", "required_order", "batch_regression_suite"];
       const rangeKinds = ["output_range", "regression_case", "domain_constraint", "forbidden_region", "batch_regression_suite"];
-      const pair = pairKinds.includes(behaviorKind) ? numericComparisonSample() : null;
-      request = { runId: run.run_id, payload: {
-        run_id: run.run_id, name: behaviorName, kind: behaviorKind, sample: numeric, comparison_sample: pair,
+      const pair = pairKinds.includes(behaviorKind) ? (behaviorSource === "fis" ? numericFisBehaviorSample(fisComparisonSample, true) : numericComparisonSample()) : null;
+      request = { payload: {
+        run_id: behaviorSource === "run" ? run!.run_id : null,
+        fis_id: behaviorSource === "fis" ? fis!.fis_id : null,
+        fis_semantic_hash: behaviorSource === "fis" ? fis!.semantic_hash : null,
+        name: behaviorName, kind: behaviorKind, sample: numeric, comparison_sample: pair,
         minimum: rangeKinds.includes(behaviorKind) ? Number(minimum) : null,
         maximum: rangeKinds.includes(behaviorKind) ? Number(maximum) : null,
         expected_direction: ["monotonic_pair", "required_order"].includes(behaviorKind) ? direction : null,
@@ -657,10 +686,10 @@ export function EvidenceWorkspace({
     try {
       const specs = await studioApi.listBehaviorSpecs(project.session_id);
       const fields = ["name", "kind", "sample", "comparison_sample", "minimum", "maximum", "expected_direction", "maximum_delta", "cases", "tolerance", "rationale"] as const;
-      const created = specs.find((item) => item.run_id === request.runId && fields.every((field) => canonicalJson(item[field]) === canonicalJson(request.payload[field])));
+      const created = specs.find((item) => item.run_id === request.payload.run_id && item.fis_id === request.payload.fis_id && item.fis_semantic_hash === request.payload.fis_semantic_hash && fields.every((field) => canonicalJson(item[field]) === canonicalJson(request.payload[field])));
       if (!created) {
         setBehaviorSpecCreationNotFound(true);
-        setBehaviorSpecCreationRecoveryError("No saved requirement with this exact run and definition is visible yet. Retry lookup later, or explicitly repeat creation if the original request did not finish.");
+        setBehaviorSpecCreationRecoveryError("No saved requirement with this exact model revision and definition is visible yet. Retry lookup later, or explicitly repeat creation if the original request did not finish.");
         return;
       }
       matchedSpec = true;
@@ -1131,12 +1160,14 @@ export function EvidenceWorkspace({
         {behaviorSpecResultStatus === "loading" && <p role="status">Loading saved BehaviorSpec result and its exact specification…</p>}
         {behaviorSpecResultStatus === "none" && <p className="property-description" data-testid="behavior-result-empty">No saved BehaviorSpec result is available for this project.</p>}
         {behaviorSpecResultStatus === "error" && <div className="error" role="alert"><strong>Saved BehaviorSpec evidence could not be verified.</strong><p>{behaviorSpecResultError}</p>{onRetryBehaviorSpecResult && <Button view="outlined" onClick={onRetryBehaviorSpecResult}>Retry saved BehaviorSpec</Button>}</div>}
-        {!run && <EmptyState title="No trained model selected">Select a persisted training run to create a new run-bound BehaviorSpec. Saved FIS-bound requirements remain inspectable below.</EmptyState>}
-        {run && <>
+        {!run && !fis && <EmptyState title="No model revision selected">Select a persisted training run or save a FIS revision to create a BehaviorSpec. Saved requirements remain inspectable below.</EmptyState>}
+        {(run || fis) && <>
+          <label className="field-label">Model source<select aria-label="Behavior model source" value={behaviorSource} disabled={busy || !!behaviorSpecCreationRecoveryRequest} onChange={(event) => setBehaviorSource(event.target.value as "run" | "fis")}><option value="run" disabled={!run}>Training run</option><option value="fis" disabled={!fis}>Saved FIS revision</option></select></label>
+          {behaviorSource === "fis" && fis && <><p className="property-description">FIS {fis.name} · exact saved semantic revision {fis.semantic_hash ?? "not saved"}</p>{!fis.semantic_hash && <p className="error" role="alert">Save this FIS revision before creating a BehaviorSpec.</p>}<div className="evidence-sample-grid">{fis.inputs.map((input) => <label className="field-label" key={`behavior-fis-${input.name}`}>Primary {input.name}<input aria-label={`Behavior input ${input.name}`} type="number" min={input.minimum} max={input.maximum} value={fisSample[input.name] ?? ""} disabled={busy || !!behaviorSpecCreationRecoveryRequest} onChange={(event) => setFisSample((current) => ({ ...current, [input.name]: event.target.value }))} /></label>)}</div></>}
           <div className="contract-grid"><label className="field-label">Name<TextInput aria-label="Behavior spec name" value={behaviorName} onUpdate={setBehaviorName} /></label><label className="field-label">Type<select aria-label="Behavior spec type" value={behaviorKind} onChange={(event) => setBehaviorKind(event.target.value as BehaviorSpec["kind"])}><option value="output_range">Output range</option><option value="monotonic_pair">Monotonic pair</option><option value="invariance_pair">Invariance pair</option><option value="symmetry_pair">Symmetry pair</option><option value="bounded_perturbation">Bounded perturbation</option><option value="categorical_invariance">Categorical invariance</option><option value="forbidden_region">Forbidden output region</option><option value="required_order">Required order</option><option value="domain_constraint">Domain constraint</option><option value="regression_case">Expert regression case</option><option value="batch_regression_suite">Two-case regression suite</option></select></label>{(["monotonic_pair", "required_order"] as string[]).includes(behaviorKind) && <label className="field-label">Direction<select aria-label="Monotonic direction" value={direction} onChange={(event) => setDirection(event.target.value as typeof direction)}><option value="nondecreasing">Nondecreasing</option><option value="nonincreasing">Nonincreasing</option></select></label>}{behaviorKind === "bounded_perturbation" && <label className="field-label">Maximum delta<input aria-label="Behavior maximum delta" type="number" value={maximumDelta} onChange={(event) => setMaximumDelta(event.target.value)} /></label>}{!(["monotonic_pair", "invariance_pair", "symmetry_pair", "bounded_perturbation", "categorical_invariance", "required_order"] as string[]).includes(behaviorKind) && <><label className="field-label">Minimum<input aria-label="Behavior minimum" type="number" value={minimum} onChange={(event) => setMinimum(event.target.value)} /></label><label className="field-label">Maximum<input aria-label="Behavior maximum" type="number" value={maximum} onChange={(event) => setMaximum(event.target.value)} /></label></>}</div>
-          {(["monotonic_pair", "invariance_pair", "symmetry_pair", "bounded_perturbation", "categorical_invariance", "required_order", "batch_regression_suite"] as string[]).includes(behaviorKind) && <><p className="field-help">Define both cases explicitly. RuFLEX does not infer a pairwise requirement from a single sample.</p><div className="evidence-sample-grid">{run.feature_columns.map((feature) => <label className="field-label" key={`comparison-${feature}`}>Comparison {feature}<input aria-label={`Behavior comparison ${feature}`} type="number" value={comparisonSample[feature] ?? ""} onChange={(event) => setComparisonSample((current) => ({ ...current, [feature]: event.target.value }))} /></label>)}</div></>}
-          {behaviorSpecCreationRecoveryRequest && <div className="error" role="alert" data-testid="behavior-spec-create-recovery"><strong>BehaviorSpec creation outcome is uncertain; resolve the exact run-bound definition before changing it.</strong><p>{behaviorSpecCreationRecoveryError}</p><Button view="outlined" disabled={busy} onClick={recoverBehaviorSpecCreation}>Retry saved requirement lookup</Button>{behaviorSpecCreationNotFound && <Button view="outlined" disabled={busy} onClick={explicitlyRestartBehaviorSpecCreation}>Create this requirement explicitly</Button>}</div>}
-          <Button view="action" disabled={busy || project.read_only || !!behaviorExecutionRecoveryError || !!behaviorSpecCreationRecoveryRequest} onClick={createAndRunBehavior} data-ruflex-action="behavior.run">{busy ? "Running…" : "Create and run BehaviorSpec"}</Button>
+          {(["monotonic_pair", "invariance_pair", "symmetry_pair", "bounded_perturbation", "categorical_invariance", "required_order", "batch_regression_suite"] as string[]).includes(behaviorKind) && <><p className="field-help">Define both cases explicitly. RuFLEX does not infer a pairwise requirement from a single sample.</p><div className="evidence-sample-grid">{(behaviorSource === "fis" ? fis?.inputs.map((input) => input.name) ?? [] : run?.feature_columns ?? []).map((feature) => <label className="field-label" key={`comparison-${feature}`}>Comparison {feature}<input aria-label={`Behavior comparison ${feature}`} type="number" value={behaviorSource === "fis" ? fisComparisonSample[feature] ?? "" : comparisonSample[feature] ?? ""} disabled={busy || !!behaviorSpecCreationRecoveryRequest} onChange={(event) => behaviorSource === "fis" ? setFisComparisonSample((current) => ({ ...current, [feature]: event.target.value })) : setComparisonSample((current) => ({ ...current, [feature]: event.target.value }))} /></label>)}</div></>}
+          {behaviorSpecCreationRecoveryRequest && <div className="error" role="alert" data-testid="behavior-spec-create-recovery"><strong>BehaviorSpec creation outcome is uncertain; resolve the exact model revision and definition before changing it.</strong><p>{behaviorSpecCreationRecoveryError}</p><Button view="outlined" disabled={busy} onClick={recoverBehaviorSpecCreation}>Retry saved requirement lookup</Button>{behaviorSpecCreationNotFound && <Button view="outlined" disabled={busy} onClick={explicitlyRestartBehaviorSpecCreation}>Create this requirement explicitly</Button>}</div>}
+          <Button view="action" disabled={busy || project.read_only || (behaviorSource === "fis" ? !fis?.semantic_hash : !run) || !!behaviorExecutionRecoveryError || !!behaviorSpecCreationRecoveryRequest} onClick={createAndRunBehavior} data-ruflex-action="behavior.run">{busy ? "Running…" : "Create and run BehaviorSpec"}</Button>
           {behaviorExecutionRecoveryError && <div className="error" role="alert" data-testid="behavior-run-recovery"><strong>The BehaviorSpec is already saved; retry its result by the same identity.</strong><p>{behaviorExecutionRecoveryError}</p><Button view="outlined" disabled={busy} onClick={resumeBehaviorSpecExecution}>Retry saved BehaviorSpec</Button></div>}
         </>}
           {behaviorSpec && <div className="trace-card" data-testid="behavior-spec"><div className="evidence-check-header"><strong>{behaviorSpec.name}</strong><StatusBadge tone="info">{behaviorSpec.kind.replaceAll("_", " ")}</StatusBadge></div><p>{behaviorSpec.rationale}</p><small>{behaviorSpec.run_id ? `Run-bound requirement · ${behaviorSpec.run_id.slice(0, 12)}` : `FIS-bound requirement · ${behaviorSpec.fis_semantic_hash?.slice(0, 12)}`}</small></div>}

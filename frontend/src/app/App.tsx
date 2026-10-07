@@ -2299,6 +2299,7 @@ export function App() {
         <EvidenceWorkspace
           project={project}
           dataset={datasetState}
+          fis={fis}
           run={trainingRun}
           evaluation={fisEvaluation}
           previousEvaluation={previousFisEvaluation}

@@ -536,7 +536,7 @@ export const studioApi = {
     request<ExplanationCheck>(`/api/projects/${sessionId}/evidence/explanation-checks/latest`),
   getExplanationCheck: (sessionId: string, checkId: string) =>
     request<ExplanationCheck>(`/api/projects/${sessionId}/evidence/explanation-checks/${checkId}`),
-  createBehaviorSpec: (sessionId: string, payload: Omit<BehaviorSpec, "spec_id" | "model_artifact_sha256" | "fis_id" | "fis_semantic_hash" | "created_at">) =>
+  createBehaviorSpec: (sessionId: string, payload: Omit<BehaviorSpec, "spec_id" | "model_artifact_sha256" | "created_at">) =>
     request<BehaviorSpec>("/api/projects/evidence/behavior-specs", { session_id: sessionId, ...payload }),
   runBehaviorSpec: (sessionId: string, specId: string) =>
     request<BehaviorSpecResult>("/api/projects/evidence/behavior-specs/run", { session_id: sessionId, spec_id: specId }),

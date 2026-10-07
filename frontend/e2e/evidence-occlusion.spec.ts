@@ -156,7 +156,7 @@ test("PRODUCT-06 persists revision-bound BehaviorSpec evidence through reopen", 
   await page.getByLabel("Project path").fill(path);
   await page.getByRole("button", { name: "Open project", exact: true }).click();
   await page.getByRole("button", { name: "E", exact: true }).click();
-  await expect(page.getByRole("alert")).toContainText("Temporary BehaviorSpec read failure");
+  await expect(page.getByRole("alert").filter({ hasText: "Temporary BehaviorSpec read failure" })).toBeVisible();
   await page.getByRole("button", { name: "Retry saved BehaviorSpec", exact: true }).click();
   await expect(page.getByTestId("behavior-result")).toContainText("expected nondecreasing", { timeout: 15_000 });
   await page.reload();
@@ -179,8 +179,8 @@ test("PRODUCT-06 persists revision-bound BehaviorSpec evidence through reopen", 
   const comparisonNode = page.locator(".lineage-behavior_revision_comparison").first();
   await expect(comparisonNode).toBeVisible();
   await comparisonNode.click({ force: true });
-  await expect(page.getByTestId("behavior-revision-comparison").last()).toContainText("PASS TO PASS");
-  await expect(page.getByTestId("behavior-revision-comparison").last()).toContainText(`Baseline ${baselineResultId.slice(0, 12)} · candidate ${candidateResultId.slice(0, 12)}`);
+  await expect(page.locator("div[data-testid='behavior-revision-comparison']")).toContainText("PASS TO PASS");
+  await expect(page.locator("div[data-testid='behavior-revision-comparison']")).toContainText(`Baseline ${baselineResultId.slice(0, 12)} · candidate ${candidateResultId.slice(0, 12)}`);
 });
 
 test("failed BehaviorSpec exposes its persisted counterexample after reopen", async ({ page }) => {

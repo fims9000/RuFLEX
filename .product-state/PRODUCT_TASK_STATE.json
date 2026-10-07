@@ -312,7 +312,8 @@
     "alpha_declared_train_only_scaling",
     "alpha_verified_bundle_download",
     "alpha_behavior_failure_counterexample_inspection",
-    "alpha_behavior_fis_exact_trace_binding"
+    "alpha_behavior_fis_exact_trace_binding",
+    "alpha_behavior_fis_studio_authoring"
   ],
   "active_capability": "alpha_master_spec_gap_audit",
   "active_acceptance": [
@@ -320,8 +321,9 @@
     "Select the next concrete, low-resource, end-to-end product gap and implement it without broad refactoring."
   ],
   "blockers": [],
-  "next_executable_work": "Expose creation of FIS-bound BehaviorSpecs in React Studio using the already-supported product API and the saved FIS semantic revision, with exact-response recovery, form inputs for FIS features, result/trace inspection, close/reopen browser coverage, and no change to scientific evaluation. EvidenceWorkspace currently creates new specs only when a TrainingRun is selected even though saved FIS results can now be inspected. Preserve unrelated docs/article edits.",
+  "next_executable_work": "Continue the bounded master-spec gap audit. Select the next concrete low-resource user-facing gap after FIS-bound BehaviorSpec authoring; preserve unrelated docs/article edits and do not alter frozen scientific semantics.",
   "qa": {
+    "behavior_fis_studio_authoring": "PASS: EvidenceWorkspace now authors BehaviorSpecs against an exact saved FIS semantic revision, with explicit numeric FIS input controls and the existing run-bound route retained. Lost creation response resolves by exact source revision and request definition without duplicate persistence; saved result and exact trace survive close/reopen. Focused FIS browser route 2/2, run-bound Evidence browser route 3/3, EvidenceWorkspace component tests 10/10, TypeScript/Vite build and git diff --check passed. Full suites deferred to release QA.",
     "behavior_fis_exact_trace_binding": "PASS: New schema-v2 FIS-bound BehaviorSpecResults persist typed exact traces for primary, comparison and indexed batch inputs; run-bound results claim none. Project integrity replays exact FIS traces and fails on mutation, Assurance project_integrity fails on corrupted trace, and portable bundle validation checks typed revision/input/output bindings while explicitly not claiming inference replay. Legacy trace-less FIS results reopen with WARN. Studio exposes traces even when no TrainingRun is selected. Focused Python evidence/integrity tests 46 passed, frontend unit 87 passed, TypeScript/Vite build and four focused Evidence browser routes passed, including FIS trace close/reopen. Full suites deferred to release QA.",
     "behavior_failure_counterexample_inspection": "PASS: Failed persisted BehaviorSpec results now render a readable revision-bound counterexample with the declared input(s), expected condition, actual output(s), failed batch case, and upstream artifact identity. It explicitly says no exact computation trace is persisted with this result. Studio close/reopen E2E and the main FIS Golden Route E2E passed; 4 focused component tests and the 85-test frontend unit suite passed; TypeScript/Vite build and diff check passed. Exact FIS trace linkage remains a separate gap.",
     "verified_bundle_download": "PASS: Session-scoped GET downloads only the exact persisted VerificationBundle ZIP after SHA-256 and portable manifest validation. New exports use unique bundle-ID filenames so older records survive repeat exports; legacy assurance-ID filenames remain readable. Studio supports downloading immediately or after close/reopen, including read-only sessions. Focused Python evidence and integrity tests 44 passed, frontend unit 81 passed, TypeScript/Vite build and two real Playwright routes passed. Action inventory also includes the previously missing saved-study navigation. Diff check passed.",

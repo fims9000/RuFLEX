@@ -44,7 +44,7 @@ const run = { run_id: "run-1", model_kind: "flat_neuro_fuzzy", task: "binary_cla
 
 function renderEvidence(assurance: unknown = null, selectivePolicy: unknown = null, trainingRun: unknown = run) {
   return render(<EvidenceWorkspace
-    project={project as never} dataset={null} run={trainingRun as never} evaluation={null} previousEvaluation={null} treeEvidence={null}
+    project={project as never} dataset={null} fis={null} run={trainingRun as never} evaluation={null} previousEvaluation={null} treeEvidence={null}
     explanation={null} explanationCheck={null} behaviorSpec={null} lineageBehaviorComparison={null} behaviorResult={null}
     reproducibility={null} exhaustive={null} assurance={assurance as never} verificationBundleRecord={null} selectivePolicy={selectivePolicy as never} generalization={null}
     theme={"light" as never} onExplanation={vi.fn()} onExplanationCheck={vi.fn()} onBehaviorResult={vi.fn()} onReproducibility={vi.fn()}
