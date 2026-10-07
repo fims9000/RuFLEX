@@ -270,6 +270,7 @@ def _validate_relationships(objects: list[BaseModel]) -> list[str]:
                 errors.append(f"Explanation check {object_.check_id} summary or deterministic contract-derived checks do not match its frozen evidence.")
         elif isinstance(object_, AnalysisComparison):
             from ruflex.application.project_integrity import _validation_sample_identity
+            from ruflex.application.training import _manual_fis_comparison_row_matches
             compared_runs = [runs.get(str(run_id)) for run_id in object_.run_ids]
             rows = [row for row in object_.metric_rows if row.get("subject_type") == "training_run"]
             rows_by_run = {str(row.get("run_id")): row for row in rows}
@@ -292,6 +293,7 @@ def _validate_relationships(objects: list[BaseModel]) -> list[str]:
                 or len({run.dataset_fingerprint for run in compared_runs if isinstance(run, TrainingRun)}) > 1
                 or (object_.dataset_fingerprint is not None and any(run.dataset_fingerprint != object_.dataset_fingerprint for run in compared_runs if isinstance(run, TrainingRun)))
                 or len(rows) != len(object_.run_ids)
+                or len(object_.metric_rows) != len(object_.run_ids) + int(object_.fis_id is not None)
                 or len(rows_by_run) != len(rows)
                 or set(rows_by_run) != {str(run_id) for run_id in object_.run_ids}
                 or any(
@@ -303,7 +305,7 @@ def _validate_relationships(objects: list[BaseModel]) -> list[str]:
                 or (object_.schema_version >= 2 and object_.validation_sample_identities != expected_identities)
                 or (object_.schema_version >= 2 and object_.validation_alignment != expected_alignment)
                 or (object_.fis_id is None) != (object_.fis_semantic_hash is None)
-                or (object_.fis_id is not None and not any(spec.fis_id == object_.fis_id and spec.semantic_hash == object_.fis_semantic_hash for spec in fis_specs))
+                or (object_.fis_id is not None and not any(_manual_fis_comparison_row_matches(object_, spec) for spec in fis_specs if spec.fis_id == object_.fis_id and spec.semantic_hash == object_.fis_semantic_hash))
             ):
                 errors.append(f"Analysis comparison {object_.comparison_id} does not match its frozen validation runs, metrics, or case identities.")
         elif isinstance(object_, SliceAnalysis):

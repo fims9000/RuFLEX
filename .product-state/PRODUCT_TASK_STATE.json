@@ -319,7 +319,8 @@
     "alpha_behavior_spec_uncertain_draft_lock",
     "alpha_behavior_model_context_hydration_truthfulness",
     "alpha_fis_model_context_hydration_truthfulness",
-    "alpha_manual_fis_single_run_comparison"
+    "alpha_manual_fis_single_run_comparison",
+    "alpha_manual_fis_comparison_evidence_integrity"
   ],
   "active_capability": "alpha_master_spec_gap_audit",
   "active_acceptance": [
@@ -327,8 +328,9 @@
     "Select the next concrete, low-resource, end-to-end product gap and implement it without broad refactoring."
   ],
   "blockers": [],
-  "next_executable_work": "Continue the bounded alpha product gap audit with a low-resource, real Studio route. Inspect an adjacent Analysis/Evidence authoring path for a false empty state or stale frozen-revision binding; implement only a concrete reproduced gap, then run focused API/unit/browser checks. Preserve unrelated docs/article edits.",
+  "next_executable_work": "Continue the alpha product gap audit. Inspect cross-project Analysis workspace state for stale selected run/FIS comparison drafts or uncertain writes after a project-session switch; add a real Studio regression before changing lifecycle behavior. Preserve unrelated docs/article edits.",
   "qa": {
+    "manual_fis_comparison_evidence_integrity": "PASS: Project Integrity requires exactly one FIS metric row per FIS-bound comparison, validates its semantic revision, raw-input mapping, validation identity, declared score semantics and numeric structure; portable VerificationBundle uses the same provenance check. Tampered and missing FIS rows fail project integrity; malformed evidence makes the Assurance project_integrity gate FAIL; a re-checksummed portable bundle still fails. Focused comparison/integrity tests passed. Portable verification does not replay numeric scores without raw dataset rows.",
     "manual_fis_single_run_comparison": "PASS: AnalysisComparison accepts one TrainingRun plus one saved manual FIS as two distinct validation subjects, binds an expected FIS ID/semantic hash at create time, and rejects a changed active revision. Project Integrity and portable VerificationBundle resolve historical FIS revisions after a later edit. A same-session FIS-context retry no longer discards unrelated run state. Focused comparison API tests 4 passed, Project Integrity 19 passed, EvaluationWorkspace unit 18 passed, real Analysis/FIS browser tests 5 passed, TypeScript/Vite build and compileall passed. Full suites deferred to release QA.",
     "fis_model_context_hydration_truthfulness": "PASS: Models no longer offers default FIS creation or MATLAB import when the active-FIS read failed; it shows a recoverable error instead of a false empty state. Evidence uses the same session-bound context status. Real browser test confirms failure, no create route, retry and restored FIS editor; 4 FIS Behavior browser tests and 11 adjacent save/import browser tests passed, plus TypeScript/Vite build. Existing same-project draft preservation remains covered by the concurrent-save suite.",
     "behavior_model_context_hydration_truthfulness": "PASS: Evidence authoring now distinguishes loading, failed and truly empty saved-model reads; a failed active-FIS GET pauses creation, exposes retry, and no longer claims no model revision exists. Session-bound context status prevents an earlier project's successful read from enabling new-project BehaviorSpec authoring before the new read resolves. Focused Evidence FIS browser tests 4/4, adjacent run-bound Evidence and concurrent FIS-save browser tests 8/8, TypeScript/Vite build and diff check passed.",

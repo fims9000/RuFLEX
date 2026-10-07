@@ -29,6 +29,7 @@ from ruflex.core.enums import NormalizationMode, TaskType, VariableRole
 from ruflex.core.membership import GaussianMembershipSpec
 from ruflex.core.variables import VariableSpec
 from ruflex.data.datasets import DatasetConfig, NormalizationArtifact, TabularDataset
+from ruflex.domain.fis import FISSpec
 from ruflex.domain.training import AnalysisComparison, AnalysisEvaluation, FinalTestEvaluation, FinalTestStabilityCase, FinalTestStabilityEvidence, CalibratedPrediction, CalibrationBin, CalibrationProvenance, CalibrationTransform, ConfusionMatrix, DecisionThresholdPolicy, EpochPoint, OperatingCurvePoint, PredictionRow, SplitProvenance, StudyJob, StudySeedState, ThresholdDecision, ThresholdProvenance, TrainingRun, TrainingStudy, TreePathEvidence, TreePathStep
 from ruflex.models.flat_nf.model import FlatNeuroFuzzyModel
 from ruflex.models.specs import DecisionLayerSpec, ShallowModelSpec, TransparentBlockSpec
@@ -2334,6 +2335,46 @@ def _manual_fis_comparison_row(
         **metrics,
     }
     return row, spec.fis_id, spec.semantic_hash
+
+
+def _manual_fis_comparison_row_matches(
+    comparison: AnalysisComparison,
+    spec: FISSpec,
+) -> bool:
+    """Check the portable, deterministic FIS-row provenance without claiming score replay."""
+    if comparison.fis_id != spec.fis_id or comparison.fis_semantic_hash != spec.semantic_hash:
+        return False
+    rows = [row for row in comparison.metric_rows if row.get("subject_type") == "manual_fis"]
+    if len(rows) != 1 or comparison.validation_alignment != "same_cases":
+        return False
+    row = rows[0]
+    mapping = {variable.name: variable.dataset_feature or variable.name for variable in spec.inputs}
+    identity = comparison.validation_sample_identities.get(f"fis:{spec.fis_id}")
+    expected: dict[str, float | str] = {
+        "subject_id": f"fis:{spec.fis_id}",
+        "model_kind": spec.system_type,
+        "seed": "manual",
+        "protocol_split": "validation",
+        "test_status": "LOCKED_NOT_EVALUATED",
+        "model_artifact": spec.semantic_hash[:12],
+        "preprocessing_identity": _stable_identity("fis-raw-input-mapping", mapping),
+        "validation_sample_identity": identity or "",
+        "calibration_status": "not_fitted_probability_semantics_not_claimed",
+        "threshold_status": "declared_fixed_score_cutoff_0.5" if comparison.task == "binary_classification" else "not_applicable",
+        "score_semantics": "bounded_0_1_score_not_calibrated_probability" if comparison.task == "binary_classification" else "regression_output",
+        "rule_count": float(len(spec.rules)),
+        "input_count": float(len(spec.inputs)),
+        "term_count": float(sum(len(variable.terms) for variable in spec.inputs) + len(spec.output.terms)),
+        "exact_semantic_trace": "yes",
+    }
+    if not identity or any(row.get(key) != value for key, value in expected.items()):
+        return False
+    metrics = {"accuracy", "precision", "recall", "f1"} if comparison.task == "binary_classification" else {"mse", "mae", "rmse", "r2"}
+    if any(key not in row or not isinstance(row[key], (float, int)) or not np.isfinite(float(row[key])) for key in metrics):
+        return False
+    if comparison.task == "binary_classification" and any(not 0.0 <= float(row[key]) <= 1.0 for key in metrics):
+        return False
+    return not any(key in row for key in ("brier", "ece", "calibrated_probability"))
 
 
 def create_validation_comparison(

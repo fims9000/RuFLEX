@@ -39,6 +39,10 @@ Target branch: `feature/v1.3-data-governance-runtime`.
   stale revisions are rejected, while older persisted comparisons remain
   inspectable after later FIS edits. Failed FIS reads pause manual-FIS
   comparison and expose retry rather than implying that no FIS exists.
+- Project Integrity, Assurance and portable bundles reject missing or malformed
+  manual-FIS comparison rows and mismatched semantic-revision provenance.
+  A portable bundle excludes raw dataset rows, so it checks the frozen row's
+  provenance and structure rather than independently replaying its FIS scores.
 
 ## Boundaries
 

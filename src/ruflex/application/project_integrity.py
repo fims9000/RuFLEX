@@ -18,7 +18,7 @@ from ruflex.application.fis import list_fis_revisions, load_fis
 from ruflex.application.jobs import Job
 from ruflex.application.projects import ProjectService
 from ruflex.application.stability import _identity as _stability_identity
-from ruflex.application.training import _baseline_metrics, _calibration_bins_from_probabilities, _classification_metrics_at_threshold, _ece_from_bins, _operating_curves, _select_study_run, _stable_identity, _validation_sample_identity, list_training_runs
+from ruflex.application.training import _baseline_metrics, _calibration_bins_from_probabilities, _classification_metrics_at_threshold, _ece_from_bins, _manual_fis_comparison_row_matches, _operating_curves, _select_study_run, _stable_identity, _validation_sample_identity, list_training_runs
 from ruflex.application.behavior import _requirement_identity, behavior_result_trace_bindings_match, evaluate_behavior_spec
 from ruflex.application.generalization import SliceAnalysis, load_generalization_contract
 from ruflex.domain.behavior import BehaviorRevisionComparison, BehaviorSpec, BehaviorSpecResult
@@ -878,6 +878,8 @@ def _inspect_auxiliary_evidence_integrity(
                     rows_by_run = {str(row.get("run_id")): row for row in run_rows}
                     if len(run_rows) != len(item.run_ids) or len(rows_by_run) != len(run_rows) or set(rows_by_run) != {str(run_id) for run_id in item.run_ids}:
                         raise ValueError("AnalysisComparison must contain exactly one metric row for each referenced TrainingRun.")
+                    if len(item.metric_rows) != len(item.run_ids) + int(item.fis_id is not None):
+                        raise ValueError("AnalysisComparison has an unexpected or missing model-subject metric row.")
                     for run in compared_runs:
                         row = rows_by_run[str(run.run_id)]
                         if row.get("subject_id") != f"run:{run.run_id}" or row.get("model_kind") != run.model_kind:
@@ -902,8 +904,9 @@ def _inspect_auxiliary_evidence_integrity(
                         raise ValueError("AnalysisComparison manual FIS identity and semantic hash must be bound together.")
                     if item.fis_id is not None:
                         revisions = list_fis_revisions(base, str(item.fis_id))
-                        if item.fis_semantic_hash not in {revision.semantic_hash for revision in revisions}:
-                            raise ValueError("AnalysisComparison manual FIS semantic hash does not match a persisted FIS revision.")
+                        revision = next((candidate for candidate in revisions if candidate.semantic_hash == item.fis_semantic_hash), None)
+                        if revision is None or not _manual_fis_comparison_row_matches(item, revision):
+                            raise ValueError("AnalysisComparison manual FIS row does not match its persisted semantic revision and validation identity.")
                 elif isinstance(item, SliceAnalysis):
                     evaluation = evaluations.get(item.evaluation_id)
                     if (

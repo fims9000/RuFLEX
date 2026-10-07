@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
+import shutil
 import time
 
 import pandas as pd
@@ -877,6 +879,36 @@ def test_manual_fis_can_join_same_case_validation_comparison_without_probability
     )
     assert stale_revision_request.status_code == 422
     assert "exact saved revision" in stale_revision_request.text
+
+    comparison_relative = Path("analyses/comparisons") / f"{comparison['comparison_id']}.json"
+    comparison_path = root / comparison_relative
+    original_comparison = json.loads(comparison_path.read_text(encoding="utf-8"))
+    altered_comparison = json.loads(json.dumps(original_comparison))
+    next(row for row in altered_comparison["metric_rows"] if row["subject_type"] == "manual_fis")["model_artifact"] = "wrong-hash"
+    comparison_path.write_text(json.dumps(altered_comparison), encoding="utf-8")
+    assert any(issue.code == "ANALYSIS_COMPARISON_PROVENANCE_MISMATCH" for issue in inspect_project_integrity(root).issues)
+    damaged_assurance = client.post("/api/projects/evidence/assurance-cases", json={"session_id": session_id})
+    assert damaged_assurance.status_code == 201
+    assert next(gate for gate in damaged_assurance.json()["gates"] if gate["key"] == "project_integrity")["status"] == "FAIL"
+    comparison_path.write_text(json.dumps(original_comparison), encoding="utf-8")
+    assert inspect_project_integrity(root).status == "PASS"
+    missing_fis_row = json.loads(json.dumps(original_comparison))
+    missing_fis_row["metric_rows"] = [row for row in missing_fis_row["metric_rows"] if row["subject_type"] != "manual_fis"]
+    comparison_path.write_text(json.dumps(missing_fis_row), encoding="utf-8")
+    assert any(issue.code == "ANALYSIS_COMPARISON_PROVENANCE_MISMATCH" for issue in inspect_project_integrity(root).issues)
+    comparison_path.write_text(json.dumps(original_comparison), encoding="utf-8")
+
+    extracted = tmp_path / "manual-fis-comparison-bundle"
+    shutil.unpack_archive(refreshed_bundle.json()["path"], extracted, "zip")
+    bundled_comparison = extracted / comparison_relative
+    bundled_comparison.write_text(json.dumps(altered_comparison), encoding="utf-8")
+    manifest_path = extracted / "verification-manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["checksums"][comparison_relative.as_posix()] = hashlib.sha256(bundled_comparison.read_bytes()).hexdigest()
+    manifest_bytes = json.dumps(manifest, indent=2, sort_keys=True).encode()
+    manifest_path.write_bytes(manifest_bytes)
+    (extracted / "verification-manifest.sha256").write_text(f"{hashlib.sha256(manifest_bytes).hexdigest()}  verification-manifest.json\n", encoding="utf-8")
+    assert validate_verification_bundle(extracted).status == "FAIL"
 
 
 def test_logistic_baseline_uses_train_only_split_and_safe_declarative_artifact(tmp_path: Path) -> None:
