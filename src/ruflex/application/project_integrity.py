@@ -824,6 +824,7 @@ def _inspect_auxiliary_evidence_integrity(
     runs_by_id: dict,
     evaluations: dict,
     dataset_contract: DatasetContract | None,
+    explanations: dict,
 ) -> tuple[list[ProjectIntegrityIssue], int]:
     """Check latest-object pointers for persisted evidence families not loaded above."""
     specs = (
@@ -916,8 +917,124 @@ def _inspect_auxiliary_evidence_integrity(
                     result_names = [result.name for result in item.results]
                     if len(set(definition_names)) != len(definition_names) or set(result_names) != set(definition_names) or any(result.metric != item.metric for result in item.results):
                         raise ValueError("SliceAnalysis result rows do not match their frozen definitions and metric.")
-            except (ValueError, TypeError, OSError, ValidationError, DatasetConfirmationError) as error:
-                code = "ANALYSIS_COMPARISON_PROVENANCE_MISMATCH" if isinstance(item, AnalysisComparison) else "SLICE_ANALYSIS_PROVENANCE_MISMATCH"
+                elif isinstance(item, TreePathEvidence):
+                    run = runs_by_id.get(item.run_id)
+                    if run is None or run.model_kind != "decision_tree" or item.model_artifact_sha256 != run.model_artifact_sha256:
+                        raise ValueError("TreePathEvidence does not resolve to its exact frozen Decision Tree artifact.")
+                    store = ArtifactStore(base)
+                    with store.open(ArtifactRef(sha256=run.model_artifact_sha256)) as handle:
+                        payload = json.loads(handle.read().decode("utf-8"))
+                    if (
+                        payload.get("format") != "ruflex.declarative-decision-tree/v1"
+                        or payload.get("feature_columns") != run.feature_columns
+                        or item.preprocessing_identity != json.dumps(payload.get("normalization", {}), sort_keys=True)
+                        or set(item.input_sample) != set(run.feature_columns)
+                        or any(step.feature_name not in run.feature_columns for step in item.steps)
+                    ):
+                        raise ValueError("TreePathEvidence input/path feature identities do not match its TrainingRun.")
+                    tree = payload["tree"]
+                    columns = payload["feature_columns"]
+                    normal = payload["normalization"]
+                    centers = normal.get("center") or [0.0] * len(columns)
+                    scales = normal.get("scale") or [1.0] * len(columns)
+                    node = 0
+                    expected_steps = []
+                    while tree["children_left"][node] != -1:
+                        feature_index = tree["feature_index"][node]
+                        feature_name = columns[feature_index]
+                        threshold = float(tree["threshold"][node])
+                        value = (float(item.input_sample[feature_name]) - float(centers[feature_index])) / max(float(scales[feature_index]), 1e-12)
+                        decision = "left" if value <= threshold else "right"
+                        expected_steps.append((node, feature_name, threshold, value, decision))
+                        node = tree["children_left"][node] if decision == "left" else tree["children_right"][node]
+                    actual_steps = [(step.node_id, step.feature_name, step.threshold, step.value, step.decision) for step in item.steps]
+                    if len(actual_steps) != len(expected_steps) or any(
+                        actual[:2] != expected[:2]
+                        or actual[4] != expected[4]
+                        or not math.isclose(actual[2], expected[2], rel_tol=1e-12, abs_tol=1e-12)
+                        or not math.isclose(actual[3], expected[3], rel_tol=1e-12, abs_tol=1e-12)
+                        for actual, expected in zip(actual_steps, expected_steps, strict=True)
+                    ) or item.leaf_id != node:
+                        raise ValueError("TreePathEvidence steps or leaf do not replay from its frozen Decision Tree artifact.")
+                    values = [float(value) for value in tree["values"][node]]
+                    if payload.get("task") == "binary_classification":
+                        total = max(sum(values), 1e-12)
+                        expected_probabilities = {str(index): value / total for index, value in enumerate(values)}
+                        expected_prediction = float(max(expected_probabilities, key=expected_probabilities.get))
+                        if item.class_probabilities is None or set(item.class_probabilities) != set(expected_probabilities) or any(
+                            not math.isclose(item.class_probabilities[key], value, rel_tol=1e-12, abs_tol=1e-12)
+                            for key, value in expected_probabilities.items()
+                        ):
+                            raise ValueError("TreePathEvidence class probabilities do not match its frozen Decision Tree leaf.")
+                    else:
+                        expected_probabilities = None
+                        expected_prediction = values[0]
+                        if item.class_probabilities is not None:
+                            raise ValueError("Regression TreePathEvidence must not contain class probabilities.")
+                    if not math.isclose(item.prediction, expected_prediction, rel_tol=1e-12, abs_tol=1e-12):
+                        raise ValueError("TreePathEvidence prediction does not match its frozen Decision Tree leaf.")
+                elif isinstance(item, ExplanationReproducibilityAnalysis):
+                    analysis_runs = [runs_by_id.get(run_id) for run_id in item.run_ids]
+                    analysis_explanations = [explanations.get(explanation_id) for explanation_id in item.explanation_ids]
+                    if (
+                        len(set(item.run_ids)) != len(item.run_ids)
+                        or len(set(item.explanation_ids)) != len(item.explanation_ids)
+                        or any(run is None for run in analysis_runs)
+                        or any(explanation is None for explanation in analysis_explanations)
+                        or any(explanation.run_id not in item.run_ids for explanation in analysis_explanations if explanation is not None)
+                        or any(run.dataset_fingerprint != item.dataset_fingerprint or run.task != item.task or run.target != item.target for run in analysis_runs if run is not None)
+                        or any(explanation.method != item.explanation_method or explanation.reference_definition != item.reference_protocol for explanation in analysis_explanations if explanation is not None)
+                    ):
+                        raise ValueError("ExplanationReproducibilityAnalysis does not resolve to its exact runs and ExplanationContracts.")
+                    expected_case_values = sorted(
+                        row.source_row if row.source_row is not None else row.row
+                        for row in analysis_runs[0].prediction_preview
+                    ) if analysis_runs else []
+                    expected_cases = [str(value) for value in expected_case_values]
+                    run_case_sets = [
+                        [
+                            row.source_row if row.source_row is not None else row.row
+                            for row in run.prediction_preview
+                        ]
+                        for run in analysis_runs
+                        if run is not None
+                    ]
+                    if (
+                        len(expected_case_values) != len(set(expected_case_values))
+                        or any(len(values) != len(set(values)) or sorted(values) != expected_case_values for values in run_case_sets)
+                        or item.validation_case_identities != expected_cases
+                    ):
+                        raise ValueError("ExplanationReproducibilityAnalysis validation case identities do not align across its runs.")
+                elif isinstance(item, ExpertCorrectionRevision):
+                    revisions = list_fis_revisions(base, str(item.fis_id))
+                    revision_hashes = {revision.semantic_hash for revision in revisions}
+                    if item.source_semantic_hash not in revision_hashes or item.result_semantic_hash not in revision_hashes:
+                        raise ValueError("ExpertCorrectionRevision source/result semantic hashes do not resolve to persisted FIS revisions.")
+                    if dataset_contract is not None and (
+                        item.dataset_fingerprint != dataset_contract.dataset_fingerprint
+                        or item.target != dataset_contract.target
+                    ):
+                        raise ValueError("ExpertCorrectionRevision belongs to a different DatasetContract revision.")
+                    if item.source_explanation_id is not None and item.source_explanation_id not in explanations:
+                        raise ValueError("ExpertCorrectionRevision source explanation does not resolve to persisted evidence.")
+                elif isinstance(item, ExhaustiveLabResult):
+                    if item.kind == "decision_tree_structure":
+                        run = runs_by_id.get(item.run_id)
+                        if run is None or run.model_kind != "decision_tree":
+                            raise ValueError("Exhaustive Decision Tree result does not resolve to a persisted Decision Tree TrainingRun.")
+                    else:
+                        known_hashes = {revision.semantic_hash for revision in list_fis_revisions(base)}
+                        if item.fis_semantic_hash not in known_hashes or item.run_id is not None:
+                            raise ValueError("Exhaustive FIS grid result does not resolve to a persisted FIS semantic identity.")
+            except (ValueError, TypeError, KeyError, IndexError, OSError, ValidationError, DatasetConfirmationError) as error:
+                code = {
+                    AnalysisComparison: "ANALYSIS_COMPARISON_PROVENANCE_MISMATCH",
+                    SliceAnalysis: "SLICE_ANALYSIS_PROVENANCE_MISMATCH",
+                    TreePathEvidence: "TREE_PATH_PROVENANCE_MISMATCH",
+                    ExplanationReproducibilityAnalysis: "EXPLANATION_REPRODUCIBILITY_PROVENANCE_MISMATCH",
+                    ExpertCorrectionRevision: "EXPERT_CORRECTION_PROVENANCE_MISMATCH",
+                    ExhaustiveLabResult: "EXHAUSTIVE_RESULT_PROVENANCE_MISMATCH",
+                }[type(item)]
                 issues.append(ProjectIntegrityIssue(code=code, status="FAIL", path=relative_path, detail=str(error)))
     return issues, checked
 
@@ -2110,6 +2227,7 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
         {run.run_id: run for run in runs},
         evaluations,
         contract,
+        explanations,
     )
     issues.extend(auxiliary_pointer_issues)
     checked += auxiliary_pointer_checks

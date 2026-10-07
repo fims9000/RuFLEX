@@ -63,15 +63,15 @@ def test_project_integrity_rejects_stale_or_missing_auxiliary_analysis_pointers(
     first_path.write_text(json.dumps(first_payload), encoding="utf-8")
     second_path.write_text(json.dumps(second_payload), encoding="utf-8")
 
-    issues, _ = _inspect_auxiliary_evidence_integrity(root, {}, {}, None)
+    issues, _ = _inspect_auxiliary_evidence_integrity(root, {}, {}, None, {})
     assert any(issue.code == "ANALYSIS_COMPARISON_ACTIVE_POINTER_INVALID" for issue in issues)
 
     pointer_path.write_text(json.dumps({"comparison_id": str(second.comparison_id)}), encoding="utf-8")
-    issues, _ = _inspect_auxiliary_evidence_integrity(root, {}, {}, None)
+    issues, _ = _inspect_auxiliary_evidence_integrity(root, {}, {}, None, {})
     assert not any(issue.code == "ANALYSIS_COMPARISON_ACTIVE_POINTER_INVALID" for issue in issues)
 
     pointer_path.unlink()
-    issues, _ = _inspect_auxiliary_evidence_integrity(root, {}, {}, None)
+    issues, _ = _inspect_auxiliary_evidence_integrity(root, {}, {}, None, {})
     assert any(issue.code == "ANALYSIS_COMPARISON_ACTIVE_POINTER_INVALID" for issue in issues)
 
 

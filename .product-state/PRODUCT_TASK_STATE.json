@@ -235,16 +235,19 @@
     "alpha_split_contract_active_pointer_integrity",
     "alpha_dataset_role_profile_integrity",
     "alpha_transform_leakage_reopen_integrity",
-    "alpha_comparison_slice_reference_integrity"
+    "alpha_comparison_slice_reference_integrity",
+    "alpha_auxiliary_evidence_reference_integrity"
   ],
-  "active_capability": "alpha_comparison_slice_reference_integrity",
+  "active_capability": "alpha_auxiliary_evidence_reference_integrity",
   "active_acceptance": [
-    "AnalysisComparison runs, validation rows, metrics, dataset, and case-alignment identities must resolve and agree.",
-    "Manual-FIS comparison references must bind the stored FIS semantic hash.",
-    "SliceAnalysis must bind the exact validation Evaluation/TrainingRun/dataset and any GeneralizationContract; result rows must match declared slice definitions."
+    "TreePathEvidence must bind and replay from the exact persisted Decision Tree artifact, normalization, feature order, path, leaf, probabilities, and prediction.",
+    "ExplanationReproducibilityAnalysis must resolve all runs/contracts and bind the exact shared validation-case identity order.",
+    "ExpertCorrectionRevision must resolve source/result FIS semantic hashes, target/dataset provenance, and optional source explanation.",
+    "ExhaustiveLabResult must resolve its exact Decision Tree run or persisted FIS semantic identity.",
+    "Malformed or mismatched evidence fails Project Integrity; regression tests cover valid reopen and tampered persisted objects."
   ],
   "blockers": [],
-  "next_executable_work": "Continue a resource-light reopen-integrity audit for TreePath, ExplanationReproducibility, ExpertCorrection, and ExhaustiveLab evidence; preserve unrelated article files.",
+  "next_executable_work": "Run adjacent Evidence/Training/Lineage focused regressions; inspect any remaining auxiliary evidence provenance gaps; preserve unrelated article files.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -483,6 +486,7 @@
     "alpha_split_contract_active_pointer_integrity": "PASS: Project Integrity now requires the active split pointer to resolve to a persisted, dataset-bound SplitContract and checks its frozen split_identity. Regressions cover forged identity and missing pointer; tests/test_project_integrity.py: 18 passed, compileall and diff check passed.",
     "alpha_dataset_role_profile_integrity": "PASS: DatasetContract role mapping/order is recomputed against DatasetProfile; non-empty role_decisions must agree and the profile fingerprint is recomputed. Legacy empty role_decisions remain readable. Project integrity + split + dataset contract tests: 49 passed; compileall and git diff --check passed.",
     "alpha_transform_leakage_reopen_integrity": "PASS: Persisted transform pipelines must match DatasetContract feature order and reference a verified preprocessing artifact; leakage-audit findings and status are cross-checked and linked split/pipeline identities must agree. Status-tamper and preprocessing-artifact corruption regressions pass; focused integrity/split/dataset suite: 49 passed, compileall and diff check passed.",
-    "alpha_comparison_slice_reference_integrity": "PASS: Project Integrity resolves AnalysisComparison run subjects and recomputes persisted validation metric bindings/alignment; manual FIS hashes are checked. SliceAnalysis references exact validation Evaluation/Run/dataset and matching GeneralizationContract/definitions. Focused route+integrity suite: 21 passed; cross-model/manual-FIS comparison and full Slice Lab routes: 3 passed; compileall/diff check passed."
+    "alpha_comparison_slice_reference_integrity": "PASS: Project Integrity resolves AnalysisComparison run subjects and recomputes persisted validation metric bindings/alignment; manual FIS hashes are checked. SliceAnalysis references exact validation Evaluation/Run/dataset and matching GeneralizationContract/definitions. Focused route+integrity suite: 21 passed; cross-model/manual-FIS comparison and full Slice Lab routes: 3 passed; compileall/diff check passed.",
+    "alpha_auxiliary_evidence_reference_integrity": "PASS: Project Integrity replays TreePathEvidence against the exact frozen tree artifact, binds ExplanationReproducibilityAnalysis run/explanation/case identities, verifies ExpertCorrection FIS and dataset/target provenance, and resolves ExhaustiveLab run/FIS identities. Regressions reject tampered tree prediction, reproducibility references, correction hash, and exhaustive FIS hash. Focused integrity plus four real product routes: 23 passed."
   }
 }

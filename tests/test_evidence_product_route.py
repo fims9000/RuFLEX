@@ -11,6 +11,7 @@ from pydantic import ValidationError
 
 from ruflex.api.main import app
 from ruflex.application.jobs import Job, JobStatus, persist_job
+from ruflex.application.project_integrity import inspect_project_integrity
 from ruflex.domain.demo import ConditionMonitoringDemo
 from ruflex.domain.exhaustive import ExhaustiveLabResult
 
@@ -434,6 +435,17 @@ def test_cross_run_explanation_reproducibility_persists_and_rejects_incompatible
     assert "mean_sign_agreement" in analysis["explanation_agreement"]
     assert len(analysis["pairwise"]) == 1 and len(analysis["per_feature_variability"]) == 3
     assert "must not be interpreted" in analysis["warnings"][0]
+    integrity = inspect_project_integrity(root)
+    assert integrity.status == "PASS", integrity.issues
+    analysis_path = root / "evidence" / "explanation-reproducibility" / f"{analysis['analysis_id']}.json"
+    analysis_payload = json.loads(analysis_path.read_text(encoding="utf-8"))
+    original_explanation_ids = list(analysis_payload["explanation_ids"])
+    analysis_payload["explanation_ids"][0] = "00000000-0000-0000-0000-000000000001"
+    analysis_path.write_text(json.dumps(analysis_payload), encoding="utf-8")
+    corrupted_analysis = inspect_project_integrity(root)
+    assert any(issue.code == "EXPLANATION_REPRODUCIBILITY_PROVENANCE_MISMATCH" for issue in corrupted_analysis.issues)
+    analysis_payload["explanation_ids"] = original_explanation_ids
+    analysis_path.write_text(json.dumps(analysis_payload), encoding="utf-8")
     assert client.post("/api/projects/close", json={"session_id": session_id}).status_code == 204
     reopened = client.post("/api/projects/open", json={"path": str(root), "read_only": False}).json()["session_id"]
     latest = client.get(f"/api/projects/{reopened}/evidence/explanation-reproducibility/latest")
@@ -463,10 +475,17 @@ def test_exhaustive_lab_persists_exact_tree_structure_and_declared_fis_grid(tmp_
     assert grid_result.json()["exactness_label"] == "EXACT_ON_DECLARED_DISCRETE_GRID"
     assert grid_result.json()["requested_grid_points"] == 3
     assert "does not fully explain" in grid_result.json()["scientific_note"]
+    assert inspect_project_integrity(root).status == "PASS"
     assert client.post("/api/projects/close", json={"session_id": session_id}).status_code == 204
     reopened = client.post("/api/projects/open", json={"path": str(root), "read_only": False}).json()["session_id"]
     latest = client.get(f"/api/projects/{reopened}/evidence/exhaustive-lab/latest")
     assert latest.status_code == 200 and latest.json()["result_id"] == grid_result.json()["result_id"]
+    result_path = root / "evidence" / "exhaustive-lab" / f"{grid_result.json()['result_id']}.json"
+    tampered = json.loads(result_path.read_text(encoding="utf-8"))
+    tampered["fis_semantic_hash"] = "0" * 64
+    result_path.write_text(json.dumps(tampered), encoding="utf-8")
+    report = inspect_project_integrity(root)
+    assert any(issue.code == "EXHAUSTIVE_RESULT_PROVENANCE_MISMATCH" for issue in report.issues)
 
 
 def test_assurance_case_is_persisted_independent_gate_evidence(tmp_path: Path) -> None:

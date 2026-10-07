@@ -826,6 +826,13 @@ def test_decision_tree_persists_declarative_structure_and_exact_path_evidence(tm
     assert restored.json()["evidence_id"] == evidence.json()["evidence_id"]
     artifacts = client.get(f"/api/projects/{session_id}/artifacts")
     assert any(record["media_type"] == "application/vnd.ruflex.declarative-decision-tree+json" for record in artifacts.json())
+    assert inspect_project_integrity(root).status == "PASS"
+    evidence_path = root / "evidence" / "tree-paths" / f"{evidence.json()['evidence_id']}.json"
+    tampered = json.loads(evidence_path.read_text(encoding="utf-8"))
+    tampered["prediction"] += 1.0
+    evidence_path.write_text(json.dumps(tampered), encoding="utf-8")
+    report = inspect_project_integrity(root)
+    assert any(issue.code == "TREE_PATH_PROVENANCE_MISMATCH" for issue in report.issues)
 
 
 def test_random_forest_persists_all_trees_without_claiming_one_exact_ensemble_path(tmp_path: Path) -> None:

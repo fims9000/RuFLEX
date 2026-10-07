@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pandas as pd
 from fastapi.testclient import TestClient
 
 from ruflex.api.main import app
+from ruflex.application.project_integrity import inspect_project_integrity
 
 
 def _frame(rows: int = 60) -> pd.DataFrame:
@@ -84,3 +86,10 @@ def test_expert_correction_refits_only_unlocked_sugeno_consequents_on_train(tmp_
     )
     assert specific.status_code == 200, specific.text
     assert specific.json()["source_semantic_hash"] == correction["source_semantic_hash"]
+    assert inspect_project_integrity(root).status == "PASS"
+    correction_path = root / "analyses" / "expert-corrections" / f"{correction['correction_id']}.json"
+    tampered = json.loads(correction_path.read_text(encoding="utf-8"))
+    tampered["result_semantic_hash"] = "0" * 64
+    correction_path.write_text(json.dumps(tampered), encoding="utf-8")
+    report = inspect_project_integrity(root)
+    assert any(issue.code == "EXPERT_CORRECTION_PROVENANCE_MISMATCH" for issue in report.issues)
