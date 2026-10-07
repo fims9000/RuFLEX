@@ -179,12 +179,13 @@
     "alpha_validation_policy_post_test_lock",
     "alpha_post_test_training_lock",
     "alpha_final_test_corrupt_evidence_fail_closed",
-    "alpha_final_test_reopen_identity_validation"
+    "alpha_final_test_reopen_identity_validation",
+    "alpha_final_test_latest_pointer_integrity"
   ],
-  "active_capability": "alpha_final_test_reopen_identity_validation",
+  "active_capability": "alpha_final_test_latest_pointer_integrity",
   "active_acceptance": [
-    "Reading a final-test result by ID validates that the immutable object ID matches the requested path ID.",
-    "Malformed or identity-mismatched persisted final-test evidence is surfaced as an integrity error, not reported as missing evidence."
+    "Reading the latest final-test object validates the active pointer structure and reports corruption separately from absence.",
+    "A malformed pointer never causes the UI/API to infer a latest holdout result or silently report that no result exists."
   ],
   "blockers": [],
   "next_executable_work": "Continue resource-aware alpha audit of persisted validation/final-test object provenance and retry boundaries, preserving unrelated article files.",
@@ -370,6 +371,7 @@
     "alpha_validation_policy_post_test_lock": "PASS: Calibration and decision-threshold fitting/selection now refuse before reading validation evidence or writing artifacts when any final-test result exists. Regression extends the final-test route through late calibration and threshold attempts, both rejected; all 21 training product-route tests, compileall and git diff --check passed.",
     "alpha_post_test_training_lock": "PASS: Native single-run, legacy tree/forest/boosting/neuro-fuzzy entry points and generic runtime adapter fitting now share the final-test evidence gate and reject before loading the dataset or fitting. Study, queued StudyJob, resume, and delayed worker paths also check the same gate. Regressions verify late calibration, threshold, single fit, Study, and StudyJob are rejected after final-test evidence; training product-route suite 21 passed, generic runtime training/final-test tests 26 passed, compileall and git diff --check passed.",
     "alpha_final_test_corrupt_evidence_fail_closed": "PASS: evaluate_final_test now rejects unreadable or filename-mismatched immutable FinalTestEvaluation records instead of silently skipping them. API regression corrupts an existing persisted result and confirms follow-up evaluation is refused; focused final-test test, compileall and diff check passed.",
-    "alpha_final_test_reopen_identity_validation": "PASS: Exact final-test reopen validates object ID against requested ID and maps malformed evidence to HTTP 422 rather than 404/absence. Focused final-test API regression, compileall and diff check passed."
+    "alpha_final_test_reopen_identity_validation": "PASS: Exact final-test reopen validates object ID against requested ID and maps malformed evidence to HTTP 422 rather than 404/absence. Focused final-test API regression, compileall and diff check passed.",
+    "alpha_final_test_latest_pointer_integrity": "PASS: Latest final-test recovery now fails closed on malformed active pointers while preserving 404 for a genuinely absent pointer. Regression corrupts both object and pointer paths and verifies HTTP 422 rather than false absence; focused test, compileall and diff check passed."
   }
 }

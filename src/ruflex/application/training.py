@@ -2077,8 +2077,15 @@ def load_final_test_evaluation(project_root: Path, final_test_id: UUID) -> Final
 
 
 def load_latest_final_test_evaluation(project_root: Path) -> FinalTestEvaluation:
-    pointer = json.loads((_final_tests_root(project_root) / "active-final-test.json").read_text(encoding="utf-8"))
-    return load_final_test_evaluation(project_root, UUID(pointer["final_test_id"]))
+    pointer_path = _final_tests_root(project_root) / "active-final-test.json"
+    try:
+        pointer = json.loads(pointer_path.read_text(encoding="utf-8"))
+        final_test_id = UUID(pointer["final_test_id"])
+    except FileNotFoundError:
+        raise
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        raise TrainingError("The persisted latest final-test pointer is malformed; refusing to infer which holdout result is current.") from error
+    return load_final_test_evaluation(project_root, final_test_id)
 
 
 def _validation_sample_identity(run: TrainingRun) -> str | None:

@@ -908,6 +908,10 @@ def test_final_test_requires_frozen_validation_policy_and_persists_separate_evid
     exact_corrupt_read = client.get(f"/api/projects/{session_id}/analyses/final-test/{final_test['final_test_id']}")
     assert exact_corrupt_read.status_code == 422
     assert "malformed" in exact_corrupt_read.text.lower()
+    (root / "analyses" / "final-tests" / "active-final-test.json").write_text("{ malformed", encoding="utf-8")
+    corrupt_pointer_read = client.get(f"/api/projects/{session_id}/analyses/final-test/latest")
+    assert corrupt_pointer_read.status_code == 422
+    assert "malformed" in corrupt_pointer_read.text.lower()
 
     # The immutable TrainingRun remains explicitly validation-oriented; final-test
     # evidence exists only in its separate, explicit analysis object.

@@ -2124,6 +2124,8 @@ def get_latest_analysis_final_test(session_id: UUID) -> FinalTestEvaluation:
         raise HTTPException(status_code=404, detail="No final-test evaluation exists in this project.") from error
     except (TrainingError, ValueError) as error:
         raise HTTPException(status_code=422, detail="Persisted final-test evidence is malformed or has mismatched identity.") from error
+    except OSError as error:
+        raise HTTPException(status_code=500, detail="Could not read the persisted final-test pointer or evidence.") from error
 
 
 @app.get("/api/projects/{session_id}/analyses/final-test/{final_test_id}", response_model=FinalTestEvaluation)
