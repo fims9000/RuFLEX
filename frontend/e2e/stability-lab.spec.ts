@@ -22,11 +22,16 @@ test("Stability Lab persists fixed-split multi-run evidence and its validation-o
   await expect(page.getByText("Validation f1 across seeds", { exact: true })).toBeVisible({ timeout: 60_000 });
   await expect(page.getByText(/Training variability fixes split membership/)).toBeVisible();
   let evaluationCreateCount = 0;
+  let exactRunEvaluationLookupCount = 0;
   await page.route("**/api/projects/analyses/evaluations", async (route) => {
     if (route.request().method() !== "POST") return route.continue();
     evaluationCreateCount += 1;
     await route.fetch();
     await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Stability Evaluation response lost after persistence" }) });
+  });
+  await page.route(/\/api\/projects\/[^/]+\/analyses\/evaluations\/by-run\/[^/]+\/latest$/, async (route) => {
+    if (route.request().method() === "GET") exactRunEvaluationLookupCount += 1;
+    await route.continue();
   });
   await page.getByRole("button", { name: "Create Study Stability Analysis", exact: true }).click();
   await expect(page.getByTestId("stability-analysis-recovery")).toContainText("Stability Evaluation response lost after persistence");
@@ -36,6 +41,7 @@ test("Stability Lab persists fixed-split multi-run evidence and its validation-o
   await expect(page.getByText("Case Stability Map · selected-run agreement; red = high-confidence unstable", { exact: true })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByTestId("stability-analysis-recovery")).toHaveCount(0);
   expect(evaluationCreateCount).toBe(1);
+  expect(exactRunEvaluationLookupCount).toBe(1);
   let stabilityGateCreateCount = 0;
   await page.route("**/api/projects/analyses/stability-policies", async (route) => {
     if (route.request().method() !== "POST") return route.continue();

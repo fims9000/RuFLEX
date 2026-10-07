@@ -136,15 +136,15 @@ export function StabilityLab({ project, study, theme, onAnalysisChange, onPolicy
       let request = { ...original };
       if (!request.evaluationId) {
         let evaluation: AnalysisEvaluation;
-        try { evaluation = await studioApi.getLatestAnalysisEvaluation(project.session_id); }
+        try { evaluation = await studioApi.getLatestAnalysisEvaluationForRun(project.session_id, request.runId); }
         catch (reason) {
           if (reason instanceof ProductApiError && reason.status === 404) {
-            setBuildRecoveryNotFound(true); setBuildRecoveryError("No Evaluation is visible yet. Retry lookup later, or explicitly continue the same frozen run chain."); return;
+            setBuildRecoveryNotFound(true); setBuildRecoveryError("No validation Evaluation is persisted for this exact run yet. Retry lookup later, or explicitly continue the same frozen run chain."); return;
           }
           throw reason;
         }
         if (evaluation.run_id !== request.runId) {
-          setBuildRecoveryNotFound(true); setBuildRecoveryError("The latest Evaluation belongs to another run; no replacement was created."); return;
+          setBuildRecoveryNotFound(true); setBuildRecoveryError("The run-bound Evaluation lookup returned another TrainingRun; no replacement was created."); return;
         }
         request = { ...request, evaluationId: evaluation.evaluation_id };
         setBuildRecoveryRequest(request);

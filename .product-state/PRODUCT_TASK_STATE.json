@@ -172,15 +172,16 @@
     "alpha_stability_evidence_study_binding",
     "alpha_final_test_policy_unavailable_e2e",
     "alpha_stability_assurance_bundle_route",
-    "alpha_stability_gate_full_provenance_guard"
+    "alpha_stability_gate_full_provenance_guard",
+    "alpha_stability_exact_run_evaluation_recovery"
   ],
-  "active_capability": "alpha_stability_gate_full_provenance_guard",
+  "active_capability": "alpha_stability_exact_run_evaluation_recovery",
   "active_acceptance": [
-    "Only a StabilityGatePolicy whose study, selected run, analysis, evaluation, raw validation threshold, dataset, support, and frozen criteria all match the active StabilityAnalysis may be displayed as active.",
-    "Malformed or mismatched persisted gate provenance is not applied or presented as current evidence."
+    "When StabilityAnalysis creation loses the response after Evaluation persistence, recovery resolves the immutable Evaluation by the exact selected TrainingRun ID.",
+    "Recovery must not trust a project-wide active pointer or create a duplicate Evaluation before continuing the threshold/analysis chain."
   ],
   "blockers": [],
-  "next_executable_work": "Continue the resource-aware alpha first-run audit with the next recoverable persisted-policy/evidence edge; retain the exact project, TrainingStudy, run, threshold and validation binding through navigation and reopen.",
+  "next_executable_work": "Continue resource-aware verification of the frozen policy/evidence chain after close/reopen, checking API-returned objects against project lineage and portable-bundle manifest without touching final-test data.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -356,6 +357,7 @@
     "alpha_stability_evidence_study_binding": "PASS: Persisted StabilityAnalysis hydration is selected by current study ID and frozen selected run; gate hydration is filtered by the same study/run and is rendered only when it matches exact analysis/evaluation/threshold. Stability Lab E2E creates and freezes a gate, closes/reopens with transient reads, verifies stale gate is not applied to another run, then runs a second TrainingStudy and confirms prior map/coverage disappear until new analysis is created. Production build and Stability Lab E2E passed.",
     "alpha_final_test_policy_unavailable_e2e": "PASS: Focused real Studio E2E injects transient failures reading the saved validation Evaluation, dataset test-boundary state, and frozen policy state; retry recovers exact validation evidence while threshold and policy controls stay disabled until the boundary is known. No final-test evaluation is submitted.",
     "alpha_stability_assurance_bundle_route": "PASS: Real Stability Lab browser route now builds AssuranceCase from fixed-split multi-run evidence, confirms the stability_gate_policy gate is PASS, exports and validates the portable VerificationBundle, then switches to a new Study and hides old analysis/gate evidence until matching evidence exists. Final-test latest endpoint remains 404. Focused Stability Lab E2E passed; no final-test evaluation was opened.",
-    "alpha_stability_gate_full_provenance_guard": "PASS: Active Stability Gate display now requires exact Study/selected run, Analysis, Evaluation, threshold ID/value, dataset fingerprint/artifact, model, validation case identity, ordered run support, analysis schema, raw/un-calibrated validation source, frozen 0.90/0.80/0.15 criteria and LOCKED_NOT_EVALUATED status. Focused binding unit tests (3 cases / altered-threshold-run-order-criteria negatives), frontend build, and full focused Stability Lab E2E passed."
+    "alpha_stability_gate_full_provenance_guard": "PASS: Active Stability Gate display now requires exact Study/selected run, Analysis, Evaluation, threshold ID/value, dataset fingerprint/artifact, model, validation case identity, ordered run support, analysis schema, raw/un-calibrated validation source, frozen 0.90/0.80/0.15 criteria and LOCKED_NOT_EVALUATED status. Focused binding unit tests (3 cases / altered-threshold-run-order-criteria negatives), frontend build, and full focused Stability Lab E2E passed.",
+    "alpha_stability_exact_run_evaluation_recovery": "PASS: Stability Analysis lost-response recovery now calls the immutable by-run Evaluation lookup for the selected Study run rather than the mutable project-wide latest pointer. Focused E2E loses the Evaluation POST response after persistence, proves exactly one POST and one by-run lookup, then completes raw threshold/analysis/gate, Assurance, portable bundle validation and final-test-absent checks. Focused E2E and Vite/TypeScript build passed."
   }
 }
