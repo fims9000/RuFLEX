@@ -177,13 +177,13 @@
     "alpha_validation_threshold_exact_evaluation_recovery",
     "alpha_calibration_selective_exact_binding_recovery"
   ],
-  "active_capability": "alpha_calibration_selective_exact_binding_recovery",
+  "active_capability": "alpha_validation_policy_post_test_lock",
   "active_acceptance": [
-    "If calibration or SelectivePredictionPolicy immutable evidence is saved but its active pointer write fails, Studio recovers only by exact Evaluation or exact Evaluation/cutoff/calibration/threshold binding.",
-    "Persistence failures are reported as uncertain server errors, and recovery does not depend on project-wide latest pointers or create a duplicate policy."
+    "Once final-test evidence exists, validation calibration and decision-threshold fitting/selection are rejected before new policy artifacts are written.",
+    "Validation-policy post-test lock is covered by API regression; read-only application of already-frozen policies remains available through the existing final-test route."
   ],
   "blockers": [],
-  "next_executable_work": "Continue a resource-aware audit of remaining validation-artifact recovery and persisted policy integrity; keep final-test access closed.",
+  "next_executable_work": "Continue resource-aware alpha audit of persisted validation/final-test object provenance and retry boundaries, preserving unrelated article files.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -362,6 +362,7 @@
     "alpha_stability_gate_full_provenance_guard": "PASS: Active Stability Gate display now requires exact Study/selected run, Analysis, Evaluation, threshold ID/value, dataset fingerprint/artifact, model, validation case identity, ordered run support, analysis schema, raw/un-calibrated validation source, frozen 0.90/0.80/0.15 criteria and LOCKED_NOT_EVALUATED status. Focused binding unit tests (3 cases / altered-threshold-run-order-criteria negatives), frontend build, and full focused Stability Lab E2E passed.",
     "alpha_stability_exact_run_evaluation_recovery": "PASS: Stability Analysis lost-response recovery now calls the immutable by-run Evaluation lookup for the selected Study run rather than the mutable project-wide latest pointer. Focused E2E loses the Evaluation POST response after persistence, proves exactly one POST and one by-run lookup, then completes raw threshold/analysis/gate, Assurance, portable bundle validation and final-test-absent checks. Focused E2E and Vite/TypeScript build passed.",
     "alpha_validation_threshold_exact_evaluation_recovery": "PASS: DecisionThreshold persistence OSErrors now return HTTP 500 with recovery guidance; a new by-Evaluation lookup resolves immutable threshold evidence by exact Evaluation and raw/calibrated identity. EvaluationWorkspace and StabilityLab use the exact-Evaluation API instead of the mutable global pointer. Regression simulates threshold pointer failure after file persistence and verifies recovery without an active pointer; all 20 training product-route tests, frontend unit suite (17 tests), TypeScript/Vite build, Stability Lab E2E, compileall, and git diff --check passed.",
-    "alpha_calibration_selective_exact_binding_recovery": "PASS: Calibration and SelectivePredictionPolicy persistence failures now return HTTP 500 after immutable writes; exact-recovery APIs scan immutable records by Evaluation or Evaluation/cutoff/calibration/threshold, validate object filename identity, and do not rely on global active pointers. Studio retry uses the exact bindings. Backend product-route suite 21 passed; EvaluationWorkspace unit 16 passed; TypeScript/Vite build, compileall and git diff --check passed."
+    "alpha_calibration_selective_exact_binding_recovery": "PASS: Calibration and SelectivePredictionPolicy persistence failures now return HTTP 500 after immutable writes; exact-recovery APIs scan immutable records by Evaluation or Evaluation/cutoff/calibration/threshold, validate object filename identity, and do not rely on global active pointers. Studio retry uses the exact bindings. Backend product-route suite 21 passed; EvaluationWorkspace unit 16 passed; TypeScript/Vite build, compileall and git diff --check passed.",
+    "alpha_validation_policy_post_test_lock": "PASS: Calibration and decision-threshold fitting/selection now refuse before reading validation evidence or writing artifacts when any final-test result exists. Regression extends the final-test route through late calibration and threshold attempts, both rejected; all 21 training product-route tests, compileall and git diff --check passed."
   }
 }

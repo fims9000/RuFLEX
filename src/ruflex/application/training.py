@@ -151,6 +151,12 @@ def _final_test_path(project_root: Path, final_test_id: UUID) -> Path:
     return _final_tests_root(project_root) / f"{final_test_id}.json"
 
 
+def _ensure_validation_policy_selection_open(project_root: Path) -> None:
+    """Refuse validation-derived fitting/selection once holdout evidence exists."""
+    if any(_final_tests_root(project_root).glob("*.json")):
+        raise TrainingError("Final-test evidence already exists; validation calibration or threshold selection is closed for this project.")
+
+
 def _calibrations_root(project_root: Path) -> Path:
     root = Path(project_root).resolve() / "analyses" / "calibrations"
     root.mkdir(parents=True, exist_ok=True)
@@ -1429,6 +1435,7 @@ def fit_validation_calibration(project_root: Path, evaluation_id: UUID) -> Calib
     resulting diagnostics describe the same validation evidence used for fit;
     they must not be interpreted as final-test calibration performance.
     """
+    _ensure_validation_policy_selection_open(project_root)
     evaluation = load_validation_evaluation(project_root, evaluation_id)
     if evaluation.task != "binary_classification":
         raise TrainingError("Probability calibration is only available for binary classification evaluations.")
@@ -1553,6 +1560,7 @@ def select_validation_threshold(
     objective: str = "f1",
 ) -> DecisionThresholdPolicy:
     """Select and persist a decision threshold using validation evidence only."""
+    _ensure_validation_policy_selection_open(project_root)
     if objective != "f1":
         raise TrainingError("Product V1 currently supports validation F1 threshold selection only.")
     evaluation = load_validation_evaluation(project_root, evaluation_id)

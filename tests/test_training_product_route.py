@@ -817,21 +817,18 @@ def test_final_test_requires_frozen_validation_policy_and_persists_separate_evid
     assert second_final["test_case_identity"] == final_test["test_case_identity"]
     assert second_final["dataset_test_unlock_at"] == final_test["dataset_test_unlock_at"]
 
+    late_calibration = client.post(
+        "/api/projects/analyses/calibrations",
+        json={"session_id": session_id, "evaluation_id": evaluation["evaluation_id"]},
+    )
+    assert late_calibration.status_code == 422
+    assert "Final-test evidence already exists" in late_calibration.text
     alternate_threshold = client.post(
         "/api/projects/analyses/thresholds",
         json={"session_id": session_id, "evaluation_id": evaluation["evaluation_id"], "objective": "f1"},
     )
-    assert alternate_threshold.status_code == 201
-    blocked_second_policy = client.post(
-        "/api/projects/analyses/final-test",
-        json={
-            "session_id": session_id,
-            "evaluation_id": evaluation["evaluation_id"],
-            "threshold_id": alternate_threshold.json()["threshold_id"],
-        },
-    )
-    assert blocked_second_policy.status_code == 422
-    assert "already been opened" in blocked_second_policy.text
+    assert alternate_threshold.status_code == 422
+    assert "Final-test evidence already exists" in alternate_threshold.text
 
     # The immutable TrainingRun remains explicitly validation-oriented; final-test
     # evidence exists only in its separate, explicit analysis object.
