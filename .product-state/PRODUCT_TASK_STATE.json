@@ -243,13 +243,14 @@
     "alpha_final_test_bundle_semantic_integrity",
     "alpha_assurance_bundle_claim_integrity",
     "alpha_final_test_bundle_case_identity_integrity",
-    "alpha_explanation_check_bundle_semantics"
+    "alpha_explanation_check_bundle_semantics",
+    "alpha_explanation_contract_bundle_semantics"
   ],
-  "active_capability": "alpha_explanation_check_bundle_semantics",
+  "active_capability": "alpha_explanation_contract_bundle_semantics",
   "active_acceptance": [
-    "VerificationBundle resolves ExplanationCheck to its exact ExplanationContract and TrainingRun.",
-    "Overall status, component uniqueness, validator binding and deterministic identity/completeness checks are validated from frozen contract evidence.",
-    "Re-checksummed tampered check status fails portable bundle validation."
+    "VerificationBundle binds ExplanationContract to exact TrainingRun model/artifact and preprocessing artifact.",
+    "Feature order, target, sample identity and reference identity are checked against the frozen run and contract.",
+    "Re-checksummed contract tampering fails portable bundle validation."
   ],
   "blockers": [],
   "next_executable_work": "Inspect the remaining persisted evidence families for summary fields that can be tampered without semantic revalidation; keep each change narrow and resource-light.",
@@ -499,6 +500,7 @@
     "alpha_final_test_bundle_semantic_integrity": "PASS: VerificationBundle validates final-test frozen-policy bindings, case/sample/policy identities, freeze timestamps, metrics and Stability evidence. A re-checksummed final-test metric tamper is rejected; tests/test_stability_lab.py: 7 passed.",
     "alpha_assurance_bundle_claim_integrity": "PASS: VerificationBundle recomputes AssuranceCase claim graph and binds manifest assurance_id plus assurance-summary.json to the typed persisted AssuranceCase. A forged claim copied consistently into both objects and re-checksummed still fails; tests/test_stability_lab.py: 7 passed.",
     "alpha_final_test_bundle_case_identity_integrity": "PASS: Final-test bundle validation checks source row and dataset-bound case identity uniqueness and binds model/dataset/preprocessing artifact hashes to the frozen run/evaluation. Re-checksummed row-identity tampering fails; tests/test_stability_lab.py: 7 passed, compileall and diff check passed.",
-    "alpha_explanation_check_bundle_semantics": "PASS: VerificationBundle validates ExplanationCheck references, aggregate status, unique components, validator binding and deterministic contract-derived identity/completeness checks. Re-checksummed status tampering fails; focused VerificationBundle provenance and Stability bundle tests: 2 passed."
+    "alpha_explanation_check_bundle_semantics": "PASS: VerificationBundle validates ExplanationCheck references, aggregate status, unique components, validator binding and deterministic contract-derived identity/completeness checks. Re-checksummed status tampering fails; focused VerificationBundle provenance and Stability bundle tests: 2 passed.",
+    "alpha_explanation_contract_bundle_semantics": "PASS: VerificationBundle binds ExplanationContract to its exact frozen run/model/preprocessing, feature order, target, sample and reference identities. Re-checksummed target tampering fails; focused provenance and Stability bundle tests: 2 passed."
   }
 }

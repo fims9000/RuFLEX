@@ -209,7 +209,27 @@ def _validate_relationships(objects: list[BaseModel]) -> list[str]:
                 or not _selective_policy_risk_coverage_matches(object_, evaluation, threshold, calibration)
             ):
                 errors.append(f"Selective policy {object_.policy_id} does not match its exact frozen validation evidence or recomputed confidence risk-coverage curve.")
-        elif isinstance(object_, ExplanationContract) and not exists(TrainingRun, object_.run_id): errors.append(f"Explanation {object_.explanation_id} references missing TrainingRun {object_.run_id}.")
+        elif isinstance(object_, ExplanationContract):
+            run = runs.get(str(object_.run_id))
+            from ruflex.application.project_integrity import _stable_identity
+            identities_match = (
+                (object_.preprocessing_identity is None or object_.preprocessing_identity == _stable_identity("preprocessing", run.normalization))
+                and (object_.feature_order_identity is None or object_.feature_order_identity == _stable_identity("feature-order", list(run.feature_columns)))
+                and (object_.sample_identity is None or object_.sample_identity == _stable_identity("explanation-sample", {"run_id": str(run.run_id), "sample": object_.sample, "target": object_.target}))
+                and (object_.reference_identity is None or object_.reference_identity == _stable_identity("explanation-reference", {"run_id": str(run.run_id), "method": object_.method, "reference_definition": object_.reference_definition}))
+            ) if isinstance(run, TrainingRun) else False
+            if not isinstance(run, TrainingRun):
+                errors.append(f"Explanation {object_.explanation_id} references missing TrainingRun {object_.run_id}.")
+            elif (
+                object_.model_kind != run.model_kind
+                or object_.model_artifact_sha256 != run.model_artifact_sha256
+                or (object_.preprocessing_artifact_sha256 is not None and object_.preprocessing_artifact_sha256 != run.preprocessing_artifact_sha256)
+                or list(object_.sample) != list(run.feature_columns)
+                or [item.feature for item in object_.attributions] != list(run.feature_columns)
+                or object_.target != run.target
+                or not identities_match
+            ):
+                errors.append(f"Explanation {object_.explanation_id} does not match its frozen model, preprocessing, feature, target, or sample identities.")
         elif isinstance(object_, ExplanationCheck):
             explanations = objects_by_type.get(ExplanationContract, {})
             explanation = explanations.get(str(object_.explanation_id))
