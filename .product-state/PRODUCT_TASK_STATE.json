@@ -236,18 +236,18 @@
     "alpha_dataset_role_profile_integrity",
     "alpha_transform_leakage_reopen_integrity",
     "alpha_comparison_slice_reference_integrity",
-    "alpha_auxiliary_evidence_reference_integrity"
+    "alpha_auxiliary_evidence_reference_integrity",
+    "alpha_behavior_spec_result_integrity"
   ],
-  "active_capability": "alpha_auxiliary_evidence_reference_integrity",
+  "active_capability": "alpha_behavior_spec_result_integrity",
   "active_acceptance": [
-    "TreePathEvidence must bind and replay from the exact persisted Decision Tree artifact, normalization, feature order, path, leaf, probabilities, and prediction.",
-    "ExplanationReproducibilityAnalysis must resolve all runs/contracts and bind the exact shared validation-case identity order.",
-    "ExpertCorrectionRevision must resolve source/result FIS semantic hashes, target/dataset provenance, and optional source explanation.",
-    "ExhaustiveLabResult must resolve its exact Decision Tree run or persisted FIS semantic identity.",
-    "Malformed or mismatched evidence fails Project Integrity; regression tests cover valid reopen and tampered persisted objects."
+    "BehaviorSpec run bindings must resolve to exact TrainingRun/model artifacts; FIS bindings must resolve exact persisted semantic revisions.",
+    "BehaviorSpecResult must resolve its exact spec, carry matching frozen model/FIS binding, and reproduce persisted output/status/observations.",
+    "BehaviorRevisionComparison must continue to bind the same requirement and exact persisted result transition.",
+    "Malformed or mismatched behavior evidence fails Project Integrity and cannot yield an Assurance PASS."
   ],
   "blockers": [],
-  "next_executable_work": "Run adjacent Evidence/Training/Lineage focused regressions; inspect any remaining auxiliary evidence provenance gaps; preserve unrelated article files.",
+  "next_executable_work": "Inspect Assurance and VerificationBundle evidence-family coverage for remaining persisted summaries that can appear PASS without semantic revalidation; preserve unrelated article files.",
   "qa": {
     "bundle_backend": "PASS: 19 evidence/SDK/lineage tests",
     "study_backend": "PASS: 16 training product tests",
@@ -487,6 +487,7 @@
     "alpha_dataset_role_profile_integrity": "PASS: DatasetContract role mapping/order is recomputed against DatasetProfile; non-empty role_decisions must agree and the profile fingerprint is recomputed. Legacy empty role_decisions remain readable. Project integrity + split + dataset contract tests: 49 passed; compileall and git diff --check passed.",
     "alpha_transform_leakage_reopen_integrity": "PASS: Persisted transform pipelines must match DatasetContract feature order and reference a verified preprocessing artifact; leakage-audit findings and status are cross-checked and linked split/pipeline identities must agree. Status-tamper and preprocessing-artifact corruption regressions pass; focused integrity/split/dataset suite: 49 passed, compileall and diff check passed.",
     "alpha_comparison_slice_reference_integrity": "PASS: Project Integrity resolves AnalysisComparison run subjects and recomputes persisted validation metric bindings/alignment; manual FIS hashes are checked. SliceAnalysis references exact validation Evaluation/Run/dataset and matching GeneralizationContract/definitions. Focused route+integrity suite: 21 passed; cross-model/manual-FIS comparison and full Slice Lab routes: 3 passed; compileall/diff check passed.",
-    "alpha_auxiliary_evidence_reference_integrity": "PASS: Project Integrity replays TreePathEvidence against the exact frozen tree artifact, binds ExplanationReproducibilityAnalysis run/explanation/case identities, verifies ExpertCorrection FIS and dataset/target provenance, and resolves ExhaustiveLab run/FIS identities. Regressions reject tampered tree prediction, reproducibility references, correction hash, and exhaustive FIS hash. Focused integrity plus four real product routes: 23 passed."
+    "alpha_auxiliary_evidence_reference_integrity": "PASS: Project Integrity replays TreePathEvidence against the exact frozen tree artifact, binds ExplanationReproducibilityAnalysis run/explanation/case identities, verifies ExpertCorrection FIS and dataset/target provenance, and resolves ExhaustiveLab run/FIS identities. Regressions reject tampered tree prediction, reproducibility references, correction hash, and exhaustive FIS hash. Focused integrity plus four real product routes: 23 passed.",
+    "alpha_behavior_spec_result_integrity": "PASS: BehaviorSpec binds exact run/model or FIS semantic revision; persisted BehaviorSpecResult is deterministically replayed from the frozen requirement, and behavior revision comparisons bind their exact artifact/FIS identities. Project Integrity and Assurance now fail on forged result output, stale FIS revision, or corrupted comparison binding. Focused integrity and behavior-route regressions: 23 passed; integrated product journey: 1 passed; compileall and diff check passed."
   }
 }

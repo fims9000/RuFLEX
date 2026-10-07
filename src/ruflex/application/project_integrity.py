@@ -18,7 +18,7 @@ from ruflex.application.fis import list_fis_revisions, load_fis
 from ruflex.application.jobs import Job
 from ruflex.application.projects import ProjectService
 from ruflex.application.training import _baseline_metrics, _calibration_bins_from_probabilities, _classification_metrics_at_threshold, _ece_from_bins, _operating_curves, _select_study_run, _stable_identity, _validation_sample_identity, list_training_runs
-from ruflex.application.behavior import _requirement_identity
+from ruflex.application.behavior import _requirement_identity, evaluate_behavior_spec
 from ruflex.application.generalization import SliceAnalysis, load_generalization_contract
 from ruflex.domain.behavior import BehaviorRevisionComparison, BehaviorSpec, BehaviorSpecResult
 from ruflex.domain.evidence import ExplanationCheck, ExplanationContract, ExplanationReproducibilityAnalysis
@@ -1942,6 +1942,30 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                     behavior_specs[spec.spec_id] = spec
             except (OSError, ValidationError, ValueError) as error:
                 issues.append(ProjectIntegrityIssue(code="BEHAVIOR_EVIDENCE_MALFORMED", status="FAIL", path=relative_path, detail=str(error)))
+        for spec in behavior_specs.values():
+            relative_path = f"evidence/behavior-specs/{spec.spec_id}.json"
+            try:
+                if spec.run_id is not None:
+                    run = runs_by_id.get(spec.run_id)
+                    if run is None or run.model_artifact_sha256 != spec.model_artifact_sha256:
+                        raise ValueError("BehaviorSpec does not resolve to its exact TrainingRun model artifact.")
+                else:
+                    revisions = list_fis_revisions(base, str(spec.fis_id))
+                    if not any(revision.semantic_hash == spec.fis_semantic_hash for revision in revisions):
+                        raise ValueError("BehaviorSpec does not resolve to its exact persisted FIS semantic revision.")
+            except (OSError, ValidationError, ValueError, TypeError) as error:
+                issues.append(ProjectIntegrityIssue(code="BEHAVIOR_EVIDENCE_PROVENANCE_MISMATCH", status="FAIL", path=relative_path, detail=str(error)))
+        for result in behavior_results.values():
+            relative_path = f"evidence/behavior-specs/result-{result.result_id}.json"
+            try:
+                spec = behavior_specs.get(result.spec_id)
+                if spec is None:
+                    raise ValueError("BehaviorSpecResult references a missing BehaviorSpec.")
+                expected = evaluate_behavior_spec(base, spec)
+                if result.model_dump(mode="json", exclude={"result_id", "created_at"}) != expected.model_dump(mode="json", exclude={"result_id", "created_at"}):
+                    raise ValueError("BehaviorSpecResult bindings or observations do not match the frozen requirement replay.")
+            except (OSError, ValidationError, ValueError, TypeError, KeyError, IndexError) as error:
+                issues.append(ProjectIntegrityIssue(code="BEHAVIOR_RESULT_PROVENANCE_MISMATCH", status="FAIL", path=relative_path, detail=str(error)))
         for path in behavior_comparison_paths:
             relative_path = str(path.relative_to(base))
             try:
@@ -1964,6 +1988,8 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                     or comparison.candidate_status != candidate.status
                     or comparison.transition != transition
                     or comparison.regression_detected != (transition == "PASS_TO_FAIL")
+                    or comparison.baseline_binding != str(baseline.model_artifact_sha256 or baseline.fis_semantic_hash)
+                    or comparison.candidate_binding != str(candidate.model_artifact_sha256 or candidate.fis_semantic_hash)
                 ):
                     raise ValueError("BehaviorRevisionComparison transition or requirement provenance does not match its frozen results.")
             except (OSError, ValidationError, ValueError) as error:

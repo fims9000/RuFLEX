@@ -85,8 +85,8 @@ def create_behavior_spec(project_root: Path, payload: dict) -> BehaviorSpec:
     return spec
 
 
-def run_behavior_spec(project_root: Path, spec_id: UUID) -> BehaviorSpecResult:
-    spec = BehaviorSpec.model_validate_json((_root(project_root) / f"{spec_id}.json").read_text())
+def evaluate_behavior_spec(project_root: Path, spec: BehaviorSpec) -> BehaviorSpecResult:
+    """Recompute a frozen behavior requirement without persisting a result."""
     if spec.run_id is not None:
         run = load_training_run(project_root, spec.run_id)
         if run.model_artifact_sha256 != spec.model_artifact_sha256: raise BehaviorSpecError("BehaviorSpec model artifact identity no longer matches its TrainingRun.")
@@ -125,7 +125,12 @@ def run_behavior_spec(project_root: Path, spec_id: UUID) -> BehaviorSpecResult:
     else:
         passed = (spec.minimum is None or value >= spec.minimum - spec.tolerance) and (spec.maximum is None or value <= spec.maximum + spec.tolerance)
         detail = f"Regression case output {value:.8g}; accepted range [{spec.minimum}, {spec.maximum}]."
-    result = BehaviorSpecResult(spec_id=spec.spec_id, run_id=spec.run_id, model_artifact_sha256=spec.model_artifact_sha256, fis_id=spec.fis_id, fis_semantic_hash=spec.fis_semantic_hash, status="PASS" if passed else "FAIL", observed_output=value, comparison_output=other, detail=detail, observations=observations)
+    return BehaviorSpecResult(spec_id=spec.spec_id, run_id=spec.run_id, model_artifact_sha256=spec.model_artifact_sha256, fis_id=spec.fis_id, fis_semantic_hash=spec.fis_semantic_hash, status="PASS" if passed else "FAIL", observed_output=value, comparison_output=other, detail=detail, observations=observations)
+
+
+def run_behavior_spec(project_root: Path, spec_id: UUID) -> BehaviorSpecResult:
+    spec = BehaviorSpec.model_validate_json((_root(project_root) / f"{spec_id}.json").read_text())
+    result = evaluate_behavior_spec(project_root, spec)
     _atomic_write_text(_root(project_root) / f"result-{result.result_id}.json", result.model_dump_json(indent=2))
     _atomic_write_text(_root(project_root) / "active-result.json", json.dumps({"result_id": str(result.result_id)}))
     return result

@@ -226,6 +226,17 @@ def test_behavior_spec_is_revision_bound_persists_and_reopens(tmp_path: Path) ->
     results = client.get(f"/api/projects/{reopened}/evidence/behavior-specs/results")
     assert specs.status_code == 200 and specs.json()[0]["spec_id"] == spec.json()["spec_id"]
     assert results.status_code == 200 and results.json()[0]["result_id"] == result.json()["result_id"]
+    assert client.get(f"/api/projects/{reopened}/integrity").json()["status"] == "PASS"
+    result_path = root / "evidence" / "behavior-specs" / f"result-{result.json()['result_id']}.json"
+    tampered_result = json.loads(result_path.read_text(encoding="utf-8"))
+    tampered_result["observed_output"] = 999.0
+    result_path.write_text(json.dumps(tampered_result), encoding="utf-8")
+    integrity = client.get(f"/api/projects/{reopened}/integrity").json()
+    assert integrity["status"] == "FAIL"
+    assert any(issue["code"] == "BEHAVIOR_RESULT_PROVENANCE_MISMATCH" for issue in integrity["issues"])
+    assurance = client.post("/api/projects/evidence/assurance-cases", json={"session_id": reopened})
+    assert assurance.status_code == 201
+    assert next(gate for gate in assurance.json()["gates"] if gate["key"] == "behavior_specs")["status"] == "FAIL"
     invalid_pair = client.post("/api/projects/evidence/behavior-specs", json={
         "session_id": reopened, "run_id": run["run_id"], "name": "Incomplete pair", "kind": "monotonic_pair",
         "sample": {"temperature": 25.0, "torque": 48.0, "vibration": 0.6}, "expected_direction": "nondecreasing",
@@ -235,6 +246,38 @@ def test_behavior_spec_is_revision_bound_persists_and_reopens(tmp_path: Path) ->
     readonly = client.post("/api/projects/open", json={"path": str(root), "read_only": True}).json()["session_id"]
     denied = client.post("/api/projects/evidence/behavior-specs/run", json={"session_id": readonly, "spec_id": spec.json()["spec_id"]})
     assert denied.status_code == 403
+
+
+def test_fis_behavior_spec_integrity_requires_exact_persisted_revision(tmp_path: Path) -> None:
+    client = TestClient(app)
+    root = tmp_path / "fis-behavior-integrity"
+    session_id = _project_with_data(client, root)
+    fis = client.post("/api/projects/fis/default", json={"session_id": session_id, "name": "Bound behavior FIS"})
+    assert fis.status_code == 201, fis.text
+    spec = client.post("/api/projects/evidence/behavior-specs", json={
+        "session_id": session_id,
+        "fis_id": fis.json()["fis_id"],
+        "name": "FIS output range",
+        "kind": "output_range",
+        "sample": {"temperature": 25.0, "torque": 48.0, "vibration": 0.6},
+        "minimum": 0.0,
+        "maximum": 100.0,
+        "rationale": "The output remains inside the declared range.",
+    })
+    assert spec.status_code == 201, spec.text
+    result = client.post("/api/projects/evidence/behavior-specs/run", json={"session_id": session_id, "spec_id": spec.json()["spec_id"]})
+    assert result.status_code == 201, result.text
+    assert client.get(f"/api/projects/{session_id}/integrity").json()["status"] == "PASS"
+    spec_path = root / "evidence" / "behavior-specs" / f"{spec.json()['spec_id']}.json"
+    tampered = json.loads(spec_path.read_text(encoding="utf-8"))
+    tampered["fis_semantic_hash"] = "0" * 64
+    spec_path.write_text(json.dumps(tampered), encoding="utf-8")
+    report = client.get(f"/api/projects/{session_id}/integrity").json()
+    assert report["status"] == "FAIL"
+    assert any(issue["code"] == "BEHAVIOR_EVIDENCE_PROVENANCE_MISMATCH" for issue in report["issues"])
+    assurance = client.post("/api/projects/evidence/assurance-cases", json={"session_id": session_id})
+    assert assurance.status_code == 201
+    assert next(gate for gate in assurance.json()["gates"] if gate["key"] == "behavior_specs")["status"] == "FAIL"
 
 
 def test_behavior_revision_comparison_is_persisted_and_rejects_changed_requirements(tmp_path: Path) -> None:
@@ -268,7 +311,7 @@ def test_behavior_revision_comparison_is_persisted_and_rejects_changed_requireme
     rejected = client.post("/api/projects/evidence/behavior-specs/compare", json={"session_id": reopened, "baseline_result_id": baseline.json()["result_id"], "candidate_result_id": changed_result.json()["result_id"]})
     assert rejected.status_code == 422
     comparison_path = root / "evidence" / "behavior-specs" / f"comparison-{compared.json()['comparison_id']}.json"
-    corrupted = json.loads(comparison_path.read_text()); corrupted["transition"] = "PASS_TO_FAIL"
+    corrupted = json.loads(comparison_path.read_text()); corrupted["baseline_binding"] = "unbound"
     comparison_path.write_text(json.dumps(corrupted))
     assert client.get(f"/api/projects/{reopened}/integrity").json()["status"] == "FAIL"
     corrupt_assurance = client.post("/api/projects/evidence/assurance-cases", json={"session_id": reopened})

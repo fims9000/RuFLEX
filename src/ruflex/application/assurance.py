@@ -11,7 +11,7 @@ from ruflex.application.datasets import LeakageAuditReport, TransformPipelineCon
 from ruflex.application.evidence import _atomic_write_text
 from ruflex.application.generalization import GeneralizationContract, SliceAnalysis
 from ruflex.domain.assurance import AssuranceCase, AssuranceClaim, AssuranceGate
-from ruflex.application.behavior import _requirement_identity
+from ruflex.application.behavior import _requirement_identity, evaluate_behavior_spec
 from ruflex.domain.behavior import BehaviorRevisionComparison, BehaviorSpec, BehaviorSpecResult
 from ruflex.domain.evidence import ExplanationCheck, ExplanationContract, ExplanationReproducibilityAnalysis
 from ruflex.domain.exhaustive import ExhaustiveLabResult
@@ -251,7 +251,24 @@ def create_assurance_case(root: Path) -> AssuranceCase:
     behavior_root = base / "evidence" / "behavior-specs"; specs = _objects(behavior_root, BehaviorSpec)
     results = _prefixed_objects(behavior_root, "result-", BehaviorSpecResult)
     result_by_spec = {x.spec_id: x for x in results}
-    if _has_malformed_object(behavior_root, BehaviorSpec) or _has_malformed_prefixed_object(behavior_root, "result-", BehaviorSpecResult):
+    behavior_invalid = _has_malformed_object(behavior_root, BehaviorSpec) or _has_malformed_prefixed_object(behavior_root, "result-", BehaviorSpecResult)
+    if len({item.spec_id for item in specs}) != len(specs) or any(item.spec_id not in {spec.spec_id for spec in specs} for item in results):
+        behavior_invalid = True
+    if not behavior_invalid:
+        for result in results:
+            spec = next((item for item in specs if item.spec_id == result.spec_id), None)
+            if spec is None:
+                behavior_invalid = True
+                break
+            try:
+                expected = evaluate_behavior_spec(base, spec)
+                if result.model_dump(mode="json", exclude={"result_id", "created_at"}) != expected.model_dump(mode="json", exclude={"result_id", "created_at"}):
+                    behavior_invalid = True
+                    break
+            except (OSError, ValueError, TypeError, KeyError, IndexError):
+                behavior_invalid = True
+                break
+    if behavior_invalid:
         gates.append(_gate("behavior_specs", "FAIL", [], "Malformed BehaviorSpec evidence prevents a PASS claim."))
     elif not specs:
         gates.append(_gate("behavior_specs", "NOT_AVAILABLE", [], "No valid BehaviorSpec exists."))
@@ -283,6 +300,8 @@ def create_assurance_case(root: Path) -> AssuranceCase:
             or _requirement_identity(candidate_spec) != comparison.requirement_identity
             or comparison.baseline_status != baseline.status or comparison.candidate_status != candidate.status
             or comparison.transition != transition or comparison.regression_detected != (transition == "PASS_TO_FAIL")
+            or comparison.baseline_binding != str(baseline.model_artifact_sha256 or baseline.fis_semantic_hash)
+            or comparison.candidate_binding != str(candidate.model_artifact_sha256 or candidate.fis_semantic_hash)
         ):
             comparison_invalid = True
     if comparison_malformed or comparison_invalid:
