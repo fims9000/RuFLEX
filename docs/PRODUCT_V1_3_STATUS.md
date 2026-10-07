@@ -96,7 +96,8 @@ Target branch: `feature/v1.3-data-governance-runtime`.
   DatasetContract before training. A real Studio route persisted a logistic
   TrainingRun and restored its dataset and model evidence after close/reopen;
   read-only sessions do not offer the practice loader. This is training
-  practice data, not frozen research evidence.
+  practice data, not frozen research evidence. Exact source-byte SHA-256 keeps
+  this practice designation visible after project reopen.
 - Project Integrity, Assurance and portable bundles reject missing or malformed
   manual-FIS comparison rows and mismatched semantic-revision provenance.
   A portable bundle excludes raw dataset rows, so it checks the frozen row's

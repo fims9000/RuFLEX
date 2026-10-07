@@ -69,6 +69,7 @@ const SYNTHETIC_PRACTICE_CSV = [
     return `practice-${String(index + 1).padStart(3, "0")},${temperature},${torque},${index % 20 >= 10 ? 1 : 0}`;
   }),
 ].join("\n") + "\n";
+const SYNTHETIC_PRACTICE_SHA256 = "37b5f2a3872ec570bacd35d8e031bc8336c18db744989df332a58d827cc08399";
 type DataGovernanceObject =
   | { kind: "split_contract"; value: SplitContract }
   | { kind: "transform_pipeline"; value: TransformPipelineContract }
@@ -2136,6 +2137,7 @@ export function App() {
               Contract: {dataset.contract.target} · {dataset.contract.task}
               <small> · Row identity: {dataset.contract.row_identity_scheme}</small>
               <small> · Source: {dataset.contract.source_format.toUpperCase()} · SHA-256: <code>{dataset.contract.source_artifact_sha256}</code></small>
+              {dataset.contract.source_artifact_sha256 === SYNTHETIC_PRACTICE_SHA256 && <p className="scientific-note" data-testid="synthetic-practice-provenance">These exact dataset bytes match the RuFLEX synthetic practice fixture. This is a training walkthrough, not benchmark or research evidence.</p>}
               <details aria-label="Frozen dataset roles">
                 <summary>Confirmed roles · {dataset.contract.feature_columns.length} model features · {dataset.contract.id_columns.length} IDs · {dataset.contract.excluded_columns.length} other columns excluded</summary>
                 <p><strong>Model features:</strong> {dataset.contract.feature_columns.join(", ") || "none"}</p>

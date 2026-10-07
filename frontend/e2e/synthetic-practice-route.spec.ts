@@ -23,6 +23,8 @@ test("a first-time user can turn the synthetic practice draft into a persisted t
   await expect(page.getByText(/Contract: target · binary_classification/)).toBeVisible();
   await expect(practice).toHaveCount(0);
   const frozenSha = await page.locator(".data-summary code").first().textContent();
+  expect(frozenSha).toBe("37b5f2a3872ec570bacd35d8e031bc8336c18db744989df332a58d827cc08399");
+  await expect(page.getByTestId("synthetic-practice-provenance")).toContainText("not benchmark or research evidence");
 
   await page.getByRole("button", { name: "S", exact: true }).click();
   await page.getByLabel("Training model").selectOption("logistic_regression");
@@ -37,6 +39,7 @@ test("a first-time user can turn the synthetic practice draft into a persisted t
   await page.getByRole("button", { name: "target 80 rows", exact: true }).click();
   await expect(page.locator(".data-summary code").first()).toHaveText(frozenSha ?? "");
   await expect(page.getByText("Stored dataset preview", { exact: true })).toBeVisible();
+  await expect(page.getByTestId("synthetic-practice-provenance")).toContainText("synthetic practice fixture");
   await page.getByRole("button", { name: "S", exact: true }).click();
   await expect(page.locator(".run-provenance")).toContainText("model artifact persisted");
 });
