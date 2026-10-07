@@ -21,6 +21,10 @@ test("accessibility baseline covers the primary Studio workspaces", async ({ pag
   await page.getByLabel("Project path").fill(path);
   await page.getByLabel("Project name").fill("Accessibility baseline");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
+  const navigation = page.getByRole("navigation", { name: "Workbench navigation" });
+  await expect(navigation.getByRole("button", { name: "P", exact: true })).toHaveAttribute("aria-description", "Open project workspace");
+  await expect(navigation.getByRole("button", { name: "P", exact: true })).toHaveAttribute("aria-current", "page");
+  await expect(navigation.getByRole("button", { name: "A", exact: true })).not.toHaveAttribute("aria-current");
   await page.getByRole("button", { name: /Data.*No dataset/ }).click();
   await page.getByLabel("CSV data").fill("x,target\n1,0\n2,1\n3,0\n4,1\n5,0\n6,1\n7,0\n8,1\n");
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
@@ -32,6 +36,7 @@ test("accessibility baseline covers the primary Studio workspaces", async ({ pag
   await assertBaseline(page, "Training and Stability Lab");
 
   await page.getByTitle("ANALYSES").click();
+  await expect(navigation.getByRole("button", { name: "A", exact: true })).toHaveAttribute("aria-current", "page");
   await assertBaseline(page, "Evaluation");
   await page.getByTitle("EVIDENCE").click();
   await assertBaseline(page, "Evidence Assurance and Bundle");

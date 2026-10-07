@@ -106,6 +106,8 @@ export function AppShell({
             className={active === section ? "active" : ""}
             onClick={() => setActive(section)}
             title={section}
+            aria-description={`Open ${section.toLowerCase()} workspace`}
+            aria-current={active === section ? "page" : undefined}
           >
             {section.slice(0, 1)}
           </button>
