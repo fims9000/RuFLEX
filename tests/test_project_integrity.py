@@ -127,6 +127,27 @@ def test_project_integrity_validates_frozen_stability_analysis_and_gate_chain(tm
     assert any(issue["code"] == "STABILITY_GATE_PROVENANCE_MISMATCH" for issue in report["issues"])
 
 
+def test_project_integrity_recomputes_study_selection_from_canonical_runs(tmp_path: Path) -> None:
+    client = TestClient(app)
+    root = tmp_path / "study-selection-integrity"
+    session_id = client.post("/api/projects", json={"path": str(root), "name": "Study selection integrity"}).json()["session_id"]
+    assert client.post("/api/projects/dataset/confirm", json={"session_id": session_id, "csv_text": _frame(), "target": "target", "task": "binary_classification", "id_columns": []}).status_code == 200
+    created = client.post("/api/projects/training/studies", json={"session_id": session_id, "name": "frozen study", "model_kind": "random_forest", "seeds": [19, 23, 29], "randomness_protocol": "TRAINING_VARIABILITY", "split_seed": 42, "selection_metric": "f1", "max_epochs": 1, "learning_rate": .01, "batch_size": 16, "patience": 1, "validation_fraction": .2, "test_fraction": .2, "max_rules": 3})
+    assert created.status_code == 201, created.text
+    study_id = created.json()["study_id"]
+    study_path = root / "studies" / f"{study_id}.json"
+    payload = json.loads(study_path.read_text(encoding="utf-8"))
+    payload["seed_runs"][0]["validation_metrics"]["f1"] = 0.123456
+    study_path.write_text(json.dumps(payload), encoding="utf-8")
+    (root / "studies" / "active-study.json").write_text(json.dumps({"study_id": "00000000-0000-0000-0000-000000000004"}), encoding="utf-8")
+
+    report = client.get(f"/api/projects/{session_id}/integrity").json()
+
+    assert report["status"] == "FAIL"
+    assert any(issue["code"] == "ADAPTER_IDENTITY" and "canonical persisted TrainingRun" in issue["detail"] for issue in report["issues"])
+    assert any(issue["code"] == "STUDY_ACTIVE_POINTER_INVALID" for issue in report["issues"])
+
+
 def test_project_integrity_fails_closed_for_unknown_persisted_model_adapter(tmp_path: Path) -> None:
     client = TestClient(app); root = tmp_path / "unknown-adapter-integrity"
     session_id = client.post("/api/projects", json={"path": str(root), "name": "Unknown adapter"}).json()["session_id"]

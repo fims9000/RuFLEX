@@ -11,7 +11,7 @@ from ruflex.application.datasets import DatasetConfirmationError, DatasetContrac
 from ruflex.application.fis import list_fis_revisions, load_fis
 from ruflex.application.jobs import Job
 from ruflex.application.projects import ProjectService
-from ruflex.application.training import list_training_runs
+from ruflex.application.training import _select_study_run, list_training_runs
 from ruflex.application.behavior import _requirement_identity
 from ruflex.domain.behavior import BehaviorRevisionComparison, BehaviorSpec, BehaviorSpecResult
 from ruflex.domain.evidence import ExplanationCheck, ExplanationContract
@@ -398,12 +398,40 @@ def inspect_project_integrity(root: Path) -> ProjectIntegrityReport:
                 if study.selected_run_id not in {item.run_id for item in study.seed_runs}:
                     raise ValueError("TrainingStudy selected run is absent from its declared seed runs.")
                 for embedded in study.seed_runs:
+                    persisted_run = runs_by_id.get(embedded.run_id)
+                    if persisted_run is None:
+                        raise ValueError("TrainingStudy references a seed run without a canonical persisted TrainingRun.")
+                    if (
+                        embedded.model_artifact_sha256 != persisted_run.model_artifact_sha256
+                        or embedded.dataset_fingerprint != persisted_run.dataset_fingerprint
+                        or embedded.dataset_artifact_sha256 != persisted_run.dataset_artifact_sha256
+                        or embedded.split.split_identity != persisted_run.split.split_identity
+                        or embedded.training_seed != persisted_run.training_seed
+                        or embedded.validation_metrics != persisted_run.validation_metrics
+                        or embedded.prediction_preview != persisted_run.prediction_preview
+                    ):
+                        raise ValueError("TrainingStudy embedded run differs from its canonical persisted TrainingRun.")
                     embedded_adapter = resolve_run_adapter(embedded, registry=registry)
                     if embedded_adapter.descriptor.identity != adapter.descriptor.identity:
                         raise ValueError("TrainingStudy seed run adapter differs from the frozen study adapter.")
+                selected, _, expected_rule = _select_study_run(
+                    [(run, run.validation_metrics.get(study.selection_metric)) for run in study.seed_runs],
+                    study.selection_metric,
+                )
+                if study.selection_rule != expected_rule or study.selected_run_id != selected.run_id:
+                    raise ValueError("TrainingStudy selected run does not follow its persisted validation metric and deterministic tie-break rule.")
                 issues.append(ProjectIntegrityIssue(code="ADAPTER_IDENTITY", status="PASS", path=relative_path, detail=f"{identity_note}: {adapter.descriptor.identity.key}@{adapter.descriptor.identity.version}; selected run and seed-run bindings agree."))
             except Exception as error:
                 issues.append(ProjectIntegrityIssue(code="ADAPTER_IDENTITY", status="FAIL", path=relative_path, detail=f"TrainingStudy adapter provenance is invalid: {error}"))
+        active_study_path = study_root / "active-study.json"
+        if active_study_path.exists():
+            checked += 1
+            try:
+                active_study_id = json.loads(active_study_path.read_text(encoding="utf-8"))["study_id"]
+                if str(active_study_id) not in {str(key) for key in studies_by_id}:
+                    raise ValueError("Active TrainingStudy pointer does not resolve to persisted evidence.")
+            except (KeyError, TypeError, ValueError, OSError, json.JSONDecodeError) as error:
+                issues.append(ProjectIntegrityIssue(code="STUDY_ACTIVE_POINTER_INVALID", status="FAIL", path="studies/active-study.json", detail=str(error)))
         stability_root = base / "analyses" / "stability-analyses"
         stability_analyses: dict[object, StudyStabilityAnalysis] = {}
         if stability_root.exists() and not stability_root.is_dir():
