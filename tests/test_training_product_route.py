@@ -299,6 +299,37 @@ def test_study_metric_preflight_distinguishes_regression_from_classification() -
         training_application._validate_study_selection_metric("rmse", "binary_classification")
 
 
+@pytest.mark.parametrize("endpoint", ["/api/projects/training/studies", "/api/projects/training/study-jobs"])
+@pytest.mark.parametrize("violation", ["varying_splits", "wrong_fixed_seed", "wrong_fractions"])
+def test_study_rejects_incompatible_split_contract_before_fitting(tmp_path: Path, endpoint: str, violation: str) -> None:
+    client = TestClient(app)
+    root = tmp_path / f"bad-study-split-{endpoint.rsplit('/', 1)[-1]}-{violation}"
+    session_id = client.post("/api/projects", json={"path": str(root), "name": "Study split preflight"}).json()["session_id"]
+    confirmed = client.post("/api/projects/dataset/confirm", json={"session_id": session_id, "csv_text": _binary_frame().to_csv(index=False), "target": "target", "task": "binary_classification", "id_columns": []})
+    assert confirmed.status_code == 200, confirmed.text
+    frozen = client.post("/api/projects/dataset/splits", json={"session_id": session_id, "family": "RANDOM", "split_seed": 42})
+    assert frozen.status_code == 201, frozen.text
+    split_id = frozen.json()["split_id"]
+    training_application._validate_study_split_binding(root, [(42, 3), (42, 5), (42, 7)], {"split_contract_id": split_id, "validation_fraction": .2, "test_fraction": .2})
+    payload = {
+        "session_id": session_id, "name": "must not fit", "model_kind": "random_forest",
+        "seeds": [3, 5, 7], "selection_metric": "f1", "split_contract_id": split_id,
+    }
+    if violation == "varying_splits":
+        payload.update(randomness_protocol="SPLIT_VARIABILITY", training_seed=9)
+    elif violation == "wrong_fixed_seed":
+        payload.update(randomness_protocol="TRAINING_VARIABILITY", split_seed=99)
+    else:
+        payload.update(randomness_protocol="TRAINING_VARIABILITY", split_seed=42, validation_fraction=.3)
+
+    response = client.post(endpoint, json=payload)
+
+    assert response.status_code == 422, response.text
+    assert "immutable SplitContract" in response.text
+    assert not list((root / "runs").glob("*.json"))
+    assert not list((root / "studies" / "jobs").glob("*.json"))
+
+
 def test_study_job_rejects_an_unregistered_execution_backend_with_typed_error(tmp_path: Path) -> None:
     client = TestClient(app)
     root = tmp_path / "unknown-backend-study"
@@ -388,6 +419,34 @@ def test_persisted_study_job_rejects_incompatible_metric_before_resume_fits(tmp_
     restored = training_application.load_study_job(root, job.job_id)
     assert restored.status == "FAILED"
     assert "no Study fits were started" in (restored.error or "")
+    assert restored.study_id is None
+    assert not list((root / "runs").glob("*.json"))
+
+
+def test_persisted_study_job_rejects_incompatible_split_before_resume_fits(tmp_path: Path) -> None:
+    from ruflex.domain.training import StudyJob, StudySeedState
+
+    client = TestClient(app)
+    root = tmp_path / "invalid-resume-split"
+    session_id = client.post("/api/projects", json={"path": str(root), "name": "Invalid resume split"}).json()["session_id"]
+    confirmed = client.post("/api/projects/dataset/confirm", json={"session_id": session_id, "csv_text": _binary_frame().to_csv(index=False), "target": "target", "task": "binary_classification", "id_columns": []})
+    assert confirmed.status_code == 200, confirmed.text
+    frozen = client.post("/api/projects/dataset/splits", json={"session_id": session_id, "family": "RANDOM", "split_seed": 42})
+    assert frozen.status_code == 201, frozen.text
+    contract = training_application.load_dataset_contract(root)
+    job = StudyJob(
+        name="old incompatible split request", model_kind="random_forest", selection_metric="f1",
+        dataset_fingerprint=contract.dataset_fingerprint, randomness_protocol="SPLIT_VARIABILITY",
+        seed_states=[StudySeedState(seed=9, split_seed=split_seed, training_seed=9) for split_seed in (11, 13, 17)],
+        execution_config={"split_contract_id": frozen.json()["split_id"], "validation_fraction": .2, "test_fraction": .2},
+    )
+    training_application._persist_study_job(root, job)
+
+    training_application._execute_study_job(root, job.job_id)
+
+    restored = training_application.load_study_job(root, job.job_id)
+    assert restored.status == "FAILED"
+    assert "immutable SplitContract" in (restored.error or "")
     assert restored.study_id is None
     assert not list((root / "runs").glob("*.json"))
 

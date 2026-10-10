@@ -355,7 +355,8 @@
     "alpha_study_completed_run_resume_binding",
     "alpha_split_variability_fixed_training_seed_binding",
     "alpha_study_selection_metric_preflight",
-    "alpha_training_split_fraction_request_guard"
+    "alpha_training_split_fraction_request_guard",
+    "alpha_study_split_contract_preflight"
   ],
   "active_capability": "alpha_master_spec_gap_audit",
   "active_acceptance": [
@@ -363,8 +364,9 @@
     "Select the next concrete, low-resource, end-to-end product gap and implement it without broad refactoring."
   ],
   "blockers": [],
-  "next_executable_work": "Continue the alpha product-gap audit after guarding invalid training split fractions at the API boundary. Inspect the next concrete persisted Studio workflow gap using focused resource-aware checks; preserve frozen research artifacts and unrelated docs/article edits.",
+  "next_executable_work": "Continue the alpha product-gap audit after freezing Study SplitContract preflight. Inspect the next concrete product workflow gap; specifically audit model-kind/task compatibility before adapter fits, then implement the smallest coherent end-to-end correction without altering frozen research artifacts.",
   "qa": {
+    "study_split_contract_preflight": "PASS: synchronous Study, new StudyJob, and resumed persisted StudyJob reject a declared SplitContract whose fixed split seed or fractions conflict with the declared execution pairs before any model fit. Valid matching fixed-split bindings remain accepted. Focused Python Study/seed suite 73/73; real fixed Study/reopen and varying-split/combined Studio browser routes 2/2 passed; compileall and git diff --check passed.",
     "training_split_fraction_request_guard": "PASS: single-run, synchronous Study and asynchronous StudyJob API requests reject validation/test fractions leaving no TRAIN share before project access or model work. Typed request-validation responses safely serialize model-level ValueError context instead of crashing while writing HTTP 422. Focused training API/product/seed suite 67/67, compileall and git diff --check passed.",
     "study_selection_metric_preflight": "PASS: synchronous Study creation, new asynchronous StudyJob submission, and persisted StudyJob resume validate that the declared selection metric belongs to the dataset task before any seed fit. Binary classification permits accuracy/precision/recall/F1; regression permits MSE/MAE/RMSE/R2. Invalid or task-incompatible metrics fail closed without creating runs or jobs. Focused training product/seed suite 63/63, compileall and git diff --check passed.",
     "split_variability_fixed_training_seed_binding": "PASS: SPLIT_VARIABILITY Study requests use the visible training-seed field as their fixed training_seed; the split-seed field is not repurposed or submitted. Mode-specific readiness checks avoid requiring an irrelevant base split seed for varying-split/combined Studies. The real synthetic Study/reopen browser route sent split seed field 99 but persisted training_seed 5 across three independently varying splits (1/1); ExperimentWorkspace unit 35/35, Vite build and git diff --check passed.",

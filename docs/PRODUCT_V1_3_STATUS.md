@@ -149,6 +149,10 @@ Target branch: `feature/v1.3-data-governance-runtime`.
 - Training API requests reject validation/test fractions that leave no TRAIN
   share before project access, returning a serializable typed validation error
   rather than starting an unusable fit.
+- Study creation and persisted StudyJob resume now check a declared
+  SplitContract against every planned split seed and both frozen fractions
+  before any fit. A fixed contract cannot be silently applied to varying
+  split memberships; Study requests without a bound contract remain supported.
 - Project Integrity, Assurance and portable bundles reject missing or malformed
   manual-FIS comparison rows and mismatched semantic-revision provenance.
   A portable bundle excludes raw dataset rows, so it checks the frozen row's

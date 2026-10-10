@@ -1061,6 +1061,23 @@ def _validate_study_selection_metric(selection_metric: str, task: str) -> None:
         raise TrainingError(f"Selection metric {selection_metric!r} is unavailable for {task!r}; no Study fits were started.")
 
 
+def _validate_study_split_binding(project_root: Path, pairs: list[tuple[int, int]], config: dict) -> None:
+    split_contract_id = config.get("split_contract_id")
+    if split_contract_id is None:
+        return
+    try:
+        split_contract = load_split_contract(project_root, split_contract_id)
+    except (OSError, ValueError) as error:
+        raise TrainingError(f"Declared Study SplitContract cannot be reopened: {error}") from error
+    if any(split_seed != split_contract.split_seed for split_seed, _ in pairs):
+        raise TrainingError("Declared Study split seeds do not match the immutable SplitContract; no Study fits were started.")
+    if (
+        split_contract.validation_fraction != config.get("validation_fraction", .2)
+        or split_contract.test_fraction != config.get("test_fraction", .2)
+    ):
+        raise TrainingError("Declared Study fractions do not match the immutable SplitContract; no Study fits were started.")
+
+
 def _select_study_run(values: list[tuple[TrainingRun, float | None]], selection_metric: str) -> tuple[TrainingRun, float, str]:
     """Select deterministically, including an explicit lowest-seed tie-break."""
     if any(value is None for _, value in values):
@@ -1087,6 +1104,7 @@ def run_multi_seed_study(project_root: Path, *, name: str, model_kind: str = "fl
     _ensure_validation_policy_selection_open(project_root)
     pairs = _study_seed_pairs(seeds=seeds, randomness_protocol=randomness_protocol, split_seed=split_seed, training_seed=training_seed)
     _validate_study_selection_metric(selection_metric, load_dataset_contract(project_root).task)
+    _validate_study_split_binding(project_root, pairs, config)
     from ruflex.runtime.registry import builtin_runtime_registry
 
     registry = builtin_runtime_registry()
@@ -1189,6 +1207,11 @@ def _execute_study_job(project_root: Path, job_id: UUID) -> None:
         if job.dataset_fingerprint != active_dataset_fingerprint:
             raise TrainingError("Active DatasetContract changed after this StudyJob was created; create a new Study for the new revision.")
         _validate_study_selection_metric(job.selection_metric, active_contract.task)
+        _validate_study_split_binding(
+            project_root,
+            [(state.split_seed if state.split_seed is not None else state.seed, state.training_seed if state.training_seed is not None else state.seed) for state in job.seed_states],
+            job.execution_config,
+        )
         _ensure_validation_policy_selection_open(project_root, active_dataset_fingerprint)
     except (TrainingError, FileNotFoundError) as error:
         job.status = "FAILED"
@@ -1370,6 +1393,7 @@ def start_study_job(project_root: Path, *, client_request_id: UUID | None = None
         raise TrainingError("A StudyJob requires a persisted DatasetContract fingerprint.")
     _validate_study_selection_metric(selection_metric, contract.task)
     pairs = _study_seed_pairs(seeds=seeds, randomness_protocol=randomness_protocol, split_seed=split_seed, training_seed=training_seed)
+    _validate_study_split_binding(project_root, pairs, config)
     descriptor, _ = resolve_execution_backend(execution_backend_key)
     from ruflex.runtime.registry import builtin_runtime_registry
 
