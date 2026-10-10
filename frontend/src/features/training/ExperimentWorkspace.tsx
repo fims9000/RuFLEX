@@ -487,6 +487,12 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
   const trainingParameterValues: Record<string, number | null> = { max_epochs: maxEpochs, learning_rate: learningRate, batch_size: batchSize, patience, max_rules: maxRules, n_estimators: nEstimators, max_depth: maxDepth };
   const parameterErrors = useMemo(() => validateTrainingParameters(selectedModel, trainingParameterValues), [selectedModel, maxEpochs, learningRate, batchSize, patience, maxRules, nEstimators, maxDepth]);
   const canExactTreePath = runCapabilities?.decisions.some((decision) => decision.capability === "exact_tree_path" && decision.status === "AVAILABLE") ?? false;
+  const invalidTreeFeature = run?.model_kind === "decision_tree"
+    ? run.feature_columns.find((column) => {
+      const input = treeSample[column] ?? "0";
+      return input.trim() === "" || !Number.isFinite(Number(input));
+    })
+    : undefined;
   useEffect(() => {
     const defaults = selectedModel?.defaults;
     if (!defaults) return;
@@ -778,6 +784,10 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
   }
   async function traceTree() {
     if (!run || treePathRecovery) return;
+    if (invalidTreeFeature) {
+      setError(`Enter a finite value for tree feature ${invalidTreeFeature}.`);
+      return;
+    }
     const sample = Object.fromEntries(run.feature_columns.map((column) => [column, Number(treeSample[column])])) as Record<string, number>;
     if (Object.values(sample).some((value) => !Number.isFinite(value))) {
       setError("Enter a finite value for every tree feature.");
@@ -1003,9 +1013,10 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
             {treeEvidenceStatus === "none" && <p>No saved tree-path evidence exists yet for this project.</p>}
             {treeEvidenceStatus === "other_run" && <p>The latest saved tree path belongs to another run; it is not shown as evidence for this run.</p>}
             {treeEvidenceStatus === "error" && <div className="error" role="alert"><strong>Could not load saved tree-path evidence.</strong> {treeEvidenceError} <Button view="outlined" size="s" onClick={() => setTreeEvidenceReload((current) => current + 1)}>Retry tree-path check</Button></div>}
-            <div className="training-config-grid">{run.feature_columns.map((column) => <label className="field-label" key={column}>{column}<input aria-label={`Tree input ${column}`} type="number" value={treeSample[column] ?? "0"} onChange={(event) => setTreeSample((current) => ({ ...current, [column]: event.target.value }))} /></label>)}</div>
+            <div className="training-config-grid">{run.feature_columns.map((column) => <label className="field-label" key={column}>{column}<input aria-label={`Tree input ${column}`} aria-invalid={invalidTreeFeature === column} type="number" value={treeSample[column] ?? "0"} onChange={(event) => setTreeSample((current) => ({ ...current, [column]: event.target.value }))} /></label>)}</div>
+            {invalidTreeFeature && <p role="alert">Enter a finite value for tree feature {invalidTreeFeature}; a blank field is not zero.</p>}
             {treePathRecovery && <div className="error" role="alert" data-testid="tree-path-recovery"><strong>Tree-path save is uncertain; no duplicate was submitted.</strong><p>{treePathRecovery.error}</p><Button view="outlined" disabled={treePathRecovering} onClick={recoverTreePath}>Retry exact tree-path lookup</Button>{treePathRecovery.notFound && <Button view="outlined" disabled={treePathRecovering || running || project.read_only || run.run_id !== treePathRecovery.runId} onClick={explicitlyRepeatTreePath}>Explicitly repeat this exact trace</Button>}</div>}
-            <Button view="outlined" disabled={running || !!treePathRecovery || project.read_only} onClick={traceTree} data-ruflex-action="tree_path.trace">Trace exact tree path</Button>
+            <Button view="outlined" disabled={running || !!treePathRecovery || project.read_only || !!invalidTreeFeature} onClick={traceTree} data-ruflex-action="tree_path.trace">Trace exact tree path</Button>
             {treeEvidence && <div className="info-message"><strong>{treeEvidence.label}</strong><br />{treeEvidence.steps.map((step) => `Node ${step.node_id}: ${step.feature_name} ≤ ${step.threshold.toFixed(4)} → ${step.decision.toUpperCase()}`).join(" · ")}<br />Leaf {treeEvidence.leaf_id} → prediction {treeEvidence.prediction.toFixed(5)}</div>}
           </section>}
           {run.model_kind === "random_forest" && <section className="tree-path-panel"><span className="eyebrow">ENSEMBLE STRUCTURAL EVIDENCE</span><h3>{String(run.model_spec.tree_count ?? "—")} persisted constituent trees</h3><p>The final forest prediction is an aggregation of all trees. RuFLEX deliberately does not present one tree path as an exact explanation of the ensemble.</p><dl className="compact-definition"><dt>Total nodes</dt><dd>{String(run.model_spec.node_count ?? "—")}</dd><dt>Maximum depth</dt><dd>{String(run.model_spec.max_depth ?? "—")}</dd><dt>Leaves</dt><dd>{String(run.model_spec.leaf_count ?? "—")}</dd><dt>Exact ensemble path</dt><dd>Not available</dd></dl></section>}

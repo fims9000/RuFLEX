@@ -700,10 +700,18 @@ def trace_decision_tree(project_root: Path, run_id: UUID, sample: dict[str, floa
     missing = [column for column in columns if column not in sample]
     if missing:
         raise TrainingError(f"Exact tree path requires values for: {', '.join(missing)}")
+    try:
+        input_values = {column: float(sample[column]) for column in columns}
+    except (TypeError, ValueError) as error:
+        raise TrainingError("Exact tree path requires a finite numeric value for every feature.") from error
+    if any(not math.isfinite(value) for value in input_values.values()):
+        raise TrainingError("Exact tree path requires a finite numeric value for every feature.")
     normal = payload["normalization"]
-    centers = normal.get("center") or [0.0] * len(columns)
-    scales = normal.get("scale") or [1.0] * len(columns)
-    normalized = {column: (float(sample[column]) - float(centers[index])) / max(float(scales[index]), 1e-12) for index, column in enumerate(columns)}
+    normalization = NormalizationArtifact.from_dict(normal)
+    if tuple(columns) != tuple(run.feature_columns) or normalization.feature_columns != tuple(columns):
+        raise TrainingError("Exact tree path feature order does not match the frozen TrainingRun.")
+    transformed = normalization.transform_array(np.asarray([[input_values[column] for column in columns]], dtype=float))[0]
+    normalized = {column: float(transformed[index]) for index, column in enumerate(columns)}
     tree = payload["tree"]; node = 0; steps: list[TreePathStep] = []
     while tree["children_left"][node] != -1:
         index = tree["feature_index"][node]; column = columns[index]; threshold = float(tree["threshold"][node]); value = normalized[column]
@@ -716,7 +724,7 @@ def trace_decision_tree(project_root: Path, run_id: UUID, sample: dict[str, floa
         total = max(sum(values), 1e-12); probabilities = {str(index): value / total for index, value in enumerate(values)}; prediction = float(max(probabilities, key=probabilities.get))
     else:
         prediction = values[0]
-    evidence = TreePathEvidence(run_id=run.run_id, model_artifact_sha256=run.model_artifact_sha256, preprocessing_identity=json.dumps(normal, sort_keys=True), input_sample={column: float(sample[column]) for column in columns}, steps=steps, leaf_id=node, prediction=prediction, class_probabilities=probabilities)
+    evidence = TreePathEvidence(run_id=run.run_id, model_artifact_sha256=run.model_artifact_sha256, preprocessing_identity=json.dumps(normal, sort_keys=True), input_sample=input_values, steps=steps, leaf_id=node, prediction=prediction, class_probabilities=probabilities)
     _atomic_write_text(_tree_evidence_root(project_root) / f"{evidence.evidence_id}.json", evidence.model_dump_json(indent=2))
     _atomic_write_text(_tree_evidence_root(project_root) / "latest.json", json.dumps({"evidence_id": str(evidence.evidence_id)}, indent=2))
     return evidence

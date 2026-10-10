@@ -380,6 +380,7 @@ test("PRODUCT-02b retries a persisted decision-tree capability check without cla
   await expect(page.getByRole("button", { name: "Run multi-seed study", exact: true })).toBeEnabled();
   expect(backendCatalogReads).toBe(2);
   await page.getByLabel("Training model").selectOption("decision_tree");
+  await page.getByLabel("Training normalization").selectOption("minmax");
   let capabilityReads = 0;
   let treePathReads = 0;
   await page.route("**/training/runs/*/capabilities", async (route) => {
@@ -430,7 +431,12 @@ test("PRODUCT-02b retries a persisted decision-tree capability check without cla
     await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "TreePathEvidence response lost after persistence" }) });
   });
   const treeInputs = page.locator('input[aria-label^="Tree input "]');
+  await treeInputs.first().fill("");
+  await expect(page.getByText(/a blank field is not zero/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Trace exact tree path", exact: true })).toBeDisabled();
+  expect(treePathPosts).toBe(0);
   for (let index = 0; index < await treeInputs.count(); index += 1) await treeInputs.nth(index).fill("12");
+  await expect(page.getByRole("button", { name: "Trace exact tree path", exact: true })).toBeEnabled();
   await page.getByRole("button", { name: "Trace exact tree path", exact: true }).click();
   await expect(page.getByTestId("tree-path-recovery")).toContainText("TreePathEvidence response lost after persistence");
   await page.getByRole("button", { name: "Retry exact tree-path lookup", exact: true }).click();

@@ -361,7 +361,8 @@
     "alpha_regression_studio_near_zero_loss_and_reopen",
     "alpha_regression_studio_validation_final_test_route",
     "alpha_regression_study_metric_presentation_integrity",
-    "alpha_native_training_history_integrity"
+    "alpha_native_training_history_integrity",
+    "alpha_exact_tree_input_validation"
   ],
   "active_capability": "alpha_master_spec_gap_audit",
   "active_acceptance": [
@@ -371,6 +372,7 @@
   "blockers": [],
   "next_executable_work": "Continue the bounded alpha product-gap audit. Verify the next concrete Studio/API workflow inconsistency with synthetic evidence, then make a small end-to-end correction without altering frozen research artifacts.",
   "qa": {
+    "exact_tree_input_validation": "PASS: a blank Studio tree feature no longer becomes zero or emits a trace POST; Python rejects NaN and Infinity before persistence. Exact traversal replays the frozen none/standard/minmax normalization, matching independent persisted-model probabilities for five samples per mode and preserving trace identity after reopen. Four focused Python product-route tests, Vite/TypeScript build, and real minmax tree trace/reopen browser route passed.",
     "native_training_history_integrity": "PASS: native one-shot adapters persist real validation metrics without fabricated epoch points or training loss. Studio hides historical synthetic native trajectories without rewriting saved runs. Full Python suite, 134 focused runtime/product tests, 120 frontend unit tests, Vite build, synthetic training/reopen browser routes 3/3 and FIS/Stability golden routes 2/2 passed. Legacy test fixture corrections are documented in the QA note.",
     "regression_study_metric_presentation_integrity": "PASS: synthetic 3-fit fixed-split regression Study uses RMSE, shows the exact persisted selected run after reopen, and keeps the metric bar axis anchored at zero. Near-zero but nonzero run, validation and final-test metrics render in scientific notation without changing saved values. Focused Training/Evaluation/unit formatting tests 78/78, Vite/TypeScript build, real regression train/final-test and Study/reopen browser routes 2/2, git diff --check passed. Historical one-shot trajectory display was subsequently corrected by native_training_history_integrity.",
     "regression_studio_validation_final_test_route": "PASS: real synthetic Studio regression route fits native_linear, persists Validation Evaluation, closes/reopens the same evaluation ID, opens final test only after explicit confirmation, then closes/reopens the persisted FinalTestEvaluation. Focused Playwright 1/1 passed; no benchmark data accessed.",

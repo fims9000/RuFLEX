@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import shutil
 import time
+from uuid import UUID
 
 import pandas as pd
 import pytest
@@ -23,6 +24,7 @@ from ruflex.application import training as training_application
 from ruflex.application.training import load_latest_training_run, train_flat_neuro_fuzzy, verify_training_model_artifact
 from ruflex.application.project_integrity import inspect_project_integrity
 from ruflex.application.datasets import load_transform_pipeline_contract
+from ruflex.application.evidence import predict_run_sample
 
 
 def _binary_frame(rows: int = 36) -> pd.DataFrame:
@@ -1203,6 +1205,10 @@ def test_decision_tree_persists_declarative_structure_and_exact_path_evidence(tm
     assert "train_loss" not in run["training_summary"]
     assert run["model_spec"]["node_count"] >= 1
     assert run["model_spec"]["leaf_count"] >= 1
+    for invalid in (float("nan"), float("inf")):
+        with pytest.raises(training_application.TrainingError, match="finite numeric value"):
+            training_application.trace_decision_tree(root, UUID(run["run_id"]), {"temperature": invalid, "torque": 40.0})
+    assert not list((root / "evidence" / "tree-paths").glob("*.json"))
     evidence = client.post("/api/projects/training/tree-path", json={"session_id": session_id, "run_id": run["run_id"], "sample": {"temperature": 30.0, "torque": 40.0}})
     assert evidence.status_code == 201, evidence.text
     assert evidence.json()["label"] == "EXACT TREE EXECUTION PATH"
@@ -1227,6 +1233,25 @@ def test_decision_tree_persists_declarative_structure_and_exact_path_evidence(tm
     evidence_path.write_text(json.dumps(tampered), encoding="utf-8")
     report = inspect_project_integrity(root)
     assert any(issue.code == "TREE_PATH_PROVENANCE_MISMATCH" for issue in report.issues)
+
+
+@pytest.mark.parametrize("normalization", ["none", "standard", "minmax"])
+def test_exact_tree_path_replays_frozen_normalization_and_reopens(tmp_path: Path, normalization: str) -> None:
+    client = TestClient(app)
+    root = tmp_path / f"tree-{normalization}"
+    session_id = client.post("/api/projects", json={"path": str(root), "name": "Tree normalization"}).json()["session_id"]
+    frame = _binary_frame()
+    assert client.post("/api/projects/dataset/confirm", json={"session_id": session_id, "csv_text": frame.to_csv(index=False), "target": "target", "task": "binary_classification", "id_columns": []}).status_code == 200
+    trained = client.post("/api/projects/training/run", json={"session_id": session_id, "model_kind": "decision_tree", "seed": 29, "normalization": normalization, "max_epochs": 1, "learning_rate": .01, "batch_size": 16, "patience": 1, "validation_fraction": .2, "test_fraction": .2, "max_rules": 3})
+    assert trained.status_code == 201, trained.text
+    run_id = UUID(trained.json()["run_id"])
+    for row_index in (2, 8, 15, 24, 32):
+        sample = {column: float(frame.iloc[row_index][column]) for column in ("temperature", "torque")}
+        trace = training_application.trace_decision_tree(root, run_id, sample)
+        assert trace.class_probabilities is not None
+        assert trace.class_probabilities["1"] == pytest.approx(predict_run_sample(root, run_id, sample))
+        reopened = training_application.load_tree_path(root, trace.evidence_id)
+        assert reopened.model_dump() == trace.model_dump()
 
 
 def test_random_forest_persists_all_trees_without_claiming_one_exact_ensemble_path(tmp_path: Path) -> None:
