@@ -36,11 +36,9 @@ def train_with_adapter(
     """Execute one trusted adapter while retaining the core data firewall."""
     _ensure_validation_policy_selection_open(project_root)
     adapter = registry.resolve_model_adapter(adapter_key, version=adapter_version)
-    if model_kind not in adapter.descriptor.training_model_kinds:
-        raise RuntimeIncompatibleError(f"Adapter {adapter_key!r} cannot train model kind {model_kind!r}.")
     contract = load_dataset_contract(project_root)
-    if contract.task not in adapter.descriptor.supported_tasks:
-        raise RuntimeIncompatibleError(f"Adapter {adapter_key!r} does not support task {contract.task!r}.")
+    if not adapter.descriptor.supports_model_kind_task(model_kind, contract.task):
+        raise RuntimeIncompatibleError(f"Adapter {adapter_key!r} cannot train model kind {model_kind!r} for task {contract.task!r}.")
     resolved_split, resolved_training, protocol = _resolve_randomness(seed=seed, split_seed=split_seed, training_seed=training_seed)
     frame = load_dataset_frame(project_root)
     split_contract = load_split_contract(project_root, split_contract_id) if split_contract_id else None
@@ -73,6 +71,7 @@ def train_with_adapter(
         split_identity=(_split_identity(contract.dataset_fingerprint, split) if split_contract is None else split_contract.split_identity), split_seed=resolved_split,
         training_seed=resolved_training, validated_parameters=dict(parameters or {}),
         preprocessing_identity=preprocessing_sha,
+        model_kind=model_kind,
     )
     result = adapter.fit(request)
     # Core owns dataset/preprocessing provenance even when an adapter chooses
@@ -81,6 +80,8 @@ def train_with_adapter(
     serialized_artifact = result.serialized_artifact
     if result.artifact_media_type.endswith("+json"):
         payload = json.loads(serialized_artifact.decode("utf-8"))
+        if payload.get("model_kind") not in (None, model_kind):
+            raise RuntimeIncompatibleError("The fitted artifact model kind does not match the declared TrainingRun model kind.")
         payload.setdefault("target", contract.target)
         payload.setdefault("normalization", _normalization_dict(split.normalization))
         payload.setdefault("split_seed", resolved_split)

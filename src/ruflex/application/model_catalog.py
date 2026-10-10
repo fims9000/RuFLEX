@@ -51,6 +51,7 @@ class ModelCapabilityContract:
     family: str
     supported_tasks: tuple[str, ...]
     training_model_kinds: tuple[str, ...]
+    model_kind_tasks: dict[str, tuple[str, ...]]
     input_modalities: tuple[str, ...]
     available: bool
     unavailability_reason: str | None
@@ -70,6 +71,7 @@ class ModelCapabilityContract:
         payload = asdict(self)
         for key in ("supported_tasks", "input_modalities", "supported_explainers", "export_formats", "optional_dependencies", "evidence_objects_produced", "limitations"):
             payload[key] = list(payload[key])
+        payload["model_kind_tasks"] = {kind: list(tasks) for kind, tasks in self.model_kind_tasks.items()}
         return payload
 
 
@@ -176,6 +178,7 @@ def _declared_model_capability_contracts() -> list[ModelCapabilityContract]:
             family=entry.family,
             supported_tasks=runtime.get("supported_tasks", ()) if trainable else (),
             training_model_kinds=("logistic_regression", "linear_regression") if entry.key == "linear" else ((entry.key,) if trainable else ()),
+            model_kind_tasks={"logistic_regression": ("binary_classification",), "linear_regression": ("regression",)} if entry.key == "linear" else {},
             input_modalities=("tabular",), available=entry.available,
             unavailability_reason=None if entry.available else "OPTIONAL_DEPENDENCY_MISSING",
             capabilities=entry.capabilities, supported_explainers=explainers,
@@ -213,6 +216,7 @@ def model_capability_contracts() -> list[ModelCapabilityContract]:
                 adapter_version=descriptor.identity.version,
                 supported_tasks=descriptor.supported_tasks,
                 training_model_kinds=descriptor.training_model_kinds,
+                model_kind_tasks=descriptor.model_kind_tasks,
                 input_modalities=descriptor.input_modalities,
                 available=descriptor.available,
                 unavailability_reason=descriptor.unavailability_reason,
@@ -236,6 +240,7 @@ def model_capability_contracts() -> list[ModelCapabilityContract]:
             adapter_version=descriptor.identity.version,
             supported_tasks=descriptor.supported_tasks,
             training_model_kinds=descriptor.training_model_kinds,
+            model_kind_tasks=descriptor.model_kind_tasks,
             available=descriptor.available,
             unavailability_reason=descriptor.unavailability_reason,
             capabilities=ModelCapabilities(**descriptor.capabilities),

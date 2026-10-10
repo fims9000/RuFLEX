@@ -7,7 +7,7 @@ from typing import Any, Literal, Protocol, runtime_checkable
 from uuid import UUID
 
 import numpy as np
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 RuntimeKind = Literal["model_adapter", "explainer", "explanation_validator", "execution_backend"]
@@ -34,6 +34,9 @@ class ModelAdapterDescriptor(BaseModel):
     family: str
     training_model_kinds: tuple[str, ...]
     supported_tasks: tuple[Task, ...]
+    # Empty retains the legacy Cartesian contract. A non-empty map declares
+    # exact task support for every model kind exposed by a multi-kind adapter.
+    model_kind_tasks: dict[str, tuple[Task, ...]] = Field(default_factory=dict)
     input_modalities: tuple[str, ...] = ("tabular",)
     capabilities: dict[str, bool] = Field(default_factory=dict)
     supported_explainers: tuple[str, ...] = ()
@@ -45,6 +48,20 @@ class ModelAdapterDescriptor(BaseModel):
     limitations: tuple[str, ...] = ()
     available: bool = True
     unavailability_reason: str | None = None
+
+    @model_validator(mode="after")
+    def validate_model_kind_tasks(self) -> "ModelAdapterDescriptor":
+        if self.model_kind_tasks:
+            if set(self.model_kind_tasks) != set(self.training_model_kinds):
+                raise ValueError("model_kind_tasks must declare every training model kind.")
+            if any(not tasks or not set(tasks).issubset(self.supported_tasks) for tasks in self.model_kind_tasks.values()):
+                raise ValueError("model_kind_tasks must use nonempty subsets of supported_tasks.")
+        return self
+
+    def supports_model_kind_task(self, model_kind: str, task: Task) -> bool:
+        return model_kind in self.training_model_kinds and task in self.supported_tasks and (
+            not self.model_kind_tasks or task in self.model_kind_tasks[model_kind]
+        )
 
 
 class FitRequest(BaseModel):
@@ -62,6 +79,7 @@ class FitRequest(BaseModel):
     training_seed: int
     validated_parameters: dict[str, Any] = Field(default_factory=dict)
     preprocessing_identity: str
+    model_kind: str | None = None
 
 
 class FitResult(BaseModel):

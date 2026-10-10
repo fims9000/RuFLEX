@@ -24,6 +24,7 @@ from ruflex.domain.evidence import ExplanationContract, FeatureAttribution
 from ruflex.runtime.contracts import ExecutionBackendDescriptor, ExplainerDescriptor, ExplainerRequest, ExplainerResult, FitRequest, FitResult, ModelAdapterDescriptor, PredictionRequest, PredictionResult, RuntimeIdentity
 from ruflex.runtime.registry import RuntimeRegistry
 from ruflex.runtime import builtin_runtime_registry
+from ruflex.runtime.errors import RuntimeIncompatibleError
 
 
 @dataclass(frozen=True)
@@ -36,6 +37,7 @@ class FixtureAdapter:
 
     def fit(self, request: FitRequest) -> FitResult:
         assert not hasattr(request, "X_test")
+        assert request.model_kind == "fixture_model"
         raw = np.asarray(request.X_validation, dtype=float)[:, 0] - .5
         return FitResult(serialized_artifact=json.dumps({"fixture": True}).encode(), artifact_media_type="application/vnd.ruflex.fixture+json", model_spec={"fixture": True}, training_summary={"epochs_ran": 1}, validation_raw_predictions=raw.tolist(), validation_raw_probabilities=(1 / (1 + np.exp(-raw))).tolist())
 
@@ -90,6 +92,23 @@ def test_generic_core_service_persists_external_adapter_without_project_access(t
     assert pipeline.fit_role == "TRAIN"
     assert [step.step_type for step in pipeline.steps] == ["MedianImputer", "StandardScaler"]
     assert reopened.split.test_status == "LOCKED_NOT_EVALUATED"
+
+
+def test_generic_runtime_rejects_adapter_artifact_with_wrong_model_kind(tmp_path: Path) -> None:
+    _project(tmp_path)
+
+    class WrongKindAdapter(FixtureAdapter):
+        def fit(self, request: FitRequest) -> FitResult:
+            result = super().fit(request)
+            result.serialized_artifact = json.dumps({"model_kind": "other_model"}).encode()
+            return result
+
+    registry = RuntimeRegistry()
+    registry.register_model_adapter(WrongKindAdapter())
+    registry.freeze()
+
+    with pytest.raises(RuntimeIncompatibleError, match="fitted artifact model kind"):
+        train_with_adapter(tmp_path, registry=registry, adapter_key="fixture_adapter", model_kind="fixture_model", seed=4)
 
 
 @pytest.mark.parametrize(("mode", "scaler"), [("none", None), ("minmax", "MinMaxScaler")])

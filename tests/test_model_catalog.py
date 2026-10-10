@@ -35,6 +35,10 @@ def test_model_runtime_contract_exposes_explicit_xai_and_task_support() -> None:
     assert tree["defaults"]["max_depth"] is None
     assert tree["parameter_constraints"]["max_depth"]["nullable"] is True
     assert entries["linear"]["training_model_kinds"] == ["logistic_regression", "linear_regression"]
+    assert entries["linear"]["model_kind_tasks"] == {
+        "logistic_regression": ["binary_classification"],
+        "linear_regression": ["regression"],
+    }
     neuro_fuzzy = entries["flat_neuro_fuzzy"]
     assert neuro_fuzzy["defaults"]["max_rules"] == 8
     assert neuro_fuzzy["optional_dependencies"] == ["torch"]

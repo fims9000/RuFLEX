@@ -44,10 +44,10 @@ def resolve_run_adapter(run: TrainingRun, *, registry: RuntimeRegistry | None = 
         identity = adapter.descriptor.identity
         if identity.provider != run.adapter_provider or identity.kind != run.adapter_kind:
             raise RuntimeIncompatibleError("Persisted model adapter provider/kind does not match the registered identity.")
-    if run.model_kind not in adapter.descriptor.training_model_kinds:
+    if not adapter.descriptor.supports_model_kind_task(run.model_kind, run.task):
         raise RuntimeIncompatibleError(
             f"Model adapter {adapter.descriptor.identity.key}@{adapter.descriptor.identity.version} "
-            f"does not support model kind {run.model_kind!r}."
+            f"does not support model kind {run.model_kind!r} for task {run.task!r}."
         )
     return adapter
 

@@ -340,6 +340,58 @@ def test_study_job_rejects_an_unregistered_execution_backend_with_typed_error(tm
     assert response.json()["detail"]["code"] == "RUNTIME_NOT_FOUND"
 
 
+@pytest.mark.parametrize(("task", "model_kind"), [
+    ("binary_classification", "linear_regression"),
+    ("regression", "logistic_regression"),
+])
+def test_linear_adapter_rejects_model_kind_incompatible_with_dataset_task(tmp_path: Path, task: str, model_kind: str) -> None:
+    client = TestClient(app)
+    root = tmp_path / f"linear-kind-task-mismatch-{task}"
+    session_id = client.post("/api/projects", json={"path": str(root), "name": "Linear kind mismatch"}).json()["session_id"]
+    confirmed = client.post("/api/projects/dataset/confirm", json={"session_id": session_id, "csv_text": _binary_frame().to_csv(index=False), "target": "target", "task": task, "id_columns": []})
+    assert confirmed.status_code == 200, confirmed.text
+
+    response = client.post("/api/projects/training/run", json={"session_id": session_id, "model_kind": model_kind, "split_seed": 42, "training_seed": 7})
+
+    assert response.status_code == 422, response.text
+    assert model_kind in response.text
+    assert not list((root / "runs").glob("*.json"))
+
+
+@pytest.mark.parametrize("endpoint", ["/api/projects/training/studies", "/api/projects/training/study-jobs"])
+def test_study_rejects_linear_kind_task_mismatch_before_any_seed_fit(tmp_path: Path, endpoint: str) -> None:
+    client = TestClient(app)
+    root = tmp_path / endpoint.rsplit("/", 1)[-1]
+    session_id = client.post("/api/projects", json={"path": str(root), "name": "Study linear kind mismatch"}).json()["session_id"]
+    confirmed = client.post("/api/projects/dataset/confirm", json={"session_id": session_id, "csv_text": _binary_frame().to_csv(index=False), "target": "target", "task": "binary_classification", "id_columns": []})
+    assert confirmed.status_code == 200, confirmed.text
+
+    response = client.post(endpoint, json={"session_id": session_id, "model_kind": "linear_regression", "seeds": [3, 5, 7], "selection_metric": "f1"})
+
+    assert response.status_code == 422, response.text
+    assert "linear_regression" in response.text
+    assert not list((root / "runs").glob("*.json"))
+    assert not list((root / "studies" / "jobs").glob("*.json"))
+
+
+def test_reopen_integrity_rejects_persisted_linear_kind_task_mismatch(tmp_path: Path) -> None:
+    client = TestClient(app)
+    root = tmp_path / "persisted-linear-kind-mismatch"
+    session_id = client.post("/api/projects", json={"path": str(root), "name": "Persisted kind mismatch"}).json()["session_id"]
+    confirmed = client.post("/api/projects/dataset/confirm", json={"session_id": session_id, "csv_text": _binary_frame().to_csv(index=False), "target": "target", "task": "binary_classification", "id_columns": []})
+    assert confirmed.status_code == 200, confirmed.text
+    trained = client.post("/api/projects/training/run", json={"session_id": session_id, "model_kind": "logistic_regression", "seed": 7})
+    assert trained.status_code == 201, trained.text
+    run_path = root / "runs" / f"{trained.json()['run_id']}.json"
+    payload = json.loads(run_path.read_text(encoding="utf-8"))
+    payload["model_kind"] = "linear_regression"
+    run_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    report = inspect_project_integrity(root)
+
+    assert any(issue.code == "ADAPTER_IDENTITY" and issue.status == "FAIL" for issue in report.issues)
+
+
 def test_study_job_list_exposes_legacy_model_runtime_identity_without_rewrite(tmp_path: Path) -> None:
     from ruflex.domain.training import StudyJob, StudySeedState
 

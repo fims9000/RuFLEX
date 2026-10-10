@@ -43,7 +43,7 @@ test("Studio freezes selected TRAIN-only scaling in a run and restores it after 
   await page.getByRole("button", { name: "Open project", exact: true }).click();
   await page.getByRole("button", { name: "S", exact: true }).click();
   await expect(page.getByLabel("Training normalization")).toHaveValue("minmax");
-  await expect(page.locator(".compact-definition")).toContainText("Saved run scalingminmax");
+  await expect(page.locator(".compact-definition").filter({ has: page.getByText("Saved run scaling", { exact: true }) })).toContainText("Saved run scalingminmax");
 });
 
 test("a rejected GROUP split can be corrected without uncertain-write recovery", async ({ page }) => {

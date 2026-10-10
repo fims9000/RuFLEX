@@ -14,6 +14,7 @@ from ruflex.application.runtime_training import train_with_adapter
 from ruflex.application.training import load_training_run
 from ruflex.runtime import builtin_runtime_registry
 from ruflex.runtime.contracts import PredictionRequest
+from ruflex.runtime.errors import RuntimeIncompatibleError
 
 
 def _prepare(root: Path, task: str) -> None:
@@ -33,7 +34,29 @@ def _cases() -> list[tuple[str, str, str]]:
         for descriptor in registry.model_descriptors() if descriptor.available and descriptor.capabilities.get("fit", False)
         for model_kind in descriptor.training_model_kinds
         for task in descriptor.supported_tasks
+        if descriptor.supports_model_kind_task(model_kind, task)
     ]
+
+
+def _rejected_cases() -> list[tuple[str, str, str]]:
+    registry = builtin_runtime_registry()
+    return [
+        (descriptor.identity.key, model_kind, task)
+        for descriptor in registry.model_descriptors() if descriptor.available and descriptor.capabilities.get("fit", False)
+        for model_kind in descriptor.training_model_kinds
+        for task in descriptor.supported_tasks
+        if not descriptor.supports_model_kind_task(model_kind, task)
+    ]
+
+
+@pytest.mark.parametrize("adapter_key,model_kind,task", _rejected_cases())
+def test_runtime_model_adapter_rejects_undeclared_kind_task_pair(tmp_path: Path, adapter_key: str, model_kind: str, task: str) -> None:
+    root = tmp_path / f"{adapter_key}-{model_kind}-{task}"
+    _prepare(root, task)
+
+    with pytest.raises(RuntimeIncompatibleError, match="cannot train model kind"):
+        train_with_adapter(root, registry=builtin_runtime_registry(), adapter_key=adapter_key, model_kind=model_kind, seed=17)
+    assert not list((root / "runs").glob("*.json"))
 
 
 @pytest.mark.parametrize("adapter_key,model_kind,task", _cases())

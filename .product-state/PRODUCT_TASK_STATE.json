@@ -356,7 +356,8 @@
     "alpha_split_variability_fixed_training_seed_binding",
     "alpha_study_selection_metric_preflight",
     "alpha_training_split_fraction_request_guard",
-    "alpha_study_split_contract_preflight"
+    "alpha_study_split_contract_preflight",
+    "alpha_runtime_model_kind_task_integrity"
   ],
   "active_capability": "alpha_master_spec_gap_audit",
   "active_acceptance": [
@@ -364,8 +365,9 @@
     "Select the next concrete, low-resource, end-to-end product gap and implement it without broad refactoring."
   ],
   "blockers": [],
-  "next_executable_work": "Continue the alpha product-gap audit after freezing Study SplitContract preflight. Inspect the next concrete product workflow gap; specifically audit model-kind/task compatibility before adapter fits, then implement the smallest coherent end-to-end correction without altering frozen research artifacts.",
+  "next_executable_work": "Continue the bounded alpha product-gap audit. Verify the next concrete Studio/API workflow inconsistency with synthetic evidence, then make a small end-to-end correction without altering frozen research artifacts.",
   "qa": {
+    "runtime_model_kind_task_integrity": "PASS: native_linear declares exact logistic/binary and linear/regression pairs; direct training, Study creation, StudyJob resume, artifact identity and historical run integrity reject incompatible pairs. Focused Python suite 122/122; Training Studio unit 36/36; synthetic training/reopen browser 1/1; TypeScript/Vite build, compileall and git diff --check passed. See docs/qa/ALPHA_LINEAR_KIND_TASK_CONTRACT.md.",
     "study_split_contract_preflight": "PASS: synchronous Study, new StudyJob, and resumed persisted StudyJob reject a declared SplitContract whose fixed split seed or fractions conflict with the declared execution pairs before any model fit. Valid matching fixed-split bindings remain accepted. Focused Python Study/seed suite 73/73; real fixed Study/reopen and varying-split/combined Studio browser routes 2/2 passed; compileall and git diff --check passed.",
     "training_split_fraction_request_guard": "PASS: single-run, synchronous Study and asynchronous StudyJob API requests reject validation/test fractions leaving no TRAIN share before project access or model work. Typed request-validation responses safely serialize model-level ValueError context instead of crashing while writing HTTP 422. Focused training API/product/seed suite 67/67, compileall and git diff --check passed.",
     "study_selection_metric_preflight": "PASS: synchronous Study creation, new asynchronous StudyJob submission, and persisted StudyJob resume validate that the declared selection metric belongs to the dataset task before any seed fit. Binary classification permits accuracy/precision/recall/F1; regression permits MSE/MAE/RMSE/R2. Invalid or task-incompatible metrics fail closed without creating runs or jobs. Focused training product/seed suite 63/63, compileall and git diff --check passed.",

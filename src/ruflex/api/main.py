@@ -557,6 +557,7 @@ def get_models() -> list[dict]:
         runtime_fields = {
             "capabilities": descriptor.capabilities,
             "supported_explainers": list(descriptor.supported_explainers),
+            "model_kind_tasks": {kind: list(tasks) for kind, tasks in descriptor.model_kind_tasks.items()},
             "available": descriptor.available,
             "unavailability_reason": descriptor.unavailability_reason,
             "adapter_key": descriptor.identity.key,

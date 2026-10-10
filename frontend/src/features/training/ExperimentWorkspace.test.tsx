@@ -75,6 +75,23 @@ beforeEach(() => {
 });
 
 describe("ExperimentWorkspace dynamic model controls", () => {
+  it("uses declared model-kind/task support instead of offering the wrong linear estimator", async () => {
+    studioApi.getModels.mockResolvedValueOnce([{
+      key: "linear", display_name: "Logistic / Linear Regression", version: "1", provider: "ruflex.builtin", family: "linear",
+      supported_tasks: ["binary_classification", "regression"], training_model_kinds: ["logistic_regression", "linear_regression"],
+      model_kind_tasks: { logistic_regression: ["binary_classification"], linear_regression: ["regression"] },
+      input_modalities: ["tabular"], available: true, unavailability_reason: null, capabilities: { fit: true },
+      supported_explainers: [], export_formats: [], config_schema: {}, defaults: {}, parameter_constraints: {},
+      optional_dependencies: [], evidence_objects_produced: [], limitations: [],
+    }]);
+    render(<ExperimentWorkspace project={project} dataset={{ ...dataset, contract: { ...dataset.contract, task: "regression" } } as never} run={null} study={null} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);
+
+    const option = await screen.findByRole("option", { name: "Logistic / Linear Regression" });
+    expect(option).toHaveValue("linear_regression");
+    expect(screen.queryByRole("option", { name: "Flat Neuro-Fuzzy" })).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Training model")).toHaveValue("linear_regression");
+  });
+
   it("remounts Stability Lab when the project session changes", async () => {
     const view = render(<ExperimentWorkspace project={project} dataset={dataset as never} run={null} study={null} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);
     await screen.findByLabelText("Stability recovery draft");

@@ -153,6 +153,11 @@ Target branch: `feature/v1.3-data-governance-runtime`.
   SplitContract against every planned split seed and both frozen fractions
   before any fit. A fixed contract cannot be silently applied to varying
   split memberships; Study requests without a bound contract remain supported.
+- Native linear training now binds `logistic_regression` only to binary
+  classification and `linear_regression` only to regression. API, Study jobs,
+  adapter artifacts, reopened run integrity and Studio's model selector use
+  this declared pairing. Historical mismatched runs are flagged, not rewritten;
+  see `docs/qa/ALPHA_LINEAR_KIND_TASK_CONTRACT.md`.
 - Project Integrity, Assurance and portable bundles reject missing or malformed
   manual-FIS comparison rows and mismatched semantic-revision provenance.
   A portable bundle excludes raw dataset rows, so it checks the frozen row's

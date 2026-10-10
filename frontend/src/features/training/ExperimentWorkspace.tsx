@@ -118,6 +118,16 @@ function parseStudySeeds(value: string): { seeds: number[]; error: string | null
   return { seeds, error: null };
 }
 
+function supportsModelKindTask(entry: ModelCapabilityContract, kind: string, task: string): boolean {
+  const declared = entry.model_kind_tasks;
+  return entry.training_model_kinds.includes(kind) && entry.supported_tasks.includes(task)
+    && (!declared || Object.keys(declared).length === 0 || Boolean(declared[kind]?.includes(task)));
+}
+
+function firstModelKindForTask(entry: ModelCapabilityContract, task: string): string | undefined {
+  return entry.training_model_kinds.find((kind) => supportsModelKindTask(entry, kind, task));
+}
+
 type NumericConstraint = { minimum?: number; exclusiveMinimum?: number; maximum?: number; exclusiveMaximum?: number; nullable?: boolean };
 const API_TRAINING_CONSTRAINTS: Record<string, NumericConstraint & { integer?: boolean }> = {
   max_epochs: { minimum: 1, maximum: 2000, integer: true },
@@ -454,8 +464,8 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
   const datasetTask = dataset?.contract.task;
   const activeStudyJob = Boolean(studyJob && ["QUEUED", "RUNNING"].includes(studyJob.status));
   const studyJobStateResolved = studyJobsStatus === "loaded";
-  const compatibleModels = useMemo(() => catalog.filter((entry) => entry.available && entry.capabilities.fit && !!datasetTask && entry.supported_tasks.includes(datasetTask)), [catalog, datasetTask]);
-  const selectedModel = compatibleModels.find((entry) => entry.training_model_kinds.includes(modelKind)) ?? null;
+  const compatibleModels = useMemo(() => catalog.filter((entry) => entry.available && entry.capabilities.fit && !!datasetTask && Boolean(firstModelKindForTask(entry, datasetTask))), [catalog, datasetTask]);
+  const selectedModel = compatibleModels.find((entry) => !!datasetTask && supportsModelKindTask(entry, modelKind, datasetTask)) ?? null;
   const selectedAdapterKey = selectedModel?.provider === "ruflex.builtin" ? null : selectedModel?.key ?? null;
   const supportsParameter = (name: string) => Boolean(selectedModel?.parameter_constraints[name]);
   const trainingParameterValues: Record<string, number | null> = { max_epochs: maxEpochs, learning_rate: learningRate, batch_size: batchSize, patience, max_rules: maxRules, n_estimators: nEstimators, max_depth: maxDepth };
@@ -473,8 +483,8 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
     if ("max_depth" in defaults) setMaxDepth(typeof defaults.max_depth === "number" ? defaults.max_depth : null);
   }, [selectedModel?.key]);
   useEffect(() => {
-    if (compatibleModels.length && !compatibleModels.some((entry) => entry.training_model_kinds.includes(modelKind))) setModelKind(compatibleModels[0].training_model_kinds[0]);
-  }, [compatibleModels, modelKind]);
+    if (datasetTask && compatibleModels.length && !compatibleModels.some((entry) => supportsModelKindTask(entry, modelKind, datasetTask))) setModelKind(firstModelKindForTask(compatibleModels[0], datasetTask)!);
+  }, [compatibleModels, datasetTask, modelKind]);
   const trainingModelKind = modelKind;
   useEffect(() => {
     let active = true;
@@ -856,7 +866,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
           {run && <><dt>Saved run scaling</dt><dd>{String(run.normalization?.mode ?? "unknown")}</dd></>}
         </dl>
         <div className="training-config-grid">
-          <label className="field-label">Model<select aria-label="Training model" value={modelKind} disabled={running || project.read_only || !compatibleModels.length} onChange={(event) => setModelKind(event.target.value)}>{compatibleModels.map((entry) => <option key={entry.key} value={entry.key === "linear" ? (datasetTask === "regression" ? "linear_regression" : "logistic_regression") : entry.training_model_kinds[0]}>{entry.display_name}</option>)}</select></label>
+          <label className="field-label">Model<select aria-label="Training model" value={modelKind} disabled={running || project.read_only || !compatibleModels.length} onChange={(event) => setModelKind(event.target.value)}>{compatibleModels.map((entry) => <option key={entry.key} value={firstModelKindForTask(entry, datasetTask!)}>{entry.display_name}</option>)}</select></label>
           <label className="field-label">Scaling<select aria-label="Training normalization" value={normalization} disabled={running || project.read_only || activeStudyJob} onChange={(event) => setNormalization(event.target.value as "none" | "standard" | "minmax")}><option value="standard">Standard (TRAIN only)</option><option value="minmax">Min–max (TRAIN only)</option><option value="none">None</option></select></label>
           <label className="field-label">Single-run training seed<input type="text" inputMode="numeric" value={seedText} aria-invalid={seed === null} aria-describedby="seed-input-help" disabled={running || project.read_only} onChange={(event) => setSeedText(event.target.value)} /></label>
           <label className="field-label">Split seed<input type="text" inputMode="numeric" value={splitSeedText} aria-invalid={splitSeed === null} aria-describedby="seed-input-help" disabled={running || project.read_only} onChange={(event) => setSplitSeedText(event.target.value)} /></label>

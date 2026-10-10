@@ -1109,8 +1109,8 @@ def run_multi_seed_study(project_root: Path, *, name: str, model_kind: str = "fl
 
     registry = builtin_runtime_registry()
     adapter = registry.resolve_model_adapter(adapter_key, version=adapter_version) if adapter_key is not None else registry.resolve_training_model_kind(model_kind)
-    if model_kind not in adapter.descriptor.training_model_kinds:
-        raise TrainingError(f"Adapter {adapter.descriptor.identity.key!r} cannot train model kind {model_kind!r}.")
+    if not adapter.descriptor.supports_model_kind_task(model_kind, load_dataset_contract(project_root).task):
+        raise TrainingError(f"Adapter {adapter.descriptor.identity.key!r} cannot train model kind {model_kind!r} for this dataset task.")
     identity = adapter.descriptor.identity
     runs = [train_model(project_root, model_kind=model_kind, adapter_key=identity.key, adapter_version=identity.version, split_seed=current_split, training_seed=current_training, **config) for current_split, current_training in pairs]
     for run in runs:
@@ -1233,8 +1233,8 @@ def _execute_study_job(project_root: Path, job_id: UUID) -> None:
             adapter = registry.resolve_model_adapter(job.adapter_key, version=job.adapter_version)
             if adapter.descriptor.identity.provider != job.adapter_provider:
                 raise TrainingError("Persisted StudyJob model adapter provider does not match the registered runtime.")
-        if job.model_kind not in adapter.descriptor.training_model_kinds:
-            raise TrainingError("Persisted StudyJob adapter does not support its declared model kind.")
+        if not adapter.descriptor.supports_model_kind_task(job.model_kind, active_contract.task):
+            raise TrainingError("Persisted StudyJob adapter does not support its declared model kind and dataset task.")
     except Exception as error:
         job.status = "FAILED"
         job.error = f"Model runtime recovery failed closed: {error}"
@@ -1399,8 +1399,8 @@ def start_study_job(project_root: Path, *, client_request_id: UUID | None = None
 
     registry = builtin_runtime_registry()
     adapter = registry.resolve_model_adapter(adapter_key, version=adapter_version) if adapter_key is not None else registry.resolve_training_model_kind(model_kind)
-    if model_kind not in adapter.descriptor.training_model_kinds:
-        raise TrainingError(f"Adapter {adapter.descriptor.identity.key!r} cannot train model kind {model_kind!r}.")
+    if not adapter.descriptor.supports_model_kind_task(model_kind, contract.task):
+        raise TrainingError(f"Adapter {adapter.descriptor.identity.key!r} cannot train model kind {model_kind!r} for this dataset task.")
     identity = adapter.descriptor.identity
     request_id = client_request_id or uuid4()
     seed_states = [StudySeedState(seed=current_training, split_seed=current_split, training_seed=current_training) for current_split, current_training in pairs]

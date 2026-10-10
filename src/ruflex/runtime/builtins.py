@@ -24,7 +24,7 @@ from ruflex.training.config import FineTuningOptions, ModelTrainingConfig, Refin
 
 from ruflex.application.model_catalog import ModelCapabilities, get_model_capability_contract
 from ruflex.runtime.contracts import FitRequest, FitResult, ModelAdapterDescriptor, PredictionRequest, PredictionResult, RuntimeIdentity
-from ruflex.runtime.errors import RuntimeExecutionError
+from ruflex.runtime.errors import RuntimeExecutionError, RuntimeIncompatibleError
 
 
 _NATIVE_CAPABILITIES: dict[str, dict[str, bool]] = {
@@ -93,6 +93,9 @@ class _BuiltinAdapter:
             history = [{"epoch": point.epoch, "train_loss": point.train_loss, "validation_loss": point.validation_loss, "train_metrics": point.train_metrics, "validation_metrics": point.validation_metrics} for point in summary.history]
             return FitResult(model_payload=None, serialized_artifact=artifact_bytes, artifact_media_type="application/x-pytorch-model", model_spec=spec.to_dict(), training_summary=summary.to_dict(), trajectory=history, validation_raw_predictions=raw.tolist(), validation_raw_probabilities=(1 / (1 + np.exp(-np.clip(raw, -60, 60)))).tolist() if request.task == "binary_classification" else None)
         if key == "native_linear":
+            expected_kind = "logistic_regression" if task == "binary_classification" else "linear_regression"
+            if request.model_kind is not None and request.model_kind != expected_kind:
+                raise RuntimeIncompatibleError(f"Model kind {request.model_kind!r} is incompatible with dataset task {task!r}; use {expected_kind!r}.")
             if task == "binary_classification":
                 estimator = LogisticRegression(random_state=seed, max_iter=1000).fit(X_train, y_train.astype(int))
                 raw = np.asarray(estimator.decision_function(X_validation), dtype=float).reshape(-1)
@@ -224,6 +227,10 @@ def _descriptor(key: str, *, kinds: tuple[str, ...]) -> ModelAdapterDescriptor:
         family=contract.family,
         training_model_kinds=kinds,
         supported_tasks=contract.supported_tasks,
+        model_kind_tasks={
+            "logistic_regression": ("binary_classification",),
+            "linear_regression": ("regression",),
+        } if key == "native_linear" else {},
         capabilities=capabilities,
         supported_explainers=supported_explainers,
         config_schema=contract.config_schema,
