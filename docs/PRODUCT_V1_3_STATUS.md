@@ -164,6 +164,10 @@ Target branch: `feature/v1.3-data-governance-runtime`.
 - The synthetic regression Studio route now exercises a complete saved
   validation Evaluation, explicit first final-test access, and close/reopen of
   both evidence objects. It does not access research benchmark projects.
+- Regression Studies show fixed-split run selection and saved RMSE evidence
+  after reopen. Study metric bars include a zero baseline, and near-zero but
+  nonzero run, validation and final-test numbers use scientific notation
+  instead of appearing as exact zero. Raw persisted values are unchanged.
 - Project Integrity, Assurance and portable bundles reject missing or malformed
   manual-FIS comparison rows and mismatched semantic-revision provenance.
   A portable bundle excludes raw dataset rows, so it checks the frozen row's

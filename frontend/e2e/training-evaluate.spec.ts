@@ -71,6 +71,7 @@ test("Studio offers the declared linear regression kind for a regression dataset
   await expect(page.locator(".run-provenance")).toContainText("model artifact persisted");
   await page.getByRole("button", { name: "A", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Residual evidence" })).toBeVisible();
+  await expect(page.locator(".metric-card").filter({ has: page.getByText("rmse", { exact: true }) }).first().locator("strong")).toHaveText(/e-\d+/);
   const validationResponse = page.waitForResponse((response) => response.url().endsWith("/api/projects/analyses/evaluations") && response.request().method() === "POST");
   await page.getByRole("button", { name: "Save validation evidence", exact: true }).click();
   const validation = await validationResponse;
@@ -99,11 +100,54 @@ test("Studio offers the declared linear regression kind for a regression dataset
   expect(finalEvaluation.status()).toBe(201);
   expect((await finalEvaluation.json()).evaluation_id).toBe(savedEvaluationId);
   await expect(page.getByRole("heading", { name: "Final-test evidence persisted separately" })).toBeVisible();
+  await expect(page.locator(".final-test-gate .metric-card").filter({ has: page.getByText("rmse", { exact: true }) }).locator("strong")).toHaveText(/e-\d+/);
   await page.getByRole("button", { name: "Close", exact: true }).click();
   await page.getByLabel("Project path").fill(path);
   await page.getByRole("button", { name: "Open project", exact: true }).click();
   await page.getByRole("button", { name: "A", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Final-test evidence persisted separately" })).toBeVisible();
+});
+
+test("a near-exact regression Study remains visible through its metric chart and reopen", async ({ page }) => {
+  const path = projectPath();
+  const rows = ["x,y,target"];
+  for (let index = 0; index < 36; index += 1) rows.push(`${index},${index % 7},${index * 2 + (index % 7)}`);
+  await page.goto("/");
+  await page.getByLabel("Project path").fill(path);
+  await page.getByLabel("Project name").fill("Regression Study chart");
+  await page.getByRole("button", { name: "Create project", exact: true }).click();
+  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByLabel("CSV data").fill(rows.join("\n"));
+  await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
+  await page.getByLabel("Task").selectOption("regression");
+  await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
+  await page.getByRole("button", { name: "S", exact: true }).click();
+  await page.getByRole("button", { name: "Freeze RANDOM SplitContract", exact: true }).click();
+  await expect(page.getByRole("button", { name: "SplitContract frozen", exact: true })).toBeVisible();
+  await page.getByLabel("Training model").selectOption("linear_regression");
+  await page.getByLabel("Study seeds").fill("1, 2, 3");
+  const submission = page.waitForResponse((response) => response.url().endsWith("/api/projects/training/study-jobs") && response.request().method() === "POST");
+  await page.getByRole("button", { name: "Run multi-seed study", exact: true }).click();
+  const response = await submission;
+  expect(response.status()).toBe(202);
+  expect(response.request().postDataJSON()).toMatchObject({ model_kind: "linear_regression", selection_metric: "rmse", seeds: [1, 2, 3] });
+  await expect(page.getByText("Validation rmse across seeds", { exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText("Mean", { exact: true }).locator("..").locator("strong")).toHaveText(/e-\d+/);
+  await expect(page.getByRole("button", { name: /SeedRun split 42 · train 3/ })).toBeVisible();
+  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await page.getByLabel("Project path").fill(path);
+  const reopenedResponse = page.waitForResponse((item) => item.url().endsWith("/api/projects/open") && item.request().method() === "POST");
+  await page.getByRole("button", { name: "Open project", exact: true }).click();
+  const sessionId = (await (await reopenedResponse).json()).session_id;
+  await page.getByRole("button", { name: /Study .*3 seed runs/ }).click();
+  await expect(page.getByText("Validation rmse across seeds", { exact: true })).toBeVisible();
+  const reopenedStudy = await page.request.get(`http://127.0.0.1:8010/api/projects/${sessionId}/training/studies/latest`);
+  expect(reopenedStudy.status()).toBe(200);
+  const study = await reopenedStudy.json() as { selection_metric: string; selected_run_id: string; seed_runs: Array<{ training_seed: number; run_id: string; validation_metrics: { rmse: number } }> };
+  expect(study.selection_metric).toBe("rmse");
+  expect(study.seed_runs.map((run) => run.training_seed).sort()).toEqual([1, 2, 3]);
+  const selected = [...study.seed_runs].sort((left, right) => left.validation_metrics.rmse - right.validation_metrics.rmse || left.training_seed - right.training_seed)[0];
+  expect(study.selected_run_id).toBe(selected.run_id);
 });
 
 test("a rejected GROUP split can be corrected without uncertain-write recovery", async ({ page }) => {

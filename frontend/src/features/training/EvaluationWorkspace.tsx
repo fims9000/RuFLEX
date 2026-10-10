@@ -21,6 +21,7 @@ import {
 import { ChartSurface } from "../../charts/ChartSurface";
 import { Button, EmptyState, StatusBadge } from "../../components/StudioPrimitives";
 import { StudioTheme } from "../../design/tokens";
+import { formatEvidenceNumber } from "./formatEvidenceNumber";
 
 function canonicalJson(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
@@ -853,7 +854,7 @@ export function EvaluationWorkspace({
     {policyRecovery && <div className="error" role="alert" data-testid="validation-policy-recovery"><strong>{policyRecovery.kind} save outcome is uncertain; dependent actions are paused.</strong><p>{policyRecovery.error}</p><Button view="outlined" disabled={recoveringPolicy} onClick={recoverValidationPolicyWrite}>Retry exact saved policy lookup</Button>{policyRecovery.notFound && <Button view="outlined" disabled={recoveringPolicy || project.read_only || datasetTestBoundaryOpened} onClick={explicitlyRepeatValidationPolicyWrite}>Explicitly repeat this exact policy request</Button>}</div>}
 
     <div className="metric-grid">
-      {metrics.map(([name, value]) => <div className="metric-card" key={name}><span>{name}</span><strong>{Number(value).toFixed(4)}</strong><small>validation · raw model</small></div>)}
+      {metrics.map(([name, value]) => <div className="metric-card" key={name}><span>{name}</span><strong>{formatEvidenceNumber(Number(value))}</strong><small>validation · raw model</small></div>)}
       {activeCalibration && <>
         <div className="metric-card"><span>Brier calibrated</span><strong>{activeCalibration.brier_after.toFixed(4)}</strong><small>{activeCalibration.brier_before.toFixed(4)} before</small></div>
         <div className="metric-card"><span>ECE calibrated</span><strong>{activeCalibration.ece_after.toFixed(4)}</strong><small>{activeCalibration.ece_before.toFixed(4)} before</small></div>
@@ -904,7 +905,7 @@ export function EvaluationWorkspace({
     <section>
       <h3>Validation prediction evidence</h3>
       <div className="data-table-wrap"><table className="data-table"><thead><tr><th>row</th><th>target</th><th>{run.task === "binary_classification" ? "logit" : "prediction"}</th>{run.task === "binary_classification" ? <><th>raw probability</th><th>calibrated probability</th><th>final class</th></> : <th>residual</th>}</tr></thead><tbody>
-        {displayRows.slice(0, 20).map((row) => <tr key={row.row}><td>{row.row}</td><td>{row.target.toFixed(5)}</td><td>{row.prediction.toFixed(5)}</td>{run.task === "binary_classification" ? <><td>{row.probability?.toFixed(5) ?? "—"}</td><td>{calibratedByRow.get(row.row)?.toFixed(5) ?? "not fitted"}</td><td>{decisionByRow.get(row.row) ?? row.predicted_label ?? "—"}</td></> : <td>{row.residual?.toFixed(5) ?? "—"}</td>}</tr>)}
+        {displayRows.slice(0, 20).map((row) => <tr key={row.row}><td>{row.row}</td><td>{formatEvidenceNumber(row.target, 5)}</td><td>{formatEvidenceNumber(row.prediction, 5)}</td>{run.task === "binary_classification" ? <><td>{row.probability === null || row.probability === undefined ? "—" : formatEvidenceNumber(row.probability, 5)}</td><td>{calibratedByRow.get(row.row) === undefined ? "not fitted" : formatEvidenceNumber(calibratedByRow.get(row.row)!, 5)}</td><td>{decisionByRow.get(row.row) ?? row.predicted_label ?? "—"}</td></> : <td>{row.residual === null || row.residual === undefined ? "—" : formatEvidenceNumber(row.residual, 5)}</td>}</tr>)}
       </tbody></table></div>
       <small>{activeEvaluation ? `${activeEvaluation.validation_row_count} validation rows persisted; first ${Math.min(20, displayRows.length)} displayed.` : "Save validation evidence to persist the complete evaluation object."}</small>
     </section>
@@ -920,7 +921,7 @@ export function EvaluationWorkspace({
       {finalTestRecovery && <div className="error" role="alert" data-testid="final-test-recovery"><strong>Final-test request outcome is uncertain. Do not submit it again.</strong><p>{finalTestRecovery.error}</p><Button view="outlined" disabled={recoveringFinalTest} onClick={recoverFinalTest}>Retry exact FinalTestEvaluation lookup</Button></div>}
       {activeFinalTest ? <>
         <div className="comparison-protocol-line"><StatusBadge tone="danger">FINAL TEST EVALUATED</StatusBadge><span className="mono">{activeFinalTest.final_test_id.slice(0, 12)} · n={activeFinalTest.test_row_count}</span></div>
-        <div className="metric-grid">{Object.entries(activeFinalTest.metrics).map(([name, value]) => <div className="metric-card" key={`final-${name}`}><span>{name}</span><strong>{Number(value).toFixed(4)}</strong><small>FINAL TEST · frozen policy</small></div>)}</div>
+        <div className="metric-grid">{Object.entries(activeFinalTest.metrics).map(([name, value]) => <div className="metric-card" key={`final-${name}`}><span>{name}</span><strong>{formatEvidenceNumber(Number(value))}</strong><small>FINAL TEST · frozen policy</small></div>)}</div>
         <p>{activeFinalTest.scientific_note}</p>
         <small className="mono">policy {activeFinalTest.policy_identity.slice(0, 36)}… · cases {(activeFinalTest.test_case_identity ?? activeFinalTest.test_sample_identity).slice(0, 36)}…</small>
         {activeFinalTest.dataset_test_unlock_at && <small className="mono">dataset test gate opened {new Date(activeFinalTest.dataset_test_unlock_at).toLocaleString()} · only policies frozen before this boundary and using the same holdout cases remain eligible</small>}

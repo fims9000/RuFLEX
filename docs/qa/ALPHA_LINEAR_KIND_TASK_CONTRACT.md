@@ -51,3 +51,10 @@ was fitted and no frozen research artifact was changed.
 The regression browser route also saved and reopened its exact validation
 Evaluation, then applied an explicit synthetic final-test opening and reopened
 the resulting FinalTestEvaluation; it did not access benchmark test data.
+
+The fixed-split synthetic regression Study was also exercised with three
+declared fitting seeds. Its saved RMSE selection and selected run survived
+close/reopen. Metric bars now include zero rather than truncating the y-axis,
+and very small nonzero validation/final-test metrics are displayed in
+scientific notation instead of misleading `0.0000`. These are presentation
+rules only; all persisted metrics and selection logic remain unchanged.

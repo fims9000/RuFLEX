@@ -43,7 +43,7 @@ vi.mock("../../components/StudioPrimitives", () => ({
   EmptyState: ({ title, children }: { title: string; children: React.ReactNode }) => <div><strong>{title}</strong>{children}</div>,
   StatusBadge: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
 }));
-vi.mock("../../charts/ChartSurface", () => ({ ChartSurface: () => <div /> }));
+vi.mock("../../charts/ChartSurface", () => ({ ChartSurface: ({ title, option }: { title: string; option: { yAxis?: { min?: number; max?: number } } }) => <div data-testid={title} data-y-axis-min={option.yAxis?.min} data-y-axis-max={option.yAxis?.max} /> }));
 vi.mock("./StabilityLab", () => ({ StabilityLab: ({ project: currentProject }: { project: { session_id: string } }) => <input aria-label="Stability recovery draft" defaultValue={currentProject.session_id} /> }));
 
 import { ExperimentWorkspace } from "./ExperimentWorkspace";
@@ -75,6 +75,26 @@ beforeEach(() => {
 });
 
 describe("ExperimentWorkspace dynamic model controls", () => {
+  it("anchors Study metric bars at zero without altering near-zero persisted values", async () => {
+    const run = {
+      run_id: "regression-run-1", task: "regression", model_kind: "linear_regression", dataset_fingerprint: "fingerprint",
+      training_seed: 1, seed: 1, split_seed: 42, split: { split_seed: 42, train_count: 21, validation_count: 7, test_count: 8 },
+      trajectory: [{ epoch: 0, train_loss: 3e-29, validation_loss: 3e-29 }],
+      training_summary: { best_epoch: 0, epochs_ran: 1, monitor_name: "validation_loss", best_monitor_value: 3e-29 },
+      validation_metrics: { rmse: 5e-15 }, model_artifact_sha256: "c".repeat(64), model_spec: {},
+    };
+    const study = {
+      study_id: "regression-study", selection_metric: "rmse", randomness_protocol: "TRAINING_VARIABILITY",
+      selection_reason: "Lowest validation RMSE", selected_run_id: run.run_id,
+      seed_runs: [run, { ...run, run_id: "regression-run-2", seed: 2, training_seed: 2, validation_metrics: { rmse: 6e-15 } }],
+    };
+    render(<ExperimentWorkspace project={project} dataset={{ ...dataset, contract: { ...dataset.contract, task: "regression" } } as never} run={run as never} study={study as never} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);
+
+    const chart = await screen.findByTestId("Validation rmse across seeds");
+    expect(chart).toHaveAttribute("data-y-axis-min", "0");
+    expect(chart).toHaveAttribute("data-y-axis-max", "1e-12");
+  });
+
   it("uses declared model-kind/task support instead of offering the wrong linear estimator", async () => {
     studioApi.getModels.mockResolvedValueOnce([{
       key: "linear", display_name: "Logistic / Linear Regression", version: "1", provider: "ruflex.builtin", family: "linear",

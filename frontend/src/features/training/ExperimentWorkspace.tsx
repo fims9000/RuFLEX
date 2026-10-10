@@ -5,6 +5,7 @@ import { ChartSurface } from "../../charts/ChartSurface";
 import { Button, EmptyState, StatusBadge } from "../../components/StudioPrimitives";
 import { StudioTheme } from "../../design/tokens";
 import { StabilityLab } from "./StabilityLab";
+import { formatEvidenceNumber } from "./formatEvidenceNumber";
 import { trainingRunMatchesRecovery } from "./trainingRecovery";
 
 function trajectoryOption(run: TrainingRun): EChartsOption {
@@ -37,11 +38,14 @@ function trajectoryOption(run: TrainingRun): EChartsOption {
 
 function studyDistributionOption(study: TrainingStudy): EChartsOption {
   const varyingSplit = study.randomness_protocol === "SPLIT_VARIABILITY";
+  const values = study.seed_runs.map((run) => run.validation_metrics[study.selection_metric]).filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+  const minimum = values.reduce((smallest, value) => Math.min(smallest, value), 0);
+  const maximum = values.reduce((largest, value) => Math.max(largest, value), 0);
   return {
     tooltip: { trigger: "axis" },
     grid: { left: 54, right: 18, top: 28, bottom: 46 },
     xAxis: { type: "category", name: varyingSplit ? "split seed" : "training seed", data: study.seed_runs.map((run) => String(varyingSplit ? run.split_seed ?? run.split.split_seed : run.training_seed ?? run.seed)) },
-    yAxis: { type: "value", name: study.selection_metric, scale: true },
+    yAxis: { type: "value", name: study.selection_metric, min: minimum < 0 ? Math.min(minimum, -1e-12) : 0, max: maximum > 0 ? Math.max(maximum, 1e-12) : minimum < 0 ? 0 : 1e-12 },
     series: [{ name: study.selection_metric, type: "bar", data: study.seed_runs.map((run) => run.validation_metrics[study.selection_metric] ?? null) }],
   };
 }
@@ -933,10 +937,10 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
           {run.model_kind === "decision_tree" && runCapabilitiesStatus === "loading" && <p role="status">Checking exact tree-path support for this persisted run…</p>}
           {run.model_kind === "decision_tree" && runCapabilitiesStatus === "error" && <div className="error" role="alert"><strong>Could not verify saved run capabilities.</strong> {runCapabilitiesError} Exact tree-path actions remain unavailable until this run is checked. <Button view="outlined" size="s" onClick={() => setRunCapabilitiesReload((current) => current + 1)}>Retry run capability check</Button></div>}
           <div className="run-summary-strip">
-            <div><span>Epoch 0</span><strong>{run.trajectory[0]?.validation_loss?.toFixed(5) ?? "—"}</strong></div>
+            <div><span>Epoch 0</span><strong>{run.trajectory[0]?.validation_loss === null || run.trajectory[0]?.validation_loss === undefined ? "—" : formatEvidenceNumber(run.trajectory[0].validation_loss, 5)}</strong></div>
             <div><span>Best epoch</span><strong>{run.training_summary.best_epoch}</strong></div>
             <div><span>Epochs ran</span><strong>{run.training_summary.epochs_ran}</strong></div>
-            <div><span>Best {run.training_summary.monitor_name}</span><strong>{run.training_summary.best_monitor_value.toFixed(5)}</strong></div>
+            <div><span>Best {run.training_summary.monitor_name}</span><strong>{formatEvidenceNumber(run.training_summary.best_monitor_value, 5)}</strong></div>
           </div>
           {run.trajectory.length > 0
             ? <ChartSurface title="Training trajectory · epoch 0 included" option={option} theme={theme} />
@@ -979,7 +983,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
             {study.seed_runs.some((item) => item.trajectory.length > 0)
               ? <ChartSurface title="Validation-loss trajectories · epoch 0 included" option={studyTrajectoryOption(study)} theme={theme} />
               : <p className="scientific-note">These estimators do not expose epoch-wise validation-loss trajectories.</p>}
-            {statistics && <div className="run-summary-strip"><div><span>Mean</span><strong>{statistics.mean.toFixed(5)}</strong></div><div><span>Median</span><strong>{statistics.median.toFixed(5)}</strong></div><div><span>Std</span><strong>{statistics.std.toFixed(5)}</strong></div><div><span>Min / max</span><strong>{statistics.min.toFixed(5)} / {statistics.max.toFixed(5)}</strong></div></div>}
+            {statistics && <div className="run-summary-strip"><div><span>Mean</span><strong>{formatEvidenceNumber(statistics.mean, 5)}</strong></div><div><span>Median</span><strong>{formatEvidenceNumber(statistics.median, 5)}</strong></div><div><span>Std</span><strong>{formatEvidenceNumber(statistics.std, 5)}</strong></div><div><span>Min / max</span><strong>{formatEvidenceNumber(statistics.min, 5)} / {formatEvidenceNumber(statistics.max, 5)}</strong></div></div>}
             <div className="info-message">{study.selection_reason}</div>
           </>}
           {run.model_kind === "decision_tree" && runCapabilitiesStatus === "loaded" && canExactTreePath && <section className="tree-path-panel">
