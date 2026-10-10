@@ -8,12 +8,13 @@ import { StabilityLab } from "./StabilityLab";
 import { trainingRunMatchesRecovery } from "./trainingRecovery";
 
 function trajectoryOption(run: TrainingRun): EChartsOption {
+  const maximumLoss = run.trajectory.reduce((largest, point) => Math.max(largest, point.train_loss, point.validation_loss ?? 0), 0);
   return {
     tooltip: { trigger: "axis" },
     legend: { data: ["train loss", "validation loss"] },
     grid: { left: 54, right: 18, top: 38, bottom: 34 },
     xAxis: { type: "value", name: "epoch", minInterval: 1 },
-    yAxis: { type: "value", name: "loss", scale: true },
+    yAxis: { type: "value", name: "loss", min: 0, max: maximumLoss < 1e-12 ? 1e-12 : undefined },
     series: [
       {
         name: "train loss",
@@ -46,6 +47,7 @@ function studyDistributionOption(study: TrainingStudy): EChartsOption {
 }
 
 function studyTrajectoryOption(study: TrainingStudy): EChartsOption {
+  const maximumLoss = study.seed_runs.reduce((largest, run) => run.trajectory.reduce((current, point) => Math.max(current, point.validation_loss ?? 0), largest), 0);
   const seedLabel = (run: TrainingRun) => study.randomness_protocol === "SPLIT_VARIABILITY"
     ? `split ${run.split_seed ?? run.split.split_seed} · train ${run.training_seed ?? run.seed}`
     : `train ${run.training_seed ?? run.seed}`;
@@ -54,7 +56,7 @@ function studyTrajectoryOption(study: TrainingStudy): EChartsOption {
     legend: { type: "scroll", data: study.seed_runs.map(seedLabel) },
     grid: { left: 54, right: 18, top: 44, bottom: 34 },
     xAxis: { type: "value", name: "epoch", minInterval: 1 },
-    yAxis: { type: "value", name: "validation loss", scale: true },
+    yAxis: { type: "value", name: "validation loss", min: 0, max: maximumLoss < 1e-12 ? 1e-12 : undefined },
     series: study.seed_runs.map((run) => ({
       name: seedLabel(run),
       type: "line",
@@ -485,6 +487,12 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
   useEffect(() => {
     if (datasetTask && compatibleModels.length && !compatibleModels.some((entry) => supportsModelKindTask(entry, modelKind, datasetTask))) setModelKind(firstModelKindForTask(compatibleModels[0], datasetTask)!);
   }, [compatibleModels, datasetTask, modelKind]);
+  useEffect(() => {
+    if (run && datasetTask === run.task && dataset?.contract.dataset_fingerprint === run.dataset_fingerprint
+      && compatibleModels.some((entry) => supportsModelKindTask(entry, run.model_kind, datasetTask))) {
+      setModelKind(run.model_kind);
+    }
+  }, [run?.run_id, datasetTask, dataset?.contract.dataset_fingerprint, compatibleModels]);
   const trainingModelKind = modelKind;
   useEffect(() => {
     let active = true;
@@ -930,7 +938,9 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
             <div><span>Epochs ran</span><strong>{run.training_summary.epochs_ran}</strong></div>
             <div><span>Best {run.training_summary.monitor_name}</span><strong>{run.training_summary.best_monitor_value.toFixed(5)}</strong></div>
           </div>
-          <ChartSurface title="Training trajectory · epoch 0 included" option={option} theme={theme} />
+          {run.trajectory.length > 0
+            ? <ChartSurface title="Training trajectory · epoch 0 included" option={option} theme={theme} />
+            : <p className="scientific-note">This estimator does not expose an epoch-wise training trajectory.</p>}
           <div className="run-provenance">
             <StatusBadge tone="success">model artifact persisted</StatusBadge>
             <code>{run.model_artifact_sha256.slice(0, 24)}…</code>
@@ -966,7 +976,9 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
           </details>
           {study && <>
             <ChartSurface title={`Validation ${study.selection_metric} across seeds`} option={studyDistributionOption(study)} theme={theme} />
-            <ChartSurface title="Validation-loss trajectories · epoch 0 included" option={studyTrajectoryOption(study)} theme={theme} />
+            {study.seed_runs.some((item) => item.trajectory.length > 0)
+              ? <ChartSurface title="Validation-loss trajectories · epoch 0 included" option={studyTrajectoryOption(study)} theme={theme} />
+              : <p className="scientific-note">These estimators do not expose epoch-wise validation-loss trajectories.</p>}
             {statistics && <div className="run-summary-strip"><div><span>Mean</span><strong>{statistics.mean.toFixed(5)}</strong></div><div><span>Median</span><strong>{statistics.median.toFixed(5)}</strong></div><div><span>Std</span><strong>{statistics.std.toFixed(5)}</strong></div><div><span>Min / max</span><strong>{statistics.min.toFixed(5)} / {statistics.max.toFixed(5)}</strong></div></div>}
             <div className="info-message">{study.selection_reason}</div>
           </>}

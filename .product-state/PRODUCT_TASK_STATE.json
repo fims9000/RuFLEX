@@ -357,7 +357,8 @@
     "alpha_study_selection_metric_preflight",
     "alpha_training_split_fraction_request_guard",
     "alpha_study_split_contract_preflight",
-    "alpha_runtime_model_kind_task_integrity"
+    "alpha_runtime_model_kind_task_integrity",
+    "alpha_regression_studio_near_zero_loss_and_reopen"
   ],
   "active_capability": "alpha_master_spec_gap_audit",
   "active_acceptance": [
@@ -367,6 +368,7 @@
   "blockers": [],
   "next_executable_work": "Continue the bounded alpha product-gap audit. Verify the next concrete Studio/API workflow inconsistency with synthetic evidence, then make a small end-to-end correction without altering frozen research artifacts.",
   "qa": {
+    "regression_studio_near_zero_loss_and_reopen": "PASS: exact-fit linear regression loss near 3e-29 no longer crashes the Studio trajectory chart; display-only axis span floor does not alter persisted metrics. Reopened model selector reflects the compatible persisted linear_regression run. Real synthetic regression Studio train/reopen browser route 1/1 passed.",
     "runtime_model_kind_task_integrity": "PASS: native_linear declares exact logistic/binary and linear/regression pairs; direct training, Study creation, StudyJob resume, artifact identity and historical run integrity reject incompatible pairs. Focused Python suite 122/122; Training Studio unit 36/36; synthetic training/reopen browser 1/1; TypeScript/Vite build, compileall and git diff --check passed. See docs/qa/ALPHA_LINEAR_KIND_TASK_CONTRACT.md.",
     "study_split_contract_preflight": "PASS: synchronous Study, new StudyJob, and resumed persisted StudyJob reject a declared SplitContract whose fixed split seed or fractions conflict with the declared execution pairs before any model fit. Valid matching fixed-split bindings remain accepted. Focused Python Study/seed suite 73/73; real fixed Study/reopen and varying-split/combined Studio browser routes 2/2 passed; compileall and git diff --check passed.",
     "training_split_fraction_request_guard": "PASS: single-run, synchronous Study and asynchronous StudyJob API requests reject validation/test fractions leaving no TRAIN share before project access or model work. Typed request-validation responses safely serialize model-level ValueError context instead of crashing while writing HTTP 422. Focused training API/product/seed suite 67/67, compileall and git diff --check passed.",

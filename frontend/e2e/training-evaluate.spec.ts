@@ -46,6 +46,37 @@ test("Studio freezes selected TRAIN-only scaling in a run and restores it after 
   await expect(page.locator(".compact-definition").filter({ has: page.getByText("Saved run scaling", { exact: true }) })).toContainText("Saved run scalingminmax");
 });
 
+test("Studio offers the declared linear regression kind for a regression dataset", async ({ page }) => {
+  const path = projectPath();
+  const rows = ["x,y,target"];
+  for (let index = 0; index < 36; index += 1) rows.push(`${index},${index % 7},${index * 2 + (index % 7)}`);
+  await page.goto("/");
+  await page.getByLabel("Project path").fill(path);
+  await page.getByLabel("Project name").fill("Regression kind contract");
+  await page.getByRole("button", { name: "Create project", exact: true }).click();
+  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByLabel("CSV data").fill(rows.join("\n"));
+  await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
+  await page.getByLabel("Task").selectOption("regression");
+  await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
+  await page.getByRole("button", { name: "S", exact: true }).click();
+  await expect(page.getByRole("option", { name: "Logistic / Linear Regression" })).toHaveAttribute("value", "linear_regression");
+  await page.getByLabel("Training model").selectOption("linear_regression");
+  const trainingResponse = page.waitForResponse((response) => response.url().endsWith("/api/projects/training/run") && response.request().method() === "POST");
+  await page.getByRole("button", { name: "Run real training", exact: true }).click();
+  const trained = await trainingResponse;
+  expect(trained.status()).toBe(201);
+  expect(trained.request().postDataJSON().model_kind).toBe("linear_regression");
+  expect((await trained.json()).model_kind).toBe("linear_regression");
+  await expect(page.locator(".run-provenance")).toContainText("model artifact persisted");
+  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await page.getByLabel("Project path").fill(path);
+  await page.getByRole("button", { name: "Open project", exact: true }).click();
+  await page.getByRole("button", { name: "S", exact: true }).click();
+  await expect(page.getByLabel("Training model")).toHaveValue("linear_regression");
+  await expect(page.locator(".run-provenance")).toContainText("native_linear@1");
+});
+
 test("a rejected GROUP split can be corrected without uncertain-write recovery", async ({ page }) => {
   const path = projectPath();
   const rows = ["group,x,target", "a,1,0", "a,2,1", "a,3,0", "b,4,1", "b,5,0", "b,6,1"];

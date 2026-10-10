@@ -158,6 +158,9 @@ Target branch: `feature/v1.3-data-governance-runtime`.
   adapter artifacts, reopened run integrity and Studio's model selector use
   this declared pairing. Historical mismatched runs are flagged, not rewritten;
   see `docs/qa/ALPHA_LINEAR_KIND_TASK_CONTRACT.md`.
+- A real regression train/reopen route no longer blanks Studio when an almost
+  exact fit produces near-zero loss: the trajectory chart uses a display-only
+  axis span floor, and the model selector restores the compatible saved kind.
 - Project Integrity, Assurance and portable bundles reject missing or malformed
   manual-FIS comparison rows and mismatched semantic-revision provenance.
   A portable bundle excludes raw dataset rows, so it checks the frozen row's
