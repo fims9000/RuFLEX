@@ -98,24 +98,12 @@ def train_with_adapter(
     raw = np.asarray(result.validation_raw_predictions, dtype=float).reshape(-1)
     preview, confusion, calibration = _validation_payload(contract.task, split.validation_targets, raw, source_rows=split.validation_indices, dataset_fingerprint=contract.dataset_fingerprint)
     metrics = _baseline_metrics(contract.task, split.validation_targets, raw)
-    loss = metrics["mse"] if contract.task == "regression" else 1.0 - metrics["accuracy"]
     training_summary = {
         "source": adapter.descriptor.identity.key,
-        "epochs_ran": 1,
-        "best_epoch": 1,
-        "monitor_name": "validation_loss",
-        "best_monitor_value": loss,
-        "train_loss": loss,
-        "train_metrics": {},
-        "validation_loss": loss,
-        "history": [],
         **result.training_summary,
         "validation_metrics": metrics,
     }
-    trajectory = [EpochPoint.model_validate(item) for item in result.trajectory] or [
-        EpochPoint(epoch=0, train_loss=loss, validation_loss=loss, validation_metrics=metrics),
-        EpochPoint(epoch=1, train_loss=loss, validation_loss=loss, validation_metrics=metrics),
-    ]
+    trajectory = [EpochPoint.model_validate(item) for item in result.trajectory]
     identity = adapter.descriptor.identity
     run = TrainingRun(
         schema_version=3, model_kind=model_kind, task=contract.task, target=contract.target,

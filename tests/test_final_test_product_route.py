@@ -82,7 +82,7 @@ def test_final_test_firewall_blocks_late_selective_policy_tuning(tmp_path: Path)
     run = train_model(root, model_kind="logistic_regression", seed=29, max_epochs=1, learning_rate=.01, batch_size=16, patience=1, validation_fraction=.2, test_fraction=.2, max_rules=3)
     evaluation = create_validation_evaluation(root, run.run_id); threshold = select_validation_threshold(root, evaluation.evaluation_id)
     evaluate_final_test(root, evaluation.evaluation_id, threshold_id=threshold.threshold_id)
-    with pytest.raises(TrainingError, match="cannot be tuned"):
+    with pytest.raises(TrainingError, match="Final-test evidence already exists"):
         create_selective_policy(root, evaluation.evaluation_id, .8)
 
 

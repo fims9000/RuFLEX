@@ -117,8 +117,8 @@ def test_a01_partial_declared_run_support_fails_closed() -> None:
 
 
 def test_selected_run_tie_breaks_to_lowest_training_seed() -> None:
-    low = TrainingRun.model_construct(run_id=uuid4(), seed=2, training_seed=2)
-    high = TrainingRun.model_construct(run_id=uuid4(), seed=9, training_seed=9)
+    low = TrainingRun.model_construct(run_id=uuid4(), seed=2, training_seed=2, split_seed=42)
+    high = TrainingRun.model_construct(run_id=uuid4(), seed=9, training_seed=9, split_seed=42)
     selected, value, rule = _select_study_run([(high, .8), (low, .8)], "f1")
     assert selected.run_id == low.run_id and value == .8 and rule == "max"
 

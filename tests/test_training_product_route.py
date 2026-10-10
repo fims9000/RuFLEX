@@ -1181,7 +1181,10 @@ def test_logistic_baseline_uses_train_only_split_and_safe_declarative_artifact(t
     assert run["model_kind"] == "logistic_regression"
     assert run["split"]["preprocessing_fit_scope"] == "train_only"
     assert run["split"]["test_status"] == "LOCKED_NOT_EVALUATED"
-    assert run["trajectory"][0]["epoch"] == 0
+    assert run["trajectory"] == []
+    assert "train_loss" not in run["training_summary"]
+    assert "best_epoch" not in run["training_summary"]
+    assert run["training_summary"]["validation_metrics"] == run["validation_metrics"]
     artifact = client.get(f"/api/projects/{session_id}/artifacts")
     assert artifact.status_code == 200
     assert any(record["media_type"] == "application/vnd.ruflex.declarative-linear-model+json" for record in artifact.json())
@@ -1196,6 +1199,8 @@ def test_decision_tree_persists_declarative_structure_and_exact_path_evidence(tm
     assert trained.status_code == 201, trained.text
     run = trained.json()
     assert run["model_kind"] == "decision_tree"
+    assert run["trajectory"] == []
+    assert "train_loss" not in run["training_summary"]
     assert run["model_spec"]["node_count"] >= 1
     assert run["model_spec"]["leaf_count"] >= 1
     evidence = client.post("/api/projects/training/tree-path", json={"session_id": session_id, "run_id": run["run_id"], "sample": {"temperature": 30.0, "torque": 40.0}})
@@ -1233,6 +1238,8 @@ def test_random_forest_persists_all_trees_without_claiming_one_exact_ensemble_pa
     assert trained.status_code == 201, trained.text
     run = trained.json()
     assert run["model_kind"] == "random_forest"
+    assert run["trajectory"] == []
+    assert "train_loss" not in run["training_summary"]
     assert run["model_spec"]["tree_count"] == 25
     assert run["model_spec"]["node_count"] >= run["model_spec"]["tree_count"]
     assert run["split"]["test_status"] == "LOCKED_NOT_EVALUATED"
@@ -1249,6 +1256,8 @@ def test_gradient_boosting_persists_stagewise_trees_as_ensemble_artifact(tmp_pat
     assert trained.status_code == 201, trained.text
     run = trained.json()
     assert run["model_kind"] == "gradient_boosting"
+    assert run["trajectory"] == []
+    assert "train_loss" not in run["training_summary"]
     assert run["model_spec"]["tree_count"] == 50
     assert run["split"]["test_status"] == "LOCKED_NOT_EVALUATED"
     artifacts = client.get(f"/api/projects/{session_id}/artifacts")

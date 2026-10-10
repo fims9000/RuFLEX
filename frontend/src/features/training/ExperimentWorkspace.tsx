@@ -8,6 +8,15 @@ import { StabilityLab } from "./StabilityLab";
 import { formatEvidenceNumber } from "./formatEvidenceNumber";
 import { trainingRunMatchesRecovery } from "./trainingRecovery";
 
+const NATIVE_ONE_SHOT_ADAPTERS = new Set(["native_linear", "native_decision_tree", "native_random_forest", "native_gradient_boosting"]);
+
+function hasMeasuredTrajectory(run: TrainingRun): boolean {
+  if (!run.trajectory.length) return false;
+  // Earlier one-shot native runs persisted two repeated proxy points with an
+  // empty history. Keep the object intact, but do not display them as epochs.
+  return !NATIVE_ONE_SHOT_ADAPTERS.has(run.adapter_key ?? "") || !Array.isArray(run.training_summary.history) || run.training_summary.history.length > 0;
+}
+
 function trajectoryOption(run: TrainingRun): EChartsOption {
   const maximumLoss = run.trajectory.reduce((largest, point) => Math.max(largest, point.train_loss, point.validation_loss ?? 0), 0);
   return {
@@ -51,17 +60,18 @@ function studyDistributionOption(study: TrainingStudy): EChartsOption {
 }
 
 function studyTrajectoryOption(study: TrainingStudy): EChartsOption {
-  const maximumLoss = study.seed_runs.reduce((largest, run) => run.trajectory.reduce((current, point) => Math.max(current, point.validation_loss ?? 0), largest), 0);
+  const measuredRuns = study.seed_runs.filter(hasMeasuredTrajectory);
+  const maximumLoss = measuredRuns.reduce((largest, run) => run.trajectory.reduce((current, point) => Math.max(current, point.validation_loss ?? 0), largest), 0);
   const seedLabel = (run: TrainingRun) => study.randomness_protocol === "SPLIT_VARIABILITY"
     ? `split ${run.split_seed ?? run.split.split_seed} · train ${run.training_seed ?? run.seed}`
     : `train ${run.training_seed ?? run.seed}`;
   return {
     tooltip: { trigger: "axis" },
-    legend: { type: "scroll", data: study.seed_runs.map(seedLabel) },
+    legend: { type: "scroll", data: measuredRuns.map(seedLabel) },
     grid: { left: 54, right: 18, top: 44, bottom: 34 },
     xAxis: { type: "value", name: "epoch", minInterval: 1 },
     yAxis: { type: "value", name: "validation loss", min: 0, max: maximumLoss < 1e-12 ? 1e-12 : undefined },
-    series: study.seed_runs.map((run) => ({
+    series: measuredRuns.map((run) => ({
       name: seedLabel(run),
       type: "line",
       showSymbol: true,
@@ -933,18 +943,18 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
       </section>
 
       <section className="training-result-panel">
-        {!run || !option ? <EmptyState title="No training run yet">Start a run to produce an actual model artifact and training trajectory.</EmptyState> : <>
+        {!run || !option ? <EmptyState title="No training run yet">Start a run to produce a model artifact and validation evidence. Epoch-wise trajectories appear only when the estimator records them.</EmptyState> : <>
           {run.model_kind === "decision_tree" && runCapabilitiesStatus === "loading" && <p role="status">Checking exact tree-path support for this persisted run…</p>}
           {run.model_kind === "decision_tree" && runCapabilitiesStatus === "error" && <div className="error" role="alert"><strong>Could not verify saved run capabilities.</strong> {runCapabilitiesError} Exact tree-path actions remain unavailable until this run is checked. <Button view="outlined" size="s" onClick={() => setRunCapabilitiesReload((current) => current + 1)}>Retry run capability check</Button></div>}
-          <div className="run-summary-strip">
+          {hasMeasuredTrajectory(run) && <div className="run-summary-strip">
             <div><span>Epoch 0</span><strong>{run.trajectory[0]?.validation_loss === null || run.trajectory[0]?.validation_loss === undefined ? "—" : formatEvidenceNumber(run.trajectory[0].validation_loss, 5)}</strong></div>
-            <div><span>Best epoch</span><strong>{run.training_summary.best_epoch}</strong></div>
-            <div><span>Epochs ran</span><strong>{run.training_summary.epochs_ran}</strong></div>
-            <div><span>Best {run.training_summary.monitor_name}</span><strong>{formatEvidenceNumber(run.training_summary.best_monitor_value, 5)}</strong></div>
-          </div>
-          {run.trajectory.length > 0
+            <div><span>Best epoch</span><strong>{run.training_summary.best_epoch ?? "—"}</strong></div>
+            <div><span>Epochs ran</span><strong>{run.training_summary.epochs_ran ?? "—"}</strong></div>
+            <div><span>Best {run.training_summary.monitor_name ?? "validation metric"}</span><strong>{typeof run.training_summary.best_monitor_value === "number" ? formatEvidenceNumber(run.training_summary.best_monitor_value, 5) : "—"}</strong></div>
+          </div>}
+          {hasMeasuredTrajectory(run)
             ? <ChartSurface title="Training trajectory · epoch 0 included" option={option} theme={theme} />
-            : <p className="scientific-note">This estimator does not expose an epoch-wise training trajectory.</p>}
+            : <p className="scientific-note">This estimator does not provide measured epoch-wise history; validation metrics remain available.</p>}
           <div className="run-provenance">
             <StatusBadge tone="success">model artifact persisted</StatusBadge>
             <code>{run.model_artifact_sha256.slice(0, 24)}…</code>
@@ -980,9 +990,9 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
           </details>
           {study && <>
             <ChartSurface title={`Validation ${study.selection_metric} across seeds`} option={studyDistributionOption(study)} theme={theme} />
-            {study.seed_runs.some((item) => item.trajectory.length > 0)
+            {study.seed_runs.some(hasMeasuredTrajectory)
               ? <ChartSurface title="Validation-loss trajectories · epoch 0 included" option={studyTrajectoryOption(study)} theme={theme} />
-              : <p className="scientific-note">These estimators do not expose epoch-wise validation-loss trajectories.</p>}
+              : <p className="scientific-note">These estimators do not provide measured epoch-wise validation-loss history.</p>}
             {statistics && <div className="run-summary-strip"><div><span>Mean</span><strong>{formatEvidenceNumber(statistics.mean, 5)}</strong></div><div><span>Median</span><strong>{formatEvidenceNumber(statistics.median, 5)}</strong></div><div><span>Std</span><strong>{formatEvidenceNumber(statistics.std, 5)}</strong></div><div><span>Min / max</span><strong>{formatEvidenceNumber(statistics.min, 5)} / {formatEvidenceNumber(statistics.max, 5)}</strong></div></div>}
             <div className="info-message">{study.selection_reason}</div>
           </>}

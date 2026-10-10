@@ -159,8 +159,8 @@ Target branch: `feature/v1.3-data-governance-runtime`.
   this declared pairing. Historical mismatched runs are flagged, not rewritten;
   see `docs/qa/ALPHA_LINEAR_KIND_TASK_CONTRACT.md`.
 - A real regression train/reopen route no longer blanks Studio when an almost
-  exact fit produces near-zero loss: the trajectory chart uses a display-only
-  axis span floor, and the model selector restores the compatible saved kind.
+  exact fit produces near-zero validation loss: the metric display preserves
+  small nonzero values, and the model selector restores the saved kind.
 - The synthetic regression Studio route now exercises a complete saved
   validation Evaluation, explicit first final-test access, and close/reopen of
   both evidence objects. It does not access research benchmark projects.
@@ -168,6 +168,11 @@ Target branch: `feature/v1.3-data-governance-runtime`.
   after reopen. Study metric bars include a zero baseline, and near-zero but
   nonzero run, validation and final-test numbers use scientific notation
   instead of appearing as exact zero. Raw persisted values are unchanged.
+- Native one-shot estimators no longer persist or display fabricated epoch
+  trajectories or training losses derived from validation metrics. Historical
+  native runs retain their bytes but Studio hides their synthetic plot;
+  neuro-fuzzy training still shows its measured epoch history. See
+  `docs/qa/ALPHA_NATIVE_TRAINING_HISTORY_INTEGRITY.md`.
 - Project Integrity, Assurance and portable bundles reject missing or malformed
   manual-FIS comparison rows and mismatched semantic-revision provenance.
   A portable bundle excludes raw dataset rows, so it checks the frozen row's

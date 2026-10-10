@@ -1284,14 +1284,15 @@ export type TrainingRun = {
   leakage_audit_id?: string | null;
   training_summary: {
     source: string;
-    epochs_ran: number;
-    best_epoch: number;
-    monitor_name: string;
-    best_monitor_value: number;
-    train_loss: number;
-    train_metrics: Record<string, number>;
-    validation_loss: number | null;
+    epochs_ran?: number;
+    best_epoch?: number;
+    monitor_name?: string;
+    best_monitor_value?: number;
+    train_loss?: number;
+    train_metrics?: Record<string, number>;
+    validation_loss?: number | null;
     validation_metrics: Record<string, number> | null;
+    history?: TrainingEpochPoint[];
   };
   trajectory: TrainingEpochPoint[];
   validation_metrics: Record<string, number>;

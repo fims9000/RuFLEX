@@ -38,12 +38,15 @@ test("Studio freezes selected TRAIN-only scaling in a run and restores it after 
   expect(trained.request().postDataJSON().normalization).toBe("minmax");
   expect((await trained.json()).normalization.mode).toBe("minmax");
   await expect(page.locator(".run-provenance")).toContainText("model artifact persisted");
+  await expect(page.getByText("This estimator does not provide measured epoch-wise history; validation metrics remain available.")).toBeVisible();
+  await expect(page.getByText("Training trajectory · epoch 0 included", { exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Close", exact: true }).click();
   await page.getByLabel("Project path").fill(path);
   await page.getByRole("button", { name: "Open project", exact: true }).click();
   await page.getByRole("button", { name: "S", exact: true }).click();
   await expect(page.getByLabel("Training normalization")).toHaveValue("minmax");
   await expect(page.locator(".compact-definition").filter({ has: page.getByText("Saved run scaling", { exact: true }) })).toContainText("Saved run scalingminmax");
+  await expect(page.getByText("This estimator does not provide measured epoch-wise history; validation metrics remain available.")).toBeVisible();
 });
 
 test("Studio offers the declared linear regression kind for a regression dataset", async ({ page }) => {
