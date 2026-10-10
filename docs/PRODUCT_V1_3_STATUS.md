@@ -161,6 +161,9 @@ Target branch: `feature/v1.3-data-governance-runtime`.
 - A real regression train/reopen route no longer blanks Studio when an almost
   exact fit produces near-zero loss: the trajectory chart uses a display-only
   axis span floor, and the model selector restores the compatible saved kind.
+- The synthetic regression Studio route now exercises a complete saved
+  validation Evaluation, explicit first final-test access, and close/reopen of
+  both evidence objects. It does not access research benchmark projects.
 - Project Integrity, Assurance and portable bundles reject missing or malformed
   manual-FIS comparison rows and mismatched semantic-revision provenance.
   A portable bundle excludes raw dataset rows, so it checks the frozen row's

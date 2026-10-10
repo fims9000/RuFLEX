@@ -48,3 +48,6 @@ component suite, synthetic classification and regression training/reopen
 browser routes, TypeScript/
 Vite build, `compileall`, and `git diff --check` were run. No benchmark model
 was fitted and no frozen research artifact was changed.
+The regression browser route also saved and reopened its exact validation
+Evaluation, then applied an explicit synthetic final-test opening and reopened
+the resulting FinalTestEvaluation; it did not access benchmark test data.
