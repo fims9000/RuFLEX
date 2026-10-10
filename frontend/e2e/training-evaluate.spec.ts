@@ -473,6 +473,7 @@ test("PRODUCT-02b retries a persisted decision-tree capability check without cla
 });
 
 test("Studio traces a categorical tree sample through frozen ordinal codes and reopens it", async ({ page }) => {
+  test.setTimeout(60_000);
   const path = projectPath();
   const rows = ["temperature,material,target"];
   for (let index = 0; index < 48; index += 1) {
@@ -523,6 +524,24 @@ test("Studio traces a categorical tree sample through frozen ordinal codes and r
   const persisted = await page.request.get(`http://127.0.0.1:8010/api/projects/${reopened.session_id}/evidence/tree-path/latest`);
   expect(persisted.status()).toBe(200);
   expect((await persisted.json()).evidence_id).toBe(evidenceId);
+  await page.getByRole("button", { name: "E", exact: true }).click();
+  const evidenceCategory = page.getByRole("combobox", { name: "Evidence material" });
+  await expect(evidenceCategory).toBeEnabled();
+  await expect(evidenceCategory.locator("option")).toHaveText(["brass", "steel"]);
+  await evidenceCategory.selectOption("1");
+  await page.getByRole("textbox", { name: "temperature", exact: true }).fill("28");
+  const explanationJob = page.waitForResponse((response) => response.url().endsWith("/api/projects/evidence/explanation-jobs") && response.request().method() === "POST");
+  await page.getByRole("button", { name: "Generate explanation", exact: true }).click();
+  const jobResponse = await explanationJob;
+  expect(jobResponse.status()).toBe(202);
+  expect(jobResponse.request().postDataJSON().sample).toEqual({ temperature: 28, material: 1 });
+  await expect(page.getByTestId("explanation-job")).toContainText("SUCCEEDED");
+  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await page.getByLabel("Project path").fill(path);
+  await page.getByRole("button", { name: "Open project", exact: true }).click();
+  await page.getByRole("button", { name: "E", exact: true }).click();
+  await expect(page.getByText("POST-HOC ATTRIBUTION", { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("combobox", { name: "Evidence material" })).toBeEnabled();
 });
 
 test("PRODUCT-02 blocks validation policy changes when final-test access status is unavailable", async ({ page }) => {

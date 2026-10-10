@@ -25,6 +25,7 @@ import {
   ProjectSummary,
   TrainingRun,
   TreePathEvidence,
+  TransformPipelineContract,
   studioApi,
 } from "../../api";
 import { Button, EmptyState, StatusBadge, TextInput } from "../../components/StudioPrimitives";
@@ -32,6 +33,7 @@ import { StudioTheme } from "../../design/tokens";
 import { TraceWorkspace } from "../modelbuild/TraceWorkspace";
 import { BehaviorCounterexample } from "./BehaviorCounterexample";
 import { BehaviorExactTrace } from "./BehaviorExactTrace";
+import { frozenOrdinalCodes } from "../training/frozenOrdinalCodes";
 
 function statusTone(status: ExplanationCheck["status"] | ExplanationCheck["checks"][number]["status"]) {
   if (status === "FAILED" || status === "FAIL") return "danger" as const;
@@ -172,6 +174,10 @@ export function EvidenceWorkspace({
   }, [dataset, run?.run_id]);
   const [sample, setSample] = useState<Record<string, string>>(initialSample);
   const [comparisonSample, setComparisonSample] = useState<Record<string, string>>(initialSample);
+  const [samplePipeline, setSamplePipeline] = useState<TransformPipelineContract | null>(null);
+  const [samplePipelineStatus, setSamplePipelineStatus] = useState<"idle" | "loading" | "loaded" | "error">("idle");
+  const [samplePipelineError, setSamplePipelineError] = useState<string | null>(null);
+  const [samplePipelineReload, setSamplePipelineReload] = useState(0);
   const initialFisSample = useMemo(() => Object.fromEntries((fis?.inputs ?? []).map((input) => [input.name, String((input.minimum + input.maximum) / 2)])), [fis?.fis_id, fis?.semantic_hash]);
   const [fisSample, setFisSample] = useState<Record<string, string>>(initialFisSample);
   const [fisComparisonSample, setFisComparisonSample] = useState<Record<string, string>>(initialFisSample);
@@ -262,6 +268,41 @@ export function EvidenceWorkspace({
   const [runtimeCatalogHydrationReload, setRuntimeCatalogHydrationReload] = useState(0);
 
   useEffect(() => { setSample(initialSample); setComparisonSample(initialSample); }, [initialSample]);
+  const categoricalSampleColumns = (run?.feature_columns ?? []).filter((column) => dataset?.profile.columns.some((item) => item.name === column && item.semantic_type === "categorical"));
+  useEffect(() => {
+    let active = true;
+    setSamplePipeline(null);
+    if (!run || !categoricalSampleColumns.length) {
+      setSamplePipelineStatus("idle");
+      setSamplePipelineError(null);
+      return () => { active = false; };
+    }
+    if (!run.transform_pipeline_id || !run.preprocessing_artifact_sha256 || !dataset) {
+      setSamplePipelineStatus("error");
+      setSamplePipelineError("The selected run has no verifiable TRAIN-frozen categorical encoder.");
+      return () => { active = false; };
+    }
+    setSamplePipelineStatus("loading");
+    setSamplePipelineError(null);
+    studioApi.getTransformPipeline(project.session_id, run.transform_pipeline_id).then((pipeline) => {
+      if (!active) return;
+      if (pipeline.pipeline_id !== run.transform_pipeline_id || pipeline.preprocessing_artifact_sha256 !== run.preprocessing_artifact_sha256 || pipeline.dataset_fingerprint !== run.dataset_fingerprint || pipeline.dataset_fingerprint !== dataset.contract.dataset_fingerprint || pipeline.fit_role !== "TRAIN" || JSON.stringify(pipeline.feature_order) !== JSON.stringify(run.feature_columns) || categoricalSampleColumns.some((column) => !frozenOrdinalCodes(pipeline, run)[column])) {
+        throw new Error("Saved categorical encoder does not match this TrainingRun and dataset.");
+      }
+      setSamplePipeline(pipeline);
+      setSamplePipelineStatus("loaded");
+    }).catch((reason: unknown) => {
+      if (!active) return;
+      setSamplePipelineStatus("error");
+      setSamplePipelineError(reason instanceof Error ? reason.message : "Saved categorical encoder could not be reopened.");
+    });
+    return () => { active = false; };
+  }, [project.session_id, run?.run_id, run?.transform_pipeline_id, run?.preprocessing_artifact_sha256, dataset?.contract.dataset_fingerprint, samplePipelineReload]);
+  const sampleOrdinalCodes = frozenOrdinalCodes(samplePipeline, run);
+  const categoricalSampleReady = !categoricalSampleColumns.length || (samplePipelineStatus === "loaded" && categoricalSampleColumns.every((column) => Boolean(sampleOrdinalCodes[column])));
+  const sampleValue = (feature: string) => categoricalSampleColumns.includes(feature)
+    ? (Object.values(sampleOrdinalCodes[feature] ?? {}).includes(Number(sample[feature])) ? sample[feature] : String(Object.values(sampleOrdinalCodes[feature] ?? {})[0] ?? ""))
+    : sample[feature] ?? "";
   useEffect(() => { setFisSample(initialFisSample); setFisComparisonSample(initialFisSample); }, [initialFisSample]);
   useEffect(() => {
     if (behaviorSource === "run" && !run && fis) setBehaviorSource("fis");
@@ -423,9 +464,10 @@ export function EvidenceWorkspace({
 
   function numericSample() {
     if (!run) throw new Error("Select a trained model run first.");
+    if (!categoricalSampleReady) throw new Error("Load the exact TRAIN-frozen categorical encoder before generating evidence.");
     const result: Record<string, number> = {};
     for (const feature of run.feature_columns) {
-      const draft = sample[feature];
+      const draft = sampleValue(feature);
       const value = Number(draft);
       if (draft == null || draft.trim() === "" || !Number.isFinite(value)) throw new Error(`${feature} must be a finite number.`);
       result[feature] = value;
@@ -1094,16 +1136,16 @@ export function EvidenceWorkspace({
               {run.feature_columns.map((feature) => (
                 <label className="field-label" key={feature}>
                   {feature}
-                  <TextInput
-                    aria-label={`Evidence ${feature}`}
-                    value={sample[feature] ?? ""}
-                    onUpdate={(value) => setSample((current) => ({ ...current, [feature]: value }))}
-                  />
+                  {categoricalSampleColumns.includes(feature) ? <select aria-label={`Evidence ${feature}`} value={sampleValue(feature)} disabled={!categoricalSampleReady || busy} onChange={(event) => setSample((current) => ({ ...current, [feature]: event.target.value }))}>
+                    {Object.entries(sampleOrdinalCodes[feature] ?? {}).map(([label, code]) => <option key={label} value={code}>{label}</option>)}
+                  </select> : <TextInput aria-label={`Evidence ${feature}`} value={sample[feature] ?? ""} onUpdate={(value) => setSample((current) => ({ ...current, [feature]: value }))} />}
                 </label>
               ))}
             </div>
+            {samplePipelineStatus === "loading" && <p role="status">Loading this run’s TRAIN-frozen categorical choices…</p>}
+            {samplePipelineStatus === "error" && <div className="error" role="alert"><strong>Categorical evidence input is paused.</strong><p>{samplePipelineError}</p><Button view="outlined" onClick={() => setSamplePipelineReload((current) => current + 1)}>Retry categorical encoder</Button></div>}
             <div className="evidence-actions">
-              <Button view="action" disabled={busy || project.read_only || runtimeCatalogHydrationStatus !== "available" || !executionBackends.length || capabilityHydrationStatus !== "available" || selectableMethods.length === 0 || explanationJobHydrationStatus === "loading" || explanationJobHydrationStatus === "error" || !!explanationJobPollError || !!explanationJob && ["queued", "running"].includes(explanationJob.status)} onClick={generate} data-ruflex-action="explanation.generate">{busy ? "Generating…" : "Generate explanation"}</Button>
+              <Button view="action" disabled={busy || project.read_only || !categoricalSampleReady || runtimeCatalogHydrationStatus !== "available" || !executionBackends.length || capabilityHydrationStatus !== "available" || selectableMethods.length === 0 || explanationJobHydrationStatus === "loading" || explanationJobHydrationStatus === "error" || !!explanationJobPollError || !!explanationJob && ["queued", "running"].includes(explanationJob.status)} onClick={generate} data-ruflex-action="explanation.generate">{busy ? "Generating…" : "Generate explanation"}</Button>
               <span className="property-description">{run.model_kind} · run {run.run_id.slice(0, 8)}</span>
             </div>
             {capabilityNegotiation && <div className="trace-card" data-testid="run-capability-negotiation"><strong>Run capability contract</strong><div className="property-list">{capabilityNegotiation.decisions.map((decision) => <div key={decision.capability}><span>{decision.capability.replaceAll("_", " ")}</span><span><StatusBadge tone={decision.status === "AVAILABLE" ? "success" : "info"}>{decision.status}</StatusBadge> {decision.detail}</span></div>)}</div></div>}

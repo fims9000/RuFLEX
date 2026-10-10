@@ -6,6 +6,7 @@ import { Button, EmptyState, StatusBadge } from "../../components/StudioPrimitiv
 import { StudioTheme } from "../../design/tokens";
 import { StabilityLab } from "./StabilityLab";
 import { formatEvidenceNumber } from "./formatEvidenceNumber";
+import { frozenOrdinalCodes } from "./frozenOrdinalCodes";
 import { trainingRunMatchesRecovery } from "./trainingRecovery";
 
 const NATIVE_ONE_SHOT_ADAPTERS = new Set(["native_linear", "native_decision_tree", "native_random_forest", "native_gradient_boosting"]);
@@ -15,21 +16,6 @@ function hasMeasuredTrajectory(run: TrainingRun): boolean {
   // Earlier one-shot native runs persisted two repeated proxy points with an
   // empty history. Keep the object intact, but do not display them as epochs.
   return !NATIVE_ONE_SHOT_ADAPTERS.has(run.adapter_key ?? "") || !Array.isArray(run.training_summary.history) || run.training_summary.history.length > 0;
-}
-
-function frozenOrdinalCodes(pipeline: TransformPipelineContract | null, run: TrainingRun | null): Record<string, Record<string, number>> {
-  if (!pipeline || !run || pipeline.preprocessing_artifact_sha256 !== run.preprocessing_artifact_sha256) return {};
-  const step = pipeline.steps.find((item) => item.step_type === "OrdinalEncoder" && item.artifact_identity === run.preprocessing_artifact_sha256);
-  const raw = step?.parameters.categories;
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
-  const codes: Record<string, Record<string, number>> = {};
-  for (const [column, value] of Object.entries(raw)) {
-    if (!value || typeof value !== "object" || Array.isArray(value)) continue;
-    const entries = Object.entries(value);
-    if (!entries.length || entries.some(([, code]) => typeof code !== "number" || !Number.isFinite(code))) continue;
-    codes[column] = Object.fromEntries(entries) as Record<string, number>;
-  }
-  return codes;
 }
 
 function trajectoryOption(run: TrainingRun): EChartsOption {

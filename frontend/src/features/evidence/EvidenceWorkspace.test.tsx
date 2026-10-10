@@ -21,6 +21,7 @@ const { studioApi } = vi.hoisted(() => ({ studioApi: {
   getRuntimeValidators: vi.fn().mockResolvedValue([]),
   getRuntimeBackends: vi.fn().mockResolvedValue([{ identity: { key: "local_executor", provider: "ruflex.builtin" } }]),
   getTrainingRunCapabilities: vi.fn().mockResolvedValue({ decisions: [{ capability: "occlusion", status: "AVAILABLE", detail: "native method" }] }),
+  getTransformPipeline: vi.fn(),
   startAssuranceCaseJob: vi.fn(),
   startVerificationBundleJob: vi.fn(),
   cancelEvidenceJob: vi.fn(),
@@ -42,9 +43,9 @@ import { EvidenceWorkspace } from "./EvidenceWorkspace";
 const project = { session_id: "session", project_id: "project", name: "Test", description: null, root: "/tmp/test", schema_version: 1, read_only: false, modified_at: "2026-01-01T00:00:00Z" };
 const run = { run_id: "run-1", model_kind: "flat_neuro_fuzzy", task: "binary_classification", feature_columns: ["x"], validation_metrics: {}, prediction_preview: [], seed: 7 };
 
-function renderEvidence(assurance: unknown = null, selectivePolicy: unknown = null, trainingRun: unknown = run) {
+function renderEvidence(assurance: unknown = null, selectivePolicy: unknown = null, trainingRun: unknown = run, dataset: unknown = null) {
   return render(<EvidenceWorkspace
-    project={project as never} dataset={null} fis={null} run={trainingRun as never} evaluation={null} previousEvaluation={null} treeEvidence={null}
+    project={project as never} dataset={dataset as never} fis={null} run={trainingRun as never} evaluation={null} previousEvaluation={null} treeEvidence={null}
     explanation={null} explanationCheck={null} behaviorSpec={null} lineageBehaviorComparison={null} behaviorResult={null}
     reproducibility={null} exhaustive={null} assurance={assurance as never} verificationBundleRecord={null} selectivePolicy={selectivePolicy as never} generalization={null}
     theme={"light" as never} onExplanation={vi.fn()} onExplanationCheck={vi.fn()} onBehaviorResult={vi.fn()} onReproducibility={vi.fn()}
@@ -70,6 +71,7 @@ beforeEach(() => {
   studioApi.getRuntimeValidators.mockReset().mockResolvedValue([]);
   studioApi.getRuntimeBackends.mockReset().mockResolvedValue([{ identity: { key: "local_executor", provider: "ruflex.builtin" } }]);
   studioApi.getTrainingRunCapabilities.mockReset().mockResolvedValue({ decisions: [{ capability: "occlusion", status: "AVAILABLE", detail: "native method" }] });
+  studioApi.getTransformPipeline.mockReset();
   studioApi.startAssuranceCaseJob.mockReset();
   studioApi.startVerificationBundleJob.mockReset();
   studioApi.cancelEvidenceJob.mockReset();
@@ -78,6 +80,32 @@ beforeEach(() => {
 });
 
 describe("EvidenceWorkspace persisted explanation jobs", () => {
+  it("uses the exact TRAIN-frozen category choices for explanation input", async () => {
+    const categoricalRun = { ...run, feature_columns: ["job"], transform_pipeline_id: "pipeline-1", preprocessing_artifact_sha256: "a".repeat(64), dataset_fingerprint: "dataset-1" };
+    const categoricalDataset = { contract: { dataset_fingerprint: "dataset-1" }, profile: { columns: [{ name: "job", semantic_type: "categorical" }] }, preview: [{ job: "engineer" }] };
+    studioApi.getTransformPipeline.mockResolvedValue({ pipeline_id: "pipeline-1", preprocessing_artifact_sha256: "a".repeat(64), dataset_fingerprint: "dataset-1", fit_role: "TRAIN", feature_order: ["job"], steps: [{ step_type: "OrdinalEncoder", artifact_identity: "a".repeat(64), parameters: { categories: { job: { artist: 0, engineer: 1 } } } }] });
+    studioApi.startPosthocExplanationJob.mockRejectedValue(new Error("synthetic job stopped"));
+    renderEvidence(null, null, categoricalRun, categoricalDataset);
+
+    const chooser = await screen.findByRole("combobox", { name: "Evidence job" });
+    await waitFor(() => expect(chooser).toBeEnabled());
+    expect(chooser).toHaveTextContent("artist");
+    expect(chooser).toHaveTextContent("engineer");
+    fireEvent.change(chooser, { target: { value: "1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Generate explanation" }));
+    await waitFor(() => expect(studioApi.startPosthocExplanationJob).toHaveBeenCalledWith("session", "run-1", { job: 1 }, "occlusion", "local_executor"));
+  });
+
+  it("pauses categorical evidence when the saved encoder belongs to another run", async () => {
+    const categoricalRun = { ...run, feature_columns: ["job"], transform_pipeline_id: "pipeline-1", preprocessing_artifact_sha256: "a".repeat(64), dataset_fingerprint: "dataset-1" };
+    const categoricalDataset = { contract: { dataset_fingerprint: "dataset-1" }, profile: { columns: [{ name: "job", semantic_type: "categorical" }] }, preview: [{ job: "engineer" }] };
+    studioApi.getTransformPipeline.mockResolvedValue({ pipeline_id: "pipeline-1", preprocessing_artifact_sha256: "b".repeat(64), dataset_fingerprint: "dataset-1", fit_role: "TRAIN", feature_order: ["job"], steps: [] });
+    renderEvidence(null, null, categoricalRun, categoricalDataset);
+
+    expect(await screen.findByText("Categorical evidence input is paused.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Generate explanation" })).toBeDisabled();
+    expect(studioApi.startPosthocExplanationJob).not.toHaveBeenCalled();
+  });
   it("submits one exhaustive analysis for duplicate synchronous events", async () => {
     let rejectExhaustive!: (error: Error) => void;
     studioApi.runExhaustiveLab.mockImplementationOnce(() => new Promise((_resolve, reject) => { rejectExhaustive = reject; }));
