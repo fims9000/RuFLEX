@@ -732,10 +732,23 @@ describe("ExperimentWorkspace dynamic model controls", () => {
     expect(studioApi.getSplitContract).toHaveBeenCalledWith("session", split.split_id);
   });
 
+  it("does not present a transform bound to another preprocessing artifact as this run's evidence", async () => {
+    const run = {
+      run_id: "run-mismatch", model_kind: "decision_tree", trajectory: [], training_summary: {},
+      model_artifact_sha256: "c".repeat(64), preprocessing_artifact_sha256: "b".repeat(64), transform_pipeline_id: "pipeline-mismatch", leakage_audit_id: "audit-mismatch",
+      feature_columns: ["x"], split: { split_contract_id: null, train_count: 4, validation_count: 2, test_count: 2 }, seed: 7, model_spec: {},
+    };
+    studioApi.getTransformPipeline.mockResolvedValue({ pipeline_id: "pipeline-mismatch", dataset_fingerprint: "fingerprint", split_contract_id: null, feature_order: ["x"], fit_role: "TRAIN", preprocessing_artifact_sha256: "d".repeat(64), pipeline_identity: "pipeline-identity", steps: [], schema_version: 1, scientific_note: "TRAIN only" });
+    studioApi.getLeakageAudit.mockResolvedValue({ audit_id: "audit-mismatch", dataset_fingerprint: "fingerprint", split_contract_id: null, transform_pipeline_id: "pipeline-mismatch", status: "PASS", rigor_profile: "CONFIRMATORY", findings: [], schema_version: 1, scientific_note: "Declared checks only." });
+    render(<ExperimentWorkspace project={project} dataset={dataset as never} run={run as never} study={null} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);
+    fireEvent.click(screen.getByText("Data governance evidence"));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Persisted data evidence identity does not match the selected run.");
+  });
+
   it("keeps linked run provenance unverified after a transient read error and retries the exact evidence", async () => {
     const run = {
       run_id: "run-retry", model_kind: "logistic_regression", trajectory: [], training_summary: { best_epoch: 1, epochs_ran: 1, monitor_name: "loss", best_monitor_value: 0.1 },
-      model_artifact_sha256: "c".repeat(64), transform_pipeline_id: "pipeline-retry", leakage_audit_id: "audit-retry",
+      model_artifact_sha256: "c".repeat(64), preprocessing_artifact_sha256: "b".repeat(64), transform_pipeline_id: "pipeline-retry", leakage_audit_id: "audit-retry",
       feature_columns: ["x"], split: { split_contract_id: null, train_count: 4, validation_count: 2, test_count: 2 }, seed: 7, model_spec: {},
     };
     studioApi.getTransformPipeline

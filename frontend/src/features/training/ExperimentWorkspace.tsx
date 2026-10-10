@@ -17,6 +17,21 @@ function hasMeasuredTrajectory(run: TrainingRun): boolean {
   return !NATIVE_ONE_SHOT_ADAPTERS.has(run.adapter_key ?? "") || !Array.isArray(run.training_summary.history) || run.training_summary.history.length > 0;
 }
 
+function frozenOrdinalCodes(pipeline: TransformPipelineContract | null, run: TrainingRun | null): Record<string, Record<string, number>> {
+  if (!pipeline || !run || pipeline.preprocessing_artifact_sha256 !== run.preprocessing_artifact_sha256) return {};
+  const step = pipeline.steps.find((item) => item.step_type === "OrdinalEncoder" && item.artifact_identity === run.preprocessing_artifact_sha256);
+  const raw = step?.parameters.categories;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const codes: Record<string, Record<string, number>> = {};
+  for (const [column, value] of Object.entries(raw)) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) continue;
+    const entries = Object.entries(value);
+    if (!entries.length || entries.some(([, code]) => typeof code !== "number" || !Number.isFinite(code))) continue;
+    codes[column] = Object.fromEntries(entries) as Record<string, number>;
+  }
+  return codes;
+}
+
 function trajectoryOption(run: TrainingRun): EChartsOption {
   const maximumLoss = run.trajectory.reduce((largest, point) => Math.max(largest, point.train_loss, point.validation_loss ?? 0), 0);
   return {
@@ -396,7 +411,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
       run.split.split_contract_id ? studioApi.getSplitContract(project.session_id, run.split.split_contract_id) : Promise.resolve(null),
     ]).then(([pipeline, audit, frozenSplit]) => {
       if (!active) return;
-      if (pipeline.pipeline_id !== run.transform_pipeline_id || audit.audit_id !== run.leakage_audit_id || pipeline.dataset_fingerprint !== dataset?.contract.dataset_fingerprint || audit.dataset_fingerprint !== pipeline.dataset_fingerprint || pipeline.split_contract_id !== (frozenSplit?.split_id ?? null) || audit.split_contract_id !== (frozenSplit?.split_id ?? null) || audit.transform_pipeline_id !== pipeline.pipeline_id) throw new Error("Persisted data evidence identity does not match the selected run.");
+      if (pipeline.pipeline_id !== run.transform_pipeline_id || pipeline.preprocessing_artifact_sha256 !== run.preprocessing_artifact_sha256 || audit.audit_id !== run.leakage_audit_id || pipeline.dataset_fingerprint !== dataset?.contract.dataset_fingerprint || audit.dataset_fingerprint !== pipeline.dataset_fingerprint || pipeline.split_contract_id !== (frozenSplit?.split_id ?? null) || audit.split_contract_id !== (frozenSplit?.split_id ?? null) || audit.transform_pipeline_id !== pipeline.pipeline_id) throw new Error("Persisted data evidence identity does not match the selected run.");
       setTransformPipeline(pipeline);
       setLeakageAudit(audit);
       setRunSplitContract(frozenSplit);
@@ -487,12 +502,18 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
   const trainingParameterValues: Record<string, number | null> = { max_epochs: maxEpochs, learning_rate: learningRate, batch_size: batchSize, patience, max_rules: maxRules, n_estimators: nEstimators, max_depth: maxDepth };
   const parameterErrors = useMemo(() => validateTrainingParameters(selectedModel, trainingParameterValues), [selectedModel, maxEpochs, learningRate, batchSize, patience, maxRules, nEstimators, maxDepth]);
   const canExactTreePath = runCapabilities?.decisions.some((decision) => decision.capability === "exact_tree_path" && decision.status === "AVAILABLE") ?? false;
+  const treeOrdinalCodes = frozenOrdinalCodes(transformPipeline, run);
+  const categoricalTreeColumns = (run?.feature_columns ?? []).filter((column) => dataset?.profile.columns.some((item) => item.name === column && item.semantic_type === "categorical"));
+  const categoricalTreeReady = categoricalTreeColumns.every((column) => Boolean(treeOrdinalCodes[column]));
+  const treeInputValue = (column: string) => treeSample[column] ?? String(Object.values(treeOrdinalCodes[column] ?? {})[0] ?? 0);
   const invalidTreeFeature = run?.model_kind === "decision_tree"
-    ? run.feature_columns.find((column) => {
-      const input = treeSample[column] ?? "0";
-      return input.trim() === "" || !Number.isFinite(Number(input));
+    ? (run.feature_columns ?? []).find((column) => {
+      const input = treeInputValue(column);
+      return input.trim() === "" || !Number.isFinite(Number(input))
+        || (Boolean(treeOrdinalCodes[column]) && !Object.values(treeOrdinalCodes[column]).includes(Number(input)));
     })
     : undefined;
+  useEffect(() => { setTreeSample({}); }, [run?.run_id]);
   useEffect(() => {
     const defaults = selectedModel?.defaults;
     if (!defaults) return;
@@ -784,11 +805,11 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
   }
   async function traceTree() {
     if (!run || treePathRecovery) return;
-    if (invalidTreeFeature) {
-      setError(`Enter a finite value for tree feature ${invalidTreeFeature}.`);
+    if (!categoricalTreeReady || invalidTreeFeature) {
+      setError(!categoricalTreeReady ? "Resolve this run's frozen categorical encoding before tracing." : `Enter a finite value for tree feature ${invalidTreeFeature}.`);
       return;
     }
-    const sample = Object.fromEntries(run.feature_columns.map((column) => [column, Number(treeSample[column])])) as Record<string, number>;
+    const sample = Object.fromEntries(run.feature_columns.map((column) => [column, Number(treeInputValue(column))])) as Record<string, number>;
     if (Object.values(sample).some((value) => !Number.isFinite(value))) {
       setError("Enter a finite value for every tree feature.");
       return;
@@ -1013,10 +1034,13 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
             {treeEvidenceStatus === "none" && <p>No saved tree-path evidence exists yet for this project.</p>}
             {treeEvidenceStatus === "other_run" && <p>The latest saved tree path belongs to another run; it is not shown as evidence for this run.</p>}
             {treeEvidenceStatus === "error" && <div className="error" role="alert"><strong>Could not load saved tree-path evidence.</strong> {treeEvidenceError} <Button view="outlined" size="s" onClick={() => setTreeEvidenceReload((current) => current + 1)}>Retry tree-path check</Button></div>}
-            <div className="training-config-grid">{run.feature_columns.map((column) => <label className="field-label" key={column}>{column}<input aria-label={`Tree input ${column}`} aria-invalid={invalidTreeFeature === column} type="number" value={treeSample[column] ?? "0"} onChange={(event) => setTreeSample((current) => ({ ...current, [column]: event.target.value }))} /></label>)}</div>
+            <div className="training-config-grid">{run.feature_columns.map((column) => <label className="field-label" key={column}>{column}{treeOrdinalCodes[column]
+              ? <select aria-label={`Tree input ${column}`} aria-invalid={invalidTreeFeature === column} value={treeInputValue(column)} onChange={(event) => setTreeSample((current) => ({ ...current, [column]: event.target.value }))}>{Object.entries(treeOrdinalCodes[column]).map(([category, code]) => <option key={category} value={code}>{category} · frozen code {code}</option>)}</select>
+              : <input aria-label={`Tree input ${column}`} aria-invalid={invalidTreeFeature === column} type="number" value={treeInputValue(column)} onChange={(event) => setTreeSample((current) => ({ ...current, [column]: event.target.value }))} />}</label>)}</div>
+            {!categoricalTreeReady && <p role="alert">Resolve this run's frozen categorical encoding in Data governance evidence before tracing a categorical sample.</p>}
             {invalidTreeFeature && <p role="alert">Enter a finite value for tree feature {invalidTreeFeature}; a blank field is not zero.</p>}
             {treePathRecovery && <div className="error" role="alert" data-testid="tree-path-recovery"><strong>Tree-path save is uncertain; no duplicate was submitted.</strong><p>{treePathRecovery.error}</p><Button view="outlined" disabled={treePathRecovering} onClick={recoverTreePath}>Retry exact tree-path lookup</Button>{treePathRecovery.notFound && <Button view="outlined" disabled={treePathRecovering || running || project.read_only || run.run_id !== treePathRecovery.runId} onClick={explicitlyRepeatTreePath}>Explicitly repeat this exact trace</Button>}</div>}
-            <Button view="outlined" disabled={running || !!treePathRecovery || project.read_only || !!invalidTreeFeature} onClick={traceTree} data-ruflex-action="tree_path.trace">Trace exact tree path</Button>
+            <Button view="outlined" disabled={running || !!treePathRecovery || project.read_only || !categoricalTreeReady || !!invalidTreeFeature} onClick={traceTree} data-ruflex-action="tree_path.trace">Trace exact tree path</Button>
             {treeEvidence && <div className="info-message"><strong>{treeEvidence.label}</strong><br />{treeEvidence.steps.map((step) => `Node ${step.node_id}: ${step.feature_name} ≤ ${step.threshold.toFixed(4)} → ${step.decision.toUpperCase()}`).join(" · ")}<br />Leaf {treeEvidence.leaf_id} → prediction {treeEvidence.prediction.toFixed(5)}</div>}
           </section>}
           {run.model_kind === "random_forest" && <section className="tree-path-panel"><span className="eyebrow">ENSEMBLE STRUCTURAL EVIDENCE</span><h3>{String(run.model_spec.tree_count ?? "—")} persisted constituent trees</h3><p>The final forest prediction is an aggregation of all trees. RuFLEX deliberately does not present one tree path as an exact explanation of the ensemble.</p><dl className="compact-definition"><dt>Total nodes</dt><dd>{String(run.model_spec.node_count ?? "—")}</dd><dt>Maximum depth</dt><dd>{String(run.model_spec.max_depth ?? "—")}</dd><dt>Leaves</dt><dd>{String(run.model_spec.leaf_count ?? "—")}</dd><dt>Exact ensemble path</dt><dd>Not available</dd></dl></section>}

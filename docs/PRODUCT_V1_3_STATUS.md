@@ -178,8 +178,10 @@ Target branch: `feature/v1.3-data-governance-runtime`.
   rejects non-finite sample values before creating evidence and replays the
   frozen none/standard/min–max transform before traversal. Synthetic
   train/trace/reopen checks compare tree-path probabilities with the same
-  persisted model's independent prediction route. Manual raw categorical
-  values are not accepted by the numeric tree-path control; see
+  persisted model's independent prediction route. For categorical features,
+  Studio offers choices bound to the run's frozen ordinal codes and blocks
+  tracing until that transform can be reopened. API callers still provide
+  encoded numeric coordinates; see
   `docs/qa/ALPHA_EXACT_TREE_PATH_INPUT_INTEGRITY.md`.
 - Project Integrity, Assurance and portable bundles reject missing or malformed
   manual-FIS comparison rows and mismatched semantic-revision provenance.

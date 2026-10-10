@@ -1254,6 +1254,28 @@ def test_exact_tree_path_replays_frozen_normalization_and_reopens(tmp_path: Path
         assert reopened.model_dump() == trace.model_dump()
 
 
+def test_exact_tree_path_uses_frozen_ordinal_model_coordinates(tmp_path: Path) -> None:
+    client = TestClient(app)
+    root = tmp_path / "categorical-tree"
+    session_id = client.post("/api/projects", json={"path": str(root), "name": "Categorical tree"}).json()["session_id"]
+    frame = pd.DataFrame([
+        {"temperature": 10 + index, "material": "steel" if index % 2 else "brass", "target": int(index > 23 or index % 2 == 1)}
+        for index in range(48)
+    ])
+    assert client.post("/api/projects/dataset/confirm", json={"session_id": session_id, "csv_text": frame.to_csv(index=False), "target": "target", "task": "binary_classification", "id_columns": []}).status_code == 200
+    trained = client.post("/api/projects/training/run", json={"session_id": session_id, "model_kind": "decision_tree", "seed": 29, "normalization": "minmax", "max_epochs": 1, "learning_rate": .01, "batch_size": 16, "patience": 1, "validation_fraction": .2, "test_fraction": .2, "max_rules": 3})
+    assert trained.status_code == 201, trained.text
+    run_id = UUID(trained.json()["run_id"])
+    pipeline = load_transform_pipeline_contract(root, trained.json()["transform_pipeline_id"])
+    encoder = next(step for step in pipeline.steps if step.step_type == "OrdinalEncoder")
+    assert encoder.parameters["categories"]["material"] == {"brass": 0.0, "steel": 1.0}
+    sample = {"temperature": 28.0, "material": encoder.parameters["categories"]["material"]["steel"]}
+    trace = training_application.trace_decision_tree(root, run_id, sample)
+    assert trace.class_probabilities is not None
+    assert trace.class_probabilities["1"] == pytest.approx(predict_run_sample(root, run_id, sample))
+    assert training_application.load_tree_path(root, trace.evidence_id).input_sample == sample
+
+
 def test_random_forest_persists_all_trees_without_claiming_one_exact_ensemble_path(tmp_path: Path) -> None:
     client = TestClient(app)
     root = tmp_path / "forest"

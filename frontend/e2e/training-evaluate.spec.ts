@@ -472,6 +472,59 @@ test("PRODUCT-02b retries a persisted decision-tree capability check without cla
   await expect(page.locator(".workspace-header .eyebrow")).toHaveText("STUDIES");
 });
 
+test("Studio traces a categorical tree sample through frozen ordinal codes and reopens it", async ({ page }) => {
+  const path = projectPath();
+  const rows = ["temperature,material,target"];
+  for (let index = 0; index < 48; index += 1) {
+    const material = index % 2 ? "steel" : "brass";
+    rows.push(`${10 + index},${material},${index > 23 || material === "steel" ? 1 : 0}`);
+  }
+  await page.goto("/");
+  await page.getByLabel("Project path").fill(path);
+  await page.getByLabel("Project name").fill("Categorical tree path");
+  await page.getByRole("button", { name: "Create project", exact: true }).click();
+  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByLabel("CSV data").fill(rows.join("\n"));
+  await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
+  await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
+  await page.getByRole("button", { name: "S", exact: true }).click();
+  await page.getByLabel("Training model").selectOption("decision_tree");
+  await page.getByLabel("Training normalization").selectOption("minmax");
+  let transformReads = 0;
+  await page.route("**/api/projects/*/dataset/transforms/*", async (route) => {
+    transformReads += 1;
+    if (transformReads === 1) return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "frozen encoder temporarily unavailable" }) });
+    return route.continue();
+  });
+  await page.getByRole("button", { name: "Run real training", exact: true }).click();
+  await expect(page.locator(".run-provenance")).toBeVisible();
+  await expect(page.getByText(/Resolve this run's frozen categorical encoding/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Trace exact tree path", exact: true })).toBeDisabled();
+  await page.getByText("Data governance evidence", { exact: true }).click();
+  await page.getByRole("button", { name: "Retry data evidence", exact: true }).click();
+  const categoryInput = page.locator('select[aria-label="Tree input material"]');
+  await expect(categoryInput).toBeVisible();
+  await expect(categoryInput.locator("option")).toHaveText(["brass · frozen code 0", "steel · frozen code 1"]);
+  await categoryInput.selectOption("1");
+  await page.getByLabel("Tree input temperature").fill("28");
+  const traceResponse = page.waitForResponse((response) => response.url().endsWith("/api/projects/training/tree-path") && response.request().method() === "POST");
+  await page.getByRole("button", { name: "Trace exact tree path", exact: true }).click();
+  const trace = await traceResponse;
+  expect(trace.status()).toBe(201);
+  expect(trace.request().postDataJSON().sample).toMatchObject({ temperature: 28, material: 1 });
+  const evidenceId = (await trace.json()).evidence_id;
+  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await page.getByLabel("Project path").fill(path);
+  const reopenResponse = page.waitForResponse((response) => response.url().endsWith("/api/projects/open") && response.request().method() === "POST");
+  await page.getByRole("button", { name: "Open project", exact: true }).click();
+  const reopened = await (await reopenResponse).json();
+  await page.getByRole("button", { name: "S", exact: true }).click();
+  await expect(page.locator(".tree-path-panel .info-message strong")).toContainText("EXACT TREE EXECUTION PATH");
+  const persisted = await page.request.get(`http://127.0.0.1:8010/api/projects/${reopened.session_id}/evidence/tree-path/latest`);
+  expect(persisted.status()).toBe(200);
+  expect((await persisted.json()).evidence_id).toBe(evidenceId);
+});
+
 test("PRODUCT-02 blocks validation policy changes when final-test access status is unavailable", async ({ page }) => {
   test.setTimeout(45_000);
   let boundaryRequests = 0;
