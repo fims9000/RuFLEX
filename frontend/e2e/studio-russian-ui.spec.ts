@@ -13,6 +13,7 @@ test("основной маршрут Studio отображается по-ру�
   await expect(page.getByRole("heading", { name: "С чего начнём?" })).toBeVisible();
   await expect(page.getByRole("region", { name: "Начало работы" })).toBeVisible();
   await expect(page.getByTestId("project-integrity")).toBeVisible();
+  await expect(page.getByTestId("project-integrity").getByText("Пройдено")).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Разделы Studio" }).getByRole("button", { name: "Обучение" })).toBeVisible();
   await expect(page).toHaveScreenshot("studio-russian-920.png", { fullPage: true, animations: "disabled" });
   await page.getByRole("button", { name: "Открыть данные" }).click();
