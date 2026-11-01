@@ -1052,6 +1052,9 @@ details.run-provenance { display: block; }
 .object-tree-history summary { cursor: pointer; }
 .object-tree-history p { display: grid; gap: 3px; margin: 10px 0; }
 .object-tree-history small { color: var(--rf-text-muted); overflow-wrap: anywhere; }
+.data-next-step { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 16px; padding: 12px; border: 1px solid var(--rf-border); border-radius: 6px; }
+.data-next-step > div { flex: 1 1 240px; }
+.data-next-step p { margin: 5px 0 0; color: var(--rf-text-secondary); font-size: 12px; }
 .compact-definition {
   display: grid;
   grid-template-columns: 100px 1fr;

@@ -54,12 +54,13 @@ async function importUserCsv(page: Page, task: "regression" | "binary_classifica
   await page.getByLabel("Роль столбца sample_id").selectOption("id");
   await page.getByLabel("Роль столбца excluded_hint").selectOption("excluded");
   const imported = page.waitForResponse((item) => item.url().endsWith("/api/projects/dataset/import") && item.request().method() === "POST");
-  await page.locator('[data-ruflex-action="dataset.import.confirm"]').click();
+  await page.locator('[data-ruflex-action="dataset.continue"]').click();
   expect((await imported).status()).toBe(200);
   const contract = (await (await imported).json()).contract;
   expect(contract.feature_columns).toEqual(["temperature", "torque", "mode"]);
   expect(contract.id_columns).toEqual(["sample_id"]);
   expect(contract.excluded_columns).toEqual(["excluded_hint"]);
+  await expect(page.getByLabel("Модель для обучения")).toBeVisible();
   return contract;
 }
 

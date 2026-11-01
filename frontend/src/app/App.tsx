@@ -277,6 +277,7 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
   const backendHealthRequestRef = useRef(0);
   const csvInspectionRequestRef = useRef(0);
   const csvDraftRevisionRef = useRef(0);
+  const csvSavedRevisionRef = useRef(0);
   const datasetMutationRequestRef = useRef(0);
   const datasetMutationInFlightRef = useRef(false);
   const pendingDatasetWriteRef = useRef<PendingDatasetWrite | null>(null);
@@ -1365,6 +1366,8 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
     setInspectingDatasetFile(false);
     setImportingDatasetFile(false);
     setConfirmingCsvDataset(false);
+    csvDraftRevisionRef.current = 0;
+    csvSavedRevisionRef.current = 0;
     setFis(null);
     setFisEvaluation(null);
     setPreviousFisEvaluation(null);
@@ -1378,6 +1381,14 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
     setLineage(null);
     setStatus(ui("Project closed", "Проект закрыт"));
   }
+  // Preview is read-only; explicit continuation below is the persistence boundary.
+  useEffect(() => {
+    if (active !== "DATA" || !project || pendingDatasetFile || profile || (csvDraftRevisionRef.current === 0 && datasetState)
+      || !["none", "available"].includes(datasetStateStatus)) return;
+    const timer = window.setTimeout(() => { void inspectCsv(); }, 450);
+    return () => window.clearTimeout(timer);
+  }, [active, project?.session_id, csvText, pendingDatasetFile, profile, datasetStateStatus]);
+
   async function inspectCsv() {
     if (!project || (datasetStateStatus !== "none" && datasetStateStatus !== "available")) return;
     const requestId = ++csvInspectionRequestRef.current;
@@ -1389,6 +1400,7 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
       const availableColumns = new Set(inspected.columns.map((column) => column.name));
       const retainedRoles = (value: string) => value.split(",").map((column) => column.trim()).filter((column) => availableColumns.has(column));
       setProfile(inspected);
+      setError(null);
       setTarget((current) => availableColumns.has(current) ? current : "");
       setIdColumns((current) => retainedRoles(current).join(", ") || inspected.id_candidates.join(", "));
       setExcludedColumns((current) => retainedRoles(current).join(", "));
@@ -1440,6 +1452,7 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
   async function confirmCsv() {
     if (!project || datasetMutationInFlightRef.current || confirmingCsvDataset || importingDatasetFile || projectWriteInFlightRef.current || generalizationMutationInFlightRef.current || (datasetStateStatus !== "none" && datasetStateStatus !== "available")) return;
     datasetMutationInFlightRef.current = true;
+    csvInspectionRequestRef.current += 1;
     const requestId = ++datasetMutationRequestRef.current;
     const sessionId = project.session_id;
     const previousDatasetFingerprint = datasetState?.contract.dataset_fingerprint ?? null;
@@ -1486,8 +1499,10 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
       setDatasetState(persisted);
       setProfile(persisted.profile);
       setDatasetStateStatus("available");
+      csvSavedRevisionRef.current = csvDraftRevisionRef.current;
       await refreshArtifactInventory(sessionId);
       setStatus("Dataset bytes, profile, contract and audit saved");
+      return true;
     } catch (reason) {
       if (!isCurrent()) return;
       if (!confirmationResponseReceived && sourceArtifactSha256) {
@@ -1506,10 +1521,11 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
           setDatasetStateStatus("available");
           setDatasetStateError(null);
           if (sameContract) {
+            csvSavedRevisionRef.current = csvDraftRevisionRef.current;
             setError(null);
             setStatus("The CSV DatasetContract was saved; restored confirmation after the response was lost");
             void refreshArtifactInventory(sessionId);
-            return;
+            return true;
           }
           if (reason instanceof ProductApiError && reason.status === 422
             && persisted.contract.dataset_fingerprint === previousDatasetFingerprint) {
@@ -1592,6 +1608,7 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
   async function importDatasetFile() {
     if (datasetMutationInFlightRef.current || projectWriteInFlightRef.current || generalizationMutationInFlightRef.current || importingDatasetFile || confirmingCsvDataset || inspectingDatasetFile || !project || !pendingDatasetFile || !pendingDatasetProfile || !target.trim() || (datasetStateStatus !== "none" && datasetStateStatus !== "available")) return;
     datasetMutationInFlightRef.current = true;
+    csvInspectionRequestRef.current += 1;
     const requestId = ++datasetMutationRequestRef.current;
     const sessionId = project.session_id;
     const previousDatasetFingerprint = datasetState?.contract.dataset_fingerprint ?? null;
@@ -1646,10 +1663,12 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
       setProfile(persisted.profile);
       await refreshArtifactInventory(sessionId);
       setStatus(`${file.name} saved as a verified dataset artifact`);
+      csvSavedRevisionRef.current = csvDraftRevisionRef.current;
       setPendingDatasetFile(null);
       setPendingDatasetProfile(null);
       pendingDatasetWriteRef.current = null;
       setError(null);
+      return true;
     } catch (reason) {
       if (!isCurrent()) return;
       if (!importResponseReceived && sourceArtifactSha256) {
@@ -1676,8 +1695,9 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
             }
             setError(null);
             setStatus(`${file.name} is present in the project; restored its confirmation after the upload response was lost`);
+            csvSavedRevisionRef.current = csvDraftRevisionRef.current;
             void refreshArtifactInventory(sessionId);
-            return;
+            return true;
           }
           if (reason instanceof ProductApiError && reason.status === 422
             && persisted.contract.dataset_fingerprint === previousDatasetFingerprint) {
@@ -1713,6 +1733,31 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
       if (isCurrent()) setImportingDatasetFile(false);
     }
   }
+  async function continueFromData() {
+    if (!project || datasetMutationInFlightRef.current) return;
+    const sessionId = project.session_id;
+    const list = (value: string) => value.split(",").map((name) => name.trim()).filter(Boolean);
+    const current = datasetState?.contract;
+    const unchanged = current && !pendingDatasetFile
+      && csvSavedRevisionRef.current === csvDraftRevisionRef.current
+      && current.target === target && current.task === task
+      && JSON.stringify(current.id_columns) === JSON.stringify(list(idColumns))
+      && JSON.stringify(current.excluded_columns) === JSON.stringify(list(excludedColumns));
+    // A reopened/file dataset is not represented by the default CSV editor.
+    // Never replace that source with the editor example when only roles changed.
+    if (!unchanged && current && !pendingDatasetFile && csvSavedRevisionRef.current === csvDraftRevisionRef.current) {
+      const bytes = new TextEncoder().encode(csvText);
+      if (await sha256Hex(bytes.buffer) !== current.source_artifact_sha256) {
+        setError(ui("To change this saved file's roles, select the original file again or paste the replacement CSV. The saved data were not changed.", "Чтобы изменить роли сохранённого файла, выберите исходный файл повторно или вставьте новый CSV. Сохранённые данные не изменены."));
+        return;
+      }
+    }
+    if (projectSessionRef.current !== sessionId) return;
+    if (unchanged || await (pendingDatasetFile ? importDatasetFile() : confirmCsv())) {
+      if (projectSessionRef.current === sessionId) setActive("STUDIES");
+    }
+  }
+
   async function createGeneralization() {
     if (!project || projectWriteInFlightRef.current || generalizationMutationInFlightRef.current || datasetMutationInFlightRef.current) return;
     generalizationMutationInFlightRef.current = true;
@@ -2051,6 +2096,12 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
           </section>}
           <div className="data-layout">
             <div>
+              <div className="data-next-step" data-testid="data-next-step">
+                <div><strong>{ui("Data → Model → Results", "Данные → Модель → Результат")}</strong><p>{ui("Choose the target and task. Continue saves any data changes and opens model choice; training starts separately.", "Выберите цель и задачу. Далее изменения данных сохранятся и откроется выбор модели. Обучение запускается отдельно.")}</p></div>
+                <Button view="action" data-ruflex-action="dataset.continue" disabled={!datasetStateResolved || project.read_only || importingDatasetFile || confirmingCsvDataset || inspectingDatasetFile || !target.trim() || !(pendingDatasetFile ? pendingDatasetProfile : profile)} onClick={continueFromData}>
+                  {importingDatasetFile || confirmingCsvDataset ? ui("Preparing data…", "Подготовка данных…") : ui("Next: choose a model", "Далее: выбрать модель")}
+                </Button>
+              </div>
               {!dataset && datasetStateStatus === "none" && !pendingDatasetFile && <div className="info-message" role="status">{ui("This CSV is an editable draft only; inspect it and confirm the dataset contract to save it.", "Это черновик. Проверьте данные и сохраните набор.")}</div>}
               {(datasetStateStatus === "none" || datasetStateStatus === "available" && (datasetState?.profile.row_count ?? 0) <= 3) && !project.read_only && <div className="info-message" role="group" aria-label={ui("Synthetic practice dataset", "Учебный набор данных")}>
                 <p>{ui("The three-row editor example is for inspecting roles, not model training. For a first training run, load 80 deterministic synthetic practice rows or import your own dataset. Practice data is not research evidence.", "Для тренировки можно загрузить учебный набор из 80 строк или свои данные. Учебный набор не является исследовательским доказательством.")}</p>
