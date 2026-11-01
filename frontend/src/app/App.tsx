@@ -53,6 +53,7 @@ import {
   studioApi,
 } from "../api";
 import { StudioTheme } from "../design/tokens";
+import { ui } from "../design/language";
 import { BuildWorkspace } from "../features/modelbuild/BuildWorkspace";
 import { EvidenceWorkspace } from "../features/evidence/EvidenceWorkspace";
 import { ExperimentWorkspace } from "../features/training/ExperimentWorkspace";
@@ -60,6 +61,7 @@ import { EvaluationWorkspace } from "../features/training/EvaluationWorkspace";
 import { ProjectExplorer } from "../explorer/ProjectExplorer";
 
 type Panels = "explorer" | "inspector" | "bottom";
+const WORKBENCH_TITLES_RU: Record<string, string> = { PROJECT: "ПРОЕКТ", DATA: "ДАННЫЕ", MODELS: "МОДЕЛИ", STUDIES: "ОБУЧЕНИЕ", ANALYSES: "АНАЛИЗ", EVIDENCE: "ДОКАЗАТЕЛЬСТВА" };
 const MAX_DATASET_UPLOAD_BYTES = 5_000_000;
 const SYNTHETIC_PRACTICE_CSV = [
   "entity_id,temperature,torque,target",
@@ -116,7 +118,7 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [readOnly, setReadOnly] = useState(false);
-  const [status, setStatus] = useState("Connecting to backend…");
+  const [status, setStatus] = useState(ui("Connecting to backend…", "Подключение к серверу…"));
   const [backendStatus, setBackendStatus] = useState<"checking" | "available" | "unavailable">("checking");
   const [backendHealthError, setBackendHealthError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -311,18 +313,18 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
     const requestId = ++backendHealthRequestRef.current;
     setBackendStatus("checking");
     setBackendHealthError(null);
-    setStatus("Connecting to backend…");
+    setStatus(ui("Connecting to backend…", "Подключение к серверу…"));
     try {
       await studioApi.health();
       if (requestId !== backendHealthRequestRef.current) return;
       setBackendStatus("available");
-      setStatus("Backend connected");
+      setStatus(ui("Backend connected", "Сервер подключён"));
     } catch (reason) {
       if (requestId !== backendHealthRequestRef.current) return;
       const message = reason instanceof Error ? reason.message : "Backend health check failed.";
       setBackendStatus("unavailable");
       setBackendHealthError(message);
-      setStatus("Backend unavailable");
+      setStatus(ui("Backend unavailable", "Сервер недоступен"));
     }
   }
   async function openRecentProject(recent: RecentProject) {
@@ -341,11 +343,11 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
       setProject(result);
       setDescription(result.description ?? "");
       rememberRecentProject(result);
-      setStatus(`Opened ${result.name}`);
+      setStatus(ui(`Opened ${result.name}`, `Открыт проект «${result.name}»`));
     } catch (reason) {
       if (requestId !== projectLifecycleRequestRef.current) return;
       if (reason instanceof ProductApiError) {
-        setRecentProjectError(`Could not reopen ${recent.path}: ${reason.message} If this project moved or was deleted, forget this entry or choose the folder again.`);
+        setRecentProjectError(ui(`Could not reopen ${recent.path}: ${reason.message} If this project moved or was deleted, forget this entry or choose the folder again.`, `Не удалось открыть ${recent.path}: ${reason.message}`));
         return;
       }
       setError(reason instanceof Error ? reason.message : "Could not reopen this recent project.");
@@ -1211,11 +1213,11 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
     if (backendStatus !== "available" || projectLifecycleInFlightRef.current) return;
     setProjectFormError(null);
     if (!path.trim()) {
-      setProjectFormError("Enter a project folder path before creating or opening a project.");
+      setProjectFormError(ui("Enter a project folder path before creating or opening a project.", "Укажите папку проекта."));
       return;
     }
     if (operation === "create" && !name.trim()) {
-      setProjectFormError("Enter a project name before creating a project.");
+      setProjectFormError(ui("Enter a project name before creating a project.", "Укажите название проекта."));
       return;
     }
     projectLifecycleInFlightRef.current = true;
@@ -1234,14 +1236,12 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
       setProject(result);
       setDescription(result.description ?? "");
       rememberRecentProject(result);
-      setStatus(
-        `${operation === "create" ? "Created" : "Opened"} ${result.name}`,
-      );
+      setStatus(ui(`${operation === "create" ? "Created" : "Opened"} ${result.name}`, `${operation === "create" ? "Создан" : "Открыт"} проект «${result.name}»`));
     } catch (reason) {
       if (requestId !== projectLifecycleRequestRef.current) return;
       const message = reason instanceof Error ? reason.message : "Unknown request failure";
       setProjectFormError(operation === "create" && message.includes("Refusing to create a project over an existing path:")
-        ? `A project already exists at this path. Choose Open project to reopen it, or enter a different path.`
+        ? ui("A project already exists at this path. Choose Open project to reopen it, or enter a different path.", "Проект в этой папке уже есть. Откройте его или выберите другую папку.")
         : message);
     } finally {
       projectLifecycleInFlightRef.current = false;
@@ -1258,7 +1258,7 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
       const result = await studioApi.saveProject(sessionId);
       if (projectSessionRef.current !== sessionId) return;
       setProject(result);
-      setStatus(`Saved ${result.name}`);
+      setStatus(ui(`Saved ${result.name}`, `Сохранён проект «${result.name}»`));
     } catch (reason) {
       if (projectSessionRef.current !== sessionId) return;
       setError(
@@ -1281,7 +1281,7 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
       );
       if (projectSessionRef.current !== sessionId) return;
       setProject(result);
-      setStatus(`Updated ${result.name}`);
+      setStatus(ui(`Updated ${result.name}`, `Обновлён проект «${result.name}»`));
     } catch (reason) {
       if (projectSessionRef.current !== sessionId) return;
       setError(
@@ -1329,7 +1329,7 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
     setDecisionThreshold(null);
     setGeneralization(null);
     setLineage(null);
-    setStatus("Project closed");
+    setStatus(ui("Project closed", "Проект закрыт"));
   }
   async function inspectCsv() {
     if (!project || (datasetStateStatus !== "none" && datasetStateStatus !== "available")) return;
@@ -1345,7 +1345,7 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
       setTarget((current) => availableColumns.has(current) ? current : "");
       setIdColumns((current) => retainedRoles(current).join(", ") || inspected.id_candidates.join(", "));
       setExcludedColumns((current) => retainedRoles(current).join(", "));
-      setStatus("Dataset schema inspected");
+      setStatus(ui("Dataset schema inspected", "Структура данных проверена"));
     } catch (reason) {
       if (!isCurrent()) return;
       setError(
@@ -1882,18 +1882,18 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
     >
       <div className="workspace-header">
         <div>
-          <span className="eyebrow">{active}</span>
-          <h1>{project ? project.name : "Create or open a RuFLEX project"}</h1>
-          <p>Build models, inspect results and keep the evidence together in one project.</p>
+          <span className="eyebrow">{ui(active, WORKBENCH_TITLES_RU[active] ?? active)}</span>
+          <h1>{project ? project.name : ui("Create or open a RuFLEX project", "Создайте или откройте проект")}</h1>
+          <p>{ui("Build models, inspect results and keep the evidence together in one project.", "Данные, модели и результаты — в одном проекте.")}</p>
           {project && datasetStateStatus === "available" && datasetState?.contract.source_artifact_sha256 === SYNTHETIC_PRACTICE_SHA256 && (
-            <p className="practice-context" data-testid="synthetic-practice-context">Synthetic practice data · results are not benchmark or research evidence.</p>
+            <p className="practice-context" data-testid="synthetic-practice-context">{ui("Synthetic practice data · results are not benchmark or research evidence.", "Учебные данные · результаты не являются исследовательским доказательством.")}</p>
           )}
         </div>
         {project && (
           <StatusBadge tone={project.read_only ? "warning" : "success"}>
             {project.read_only
-              ? "Read-only session"
-              : "Project open"}
+              ? ui("Read-only session", "Только чтение")
+              : ui("Project open", "Проект открыт")}
           </StatusBadge>
         )}
       </div>
@@ -1901,18 +1901,18 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
         <section className="project-start">
           <form onSubmit={(event) => submit(event, "create")}>
             <label className="field-label">
-              Project path
+              {ui("Project path", "Папка проекта")}
               <TextInput
-                aria-label="Project path"
+                aria-label={ui("Project path", "Папка проекта")}
                 value={path}
                 onUpdate={(value) => { setPath(value); setProjectFormError(null); }}
                 placeholder="/path/to/Pump-01"
               />
             </label>
             <label className="field-label">
-              Project name
+              {ui("Project name", "Название проекта")}
               <TextInput
-                aria-label="Project name"
+                aria-label={ui("Project name", "Название проекта")}
                 value={name}
                 onUpdate={(value) => { setName(value); setProjectFormError(null); }}
                 placeholder="Pump-01"
@@ -1920,16 +1920,16 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
             </label>
             <label className="check-label">
               <input
-                aria-label="Read-only"
+                aria-label={ui("Read-only", "Только чтение")}
                 type="checkbox"
                 checked={readOnly}
                 onChange={(event) => setReadOnly(event.target.checked)}
               />{" "}
-              Open read-only
+              {ui("Open read-only", "Открыть только для чтения")}
             </label>
             <div className="form-actions">
               <Button view="action" type="submit" data-ruflex-action="project.create" disabled={backendStatus !== "available" || projectLifecycleOperation !== null}>
-                {projectLifecycleOperation === "create" ? "Creating project…" : "Create project"}
+                {projectLifecycleOperation === "create" ? ui("Creating project…", "Создание…") : ui("Create project", "Создать проект")}
               </Button>
               <Button
                 view="outlined"
@@ -1940,28 +1940,28 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
                   submit(event as unknown as FormEvent, "open")
                 }
               >
-                {projectLifecycleOperation === "open" ? "Opening project…" : "Open project"}
+                {projectLifecycleOperation === "open" ? ui("Opening project…", "Открытие…") : ui("Open project", "Открыть проект")}
               </Button>
             </div>
           </form>
           {projectFormError && <div className="error" role="alert" data-testid="project-form-error">{projectFormError}</div>}
-          {recentProjects.length > 0 && <section className="recent-projects" aria-label="Recent projects">
-            <div className="recent-projects-heading"><strong>Recent projects</strong><Button view="outlined" size="s" type="button" onClick={forgetRecentProjects}>Forget history</Button></div>
+          {recentProjects.length > 0 && <section className="recent-projects" aria-label={ui("Recent projects", "Недавние проекты")}>
+            <div className="recent-projects-heading"><strong>{ui("Recent projects", "Недавние проекты")}</strong><Button view="outlined" size="s" type="button" onClick={forgetRecentProjects}>{ui("Forget history", "Очистить историю")}</Button></div>
             <div className="recent-project-list">{recentProjects.map((recent) => <div key={recent.path} className="recent-project-row">
               <button type="button" className="recent-project-item" onClick={() => void openRecentProject(recent)} disabled={backendStatus !== "available" || projectLifecycleOperation !== null}>
                 <span>{recent.name}</span><small>{recent.path}</small>
               </button>
-              <Button view="outlined" size="s" type="button" aria-label={`Forget ${recent.name}`} onClick={() => forgetRecentProject(recent.path)}>Forget</Button>
+              <Button view="outlined" size="s" type="button" aria-label={ui(`Forget ${recent.name}`, `Убрать ${recent.name} из истории`)} onClick={() => forgetRecentProject(recent.path)}>{ui("Forget", "Убрать")}</Button>
             </div>)}</div>
             {recentProjectError && <p className="error" role="alert">{recentProjectError}</p>}
-            <p className="property-description">Stored only in this browser on this device. Opening uses the current read-only setting.</p>
+            <p className="property-description">{ui("Stored only in this browser on this device. Opening uses the current read-only setting.", "История хранится только в этом браузере.")}</p>
           </section>}
           {backendStatus === "unavailable" && <div className="error" role="alert" data-testid="backend-unavailable">
-            <strong>The RuFLEX backend is unavailable.</strong>
-            <p>{backendHealthError ?? "Projects cannot be opened until the backend responds."}</p>
-            <Button view="outlined" type="button" onClick={() => void checkBackendHealth()}>Retry backend connection</Button>
+            <strong>{ui("The RuFLEX backend is unavailable.", "Сервер RuFLEX недоступен.")}</strong>
+            <p>{backendHealthError ?? ui("Projects cannot be opened until the backend responds.", "Пока сервер не ответит, проект открыть нельзя.")}</p>
+            <Button view="outlined" type="button" onClick={() => void checkBackendHealth()}>{ui("Retry backend connection", "Повторить подключение")}</Button>
           </div>}
-          {backendStatus === "checking" && <p role="status">Checking connection to the RuFLEX backend…</p>}
+          {backendStatus === "checking" && <p role="status">{ui("Checking connection to the RuFLEX backend…", "Проверка подключения…")}</p>}
           {error && (
             <div className="error" role="alert">
               {error}
@@ -1997,9 +1997,9 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
           </section>}
           <div className="data-layout">
             <div>
-              {!dataset && datasetStateStatus === "none" && !pendingDatasetFile && <div className="info-message" role="status">This CSV is an editable draft only; inspect it and confirm the dataset contract to save it.</div>}
-              {datasetStateStatus === "none" && !project.read_only && <div className="info-message" role="group" aria-label="Synthetic practice dataset">
-                <p>The three-row editor example is for inspecting roles, not model training. For a first training run, load 80 deterministic synthetic practice rows or import your own dataset. Practice data is not research evidence.</p>
+              {!dataset && datasetStateStatus === "none" && !pendingDatasetFile && <div className="info-message" role="status">{ui("This CSV is an editable draft only; inspect it and confirm the dataset contract to save it.", "Это черновик. Проверьте данные и сохраните набор.")}</div>}
+              {datasetStateStatus === "none" && !project.read_only && <div className="info-message" role="group" aria-label={ui("Synthetic practice dataset", "Учебный набор данных")}>
+                <p>{ui("The three-row editor example is for inspecting roles, not model training. For a first training run, load 80 deterministic synthetic practice rows or import your own dataset. Practice data is not research evidence.", "Для тренировки можно загрузить учебный набор из 80 строк или свои данные. Учебный набор не является исследовательским доказательством.")}</p>
                 <Button view="outlined" disabled={importingDatasetFile || confirmingCsvDataset} onClick={() => {
                   updateCsvText(SYNTHETIC_PRACTICE_CSV);
                   setTarget("target");
@@ -2007,13 +2007,13 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
                   setIdColumns("");
                   setExcludedColumns("");
                   setStatus("Synthetic practice draft loaded; inspect and confirm it before training");
-                }}>Load synthetic practice CSV (80 rows)</Button>
-                <p className="property-description">This replaces only the unsaved CSV editor draft. Confirming it creates a normal persisted DatasetContract; it never starts training or opens the final test.</p>
+                }}>{ui("Load synthetic practice CSV (80 rows)", "Загрузить учебные данные (80 строк)")}</Button>
+                <p className="property-description">{ui("This replaces only the unsaved CSV editor draft. Confirming it creates a normal persisted DatasetContract; it never starts training or opens the final test.", "Заменится только черновик CSV. Обучение и финальный тест не запустятся.")}</p>
               </div>}
               <label className="field-label">
-                CSV data
+                {ui("CSV data", "Данные CSV")}
                 <textarea
-                  aria-label="CSV data"
+                  aria-label={ui("CSV data", "Данные CSV")}
                   value={csvText}
                   disabled={!datasetStateResolved || importingDatasetFile || confirmingCsvDataset}
                   onChange={(event) => updateCsvText(event.target.value)}
@@ -2022,43 +2022,43 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
               </label>
               <div className="contract-grid">
                 <label className="field-label">
-                  Target
+                  {ui("Target", "Целевой столбец")}
                   {pendingDatasetProfile ? (
-                    <select aria-label="Target" disabled={!datasetStateResolved || importingDatasetFile || confirmingCsvDataset} value={target} onChange={(event) => event.target.value ? assignColumnRole(event.target.value, "target") : setTarget("")}>
-                      <option value="">Select target column</option>
+                    <select aria-label={ui("Target", "Целевой столбец")} disabled={!datasetStateResolved || importingDatasetFile || confirmingCsvDataset} value={target} onChange={(event) => event.target.value ? assignColumnRole(event.target.value, "target") : setTarget("")}>
+                      <option value="">{ui("Select target column", "Выберите столбец")}</option>
                       {pendingDatasetProfile.columns.map((column) => <option key={column.name} value={column.name}>{column.name}</option>)}
                     </select>
                   ) : (
-                    <TextInput aria-label="Target" value={target} onUpdate={setTarget} disabled={!datasetStateResolved || importingDatasetFile || confirmingCsvDataset} />
+                    <TextInput aria-label={ui("Target", "Целевой столбец")} value={target} onUpdate={setTarget} disabled={!datasetStateResolved || importingDatasetFile || confirmingCsvDataset} />
                   )}
                 </label>
                 <label className="field-label">
-                  Task
+                  {ui("Task", "Задача")}
                   <select
-                    aria-label="Task"
+                    aria-label={ui("Task", "Задача")}
                     disabled={!datasetStateResolved || importingDatasetFile || confirmingCsvDataset}
                     value={task}
                     onChange={(event) => setTask(event.target.value)}
                   >
                     <option value="binary_classification">
-                      Binary classification
+                      {ui("Binary classification", "Бинарная классификация")}
                     </option>
-                    <option value="regression">Regression</option>
+                    <option value="regression">{ui("Regression", "Регрессия")}</option>
                   </select>
                 </label>
                 <label className="field-label">
-                  ID columns
-                  <TextInput aria-label="ID columns" value={idColumns} onUpdate={setIdColumns} placeholder={profile?.id_candidates.join(", ") || "comma-separated, optional"} disabled={!datasetStateResolved || importingDatasetFile || confirmingCsvDataset} />
+                  {ui("ID columns", "Столбцы ID")}
+                  <TextInput aria-label={ui("ID columns", "Столбцы ID")} value={idColumns} onUpdate={setIdColumns} placeholder={profile?.id_candidates.join(", ") || ui("comma-separated, optional", "через запятую, необязательно")} disabled={!datasetStateResolved || importingDatasetFile || confirmingCsvDataset} />
                 </label>
                 <label className="field-label">
-                  Exclude from model
-                  <TextInput aria-label="Excluded feature columns" value={excludedColumns} onUpdate={setExcludedColumns} placeholder="column names, comma-separated" disabled={!datasetStateResolved || importingDatasetFile || confirmingCsvDataset} />
+                  {ui("Exclude from model", "Не использовать в модели")}
+                  <TextInput aria-label={ui("Excluded feature columns", "Исключённые столбцы")} value={excludedColumns} onUpdate={setExcludedColumns} placeholder={ui("column names, comma-separated", "названия через запятую")} disabled={!datasetStateResolved || importingDatasetFile || confirmingCsvDataset} />
                 </label>
               </div>
-              <p className="property-description">Excluded columns remain in the source dataset but are not passed to model fitting. Confirm the exact names before saving the contract.</p>
+              <p className="property-description">{ui("Excluded columns remain in the source dataset but are not passed to model fitting. Confirm the exact names before saving the contract.", "Исключённые столбцы сохранятся в исходных данных, но не попадут в модель.")}</p>
               <div className="form-actions">
                 <Button view="outlined" disabled={!datasetStateResolved || importingDatasetFile || confirmingCsvDataset} onClick={inspectCsv} data-ruflex-action="dataset.inspect">
-                  Inspect dataset
+                  {ui("Inspect dataset", "Проверить данные")}
                 </Button>
                 <Button
                   view="action"
@@ -2066,11 +2066,11 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
                   onClick={confirmCsv}
                   data-ruflex-action="dataset.confirm"
                 >
-                  {confirmingCsvDataset ? "Saving dataset…" : "Confirm dataset contract"}
+                  {confirmingCsvDataset ? ui("Saving dataset…", "Сохранение…") : ui("Confirm dataset contract", "Сохранить набор данных")}
                 </Button>
                 <input
                   ref={datasetFileInputRef}
-                  aria-label="Dataset CSV or XLSX file"
+                  aria-label={ui("Dataset CSV or XLSX file", "Файл CSV или XLSX")}
                   type="file"
                   accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                   hidden
@@ -2082,40 +2082,39 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
                   onClick={() => datasetFileInputRef.current?.click()}
                   data-ruflex-action="dataset.import"
                 >
-                  {inspectingDatasetFile ? "Inspecting file…" : importingDatasetFile ? "Importing…" : "Import CSV / XLSX"}
+                  {inspectingDatasetFile ? ui("Inspecting file…", "Проверка файла…") : importingDatasetFile ? ui("Importing…", "Импорт…") : ui("Import CSV / XLSX", "Выбрать CSV / XLSX")}
                 </Button>
                 {pendingDatasetFile && (
                   <>
-                    <span className="property-description" aria-live="polite">{inspectingDatasetFile ? `Inspecting ${pendingDatasetFile.name}…` : importingDatasetFile ? `Importing ${pendingDatasetFile.name}…` : `Selected: ${pendingDatasetFile.name} · target: ${target || "select from inspected columns"}`}</span>
+                    <span className="property-description" aria-live="polite">{inspectingDatasetFile ? ui(`Inspecting ${pendingDatasetFile.name}…`, `Проверка ${pendingDatasetFile.name}…`) : importingDatasetFile ? ui(`Importing ${pendingDatasetFile.name}…`, `Импорт ${pendingDatasetFile.name}…`) : ui(`Selected: ${pendingDatasetFile.name} · target: ${target || "select from inspected columns"}`, `Выбран ${pendingDatasetFile.name} · цель: ${target || "выберите столбец"}`)}</span>
                     <Button view="action" disabled={!pendingDatasetProfile || !target.trim() || project.read_only || inspectingDatasetFile || importingDatasetFile || confirmingCsvDataset} onClick={importDatasetFile} data-ruflex-action="dataset.import.confirm">
-                      {importingDatasetFile ? "Saving file…" : "Confirm target and import file"}
+                      {importingDatasetFile ? ui("Saving file…", "Сохранение…") : ui("Confirm target and import file", "Импортировать файл")}
                     </Button>
                   </>
                 )}
               </div>
               {pendingDatasetProfile && (
-                <div className="data-summary" aria-label="Selected file schema preview">
-                  Candidate preview · {pendingDatasetFile?.name} · {pendingDatasetProfile.row_count} rows · {pendingDatasetProfile.columns.length} columns · not saved
-                  <div className="data-table-wrap"><table className="data-table"><thead><tr><th>column</th><th>proposed role</th><th>confirmed role</th><th>type</th></tr></thead><tbody>{pendingDatasetProfile.columns.map((column) => <tr key={column.name}><td>{column.name}</td><td>{column.proposed_role}</td><td><select aria-label={`Role for ${column.name}`} value={columnRole(column.name)} disabled={!datasetStateResolved || project.read_only || importingDatasetFile || confirmingCsvDataset} onChange={(event) => assignColumnRole(column.name, event.target.value as "target" | "id" | "excluded" | "feature")}><option value="feature">Model feature</option><option value="target">Target</option><option value="id">ID</option><option value="excluded">Exclude from model</option></select></td><td>{column.semantic_type} · {column.dtype}</td></tr>)}</tbody></table></div>
+                <div className="data-summary" aria-label={ui("Selected file schema preview", "Предпросмотр структуры файла")}>
+                  {ui(`Candidate preview · ${pendingDatasetFile?.name} · ${pendingDatasetProfile.row_count} rows · ${pendingDatasetProfile.columns.length} columns · not saved`, `Предпросмотр · ${pendingDatasetFile?.name} · ${pendingDatasetProfile.row_count} строк · ${pendingDatasetProfile.columns.length} столбцов · не сохранено`)}
+                  <div className="data-table-wrap"><table className="data-table"><thead><tr><th>{ui("column", "столбец")}</th><th>{ui("proposed role", "предложено")}</th><th>{ui("confirmed role", "выбрано")}</th><th>{ui("type", "тип")}</th></tr></thead><tbody>{pendingDatasetProfile.columns.map((column) => <tr key={column.name}><td>{column.name}</td><td>{column.proposed_role}</td><td><select aria-label={ui(`Role for ${column.name}`, `Роль столбца ${column.name}`)} value={columnRole(column.name)} disabled={!datasetStateResolved || project.read_only || importingDatasetFile || confirmingCsvDataset} onChange={(event) => assignColumnRole(column.name, event.target.value as "target" | "id" | "excluded" | "feature")}><option value="feature">{ui("Model feature", "Признак модели")}</option><option value="target">{ui("Target", "Цель")}</option><option value="id">ID</option><option value="excluded">{ui("Exclude from model", "Исключить")}</option></select></td><td>{column.semantic_type} · {column.dtype}</td></tr>)}</tbody></table></div>
                 </div>
               )}
               {profile && !pendingDatasetFile && (
                 <div className="data-summary">
-                  Rows: {profile.row_count} · columns: {profile.columns.length}{" "}
-                  · ID candidates: {profile.id_candidates.join(", ") || "none"}
-                  <div className="info-message">Role proposals are advisory. Select each column's role here or edit the fields above; changes remain a draft until you confirm the DatasetContract.</div>
-                  <div className="data-table-wrap"><table className="data-table"><thead><tr><th>column</th><th>proposal</th><th>confirmed role</th><th>confidence</th><th>reason</th></tr></thead><tbody>{profile.columns.map((column) => <tr key={column.name}><td>{column.name}</td><td>{column.proposed_role}</td><td><select aria-label={`Role for ${column.name}`} value={columnRole(column.name)} disabled={!datasetStateResolved || project.read_only || importingDatasetFile || confirmingCsvDataset} onChange={(event) => assignColumnRole(column.name, event.target.value as "target" | "id" | "excluded" | "feature")}><option value="feature">Model feature</option><option value="target">Target</option><option value="id">ID</option><option value="excluded">Exclude from model</option></select></td><td>{Math.round(column.role_confidence * 100)}%</td><td>{column.role_reason}</td></tr>)}</tbody></table></div>
+                  {ui(`Rows: ${profile.row_count} · columns: ${profile.columns.length} · ID candidates: ${profile.id_candidates.join(", ") || "none"}`, `Строк: ${profile.row_count} · столбцов: ${profile.columns.length} · возможные ID: ${profile.id_candidates.join(", ") || "нет"}`)}
+                  <div className="info-message">{ui("Role proposals are advisory. Select each column's role here or edit the fields above; changes remain a draft until you confirm the DatasetContract.", "Проверьте роли столбцов: предложения автоматические. До сохранения изменения остаются черновиком.")}</div>
+                  <div className="data-table-wrap"><table className="data-table"><thead><tr><th>{ui("column", "столбец")}</th><th>{ui("proposal", "предложено")}</th><th>{ui("confirmed role", "выбрано")}</th><th>{ui("confidence", "уверенность")}</th><th>{ui("reason", "основание")}</th></tr></thead><tbody>{profile.columns.map((column) => <tr key={column.name}><td>{column.name}</td><td>{column.proposed_role}</td><td><select aria-label={ui(`Role for ${column.name}`, `Роль столбца ${column.name}`)} value={columnRole(column.name)} disabled={!datasetStateResolved || project.read_only || importingDatasetFile || confirmingCsvDataset} onChange={(event) => assignColumnRole(column.name, event.target.value as "target" | "id" | "excluded" | "feature")}><option value="feature">{ui("Model feature", "Признак модели")}</option><option value="target">{ui("Target", "Цель")}</option><option value="id">ID</option><option value="excluded">{ui("Exclude from model", "Исключить")}</option></select></td><td>{Math.round(column.role_confidence * 100)}%</td><td>{column.role_reason}</td></tr>)}</tbody></table></div>
                 </div>
               )}
             </div>
             <aside className="data-health">
-              <span className="eyebrow">DATASET HEALTH</span>
+              <span className="eyebrow">{ui("DATASET HEALTH", "ПРОВЕРКА ДАННЫХ")}</span>
               {dataset ? (
                 <>
                   <strong>
                     {dataset.audit.findings.length
-                      ? `${dataset.audit.findings.length} findings`
-                      : "No basic integrity findings"}
+                      ? ui(`${dataset.audit.findings.length} findings`, `Замечаний: ${dataset.audit.findings.length}`)
+                      : ui("No basic integrity findings", "Проблем не найдено")}
                   </strong>
                   {dataset.audit.findings.map((finding) => (
                     <div
@@ -2128,27 +2127,27 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
                   ))}
                 </>
               ) : (
-                <span>Inspect and confirm the dataset to create evidence.</span>
+                <span>{ui("Inspect and confirm the dataset to create evidence.", "Проверьте и сохраните набор данных.")}</span>
               )}
             </aside>
           </div>
           {dataset && (
             <div className="data-summary">
-              Contract: {dataset.contract.target} · {dataset.contract.task}
-              <small> · Row identity: {dataset.contract.row_identity_scheme}</small>
-              <small> · Source: {dataset.contract.source_format.toUpperCase()} · SHA-256: <code>{dataset.contract.source_artifact_sha256}</code></small>
-              {dataset.contract.source_artifact_sha256 === SYNTHETIC_PRACTICE_SHA256 && <p className="scientific-note" data-testid="synthetic-practice-provenance">These exact dataset bytes match the RuFLEX synthetic practice fixture. This is a training walkthrough, not benchmark or research evidence.</p>}
-              <details aria-label="Frozen dataset roles">
-                <summary>Confirmed roles · {dataset.contract.feature_columns.length} model features · {dataset.contract.id_columns.length} IDs · {dataset.contract.excluded_columns.length} other columns excluded</summary>
-                <p><strong>Model features:</strong> {dataset.contract.feature_columns.join(", ") || "none"}</p>
-                <p><strong>ID columns:</strong> {dataset.contract.id_columns.join(", ") || "none"}</p>
-                <p><strong>Excluded from model:</strong> {dataset.contract.excluded_columns.join(", ") || "none"}</p>
+              {ui("Contract:", "Набор:")} {dataset.contract.target} · {dataset.contract.task}
+              <small> · {ui("Row identity:", "Идентификатор строки:")} {dataset.contract.row_identity_scheme}</small>
+              <small> · {ui("Source:", "Источник:")} {dataset.contract.source_format.toUpperCase()} · SHA-256: <code>{dataset.contract.source_artifact_sha256}</code></small>
+              {dataset.contract.source_artifact_sha256 === SYNTHETIC_PRACTICE_SHA256 && <p className="scientific-note" data-testid="synthetic-practice-provenance">{ui("These exact dataset bytes match the RuFLEX synthetic practice fixture. This is a training walkthrough, not benchmark or research evidence.", "Это учебный набор RuFLEX, а не исследовательские данные.")}</p>}
+              <details aria-label={ui("Frozen dataset roles", "Зафиксированные роли столбцов")}>
+                <summary>{ui(`Confirmed roles · ${dataset.contract.feature_columns.length} model features · ${dataset.contract.id_columns.length} IDs · ${dataset.contract.excluded_columns.length} other columns excluded`, `Роли столбцов · признаков: ${dataset.contract.feature_columns.length} · ID: ${dataset.contract.id_columns.length} · исключено: ${dataset.contract.excluded_columns.length}`)}</summary>
+                <p><strong>{ui("Model features:", "Признаки модели:")}</strong> {dataset.contract.feature_columns.join(", ") || ui("none", "нет")}</p>
+                <p><strong>{ui("ID columns:", "Столбцы ID:")}</strong> {dataset.contract.id_columns.join(", ") || ui("none", "нет")}</p>
+                <p><strong>{ui("Excluded from model:", "Исключено из модели:")}</strong> {dataset.contract.excluded_columns.join(", ") || ui("none", "нет")}</p>
               </details>
             </div>
           )}
           {datasetState && (
             <>
-              <h2>Stored dataset preview</h2>
+              <h2>{ui("Stored dataset preview", "Сохранённые данные")}</h2>
               <div className="data-table-wrap">
                 <table className="data-table">
                   <thead>
@@ -2469,59 +2468,59 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
         <section className="foundation-workspace">
             <div className="feature-toolbar">
             <div>
-              <span className="eyebrow">PROJECT OVERVIEW</span>
-              <h2>Choose what you want to work on</h2>
-              <p>Import data, edit fuzzy rules, train models or inspect saved results. You can revisit any section without starting a new run.</p>
+              <span className="eyebrow">{ui("PROJECT OVERVIEW", "ОБЗОР ПРОЕКТА")}</span>
+              <h2>{ui("Choose what you want to work on", "С чего начнём?")}</h2>
+              <p>{ui("Import data, edit fuzzy rules, train models or inspect saved results. You can revisit any section without starting a new run.", "Выберите раздел. Сохранённые результаты останутся на месте.")}</p>
             </div>
             </div>
-          {overviewContextStatus === "loading" && <div role="status">Checking saved model and training context before showing project next steps…</div>}
-          {overviewContextStatus === "error" && <div className="error" role="alert"><strong>Could not verify saved model or training context.</strong><p>{overviewContextError ?? "The project is not assumed to be empty after a failed read."}</p><Button view="outlined" onClick={() => setOverviewContextReload((current) => current + 1)}>Retry project context check</Button></div>}
-          {integrityStatus === "loading" && <div role="status">Checking persisted project integrity…</div>}
-          {integrityStatus === "error" && <div className="error" role="alert"><strong>Project integrity is unavailable.</strong><p>{integrityError ?? "Persisted project evidence has not been verified."}</p><Button view="outlined" onClick={() => setIntegrityReload((current) => current + 1)}>Retry integrity check</Button></div>}
-          {integrityStatus === "available" && integrity && <div className="trace-card project-integrity-summary" data-testid="project-integrity"><div className="evidence-check-header"><strong>Saved project evidence</strong><StatusBadge tone={integrity.status === "PASS" ? "success" : integrity.status === "FAIL" ? "danger" : "warning"}>{integrity.status}</StatusBadge></div><p>{integrity.checked_objects} saved objects checked · {integrity.status === "PASS" ? "No integrity problems found." : `${integrity.issues.length} issue(s) need review.`}</p><details open={integrity.status !== "PASS"}><summary>Inspection details</summary><p>{integrity.scientific_note}</p>{integrity.issues.map((issue) => <p className="property-description" key={`${issue.code}-${issue.path}`}>{issue.code} · {issue.path} · {issue.detail}</p>)}</details></div>}
+          {overviewContextStatus === "loading" && <div role="status">{ui("Checking saved model and training context before showing project next steps…", "Проверка сохранённых моделей…")}</div>}
+          {overviewContextStatus === "error" && <div className="error" role="alert"><strong>{ui("Could not verify saved model or training context.", "Не удалось проверить сохранённые модели.")}</strong><p>{overviewContextError ?? ui("The project is not assumed to be empty after a failed read.", "Состояние проекта неизвестно.")}</p><Button view="outlined" onClick={() => setOverviewContextReload((current) => current + 1)}>{ui("Retry project context check", "Повторить проверку")}</Button></div>}
+          {integrityStatus === "loading" && <div role="status">{ui("Checking persisted project integrity…", "Проверка целостности проекта…")}</div>}
+          {integrityStatus === "error" && <div className="error" role="alert"><strong>{ui("Project integrity is unavailable.", "Проверка целостности недоступна.")}</strong><p>{integrityError ?? ui("Persisted project evidence has not been verified.", "Сохранённые объекты не проверены.")}</p><Button view="outlined" onClick={() => setIntegrityReload((current) => current + 1)}>{ui("Retry integrity check", "Повторить проверку")}</Button></div>}
+          {integrityStatus === "available" && integrity && <div className="trace-card project-integrity-summary" data-testid="project-integrity"><div className="evidence-check-header"><strong>{ui("Saved project evidence", "Сохранённые данные проекта")}</strong><StatusBadge tone={integrity.status === "PASS" ? "success" : integrity.status === "FAIL" ? "danger" : "warning"}>{integrity.status}</StatusBadge></div><p>{ui(`${integrity.checked_objects} saved objects checked · ${integrity.status === "PASS" ? "No integrity problems found." : `${integrity.issues.length} issue(s) need review.`}`, `${integrity.checked_objects} объектов проверено · ${integrity.status === "PASS" ? "Проблем нет." : `Проблем: ${integrity.issues.length}.`}`)}</p><details open={integrity.status !== "PASS"}><summary>{ui("Inspection details", "Подробности")}</summary><p>{integrity.scientific_note}</p>{integrity.issues.map((issue) => <p className="property-description" key={`${issue.code}-${issue.path}`}>{issue.code} · {issue.path} · {issue.detail}</p>)}</details></div>}
           {overviewContextStatus === "loaded" && datasetStateStatus === "none" && !fis && !trainingRun && (
-            <section className="quick-start-card" aria-label="Optional quick start">
+            <section className="quick-start-card" aria-label={ui("Optional quick start", "Начало работы")}>
               <div>
-                <span className="eyebrow">OPTIONAL QUICK START</span>
-                <h2>Start with your data</h2>
-                <p>Review a CSV or Excel file, choose what to predict, then confirm the dataset. Opening Data does not start training or unlock the held-out test set.</p>
+                <span className="eyebrow">{ui("OPTIONAL QUICK START", "ПЕРВЫЙ ШАГ")}</span>
+                <h2>{ui("Start with your data", "Добавьте данные")}</h2>
+                <p>{ui("Review a CSV or Excel file, choose what to predict, then confirm the dataset. Opening Data does not start training or unlock the held-out test set.", "Загрузите CSV или Excel и укажите целевой столбец.")}</p>
               </div>
-              <Button view="action" onClick={() => setActive("DATA")} data-ruflex-action="project.quickstart.data">Review or import data</Button>
+              <Button view="action" onClick={() => setActive("DATA")} data-ruflex-action="project.quickstart.data">{ui("Review or import data", "Открыть данные")}</Button>
             </section>
           )}
           {overviewContextStatus === "loaded" && datasetStateStatus === "available" && datasetState && !trainingRun && (
-            <section className="quick-start-card" aria-label="Optional next step">
+            <section className="quick-start-card" aria-label={ui("Optional next step", "Следующий шаг")}>
               {projectStudyNextStep({ status: trainingStudyStatus, hasStudy: Boolean(trainingStudy), hasTrainingRun: Boolean(trainingRun) }) === "TRAIN" && <>
               <div>
-                <span className="eyebrow">OPTIONAL NEXT STEP</span>
-                <h2>Your dataset is ready for a model fit</h2>
-                <p>Open Training to review the model and split settings. Nothing runs until you choose “Run real training”; the held-out test split stays locked.</p>
+                <span className="eyebrow">{ui("OPTIONAL NEXT STEP", "СЛЕДУЮЩИЙ ШАГ")}</span>
+                <h2>{ui("Your dataset is ready for a model fit", "Данные готовы к обучению")}</h2>
+                <p>{ui("Open Training to review the model and split settings. Nothing runs until you choose “Run real training”; the held-out test split stays locked.", "Проверьте модель и разбиение перед запуском. Финальный тест останется закрыт.")}</p>
               </div>
-              <Button view="action" onClick={() => setActive("STUDIES")} data-ruflex-action="project.quickstart.training">Open Training</Button>
+              <Button view="action" onClick={() => setActive("STUDIES")} data-ruflex-action="project.quickstart.training">{ui("Open Training", "Открыть обучение")}</Button>
               </>}
               {projectStudyNextStep({ status: trainingStudyStatus, hasStudy: Boolean(trainingStudy), hasTrainingRun: Boolean(trainingRun) }) === "OPEN_SAVED_STUDY" && <>
                 <div>
-                  <span className="eyebrow">SAVED WORK</span>
-                  <h2>Your TrainingStudy is ready to inspect</h2>
-                  <p>{trainingStudy?.name} · {trainingStudy?.seed_runs.length} persisted runs. Open the study to review its selected run and validation evidence; no new fit is started.</p>
+                  <span className="eyebrow">{ui("SAVED WORK", "СОХРАНЕНО")}</span>
+                  <h2>{ui("Your TrainingStudy is ready to inspect", "Эксперимент готов к просмотру")}</h2>
+                  <p>{ui(`${trainingStudy?.name} · ${trainingStudy?.seed_runs.length} persisted runs. Open the study to review its selected run and validation evidence; no new fit is started.`, `${trainingStudy?.name} · ${trainingStudy?.seed_runs.length} запусков. Новое обучение не начнётся.`)}</p>
                 </div>
-                <Button view="action" onClick={() => setActive("STUDIES")} data-ruflex-action="project.quickstart.study">Open saved study</Button>
+                <Button view="action" onClick={() => setActive("STUDIES")} data-ruflex-action="project.quickstart.study">{ui("Open saved study", "Открыть эксперимент")}</Button>
               </>}
-              {projectStudyNextStep({ status: trainingStudyStatus, hasStudy: Boolean(trainingStudy), hasTrainingRun: Boolean(trainingRun) }) === "CHECKING" && <p role="status">Checking saved study history before suggesting a next step…</p>}
-              {projectStudyNextStep({ status: trainingStudyStatus, hasStudy: Boolean(trainingStudy), hasTrainingRun: Boolean(trainingRun) }) === "UNAVAILABLE" && <div role="alert"><strong>Saved study history could not be verified, so no training next step is suggested.</strong><p>{trainingStudyError}</p><Button view="outlined" onClick={() => setTrainingStudyReload((current) => current + 1)}>Retry study history</Button></div>}
+              {projectStudyNextStep({ status: trainingStudyStatus, hasStudy: Boolean(trainingStudy), hasTrainingRun: Boolean(trainingRun) }) === "CHECKING" && <p role="status">{ui("Checking saved study history before suggesting a next step…", "Проверка истории обучения…")}</p>}
+              {projectStudyNextStep({ status: trainingStudyStatus, hasStudy: Boolean(trainingStudy), hasTrainingRun: Boolean(trainingRun) }) === "UNAVAILABLE" && <div role="alert"><strong>{ui("Saved study history could not be verified, so no training next step is suggested.", "Историю обучения проверить не удалось.")}</strong><p>{trainingStudyError}</p><Button view="outlined" onClick={() => setTrainingStudyReload((current) => current + 1)}>{ui("Retry study history", "Повторить проверку")}</Button></div>}
             </section>
           )}
           <div className="project-overview-grid">
             <button onClick={() => setActive("DATA")}>
-              <strong>Data</strong><span>Import and inspect</span>
+              <strong>{ui("Data", "Данные")}</strong><span>{ui("Import and inspect", "Импорт и просмотр")}</span>
               <small>
                 {datasetState
-                  ? `${datasetState.profile.row_count} rows`
-                  : datasetStateStatus === "loading" || datasetStateStatus === "idle" ? "Checking dataset…" : datasetStateStatus === "error" ? "Dataset state unavailable" : "No dataset"}
+                  ? ui(`${datasetState.profile.row_count} rows`, `${datasetState.profile.row_count} строк`)
+                  : datasetStateStatus === "loading" || datasetStateStatus === "idle" ? ui("Checking dataset…", "Проверка данных…") : datasetStateStatus === "error" ? ui("Dataset state unavailable", "Данные недоступны") : ui("No dataset", "Нет данных")}
               </small>
             </button>
             <button onClick={() => setActive("MODELS")}>
-              <strong>Models</strong><span>Edit fuzzy rules</span>
+              <strong>{ui("Models", "Модели")}</strong><span>{ui("Edit fuzzy rules", "Нечёткие правила")}</span>
               <small>{projectModelOverviewLabel({
                 status: overviewContextStatus,
                 fisName: fis?.name ?? null,
@@ -2529,7 +2528,7 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
               })}</small>
             </button>
             <button onClick={() => setActive("STUDIES")}>
-              <strong>Studies</strong><span>Train and compare</span>
+              <strong>{ui("Studies", "Обучение")}</strong><span>{ui("Train and compare", "Запуски и сравнение")}</span>
               <small>
                 {trainingStudyOverviewLabel({
                   status: trainingStudyStatus,
@@ -2540,7 +2539,7 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
               </small>
             </button>
             <button onClick={() => setActive("ANALYSES")}>
-              <strong>Analyses</strong><span>Review validation</span>
+              <strong>{ui("Analyses", "Анализ")}</strong><span>{ui("Review validation", "Оценка на валидации")}</span>
               <small>
                 {analysisOverviewLabel({
                   hasValidationEvaluation: Boolean(analysisEvaluation),
@@ -2549,7 +2548,7 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
               </small>
             </button>
             <button onClick={() => setActive("EVIDENCE")}>
-              <strong>Evidence</strong><span>Explain and audit</span>
+              <strong>{ui("Evidence", "Доказательства")}</strong><span>{ui("Explain and audit", "Объяснения и аудит")}</span>
               <small>
                 {evidenceOverviewLabel(Boolean(fisEvaluation))}
               </small>
@@ -2557,9 +2556,9 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
           </div>
           <div className="project-lineage-panel">
             <div>
-              <span className="eyebrow">PROJECT LINEAGE</span>
-              <h3>Persisted provenance graph</h3>
-              <p>Edges come only from saved object references; the graph is not a required execution order.</p>
+              <span className="eyebrow">{ui("PROJECT LINEAGE", "ИСТОРИЯ ПРОЕКТА")}</span>
+              <h3>{ui("Persisted provenance graph", "Связи сохранённых объектов")}</h3>
+              <p>{ui("Edges come only from saved object references; the graph is not a required execution order.", "Граф показывает, как связаны данные, модели и результаты.")}</p>
             </div>
             <ProjectLineage
               graph={lineage}

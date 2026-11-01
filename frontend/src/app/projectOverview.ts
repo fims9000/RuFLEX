@@ -1,3 +1,5 @@
+import { ui } from "../design/language";
+
 export type TrainingStudyOverviewState = "idle" | "loading" | "none" | "available" | "error";
 export type ProjectModelOverviewState = "idle" | "loading" | "loaded" | "error";
 export type ProjectStudyNextStep = "CHECKING" | "UNAVAILABLE" | "TRAIN" | "OPEN_SAVED_STUDY" | "NONE";
@@ -18,13 +20,13 @@ export function analysisOverviewLabel(input: {
   hasValidationEvaluation: boolean;
   hasTrainingRun: boolean;
 }): string {
-  if (input.hasValidationEvaluation) return "Saved validation evaluation";
-  if (input.hasTrainingRun) return "Validation analysis ready";
-  return "Open analyses workspace";
+  if (input.hasValidationEvaluation) return ui("Saved validation evaluation", "Оценка на валидации сохранена");
+  if (input.hasTrainingRun) return ui("Validation analysis ready", "Можно оценить модель");
+  return ui("Open analyses workspace", "Открыть анализ");
 }
 
 export function evidenceOverviewLabel(hasExactTrace: boolean): string {
-  return hasExactTrace ? "Exact trace available" : "Open evidence workspace";
+  return hasExactTrace ? ui("Exact trace available", "Точный расчёт сохранён") : ui("Open evidence workspace", "Открыть доказательства");
 }
 
 export function projectModelOverviewLabel(input: {
@@ -32,11 +34,11 @@ export function projectModelOverviewLabel(input: {
   fisName: string | null;
   trainingModelKind: string | null;
 }): string {
-  if (input.status === "idle" || input.status === "loading") return "Checking saved models…";
-  if (input.status === "error") return "Model state unavailable";
+  if (input.status === "idle" || input.status === "loading") return ui("Checking saved models…", "Проверка моделей…");
+  if (input.status === "error") return ui("Model state unavailable", "Состояние моделей недоступно");
   if (input.fisName) return input.fisName;
-  if (input.trainingModelKind) return `Trained ${input.trainingModelKind.replaceAll("_", " ")}`;
-  return "No saved model";
+  if (input.trainingModelKind) return ui(`Trained ${input.trainingModelKind.replaceAll("_", " ")}`, `Обучена ${input.trainingModelKind.replaceAll("_", " ")}`);
+  return ui("No saved model", "Нет сохранённой модели");
 }
 
 export function trainingStudyOverviewLabel(input: {
@@ -46,14 +48,14 @@ export function trainingStudyOverviewLabel(input: {
   hasTrainingRun: boolean;
 }): string {
   if (input.status === "idle" || input.status === "loading") {
-    return "Checking saved study history…";
+    return ui("Checking saved study history…", "Проверка сохранённых экспериментов…");
   }
-  if (input.status === "error") return "Study history unavailable";
+  if (input.status === "error") return ui("Study history unavailable", "История экспериментов недоступна");
   if (input.status === "available") {
     if (input.studyName === null || input.runCount === null) {
-      return "Saved study details unavailable";
+      return ui("Saved study details unavailable", "Данные эксперимента недоступны");
     }
-    return `${input.runCount} runs · ${input.studyName}`;
+    return ui(`${input.runCount} runs · ${input.studyName}`, `${input.runCount} запусков · ${input.studyName}`);
   }
-  return input.hasTrainingRun ? "Training run available" : "No saved study";
+  return input.hasTrainingRun ? ui("Training run available", "Есть обученная модель") : ui("No saved study", "Нет экспериментов");
 }

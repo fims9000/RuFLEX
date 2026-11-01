@@ -11,6 +11,7 @@ const pythonCandidates = [
   resolve(repoRoot, "../venv/bin/python"),
 ].filter((candidate): candidate is string => Boolean(candidate));
 const python = pythonCandidates.find((candidate) => existsSync(candidate)) ?? "python3";
+const testUiLanguage = process.env.VITE_RUFLEX_UI_LANG ?? "en";
 
 // Keep the Playwright-managed browser revision next to the worktree unless the
 // caller deliberately supplies another cache. This avoids stale global browser
@@ -57,7 +58,7 @@ export default defineConfig({
       reuseExistingServer: false,
     },
     {
-      command: "VITE_RUFLEX_API_URL=http://127.0.0.1:8010 npm run dev -- --host 127.0.0.1 --port 5174",
+      command: `VITE_RUFLEX_UI_LANG=${testUiLanguage} VITE_RUFLEX_API_URL=http://127.0.0.1:8010 npm run dev -- --host 127.0.0.1 --port 5174`,
       url: "http://127.0.0.1:5174",
       reuseExistingServer: false,
     },

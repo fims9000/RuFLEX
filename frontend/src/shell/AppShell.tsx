@@ -1,6 +1,7 @@
 import { ReactNode, useEffect } from "react";
 import { ChartBar, Cube, Flask, House, ShieldCheck } from "@gravity-ui/icons";
 import { StudioTheme } from "../design/tokens";
+import { ui } from "../design/language";
 import { PanelHeader, StatusBadge } from "../components/StudioPrimitives";
 
 type Props = {
@@ -29,6 +30,8 @@ type Props = {
 };
 const workbenches = ["PROJECT", "MODELS", "STUDIES", "ANALYSES", "EVIDENCE"] as const;
 const workbenchIcons = { PROJECT: House, MODELS: Cube, STUDIES: Flask, ANALYSES: ChartBar, EVIDENCE: ShieldCheck };
+const workbenchLabels = { PROJECT: "Проект", MODELS: "Модели", STUDIES: "Обучение", ANALYSES: "Анализ", EVIDENCE: "Доказательства" };
+const workbenchRailLabels = { ...workbenchLabels, EVIDENCE: "Проверки" };
 export function AppShell({
   children,
   inspector,
@@ -70,20 +73,20 @@ export function AppShell({
         <div className="project-identity">
           {projectName ? (
             <>
-              PROJECT <strong>{projectName}</strong>
-              {readOnly && <StatusBadge tone="warning">Read only</StatusBadge>}
+              {ui("PROJECT", "ПРОЕКТ")} <strong>{projectName}</strong>
+              {readOnly && <StatusBadge tone="warning">{ui("Read only", "Только чтение")}</StatusBadge>}
             </>
           ) : (
-            "No project open"
+            ui("No project open", "Проект не открыт")
           )}
         </div>
         <div className="command-actions">
-          <button className="tool-button panel-toggle" aria-label={explorerCollapsed ? "Show project explorer" : "Hide project explorer"} aria-pressed={!explorerCollapsed} onClick={toggleExplorer}>Tree</button>
-          <button className="tool-button panel-toggle" aria-label={inspectorCollapsed ? "Show properties" : "Hide properties"} aria-pressed={!inspectorCollapsed} onClick={toggleInspector}>Details</button>
-          <button className="tool-button panel-toggle" aria-label={bottomCollapsed ? "Show jobs panel" : "Hide jobs panel"} aria-pressed={!bottomCollapsed} onClick={toggleBottom}>Jobs</button>
+          <button className="tool-button panel-toggle" aria-label={explorerCollapsed ? ui("Show project explorer", "Показать дерево проекта") : ui("Hide project explorer", "Скрыть дерево проекта")} aria-pressed={!explorerCollapsed} onClick={toggleExplorer}>{ui("Tree", "Дерево")}</button>
+          <button className="tool-button panel-toggle" aria-label={inspectorCollapsed ? ui("Show properties", "Показать свойства") : ui("Hide properties", "Скрыть свойства")} aria-pressed={!inspectorCollapsed} onClick={toggleInspector}>{ui("Details", "Свойства")}</button>
+          <button className="tool-button panel-toggle" aria-label={bottomCollapsed ? ui("Show jobs panel", "Показать задачи") : ui("Hide jobs panel", "Скрыть задачи")} aria-pressed={!bottomCollapsed} onClick={toggleBottom}>{ui("Jobs", "Задачи")}</button>
           <button
             className="icon-button"
-            aria-label="Toggle theme"
+            aria-label={ui("Toggle theme", "Сменить тему")}
             onClick={() => setTheme(theme === "light" ? "dark" : "light")}
           >
             {theme === "light" ? "◐" : "◑"}
@@ -94,17 +97,17 @@ export function AppShell({
               disabled={readOnly || saveDisabled}
               onClick={onSave}
             >
-              {saving ? "Saving…" : "Save"}
+              {saving ? ui("Saving…", "Сохранение…") : ui("Save", "Сохранить")}
             </button>
           )}
           {projectName && (
             <button className="tool-button" disabled={closeDisabled} onClick={onClose}>
-              Close
+              {ui("Close", "Закрыть")}
             </button>
           )}
         </div>
       </header>
-      <nav className="activity-rail" aria-label="Workbench navigation">
+      <nav className="activity-rail" aria-label={ui("Workbench navigation", "Разделы Studio")}>
         {workbenches.map((section) => {
           const Icon = workbenchIcons[section];
           return (
@@ -112,24 +115,24 @@ export function AppShell({
               key={section}
               className={active === section ? "active" : ""}
               onClick={() => setActive(section)}
-              title={section}
-              aria-label={section.slice(0, 1)}
-              aria-description={`Open ${section.toLowerCase()} workspace`}
+              title={ui(section, workbenchLabels[section])}
+              aria-label={ui(section.slice(0, 1), workbenchLabels[section])}
+              aria-description={ui(`Open ${section.toLowerCase()} workspace`, `Открыть раздел «${workbenchLabels[section]}»`)}
               aria-current={active === section ? "page" : undefined}
             >
               <Icon className="rail-icon" aria-hidden="true" />
-              <span className="rail-label" aria-hidden="true">{section.slice(0, 1) + section.slice(1).toLowerCase()}</span>
+              <span className="rail-label" aria-hidden="true">{ui(section.slice(0, 1) + section.slice(1).toLowerCase(), workbenchRailLabels[section])}</span>
             </button>
           );
         })}
       </nav>
       <aside className="tool-window explorer">
         <PanelHeader
-          title="PROJECT EXPLORER"
+          title={ui("PROJECT EXPLORER", "ДЕРЕВО ПРОЕКТА")}
           actions={
             <button
               className="icon-button"
-              aria-label="Collapse explorer"
+              aria-label={ui("Collapse explorer", "Свернуть дерево проекта")}
               onClick={toggleExplorer}
             >
               ‹
@@ -141,11 +144,11 @@ export function AppShell({
       <section className="workspace">{children}</section>
       <aside className="tool-window inspector">
         <PanelHeader
-          title="PROPERTIES"
+          title={ui("PROPERTIES", "СВОЙСТВА")}
           actions={
             <button
               className="icon-button"
-              aria-label="Collapse properties"
+              aria-label={ui("Collapse properties", "Свернуть свойства")}
               onClick={toggleInspector}
             >
               ›
@@ -156,12 +159,12 @@ export function AppShell({
       </aside>
       <section className="tool-window bottom-panel">
         <PanelHeader
-          title="JOBS & PROBLEMS"
-          detail="local worker"
+          title={ui("JOBS & PROBLEMS", "ЗАДАЧИ И ПРОБЛЕМЫ")}
+          detail={ui("local worker", "локальное выполнение")}
           actions={
             <button
               className="icon-button"
-              aria-label="Collapse jobs panel"
+              aria-label={ui("Collapse jobs panel", "Свернуть задачи")}
               onClick={toggleBottom}
             >
               ⌄
@@ -170,18 +173,18 @@ export function AppShell({
         />
         <div className="bottom-body">
           <StatusBadge tone={error ? "danger" : "success"}>
-            {error ? "1 problem" : "No active jobs"}
+            {error ? ui("1 problem", "1 проблема") : ui("No active jobs", "Нет активных задач")}
           </StatusBadge>
-          <span>{error ?? "Ready for an evidence-producing action."}</span>
+          <span>{error ?? ui("Ready for an evidence-producing action.", "Готово к работе.")}</span>
         </div>
       </section>
       <footer className="status-strip">
         <span className="connection-indicator">●</span>
         <span>{status}</span>
-        <span>Local-first jobs</span>
-        <span>Warnings {error ? 1 : 0}</span>
+        <span>{ui("Local-first jobs", "Локальные задачи")}</span>
+        <span>{ui("Warnings", "Предупреждения")} {error ? 1 : 0}</span>
         <span className="status-spacer" />
-        <span>Local</span>
+        <span>{ui("Local", "Локально")}</span>
       </footer>
     </main>
   );

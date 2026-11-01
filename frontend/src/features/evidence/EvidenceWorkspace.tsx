@@ -30,6 +30,7 @@ import {
 } from "../../api";
 import { Button, EmptyState, StatusBadge, TextInput } from "../../components/StudioPrimitives";
 import { StudioTheme } from "../../design/tokens";
+import { ui } from "../../design/language";
 import { TraceWorkspace } from "../modelbuild/TraceWorkspace";
 import { BehaviorCounterexample } from "./BehaviorCounterexample";
 import { BehaviorExactTrace } from "./BehaviorExactTrace";
@@ -1089,14 +1090,14 @@ export function EvidenceWorkspace({
     <section className="evidence-workbench">
       <div className="feature-toolbar">
         <div>
-          <span className="eyebrow">EVIDENCE WORKBENCH</span>
-          <h2>Computation evidence and post-hoc attribution</h2>
-          <p>Exact computation, structural execution and post-hoc attribution remain separate scientific objects.</p>
+          <span className="eyebrow">{ui("EVIDENCE WORKBENCH", "ДОКАЗАТЕЛЬСТВА")}</span>
+          <h2>{ui("Computation evidence and post-hoc attribution", "Вычисления и объяснения")}</h2>
+          <p>{ui("Exact computation, structural execution and post-hoc attribution remain separate scientific objects.", "Точный ход вычисления и объяснение модели показаны отдельно.")}</p>
         </div>
         <div className="evidence-label-row">
-          {evaluation && <StatusBadge tone="success">EXACT COMPUTATION</StatusBadge>}
-          {treeEvidence && <StatusBadge tone="success">STRUCTURAL TRACE</StatusBadge>}
-          {explanation && <StatusBadge tone="warning">POST-HOC ATTRIBUTION</StatusBadge>}
+          {evaluation && <StatusBadge tone="success">{ui("EXACT COMPUTATION", "ТОЧНОЕ ВЫЧИСЛЕНИЕ")}</StatusBadge>}
+          {treeEvidence && <StatusBadge tone="success">{ui("STRUCTURAL TRACE", "ТРАССА ДЕРЕВА")}</StatusBadge>}
+          {explanation && <StatusBadge tone="warning">{ui("POST-HOC ATTRIBUTION", "ОБЪЯСНЕНИЕ")}</StatusBadge>}
         </div>
       </div>
 
@@ -1113,9 +1114,9 @@ export function EvidenceWorkspace({
       <section className="evidence-section posthoc-panel">
         <div className="feature-toolbar compact-toolbar">
           <div>
-            <span className="eyebrow">POST-HOC ATTRIBUTION</span>
+            <span className="eyebrow">{ui("POST-HOC ATTRIBUTION", "ОБЪЯСНЕНИЕ ПРОГНОЗА")}</span>
             <h3>{method === "occlusion" ? "Train-reference occlusion" : method === "integrated_gradients" ? "Integrated Gradients" : method === "gradient_shap" ? "GradientSHAP" : method === "tree_shap" ? "TreeSHAP" : "SHAP · permutation"}</h3>
-            <p>{method === "occlusion" ? "One feature at a time is replaced by its train-derived reference." : method === "integrated_gradients" ? "Gradients are integrated from a train-derived reference to the observed sample." : method === "gradient_shap" ? "Expected gradients use a deterministic train-only background." : method === "tree_shap" ? "TreeSHAP uses the persisted declarative tree ensemble and a deterministic train-only background." : "Permutation SHAP uses the persisted model through a deterministic train-only background."} This is not a causal effect or an exact trace.</p>
+            <p>{ui(`${method === "occlusion" ? "One feature at a time is replaced by its train-derived reference." : method === "integrated_gradients" ? "Gradients are integrated from a train-derived reference to the observed sample." : method === "gradient_shap" ? "Expected gradients use a deterministic train-only background." : method === "tree_shap" ? "TreeSHAP uses the persisted declarative tree ensemble and a deterministic train-only background." : "Permutation SHAP uses the persisted model through a deterministic train-only background."} This is not a causal effect or an exact trace.`, "Объяснение строится по сохранённой модели и обучающим данным. Это не причинный вывод.")}</p>
           </div>
           <StatusBadge tone="warning">post-hoc</StatusBadge>
         </div>
@@ -1123,15 +1124,15 @@ export function EvidenceWorkspace({
         {explanationHydrationStatus === "none" && <p className="property-description" data-testid="explanation-empty">No saved explanation is available for this project.</p>}
         {explanationHydrationStatus === "error" && <div className="error" role="alert" data-testid="explanation-hydration-error"><strong>Saved explanation could not be verified.</strong><p>{explanationHydrationError}</p>{onRetryExplanation && <Button view="outlined" onClick={onRetryExplanation}>Retry saved explanation</Button>}</div>}
         {!run ? (
-          <EmptyState title="No trained model selected">Train or reopen a catalog model to generate a local attribution.</EmptyState>
+          <EmptyState title={ui("No trained model selected", "Модель не выбрана")}>{ui("Train or reopen a catalog model to generate a local attribution.", "Обучите модель или откройте сохранённый запуск.")}</EmptyState>
         ) : (
           <>
-            <label className="field-label evidence-method-select">Method
-              <select aria-label="Explanation method" value={method} disabled={capabilityHydrationStatus !== "available"} onChange={(event) => setMethod(event.target.value)}>
+            <label className="field-label evidence-method-select">{ui("Method", "Метод")}
+              <select aria-label={ui("Explanation method", "Метод объяснения")} value={method} disabled={capabilityHydrationStatus !== "available"} onChange={(event) => setMethod(event.target.value)}>
                 {selectableMethods.map((candidate) => <option value={candidate} key={candidate}>{candidate === "occlusion" ? "Occlusion" : candidate === "shap" ? "SHAP · permutation" : candidate === "tree_shap" ? "TreeSHAP" : candidate === "integrated_gradients" ? "Integrated Gradients" : candidate === "gradient_shap" ? "GradientSHAP" : `${candidate} · runtime explainer`}</option>)}
               </select>
             </label>
-            <label className="field-label evidence-method-select">Execution backend<select aria-label="Evidence execution backend" value={executionBackendKey} disabled={busy || project.read_only || runtimeCatalogHydrationStatus !== "available" || !executionBackends.length} onChange={(event) => setExecutionBackendKey(event.target.value)}>{executionBackends.map((backend) => <option key={backend.identity.key} value={backend.identity.key}>{backend.identity.key} · {backend.identity.provider}</option>)}</select></label>
+            <label className="field-label evidence-method-select">{ui("Execution backend", "Среда выполнения")}<select aria-label={ui("Evidence execution backend", "Среда выполнения объяснения")} value={executionBackendKey} disabled={busy || project.read_only || runtimeCatalogHydrationStatus !== "available" || !executionBackends.length} onChange={(event) => setExecutionBackendKey(event.target.value)}>{executionBackends.map((backend) => <option key={backend.identity.key} value={backend.identity.key}>{backend.identity.key} · {backend.identity.provider}</option>)}</select></label>
             <div className="evidence-sample-grid">
               {run.feature_columns.map((feature) => (
                 <label className="field-label" key={feature}>
@@ -1145,7 +1146,7 @@ export function EvidenceWorkspace({
             {samplePipelineStatus === "loading" && <p role="status">Loading this run’s TRAIN-frozen categorical choices…</p>}
             {samplePipelineStatus === "error" && <div className="error" role="alert"><strong>Categorical evidence input is paused.</strong><p>{samplePipelineError}</p><Button view="outlined" onClick={() => setSamplePipelineReload((current) => current + 1)}>Retry categorical encoder</Button></div>}
             <div className="evidence-actions">
-              <Button view="action" disabled={busy || project.read_only || !categoricalSampleReady || runtimeCatalogHydrationStatus !== "available" || !executionBackends.length || capabilityHydrationStatus !== "available" || selectableMethods.length === 0 || explanationJobHydrationStatus === "loading" || explanationJobHydrationStatus === "error" || !!explanationJobPollError || !!explanationJob && ["queued", "running"].includes(explanationJob.status)} onClick={generate} data-ruflex-action="explanation.generate">{busy ? "Generating…" : "Generate explanation"}</Button>
+              <Button view="action" disabled={busy || project.read_only || !categoricalSampleReady || runtimeCatalogHydrationStatus !== "available" || !executionBackends.length || capabilityHydrationStatus !== "available" || selectableMethods.length === 0 || explanationJobHydrationStatus === "loading" || explanationJobHydrationStatus === "error" || !!explanationJobPollError || !!explanationJob && ["queued", "running"].includes(explanationJob.status)} onClick={generate} data-ruflex-action="explanation.generate">{busy ? ui("Generating…", "Построение…") : ui("Generate explanation", "Построить объяснение")}</Button>
               <span className="property-description">{run.model_kind} · run {run.run_id.slice(0, 8)}</span>
             </div>
             {capabilityNegotiation && <div className="trace-card" data-testid="run-capability-negotiation"><strong>Run capability contract</strong><div className="property-list">{capabilityNegotiation.decisions.map((decision) => <div key={decision.capability}><span>{decision.capability.replaceAll("_", " ")}</span><span><StatusBadge tone={decision.status === "AVAILABLE" ? "success" : "info"}>{decision.status}</StatusBadge> {decision.detail}</span></div>)}</div></div>}
@@ -1197,9 +1198,9 @@ export function EvidenceWorkspace({
       {explanation && (
         <section className="evidence-section">
           <div className="feature-toolbar compact-toolbar">
-            <div><span className="eyebrow">CHECK EXPLANATION</span><h3>Available technical checks</h3></div>
-            <label className="field-label">Validator<select aria-label="Explanation validator" value={validatorKey} disabled={busy || project.read_only || runtimeCatalogHydrationStatus !== "available" || !runtimeValidators.length} onChange={(event) => setValidatorKey(event.target.value)}>{runtimeValidators.map((validator) => <option key={validator.identity.key} value={validator.identity.key}>{validator.identity.key} · {validator.identity.provider}</option>)}</select></label>
-            <Button view="outlined" disabled={busy || project.read_only || runtimeCatalogHydrationStatus !== "available" || !runtimeValidators.length || !executionBackends.length || explanationJobHydrationStatus === "loading" || explanationJobHydrationStatus === "error" || !!explanationJobPollError || !!explanationJob && ["queued", "running"].includes(explanationJob.status)} onClick={check} data-ruflex-action="explanation.check">Run explanation checks</Button>
+            <div><span className="eyebrow">{ui("CHECK EXPLANATION", "ПРОВЕРКА ОБЪЯСНЕНИЯ")}</span><h3>{ui("Available technical checks", "Проверки сохранённого объяснения")}</h3></div>
+            <label className="field-label">{ui("Validator", "Проверяющий модуль")}<select aria-label={ui("Explanation validator", "Модуль проверки объяснения")} value={validatorKey} disabled={busy || project.read_only || runtimeCatalogHydrationStatus !== "available" || !runtimeValidators.length} onChange={(event) => setValidatorKey(event.target.value)}>{runtimeValidators.map((validator) => <option key={validator.identity.key} value={validator.identity.key}>{validator.identity.key} · {validator.identity.provider}</option>)}</select></label>
+            <Button view="outlined" disabled={busy || project.read_only || runtimeCatalogHydrationStatus !== "available" || !runtimeValidators.length || !executionBackends.length || explanationJobHydrationStatus === "loading" || explanationJobHydrationStatus === "error" || !!explanationJobPollError || !!explanationJob && ["queued", "running"].includes(explanationJob.status)} onClick={check} data-ruflex-action="explanation.check">{ui("Run explanation checks", "Проверить объяснение")}</Button>
           </div>
           {explanationCheck && explanationCheck.explanation_id !== explanation.explanation_id ? <div className="error" role="alert" data-testid="explanation-check-mismatch"><strong>Saved check belongs to a different explanation.</strong><p>The persisted ExplanationCheck is not displayed as validation of the currently selected explanation.</p></div> : explanationCheck ? (
             <div className="trace-card">

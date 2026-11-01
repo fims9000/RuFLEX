@@ -12,6 +12,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import type { LineageGraph, LineageNode } from "../api";
 import { Button } from "../components/StudioPrimitives";
+import { ui } from "../design/language";
 
 function LineageCanvasNode({ data, selected }: NodeProps<Node<{ node: LineageNode }>>) {
   const item = data.node;
@@ -59,15 +60,15 @@ export function ProjectLineage({
   onOpen: (node: LineageNode) => void;
 }) {
   if (status === "loading" || status === "idle") {
-    return <div className="lineage-empty" role="status">{status === "loading" ? "Loading persisted project lineage…" : "Project lineage has not been checked yet."}</div>;
+    return <div className="lineage-empty" role="status">{status === "loading" ? ui("Loading persisted project lineage…", "Загрузка связей проекта…") : ui("Project lineage has not been checked yet.", "Связи проекта ещё не проверены.")}</div>;
   }
   if (status === "error") {
-    return <div className="error" role="alert"><strong>Could not load persisted project lineage.</strong><p>{error ?? "No empty lineage state is inferred from this failure."}</p><Button view="outlined" onClick={onRetry}>Retry lineage</Button></div>;
+    return <div className="error" role="alert"><strong>{ui("Could not load persisted project lineage.", "Не удалось загрузить связи проекта.")}</strong><p>{error ?? ui("No empty lineage state is inferred from this failure.", "Состояние связей неизвестно.")}</p><Button view="outlined" onClick={onRetry}>{ui("Retry lineage", "Повторить")}</Button></div>;
   }
   if (!graph || graph.nodes.length === 0) {
     return (
       <div className="lineage-empty">
-        Lineage will appear as persisted datasets, runs, analyses and evidence are created.
+        {ui("Lineage will appear as persisted datasets, runs, analyses and evidence are created.", "Здесь появятся связи после сохранения данных, моделей и результатов.")}
       </div>
     );
   }
@@ -94,8 +95,8 @@ export function ProjectLineage({
   }));
 
   return (
-    <div className="project-lineage" aria-label="Project lineage graph">
-      {objectError && <div className="error" role="alert" data-testid="lineage-object-load-error"><strong>Could not reopen the selected saved object.</strong><p>{objectError}</p>{onRetryObject && <Button view="outlined" onClick={onRetryObject}>Retry selected object</Button>}</div>}
+    <div className="project-lineage" aria-label={ui("Project lineage graph", "Граф связей проекта")}>
+      {objectError && <div className="error" role="alert" data-testid="lineage-object-load-error"><strong>{ui("Could not reopen the selected saved object.", "Не удалось открыть выбранный объект.")}</strong><p>{objectError}</p>{onRetryObject && <Button view="outlined" onClick={onRetryObject}>{ui("Retry selected object", "Повторить")}</Button>}</div>}
       <ReactFlowProvider>
         <ReactFlow
           nodes={nodes}

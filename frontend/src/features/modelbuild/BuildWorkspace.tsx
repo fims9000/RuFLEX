@@ -22,6 +22,7 @@ import {
   TextInput,
 } from "../../components/StudioPrimitives";
 import { StudioTheme } from "../../design/tokens";
+import { ui } from "../../design/language";
 import { MembershipEditorCanvas } from "./MembershipEditorCanvas";
 import { exactFisEvaluationMatchesCurrent } from "./exactFisEvaluation";
 import { parseFisRunInputs } from "./fisRunInputs";
@@ -1368,14 +1369,14 @@ export function BuildWorkspace({
     };
   }, [working, surfaceAxes, runInputs]);
   if (modelContextStatus === "idle" || modelContextStatus === "loading")
-    return <section className="feature-workspace"><p role="status" data-testid="fis-model-context-loading">Checking saved FIS and training-run context before enabling model editing…</p></section>;
+    return <section className="feature-workspace"><p role="status" data-testid="fis-model-context-loading">{ui("Checking saved FIS and training-run context before enabling model editing…", "Проверка сохранённой модели…")}</p></section>;
   if (modelContextStatus === "error")
-    return <section className="feature-workspace"><div className="error" role="alert" data-testid="fis-model-context-error"><strong>Saved model context could not be verified; FIS editing and creation are paused.</strong><p>{modelContextError ?? "The project is not assumed to have no FIS after a failed read."}</p>{onRetryModelContext && <Button view="outlined" onClick={onRetryModelContext}>Retry saved model context</Button>}</div></section>;
+    return <section className="feature-workspace"><div className="error" role="alert" data-testid="fis-model-context-error"><strong>{ui("Saved model context could not be verified; FIS editing and creation are paused.", "Не удалось проверить сохранённую модель. Редактирование приостановлено.")}</strong><p>{modelContextError ?? ui("The project is not assumed to have no FIS after a failed read.", "Повторите загрузку модели.")}</p>{onRetryModelContext && <Button view="outlined" onClick={onRetryModelContext}>{ui("Retry saved model context", "Повторить")}</Button>}</div></section>;
   if (!working)
     return (
       <section className="feature-workspace">
-        <EmptyState title="No FIS model">
-          Confirm a dataset, then create the first editable fuzzy model.
+        <EmptyState title={ui("No FIS model", "Нет нечёткой модели")}>
+          {ui("Confirm a dataset, then create the first editable fuzzy model.", "Сохраните набор данных и создайте модель.")}
         </EmptyState>
         <div className="form-actions">
           <Button
@@ -1384,7 +1385,7 @@ export function BuildWorkspace({
             onClick={createDefault}
             data-ruflex-action="fis.create"
           >
-            {creatingDefaultFis ? "Creating FIS…" : "Create FIS from dataset"}
+            {creatingDefaultFis ? ui("Creating FIS…", "Создание модели…") : ui("Create FIS from dataset", "Создать модель из данных")}
           </Button>
           <input
             ref={importInputRef}
@@ -1400,7 +1401,7 @@ export function BuildWorkspace({
             onClick={() => importInputRef.current?.click()}
             data-ruflex-action="fis.import"
           >
-            {importingMatlabFis ? "Importing MATLAB FIS…" : "Import MATLAB .fis"}
+            {importingMatlabFis ? ui("Importing MATLAB FIS…", "Импорт .fis…") : ui("Import MATLAB .fis", "Импортировать .fis")}
           </Button>
         </div>
         {fisImportRecovery && <div className="error" role="alert" data-testid="fis-import-recovery"><strong>MATLAB FIS import response is uncertain.</strong><p>{fisImportRecovery.error} The exact source is retained; retrying it will not create a duplicate imported revision.</p><Button view="outlined" disabled={retryingFisImport || importingMatlabFis || fisActionBusy} onClick={retrySameMatlabImport}>Retry exact MATLAB FIS import</Button></div>}
@@ -1440,11 +1441,11 @@ export function BuildWorkspace({
     <section className="feature-workspace fis-workspace">
       <div className="feature-toolbar">
         <div>
-          <span className="eyebrow">CANONICAL FUZZY DESIGNER</span>
+          <span className="eyebrow">{ui("CANONICAL FUZZY DESIGNER", "РЕДАКТОР НЕЧЁТКОЙ МОДЕЛИ")}</span>
           <h2>{working.name}</h2>
           <p className="mono">
             {working.semantic_hash?.slice(0, 16)} · {working.system_type} ·
-            executable model
+            {ui("executable model", "исполняемая модель")}
           </p>
         </div>
         <div className="form-actions">
@@ -1453,7 +1454,7 @@ export function BuildWorkspace({
             disabled={project.read_only || historyIndex === 0}
             onClick={undo}
           >
-            Undo
+            {ui("Undo", "Отменить")}
           </Button>
           <Button
             view="outlined"
@@ -1462,10 +1463,10 @@ export function BuildWorkspace({
             }
             onClick={redo}
           >
-            Redo
+            {ui("Redo", "Повторить")}
           </Button>
           <label>
-            FIS family{" "}
+            {ui("FIS family", "Тип FIS")}{" "}
             <select
               aria-label="FIS family"
               value={working.system_type}
@@ -1479,7 +1480,7 @@ export function BuildWorkspace({
             </select>
           </label>
           <Button view="outlined" disabled={project.read_only || !!fisImportRecovery || !!fisSaveRecovery || savingFis || recoveringFisSave || fisActionBusy} onClick={save} data-ruflex-action="fis.save_revision">
-            {savingFis ? "Saving FIS…" : recoveringFisSave ? "Resolving FIS save…" : "Save FIS"}
+            {savingFis ? ui("Saving FIS…", "Сохранение…") : recoveringFisSave ? ui("Resolving FIS save…", "Проверка сохранения…") : ui("Save FIS", "Сохранить модель")}
           </Button>
           <input
             ref={importInputRef}
@@ -1495,13 +1496,13 @@ export function BuildWorkspace({
             onClick={() => importInputRef.current?.click()}
             data-ruflex-action="fis.import"
           >
-            {importingMatlabFis ? "Importing MATLAB FIS…" : "Import MATLAB .fis"}
+            {importingMatlabFis ? ui("Importing MATLAB FIS…", "Импорт .fis…") : ui("Import MATLAB .fis", "Импортировать .fis")}
           </Button>
           <Button view="outlined" disabled={!working.semantic_hash || savingFis} onClick={exportMatlabFile} data-ruflex-action="fis.export">
-            Export MATLAB .fis
+            {ui("Export MATLAB .fis", "Экспортировать .fis")}
           </Button>
           <Button view="action" disabled={evaluatingFis || !working.semantic_hash || !!fisEvaluationRecovery || fisActionBusy} onClick={run} data-ruflex-action="fis.evaluate">
-            Run exact inference
+            {ui("Run exact inference", "Вычислить результат")}
           </Button>
         </div>
         {fisSaveRecovery && <div className="error" role="alert" data-testid="fis-save-recovery"><strong>FIS save response is uncertain; the exact revision has not been resubmitted.</strong><p>{fisSaveRecovery.error}</p><Button view="outlined" disabled={recoveringFisSave || fisActionBusy} onClick={recoverFisSave}>Retry exact FIS revision lookup</Button>{fisSaveRecovery.notFound && working && canonicalJson(fisSemanticPayload(working)) !== canonicalJson(fisSemanticPayload(fisSaveRecovery.spec)) && <Button view="outlined" disabled={recoveringFisSave || fisActionBusy} onClick={restorePendingFisSaveSnapshot}>Restore exact pending FIS copy</Button>}{fisSaveRecovery.notFound && <Button view="outlined" disabled={recoveringFisSave || project.read_only || !working || fisActionBusy || canonicalJson(fisSemanticPayload(working)) !== canonicalJson(fisSemanticPayload(fisSaveRecovery.spec))} onClick={explicitlyRepeatFisSave}>Explicitly repeat unchanged FIS save</Button>}</div>}
@@ -1509,7 +1510,7 @@ export function BuildWorkspace({
       </div>
       <div className="designer-grid">
         <aside className="variable-list">
-          <h3>Variables</h3>
+          <h3>{ui("Variables", "Переменные")}</h3>
           {working.inputs.map((variable, index) => (
             <button
               className={index === selected ? "selected" : ""}
@@ -1707,7 +1708,7 @@ export function BuildWorkspace({
               disabled={project.read_only || working.output.locked}
               onClick={addOutputTerm}
             >
-              Add output term
+                {ui("Add output term", "Добавить терм выхода")}
             </Button>
           </div>
         </aside>
@@ -1715,7 +1716,7 @@ export function BuildWorkspace({
           {selectedVariable && chart && (
             <>
               <div className="inspector-heading">
-                <h3>{selectedVariable.name} inspector</h3>
+                <h3>{selectedVariable.name} · {ui("inspector", "свойства")}</h3>
                 <label>
                   Locked{" "}
                   <input
@@ -2017,13 +2018,13 @@ export function BuildWorkspace({
                 disabled={project.read_only || selectedVariable.locked}
                 onClick={addTerm}
               >
-                Add term
+                {ui("Add term", "Добавить терм")}
               </Button>
             </>
           )}
         </section>
         <aside className="fis-run-panel">
-          <h3>Operators</h3>
+          <h3>{ui("Operators", "Операторы")}</h3>
           <label>
             T-norm
             <select
@@ -2141,7 +2142,7 @@ export function BuildWorkspace({
             </label>
             <p className="field-help">Midpoint cells samples the center of each discretization interval. Inclusive nodes preserves legacy RuFLEX behavior.</p>
           </>}
-          <h3>Run model</h3>
+          <h3>{ui("Run model", "Проверить модель")}</h3>
           {working.inputs.map((variable) => (
             <label className="field-label" key={variable.name}>
               {variable.name}
@@ -2157,7 +2158,7 @@ export function BuildWorkspace({
             </label>
           ))}
           <Button view="action" disabled={evaluatingFis || recoveringFisEvaluation || !working.semantic_hash || !!fisEvaluationRecovery || fisActionBusy} onClick={run}>
-            {evaluatingFis ? "Evaluating…" : "Evaluate"}
+            {evaluatingFis ? ui("Evaluating…", "Вычисление…") : ui("Evaluate", "Вычислить")}
           </Button>
           {!working.semantic_hash && <p role="status">Save this FIS revision before evaluating or exporting; both operations use the active persisted model.</p>}
           {evaluatingFis && <p role="status">Running the current FIS input sample…</p>}
@@ -2186,11 +2187,11 @@ export function BuildWorkspace({
         <section className="response-surface-panel">
           <div className="feature-toolbar">
             <div>
-              <span className="eyebrow">RESPONSE SURFACE</span>
-              <h3>Canonical control surface</h3>
+              <span className="eyebrow">{ui("RESPONSE SURFACE", "ПОВЕРХНОСТЬ ОТКЛИКА")}</span>
+              <h3>{ui("Canonical control surface", "Отклик модели")}</h3>
             </div>
             <Button view="outlined" disabled={surfaceLoading} onClick={refreshSurface}>
-              {surfaceLoading ? "Refreshing surface…" : "Refresh surface"}
+              {surfaceLoading ? ui("Refreshing surface…", "Обновление…") : ui("Refresh surface", "Обновить")}
             </Button>
           </div>
           <div className="surface-controls">
@@ -2261,21 +2262,21 @@ export function BuildWorkspace({
       <section className="rule-engineering">
         <div className="feature-toolbar">
           <div>
-            <span className="eyebrow">RULE ENGINEERING</span>
-            <h3>Table and text represent the same canonical rule base</h3>
+            <span className="eyebrow">{ui("RULE ENGINEERING", "ПРАВИЛА")}</span>
+            <h3>{ui("Table and text represent the same canonical rule base", "Редактирование базы правил")}</h3>
           </div>
           <Button
             view="outlined"
             disabled={project.read_only}
             onClick={addRule}
           >
-            Add rule
+            {ui("Add rule", "Добавить правило")}
           </Button>
           <TextInput
-            aria-label="Filter rules"
+            aria-label={ui("Filter rules", "Поиск правила")}
             value={ruleFilter}
             onUpdate={setRuleFilter}
-            placeholder="Filter rules"
+            placeholder={ui("Filter rules", "Поиск правила")}
           />
         </div>
         {visibleRules.map(({ rule, index }) => (
@@ -2491,9 +2492,9 @@ export function BuildWorkspace({
         </div>
         <div className="diagnostics">
           <div className="feature-toolbar">
-            <strong>FIS diagnostics</strong>
+            <strong>{ui("FIS diagnostics", "Диагностика FIS")}</strong>
             <Button view="outlined" onClick={refreshDiagnostics}>
-              Refresh diagnostics
+              {ui("Refresh diagnostics", "Обновить диагностику")}
             </Button>
           </div>
           <span>
@@ -2516,10 +2517,10 @@ export function BuildWorkspace({
         <section className="expert-correction-panel">
           <div className="feature-toolbar">
             <div>
-              <span className="eyebrow">EXPERT CORRECTION</span>
-              <h3>Preserve expert structure, refit unlocked consequents</h3>
+              <span className="eyebrow">{ui("EXPERT CORRECTION", "ЭКСПЕРТНАЯ КОРРЕКЦИЯ")}</span>
+              <h3>{ui("Preserve expert structure, refit unlocked consequents", "Сохранить структуру и уточнить свободные следствия")}</h3>
               <p>
-                Membership functions, antecedents, operators and rule weights stay fixed. Only unlocked Sugeno consequents are fitted by least squares on the TRAIN partition; validation and final test are not used for this fit.
+                {ui("Membership functions, antecedents, operators and rule weights stay fixed. Only unlocked Sugeno consequents are fitted by least squares on the TRAIN partition; validation and final test are not used for this fit.", "Меняются только незаблокированные следствия Сугено по обучающей выборке. Валидация и тест для подгонки не используются.")}
               </p>
             </div>
             <Button
@@ -2527,7 +2528,7 @@ export function BuildWorkspace({
               disabled={project.read_only || recoveringExpertRefit || !!expertRefitRecovery || expertLockedRules.length >= working.rules.filter((rule) => rule.enabled).length || fisActionBusy}
               onClick={refitExpertConsequents}
             >
-              {recoveringExpertRefit && !expertRefitRecovery ? "Fitting unlocked consequents…" : "Refit unlocked consequents on TRAIN"}
+              {recoveringExpertRefit && !expertRefitRecovery ? ui("Fitting unlocked consequents…", "Подгонка следствий…") : ui("Refit unlocked consequents on TRAIN", "Уточнить следствия на TRAIN")}
             </Button>
           </div>
           <div className="expert-correction-summary">

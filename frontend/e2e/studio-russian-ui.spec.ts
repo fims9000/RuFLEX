@@ -1,0 +1,27 @@
+import { expect, test } from "@playwright/test";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+test("основной маршрут Studio отображается по-русски", async ({ page }) => {
+  test.skip(process.env.VITE_RUFLEX_UI_LANG !== "ru", "Запуск: VITE_RUFLEX_UI_LANG=ru npx playwright test e2e/studio-russian-ui.spec.ts");
+  await page.setViewportSize({ width: 920, height: 720 });
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "Создайте или откройте проект" })).toBeVisible();
+  await page.getByLabel("Папка проекта").fill(join(tmpdir(), `ruflex-russian-ui-${Date.now()}`));
+  await page.getByLabel("Название проекта").fill("Проверка интерфейса");
+  await page.getByRole("button", { name: "Создать проект" }).click();
+  await expect(page.getByRole("heading", { name: "С чего начнём?" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Начало работы" })).toBeVisible();
+  await expect(page.getByTestId("project-integrity")).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Разделы Studio" }).getByRole("button", { name: "Обучение" })).toBeVisible();
+  await expect(page).toHaveScreenshot("studio-russian-920.png", { fullPage: true, animations: "disabled" });
+  await page.getByRole("button", { name: "Открыть данные" }).click();
+  await expect(page.getByLabel("Целевой столбец")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Проверить данные" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Сохранить набор данных" })).toBeVisible();
+  await page.getByRole("navigation", { name: "Разделы Studio" }).getByRole("button", { name: "Модели" }).click();
+  await expect(page.getByText("Нет нечёткой модели", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Создать модель из данных" })).toBeVisible();
+  await page.getByRole("navigation", { name: "Разделы Studio" }).getByRole("button", { name: "Доказательства" }).click();
+  await expect(page.getByRole("heading", { name: "Вычисления и объяснения" })).toBeVisible();
+});
