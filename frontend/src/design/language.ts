@@ -8,6 +8,18 @@ export function ui(english: string, russian: string): string {
 }
 
 const statusLabels: Record<string, string> = {
+  OK: "Рассчитано",
+  EMPTY: "Нет примеров",
+  ALLOW: "В области применения",
+  BLOCK: "Вне области применения",
+  UNDECLARED: "Область не задана",
+  PASSED_AVAILABLE_CHECKS: "Доступные проверки пройдены",
+  NOT_APPLICABLE: "Не применяется",
+  NOT_AVAILABLE: "Недоступно",
+  SUCCEEDED: "Завершено",
+  RUNNING: "Выполняется",
+  QUEUED: "Ожидает запуска",
+  CANCELLED: "Отменено",
   PASS: "Пройдено",
   FAIL: "Не пройдено",
   WARN: "Предупреждение",

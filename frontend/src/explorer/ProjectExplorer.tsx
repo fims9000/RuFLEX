@@ -23,7 +23,7 @@ import {
   StabilityGatePolicy,
   TreePathEvidence,
 } from "../api";
-import { ui } from "../design/language";
+import { ui, uiStatus } from "../design/language";
 
 type ObjectTarget = "DATA" | "MODELS" | "STUDIES" | "ANALYSES" | "EVIDENCE";
 
@@ -161,7 +161,7 @@ export function ProjectExplorer({
         {trainingRun &&
           item(
             "MODELS",
-            `${trainingRun.model_kind === "flat_neuro_fuzzy" ? "ANFIS" : trainingRun.model_kind === "decision_tree" ? "Decision Tree" : trainingRun.model_kind === "random_forest" ? "Random Forest" : trainingRun.model_kind === "gradient_boosting" ? "Gradient Boosting" : trainingRun.model_kind === "logistic_regression" ? "Logistic Regression" : trainingRun.model_kind === "linear_regression" ? "Linear Regression" : trainingRun.model_kind === "mlp" ? "MLP" : trainingRun.model_kind} ${trainingRun.run_id.slice(0, 8)}`,
+            ui(`${trainingRun.model_kind === "flat_neuro_fuzzy" ? "ANFIS" : trainingRun.model_kind === "decision_tree" ? "Decision Tree" : trainingRun.model_kind === "random_forest" ? "Random Forest" : trainingRun.model_kind === "gradient_boosting" ? "Gradient Boosting" : trainingRun.model_kind === "logistic_regression" ? "Logistic Regression" : trainingRun.model_kind === "linear_regression" ? "Linear Regression" : trainingRun.model_kind === "mlp" ? "MLP" : trainingRun.model_kind} ${trainingRun.run_id.slice(0, 8)}`, ({ flat_neuro_fuzzy: "Нейро-нечёткая модель", decision_tree: "Дерево решений", random_forest: "Случайный лес", gradient_boosting: "Градиентный бустинг", logistic_regression: "Логистическая регрессия", linear_regression: "Линейная регрессия", mlp: "Нейросеть MLP" } as Record<string, string>)[trainingRun.model_kind] ?? trainingRun.model_kind),
             ui("trained revision", "обученная версия"),
           )}
         {expertCorrection && item(
@@ -221,9 +221,9 @@ export function ProjectExplorer({
         ) : null}
         {treeEvidence && item("EVIDENCE", ui("Exact tree path", "Путь дерева"), ui(`leaf ${treeEvidence.leaf_id}`, `лист ${treeEvidence.leaf_id}`))}
         {!treeEvidence && treeEvidenceHydrationStatus === "error" && <div className="tree-empty" role="alert"><span>{ui("Saved tree-path lookup unavailable.", "Путь дерева недоступен.")} {treeEvidenceHydrationError}</span><button onClick={onRetryTreeEvidence}>{ui("Retry tree-path check", "Повторить проверку")}</button></div>}
-        {explanation && item("EVIDENCE", ui(`Post-hoc ${explanation.family.replaceAll("_", " ")}`, `Объяснение ${explanation.family.replaceAll("_", " ")}`), explanation.epistemic_category)}
-        {explanationCheck && item("EVIDENCE", ui("Explanation check", "Проверка объяснения"), explanationCheck.status)}
-        {behaviorResult && item("EVIDENCE", ui("BehaviorSpec run", "Проверка поведения"), ui(`${behaviorResult.status} · revision bound`, `${behaviorResult.status} · версия зафиксирована`))}
+        {explanation && item("EVIDENCE", ui(`Post-hoc ${explanation.family.replaceAll("_", " ")}`, explanation.family === "occlusion" ? "Вклад признаков: замена значений" : `Объяснение ${explanation.family.replaceAll("_", " ")}`), ui(explanation.epistemic_category, "Локальная оценка вклада"))}
+        {explanationCheck && item("EVIDENCE", ui("Explanation check", "Проверка объяснения"), uiStatus(explanationCheck.status))}
+        {behaviorResult && item("EVIDENCE", ui("BehaviorSpec run", "Проверка поведения"), ui(`${behaviorResult.status} · revision bound`, `${uiStatus(behaviorResult.status)} · сохранённая версия`))}
         {reproducibility && item("EVIDENCE", ui("Explanation reproducibility", "Воспроизводимость объяснений"), ui(`${reproducibility.run_ids.length} runs · paired`, `${reproducibility.run_ids.length} запусков · попарно`))}
         {exhaustive && item("EVIDENCE", "Exhaustive Lab", exhaustive.exactness_label)}
         {assurance && item("EVIDENCE", "AssuranceCase", assuranceGateSummary(assurance))}

@@ -57,3 +57,24 @@ def test_tiny_dataset_api_reports_data_problem_not_unavailable_adapter(tmp_path)
     assert result.json()["code"] == "VALIDATION_FAILED"
     assert "TRAIN_REQUIRES_BOTH_BINARY_CLASSES" in result.json()["detail"]
     assert "unavailable model adapter" not in result.text
+
+
+@pytest.mark.parametrize("tiny", [True, False])
+def test_decision_tree_study_reports_real_data_error_or_succeeds(tmp_path, monkeypatch, tiny):
+    from ruflex.application.training import _execute_study_job, load_study_job, start_study_job
+
+    root = tmp_path / "study"
+    frame = pd.DataFrame({"x": [10, 20, 30], "target": [0, 1, 1]}) if tiny else pd.DataFrame({"x": range(80), "target": [0, 1] * 40})
+    _confirm(root, frame)
+    monkeypatch.setattr("ruflex.application.training._submit_study_job", lambda root, job_id: load_study_job(root, job_id))
+    job = start_study_job(root, name="Decision tree input regression", model_kind="decision_tree", seeds=[42, 43, 44], selection_metric="f1", randomness_protocol="TRAINING_VARIABILITY", split_seed=42)
+    _execute_study_job(root, job.job_id)
+    restored = load_study_job(root, job.job_id)
+    if tiny:
+        assert restored.status == "FAILED"
+        assert all("TRAIN_REQUIRES_BOTH_BINARY_CLASSES" in state.error for state in restored.seed_states)
+        assert list_training_runs(root) == []
+    else:
+        assert restored.status == "SUCCEEDED"
+        assert all(state.status == "SUCCEEDED" and state.error is None for state in restored.seed_states)
+        assert len(list_training_runs(root)) == 3

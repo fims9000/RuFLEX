@@ -53,7 +53,7 @@ import {
   studioApi,
 } from "../api";
 import { StudioTheme } from "../design/tokens";
-import { ui } from "../design/language";
+import { ui, uiLanguage } from "../design/language";
 import { BuildWorkspace } from "../features/modelbuild/BuildWorkspace";
 import { EvidenceWorkspace } from "../features/evidence/EvidenceWorkspace";
 import { ExperimentWorkspace } from "../features/training/ExperimentWorkspace";
@@ -1884,8 +1884,8 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
       <p className="property-description">
         {ui("Description:", "Описание:")} {project.description ?? ui("None", "Нет")}
       </p>
-      <div className="artifact-details">
-        <strong>{ui("Artifacts", "Файлы проекта")}</strong>
+      <details className="artifact-details" data-testid="technical-project-files" open={uiLanguage === "en"}>
+        <summary>{ui("Artifacts", "Служебные файлы проекта")}{artifactsHydrationStatus === "loaded" ? ` · ${artifacts.length}` : ""}</summary>
         {artifactsHydrationStatus === "loading" && <span role="status">{ui("Loading project artifacts…", "Загрузка файлов…")}</span>}
         {artifactsHydrationStatus === "error" && <div className="error" role="alert" data-testid="artifact-hydration-error"><span>Project artifacts could not be verified. {artifactsHydrationError}</span><Button view="outlined" size="s" onClick={() => setArtifactsHydrationReload((current) => current + 1)}>Retry artifact list</Button></div>}
         {artifactsHydrationStatus === "loaded" && artifacts.length ? (
@@ -1901,7 +1901,7 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
         ) : artifactsHydrationStatus === "loaded" ? (
           <span>{ui("No immutable artifacts yet.", "Сохранённых файлов пока нет.")}</span>
         ) : null}
-      </div>
+      </details>
       {integrityStatus === "available" && integrity?.status === "PASS" && (
         <details className="project-integrity-summary" data-testid="project-integrity">
           <summary>{ui("Project checks", "Состояние проекта")} · <StatusBadge tone="success">PASS</StatusBadge></summary>

@@ -797,6 +797,7 @@ export type TrainingStudy = {
 };
 
 export type StudyJob = {
+  dataset_fingerprint?: string;
   job_id: string;
   client_request_id?: string | null;
   name: string;
