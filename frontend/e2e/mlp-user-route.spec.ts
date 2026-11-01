@@ -41,7 +41,7 @@ test("Studio saves tabular data, trains a configured MLP, and reopens its valida
   await page.getByRole("button", { name: "Generate explanation", exact: true }).click();
   await expect(page.getByTestId("explanation-job")).toContainText("SUCCEEDED");
   await page.getByRole("button", { name: "Run explanation checks", exact: true }).click();
-  await expect(page.getByText("PASSED_AVAILABLE_CHECKS", { exact: true })).toBeVisible();
+  await expect(page.getByTestId("explanation-check-status")).toHaveAttribute("data-status", "PASSED_AVAILABLE_CHECKS");
   await page.getByRole("button", { name: "Close", exact: true }).click();
   await page.getByLabel("Project path").fill(path);
   await page.getByRole("button", { name: "Open project", exact: true }).click();
@@ -54,5 +54,5 @@ test("Studio saves tabular data, trains a configured MLP, and reopens its valida
   await page.getByRole("button", { name: "A", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Validation prediction evidence" })).toBeVisible();
   await page.getByRole("button", { name: "E", exact: true }).click();
-  await expect(page.getByText("PASSED_AVAILABLE_CHECKS", { exact: true })).toBeVisible();
+  await expect(page.getByTestId("explanation-check-status")).toHaveAttribute("data-status", "PASSED_AVAILABLE_CHECKS");
 });

@@ -80,7 +80,7 @@ test("a first-time user can persist synthetic evidence and apply a frozen final-
   await expect(page.getByTestId("explanation-job")).toContainText("SUCCEEDED");
   await expect(page.getByText("POST-HOC ATTRIBUTION", { exact: true }).first()).toBeVisible();
   await page.getByRole("button", { name: "Run explanation checks", exact: true }).click();
-  await expect(page.getByText("PASSED_AVAILABLE_CHECKS", { exact: true })).toBeVisible();
+  await expect(page.getByTestId("explanation-check-status")).toHaveAttribute("data-status", "PASSED_AVAILABLE_CHECKS");
   await page.getByRole("button", { name: "Create and run BehaviorSpec", exact: true }).click();
   await expect(page.getByTestId("behavior-result")).toContainText("Output remains in declared range");
   await page.getByRole("button", { name: "Build AssuranceCase", exact: true }).click();
@@ -108,7 +108,7 @@ test("a first-time user can persist synthetic evidence and apply a frozen final-
   await expect(page.getByText("REVIEW BELOW 0.80", { exact: false })).toBeVisible();
   await page.getByRole("button", { name: "E", exact: true }).click();
   await expect(page.getByTestId("explanation-job")).toContainText("SUCCEEDED");
-  await expect(page.getByText("PASSED_AVAILABLE_CHECKS", { exact: true })).toBeVisible();
+  await expect(page.getByTestId("explanation-check-status")).toHaveAttribute("data-status", "PASSED_AVAILABLE_CHECKS");
   await expect(page.getByTestId("behavior-result")).toContainText("Output remains in declared range");
   await expect(page.getByTestId("assurance-case")).toContainText("dataset contract");
   await page.getByRole("button", { name: "P", exact: true }).click();

@@ -49,7 +49,15 @@ test("practice template persists data and reaches model, explanation and explici
   await page.locator('[data-ruflex-action="explanation.generate"]').click();
   await expect(page.getByTestId("explanation-job")).toContainText("SUCCEEDED");
   await page.locator('[data-ruflex-action="explanation.check"]').click();
-  await expect(page.getByText("PASSED_AVAILABLE_CHECKS", { exact: true })).toBeVisible();
+  await expect(page.getByTestId("explanation-check-status")).toHaveAttribute("data-status", "PASSED_AVAILABLE_CHECKS");
+  await expect(page.getByTestId("explanation-check-status")).toContainText("Доступные проверки пройдены");
+  const chart = page.getByTestId("explanation-attribution-chart");
+  await expect(chart).toBeVisible();
+  await expect(chart.locator(".attribution-chart-row")).toHaveCount(2);
+  await expect(page.getByTestId("explanation-technical-details")).not.toHaveAttribute("open", "");
+  await page.getByTestId("explanation-technical-details").locator("summary").click();
+  await expect(page.getByText("Все значения признаков")).toBeVisible();
+  await page.getByTestId("explanation-technical-details").locator("summary").click();
   await capture("practice-03-explanation.png");
   await page.getByRole("navigation", { name: "Разделы Studio" }).getByRole("button", { name: "Анализ" }).click();
   await expect(page.getByRole("heading", { name: "Финальный тест закрыт" })).toBeVisible();
@@ -64,4 +72,11 @@ test("practice template persists data and reaches model, explanation and explici
   await page.getByRole("button", { name: "Открыть проект", exact: true }).click();
   await page.getByRole("navigation", { name: "Разделы Studio" }).getByRole("button", { name: "Анализ" }).click();
   await expect(page.getByRole("heading", { name: "Результат финального теста сохранён отдельно" })).toBeVisible();
+  await page.getByRole("navigation", { name: "Разделы Studio" }).getByRole("button", { name: "Доказательства" }).click();
+  await expect(page.getByTestId("explanation-attribution-chart").locator(".attribution-chart-row")).toHaveCount(2);
+  await page.getByLabel("Сменить тему").click();
+  await expect(page.locator("html")).toHaveAttribute("data-ruflex-theme", "dark");
+  await expect(page.getByTestId("explanation-attribution-chart")).toBeVisible();
+  await page.getByTestId("explanation-attribution-chart").scrollIntoViewIfNeeded();
+  await capture("practice-05-explanation-dark.png");
 });

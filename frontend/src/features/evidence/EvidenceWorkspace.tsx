@@ -56,6 +56,33 @@ function canonicalJson(value: unknown): string {
   return JSON.stringify(value) ?? "undefined";
 }
 
+function formatAttribution(value: number): string {
+  if (value === 0) return "0";
+  const magnitude = Math.abs(value);
+  return `${value > 0 ? "+" : "−"}${magnitude < 0.001 ? magnitude.toExponential(2) : magnitude.toFixed(4)}`;
+}
+
+function AttributionChart({ explanation }: { explanation: ExplanationContract }) {
+  const sorted = [...explanation.attributions].sort((left, right) =>
+    Math.abs(right.attribution) - Math.abs(left.attribution) || left.feature.localeCompare(right.feature));
+  const maxMagnitude = Math.max(0, ...sorted.map((item) => Math.abs(item.attribution)));
+  return <figure className="attribution-chart" data-testid="explanation-attribution-chart">
+    <figcaption>{ui("Feature contributions", "Вклад признаков")}</figcaption>
+    <p>{ui("Positive values raise the explained output; negative values lower it. This is a local estimate, not a causal effect.", "Плюс повышает показанный выход модели, минус понижает. Это локальная оценка, не доказательство причины.")}</p>
+    {sorted.length === 0 ? <p>{ui("No feature contributions were saved.", "Для этого объяснения нет сохранённых вкладов признаков.")}</p> : <div className="attribution-chart-rows">
+      {sorted.slice(0, 8).map((item) => <div className="attribution-chart-row" key={item.feature}>
+        <span className="attribution-chart-label" title={item.feature}>{item.feature}</span>
+        <div className="attribution-chart-track" aria-hidden="true">
+          <div className="attribution-chart-half negative">{item.attribution < 0 && <span style={{ width: `${maxMagnitude ? Math.abs(item.attribution) / maxMagnitude * 100 : 0}%` }} />}</div>
+          <div className="attribution-chart-half positive">{item.attribution > 0 && <span style={{ width: `${maxMagnitude ? item.attribution / maxMagnitude * 100 : 0}%` }} />}</div>
+        </div>
+        <span className="attribution-chart-value">{formatAttribution(item.attribution)}</span>
+      </div>)}
+      {sorted.length > 8 && <p>{ui(`${sorted.length - 8} more features are available in details.`, `Ещё ${sorted.length - 8} признаков — в подробностях.`)}</p>}
+    </div>}
+  </figure>;
+}
+
 export function EvidenceWorkspace({
   project,
   dataset,
@@ -1102,7 +1129,7 @@ export function EvidenceWorkspace({
       </div>
 
       {treeEvidenceHydrationStatus === "loading" && <p role="status">{ui("Checking saved structural trace…", "Проверка сохранённой трассы…")}</p>}
-      {treeEvidenceHydrationStatus === "none" && <p className="property-description" data-testid="tree-evidence-empty">{ui("No saved structural tree trace is available for this project.", "Сохранённой трассы дерева пока нет.")}</p>}
+      {treeEvidenceHydrationStatus === "none" && !explanation && <p className="property-description" data-testid="tree-evidence-empty">{ui("No saved structural tree trace is available for this project.", "Сохранённой трассы дерева пока нет.")}</p>}
       {treeEvidenceHydrationStatus === "error" && <div className="error" role="alert" data-testid="tree-evidence-hydration-error"><strong>Saved structural trace could not be verified.</strong><p>{treeEvidenceHydrationError}</p>{onRetryTreeEvidence && <Button view="outlined" onClick={onRetryTreeEvidence}>Retry structural trace</Button>}</div>}
 
       {hasExact && (
@@ -1115,10 +1142,9 @@ export function EvidenceWorkspace({
         <div className="feature-toolbar compact-toolbar">
           <div>
             <span className="eyebrow">{ui("POST-HOC ATTRIBUTION", "ОБЪЯСНЕНИЕ ПРОГНОЗА")}</span>
-            <h3>{method === "occlusion" ? "Train-reference occlusion" : method === "integrated_gradients" ? "Integrated Gradients" : method === "gradient_shap" ? "GradientSHAP" : method === "tree_shap" ? "TreeSHAP" : "SHAP · permutation"}</h3>
+            <h3>{method === "occlusion" ? ui("Train-reference occlusion", "Влияние признаков · Occlusion") : method === "integrated_gradients" ? ui("Integrated Gradients", "Интегрированные градиенты") : method === "gradient_shap" ? "GradientSHAP" : method === "tree_shap" ? "TreeSHAP" : ui("SHAP · permutation", "SHAP · перестановки")}</h3>
             <p>{ui(`${method === "occlusion" ? "One feature at a time is replaced by its train-derived reference." : method === "integrated_gradients" ? "Gradients are integrated from a train-derived reference to the observed sample." : method === "gradient_shap" ? "Expected gradients use a deterministic train-only background." : method === "tree_shap" ? "TreeSHAP uses the persisted declarative tree ensemble and a deterministic train-only background." : "Permutation SHAP uses the persisted model through a deterministic train-only background."} This is not a causal effect or an exact trace.`, "Объяснение строится по сохранённой модели и обучающим данным. Это не причинный вывод.")}</p>
           </div>
-          <StatusBadge tone="warning">post-hoc</StatusBadge>
         </div>
         {explanationHydrationStatus === "loading" && <p role="status">{ui("Loading saved explanation…", "Загрузка объяснения…")}</p>}
         {explanationHydrationStatus === "none" && <p className="property-description" data-testid="explanation-empty">{ui("No saved explanation is available for this project.", "Сохранённого объяснения пока нет.")}</p>}
@@ -1133,7 +1159,9 @@ export function EvidenceWorkspace({
               </select>
             </label>
             <label className="field-label evidence-method-select">{ui("Execution backend", "Среда выполнения")}<select aria-label={ui("Evidence execution backend", "Среда выполнения объяснения")} value={executionBackendKey} disabled={busy || project.read_only || runtimeCatalogHydrationStatus !== "available" || !executionBackends.length} onChange={(event) => setExecutionBackendKey(event.target.value)}>{executionBackends.map((backend) => <option key={backend.identity.key} value={backend.identity.key}>{backend.identity.key} · {backend.identity.provider}</option>)}</select></label>
-            <div className="evidence-sample-grid">
+            <details className="evidence-advanced-details">
+              <summary>{ui("Change the explained input", "Изменить значения для объяснения")}</summary>
+              <div className="evidence-sample-grid">
               {run.feature_columns.map((feature) => (
                 <label className="field-label" key={feature}>
                   {feature}
@@ -1142,14 +1170,15 @@ export function EvidenceWorkspace({
                   </select> : <TextInput aria-label={`Evidence ${feature}`} value={sample[feature] ?? ""} onUpdate={(value) => setSample((current) => ({ ...current, [feature]: value }))} />}
                 </label>
               ))}
-            </div>
+              </div>
+            </details>
             {samplePipelineStatus === "loading" && <p role="status">Loading this run’s TRAIN-frozen categorical choices…</p>}
             {samplePipelineStatus === "error" && <div className="error" role="alert"><strong>Categorical evidence input is paused.</strong><p>{samplePipelineError}</p><Button view="outlined" onClick={() => setSamplePipelineReload((current) => current + 1)}>Retry categorical encoder</Button></div>}
             <div className="evidence-actions">
               <Button view="action" disabled={busy || project.read_only || !categoricalSampleReady || runtimeCatalogHydrationStatus !== "available" || !executionBackends.length || capabilityHydrationStatus !== "available" || selectableMethods.length === 0 || explanationJobHydrationStatus === "loading" || explanationJobHydrationStatus === "error" || !!explanationJobPollError || !!explanationJob && ["queued", "running"].includes(explanationJob.status)} onClick={generate} data-ruflex-action="explanation.generate">{busy ? ui("Generating…", "Построение…") : ui("Generate explanation", "Построить объяснение")}</Button>
-              <span className="property-description">{run.model_kind} · run {run.run_id.slice(0, 8)}</span>
+              <span className="property-description">{ui("Model", "Модель")}: {run.model_kind}</span>
             </div>
-            {capabilityNegotiation && <div className="trace-card" data-testid="run-capability-negotiation"><strong>Run capability contract</strong><div className="property-list">{capabilityNegotiation.decisions.map((decision) => <div key={decision.capability}><span>{decision.capability.replaceAll("_", " ")}</span><span><StatusBadge tone={decision.status === "AVAILABLE" ? "success" : "info"}>{decision.status}</StatusBadge> {decision.detail}</span></div>)}</div></div>}
+            {capabilityNegotiation && <details className="evidence-advanced-details" data-testid="run-capability-negotiation"><summary>{ui("Method availability", "Доступность методов")}</summary><div className="property-list">{capabilityNegotiation.decisions.map((decision) => <div key={decision.capability}><span>{decision.capability.replaceAll("_", " ")}</span><span><StatusBadge tone={decision.status === "AVAILABLE" ? "success" : "info"}>{decision.status}</StatusBadge> {decision.detail}</span></div>)}</div></details>}
             {capabilityHydrationStatus === "loading" && <p role="status" data-testid="run-capability-loading">Checking explainer support for this exact run…</p>}
             {capabilityHydrationStatus === "error" && <div className="error" role="alert" data-testid="run-capability-error"><strong>Explainer support for this run could not be verified; generation is paused.</strong><p>{capabilityHydrationError}</p><Button view="outlined" onClick={() => setCapabilityHydrationReload((current) => current + 1)}>Retry run capabilities</Button></div>}
             {runtimeCatalogHydrationStatus === "loading" && <p role="status" data-testid="runtime-catalog-loading">Loading runtime explainer, validator and execution-backend catalogs…</p>}
@@ -1158,39 +1187,45 @@ export function EvidenceWorkspace({
             {explanationJobHydrationStatus === "loading" && <p role="status" data-testid="explanation-job-loading">Loading saved explanation job…</p>}
             {explanationJobHydrationStatus === "none" && <p className="property-description" data-testid="explanation-job-empty">No saved explanation job is available.</p>}
             {explanationJobHydrationStatus === "error" && <div className="error" role="alert" data-testid="explanation-job-hydration-error"><strong>Saved explanation job could not be verified; starting another operation is paused.</strong><p>{explanationJobHydrationError}</p><Button view="outlined" onClick={() => setExplanationJobHydrationReload((current) => current + 1)}>Retry saved explanation job</Button></div>}
-            {explanationJob && <div className="property-description" data-testid="explanation-job"><StatusBadge tone={explanationJob.status === "succeeded" ? "success" : explanationJob.status === "failed" ? "danger" : "warning"}>{explanationJob.status.toUpperCase()}</StatusBadge> {explanationJob.execution_backend_key ?? "frozen execution backend"} · {explanationJob.message ?? "Persisted operation"} · job {explanationJob.job_id.slice(0, 12)}{explanationJob.error && ` · ${explanationJob.error}`}{explanationJob.status === "queued" && <Button view="flat" size="s" disabled={cancelingExplanationJob} onClick={cancelQueuedJob} data-ruflex-action="explanation.cancel">{cancelingExplanationJob ? "Cancelling…" : "Cancel queued job"}</Button>}</div>}
+            {explanationJob && <div className="property-description" data-testid="explanation-job">{explanationJob.status === "succeeded" ? <><StatusBadge tone="success">{explanationJob.kind === "explanation_generation" ? ui("Explanation saved", "Объяснение сохранено") : ui("Check saved", "Проверка сохранена")}</StatusBadge><details className="evidence-job-details"><summary>{ui("Job details", "Сведения о задаче")}</summary><span>{explanationJob.status.toUpperCase()} · {explanationJob.execution_backend_key ?? "frozen execution backend"} · {explanationJob.message ?? "Persisted operation"} · job {explanationJob.job_id.slice(0, 12)}</span></details></> : <><StatusBadge tone={explanationJob.status === "failed" ? "danger" : "warning"}>{explanationJob.status.toUpperCase()}</StatusBadge> {explanationJob.execution_backend_key ?? "frozen execution backend"} · {explanationJob.message ?? "Persisted operation"} · job {explanationJob.job_id.slice(0, 12)}{explanationJob.error && ` · ${explanationJob.error}`}{explanationJob.status === "queued" && <Button view="flat" size="s" disabled={cancelingExplanationJob} onClick={cancelQueuedJob} data-ruflex-action="explanation.cancel">{cancelingExplanationJob ? "Cancelling…" : "Cancel queued job"}</Button>}</>}</div>}
             {explanationJob && (["queued", "running"].includes(explanationJob.status) || !!explanationJobPollError) && <div className={explanationJobPollError ? "error" : "property-description"} role={explanationJobPollError ? "alert" : "status"} data-testid="explanation-job-resume">{explanationJobPollError ? <><strong>{explanationJob.status === "succeeded" ? "Saved job output needs recovery." : "Saved job status needs recovery."}</strong><p>{explanationJobPollError}</p></> : <span>This saved job is still active. New explanation/check jobs are paused to prevent duplicate work.</span>}<Button view="outlined" disabled={busy} onClick={resumeExplanationJob}>{explanationJob.status === "succeeded" ? "Recover saved job result" : "Resume saved job"}</Button></div>}
           </>
         )}
         {error && <div className="error" role="alert">{error}</div>}
         {explanation && (
-          <div className="evidence-result-grid">
-            <section className="trace-card">
-              <strong>Explanation contract</strong>
-              <div><span>Category</span><code>{explanation.epistemic_category}</code></div>
-              <div><span>Method</span><code>{explanation.method}</code></div>
-              <div><span>Explained output</span><code>{explanation.prediction.toFixed(6)}</code></div>
-              <div><span>Output space</span><code>{explanation.output_space}</code></div>
-              {explanation.preprocessing_identity && <div><span>Preprocessing</span><code>{explanation.preprocessing_identity.slice(0, 28)}…</code></div>}
-              {explanation.sample_identity && <div><span>Sample identity</span><code>{explanation.sample_identity.slice(0, 28)}…</code></div>}
-              {explanation.base_value !== null && <div><span>Base value</span><code>{explanation.base_value.toFixed(6)}</code></div>}
-              {explanation.completeness_error !== null && <div><span>Completeness error</span><code>{explanation.completeness_error.toExponential(3)}</code></div>}
-              <p>{explanation.scientific_note}</p>
-            </section>
-            <section className="trace-card">
-              <strong>Feature effects</strong>
-              {[...explanation.attributions].sort((a, b) => Math.abs(b.attribution) - Math.abs(a.attribution)).map((item) => (
-                <div key={item.feature}>
-                  <span>{item.feature}: {item.observed_value.toFixed(4)} → ref {item.reference_value.toFixed(4)}</span>
-                  <code>{item.attribution >= 0 ? "+" : ""}{item.attribution.toFixed(6)}</code>
-                </div>
-              ))}
-            </section>
-            <section className="trace-card evidence-limitations">
-              <strong>Assumptions / limits</strong>
-              {explanation.assumptions.map((item) => <p key={item}>Assumption · {item}</p>)}
-              {explanation.limitations.map((item) => <p key={item}>Limit · {item}</p>)}
-            </section>
+          <div className="evidence-explanation-result">
+            <div className="evidence-explanation-summary"><strong>{ui("Explained model output", "Объясняемый выход модели")}: {explanation.prediction.toFixed(4)}</strong><span>{explanation.output_space}</span></div>
+            <AttributionChart explanation={explanation} />
+            <details className="evidence-advanced-details" data-testid="explanation-technical-details">
+              <summary>{ui("Values and scientific details", "Значения и научные подробности")}</summary>
+              <div className="evidence-result-grid">
+                <section className="trace-card">
+                  <strong>{ui("Explanation contract", "Контракт объяснения")}</strong>
+                  <div><span>{ui("Category", "Категория")}</span><code>{explanation.epistemic_category}</code></div>
+                  <div><span>{ui("Method", "Метод")}</span><code>{explanation.method}</code></div>
+                  <div><span>{ui("Output space", "Шкала выхода")}</span><code>{explanation.output_space}</code></div>
+                  {explanation.preprocessing_identity && <div><span>Preprocessing</span><code>{explanation.preprocessing_identity.slice(0, 28)}…</code></div>}
+                  {explanation.sample_identity && <div><span>Sample identity</span><code>{explanation.sample_identity.slice(0, 28)}…</code></div>}
+                  {explanation.base_value !== null && <div><span>Base value</span><code>{explanation.base_value.toFixed(6)}</code></div>}
+                  {explanation.completeness_error !== null && <div><span>Completeness error</span><code>{explanation.completeness_error.toExponential(3)}</code></div>}
+                  <p>{explanation.scientific_note}</p>
+                </section>
+                <section className="trace-card">
+                  <strong>{ui("All feature values", "Все значения признаков")}</strong>
+                  {[...explanation.attributions].sort((a, b) => Math.abs(b.attribution) - Math.abs(a.attribution)).map((item) => (
+                    <div key={item.feature}>
+                      <span>{item.feature}: {item.observed_value.toFixed(4)} → ref {item.reference_value.toFixed(4)}</span>
+                      <code>{formatAttribution(item.attribution)}</code>
+                    </div>
+                  ))}
+                </section>
+                <section className="trace-card evidence-limitations">
+                  <strong>{ui("Assumptions / limits", "Допущения и ограничения")}</strong>
+                  {explanation.assumptions.map((item) => <p key={item}>{ui("Assumption", "Допущение")} · {item}</p>)}
+                  {explanation.limitations.map((item) => <p key={item}>{ui("Limit", "Ограничение")} · {item}</p>)}
+                </section>
+              </div>
+            </details>
           </div>
         )}
       </section>
@@ -1204,15 +1239,19 @@ export function EvidenceWorkspace({
           </div>
           {explanationCheck && explanationCheck.explanation_id !== explanation.explanation_id ? <div className="error" role="alert" data-testid="explanation-check-mismatch"><strong>Saved check belongs to a different explanation.</strong><p>The persisted ExplanationCheck is not displayed as validation of the currently selected explanation.</p></div> : explanationCheck ? (
             <div className="trace-card">
-              <div className="evidence-check-header"><strong>{ui("Check result", "Результат проверки")}</strong><StatusBadge tone={statusTone(explanationCheck.status)}>{explanationCheck.status}</StatusBadge></div>
-              {validatorPlugins.filter((plugin) => explanationCheck.checks.some((item) => item.validator_key === plugin.key)).map((plugin) => <p className="property-description" data-testid="validator-plugin" key={plugin.key}>Validator · {plugin.key} v{plugin.version} · {Object.entries(plugin.capabilities).filter(([, available]) => available).map(([key]) => key.replaceAll("_", " ")).join(", ")}</p>)}
-              {explanationCheck.checks.map((item) => (
-                <div key={item.name}>
-                  <span><strong>{item.category.replaceAll("_", " ")}</strong> · {item.name} · {item.detail}</span>
-                  <StatusBadge tone={statusTone(item.status)}>{item.status}</StatusBadge>
-                </div>
-              ))}
-              <p>{explanationCheck.scientific_note}</p>
+              <div className="evidence-check-header"><strong>{ui("Check result", "Результат проверки")}</strong><span data-testid="explanation-check-status" data-status={explanationCheck.status}><StatusBadge tone={statusTone(explanationCheck.status)}>{explanationCheck.status === "PASSED_AVAILABLE_CHECKS" ? ui("Available checks passed", "Доступные проверки пройдены") : explanationCheck.status === "WARNING" ? ui("Checks have warnings", "Есть замечания") : ui("Checks failed", "Проверки не пройдены")}</StatusBadge></span></div>
+              <p className="property-description">{ui("Technical checks assess the saved explanation; they do not establish causality.", "Технические проверки оценивают сохранённое объяснение, но не доказывают причинность.")}</p>
+              <details className="evidence-advanced-details" data-testid="explanation-check-details"><summary>{ui("Show individual checks", "Показать отдельные проверки")}</summary>
+                {validatorPlugins.filter((plugin) => explanationCheck.checks.some((item) => item.validator_key === plugin.key)).map((plugin) => <p className="property-description" data-testid="validator-plugin" key={plugin.key}>Validator · {plugin.key} v{plugin.version} · {Object.entries(plugin.capabilities).filter(([, available]) => available).map(([key]) => key.replaceAll("_", " ")).join(", ")}</p>)}
+                {explanationCheck.checks.map((item) => (
+                  <div className="evidence-check-detail" key={item.name}>
+                    <span><strong>{item.category.replaceAll("_", " ")}</strong> · {item.name} · {item.detail}</span>
+                    <StatusBadge tone={statusTone(item.status)}>{item.status}</StatusBadge>
+                  </div>
+                ))}
+                <p>{explanationCheck.scientific_note}</p>
+                <small className="mono">{explanationCheck.status}</small>
+              </details>
             </div>
           ) : explanationCheckHydrationStatus === "error" ? <div className="error" role="alert" data-testid="explanation-check-hydration-error"><strong>{ui("Saved explanation check could not be verified.", "Не удалось проверить сохранённый результат.")}</strong><p>{explanationCheckHydrationError}</p>{onRetryExplanationCheck && <Button view="outlined" onClick={onRetryExplanationCheck}>{ui("Retry explanation check", "Повторить проверку")}</Button>}</div> : explanationCheckHydrationStatus === "loading" ? <p role="status">{ui("Loading saved explanation check…", "Загрузка проверки…")}</p> : <p className="property-description">{ui("Not checked yet. A generated explanation is not automatically validated.", "Проверка ещё не запускалась. Создание объяснения не подтверждает его корректность.")}</p>}
         </section>

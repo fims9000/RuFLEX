@@ -1346,6 +1346,31 @@ input:focus-visible,
 .evidence-sample-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
 .evidence-result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
 .evidence-limitations p { margin: 6px 0; }
+.evidence-explanation-result { display: grid; gap: 12px; }
+.evidence-explanation-summary { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; }
+.evidence-explanation-summary span { color: var(--rf-text-secondary); font-size: 12px; }
+.evidence-advanced-details { border: 1px solid var(--rf-border); border-radius: 6px; padding: 10px 12px; background: var(--rf-bg-surface); }
+.evidence-advanced-details summary { cursor: pointer; font-weight: 600; }
+.evidence-advanced-details[open] summary { margin-bottom: 12px; }
+.evidence-job-details { display: inline-block; margin-left: 10px; vertical-align: middle; }
+.evidence-job-details summary { cursor: pointer; }
+.evidence-job-details[open] { display: block; margin: 8px 0 0; }
+.attribution-chart { margin: 0; padding: 16px; border: 1px solid var(--rf-border); border-radius: 8px; background: var(--rf-bg-surface); }
+.attribution-chart figcaption { font-weight: 700; }
+.attribution-chart p { margin: 6px 0 12px; color: var(--rf-text-secondary); font-size: 12px; }
+.attribution-chart-rows { display: grid; gap: 9px; }
+.attribution-chart-row { display: grid; grid-template-columns: minmax(90px, 140px) minmax(120px, 1fr) 76px; align-items: center; gap: 10px; font-size: 12px; }
+.attribution-chart-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.attribution-chart-track { display: grid; grid-template-columns: 1fr 1fr; height: 18px; background: var(--rf-bg-surface-2); border-radius: 3px; overflow: hidden; }
+.attribution-chart-half { display: flex; align-items: stretch; }
+.attribution-chart-half.negative { justify-content: flex-end; border-right: 1px solid var(--rf-text-muted); }
+.attribution-chart-half.positive { justify-content: flex-start; }
+.attribution-chart-half.negative span { background: var(--rf-danger); }
+.attribution-chart-half.positive span { background: var(--rf-accent); }
+.attribution-chart-value { text-align: right; font-variant-numeric: tabular-nums; }
+.evidence-check-detail { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 7px 0; border-top: 1px solid var(--rf-border); }
+.evidence-check-detail span:first-child { min-width: 0; }
+@media (max-width: 720px) { .attribution-chart-row { grid-template-columns: minmax(70px, 100px) minmax(80px, 1fr) 68px; gap: 6px; } }
 .slice-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin: 12px 0; }
 .slice-form-grid input, .slice-form-grid select { width: 100%; }
 .evidence-method-select { max-width: 320px; }

@@ -233,11 +233,12 @@ test("PRODUCT-EVIDENCE captures the frozen V1 Studio route from persisted object
   await expect(page.getByTestId("explanation-job-resume")).toContainText("Saved ExplanationCheck response lost after persistence");
   await expect(page.getByRole("button", { name: "Run explanation checks", exact: true })).toBeDisabled();
   await page.getByRole("button", { name: "Recover saved job result", exact: true }).click();
-  await expect(page.getByText("PASSED_AVAILABLE_CHECKS", { exact: true })).toBeVisible();
+  await expect(page.getByTestId("explanation-check-status")).toHaveAttribute("data-status", "PASSED_AVAILABLE_CHECKS");
   await expect(page.getByTestId("explanation-job-resume")).toHaveCount(0);
   expect(explanationCheckJobPostCount).toBe(1);
-  await capture(page, screenshots, "09_xai_and_explanation_check.png", page.getByText("PASSED_AVAILABLE_CHECKS", { exact: true }));
+  await capture(page, screenshots, "09_xai_and_explanation_check.png", page.getByTestId("explanation-check-status"));
   // Two equivalent declared cases for the first independently trained run.
+  await page.getByText("Change the explained input", { exact: true }).click();
   await page.getByLabel("temperature").fill("30");
   await page.getByRole("button", { name: "Generate explanation", exact: true }).click();
 
@@ -247,6 +248,7 @@ test("PRODUCT-EVIDENCE captures the frozen V1 Studio route from persisted object
   await expect(page.locator(".run-provenance")).toContainText("model artifact persisted", { timeout: 30_000 });
   await page.getByRole("button", { name: "E", exact: true }).click();
   await page.getByRole("button", { name: "Generate explanation", exact: true }).click();
+  await page.getByText("Change the explained input", { exact: true }).click();
   await page.getByLabel("temperature").fill("30");
   await page.getByRole("button", { name: "Generate explanation", exact: true }).click();
   const explanationChoices = page.locator('.comparison-choice input[type="checkbox"]');

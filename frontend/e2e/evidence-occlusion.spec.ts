@@ -59,8 +59,9 @@ test("PRODUCT-05 persists post-hoc evidence separately from exact traces", async
     button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
   });
-  await expect(page.getByText("PASSED_AVAILABLE_CHECKS", { exact: true })).toBeVisible();
+  await expect(page.getByTestId("explanation-check-status")).toHaveAttribute("data-status", "PASSED_AVAILABLE_CHECKS");
   expect(explanationCheckJobPostCount).toBe(1);
+  await page.getByTestId("explanation-check-details").locator("summary").click();
   await expect(page.getByText("replay integrity", { exact: true })).toBeVisible();
   await expect(page.getByTestId("validator-plugin")).toContainText("native_explanation_validator v1");
 
@@ -90,7 +91,7 @@ test("PRODUCT-05 persists post-hoc evidence separately from exact traces", async
   await expect(page.getByTestId("explanation-check-hydration-error")).toContainText("Temporary explanation-check read failure");
   await page.getByRole("button", { name: "Retry explanation check", exact: true }).click();
   await expect(page.getByTestId("explanation-job")).toContainText("SUCCEEDED");
-  await expect(page.getByText("PASSED_AVAILABLE_CHECKS", { exact: true })).toBeVisible();
+  await expect(page.getByTestId("explanation-check-status")).toHaveAttribute("data-status", "PASSED_AVAILABLE_CHECKS");
 });
 
 test("PRODUCT-06 persists revision-bound BehaviorSpec evidence through reopen", async ({ page }) => {
