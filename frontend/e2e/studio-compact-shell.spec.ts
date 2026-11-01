@@ -2,6 +2,20 @@ import { expect, test } from "@playwright/test";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+for (const width of [720, 1100]) {
+  test(`responsive panel defaults match the inclusive CSS breakpoint at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 720 });
+    await page.goto("/");
+    await expect(page.locator(".inspector")).toBeHidden();
+    if (width === 720) await expect(page.locator(".explorer")).toBeHidden();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
+    await page.getByRole("button", { name: "Show properties", exact: true }).click();
+    await expect(page.locator(".inspector")).toBeVisible();
+    await page.getByRole("button", { name: "Hide properties", exact: true }).click();
+    await expect(page.locator(".inspector")).toBeHidden();
+  });
+}
+
 test("compact Studio keeps every workbench and optional panel reachable", async ({ page }) => {
   const path = join(tmpdir(), `ruflex-compact-studio-${Date.now()}`);
   await page.setViewportSize({ width: 920, height: 720 });

@@ -117,6 +117,7 @@ test("PRODUCT-06 persists revision-bound BehaviorSpec evidence through reopen", 
   await page.getByRole("button", { name: "Create and run BehaviorSpec", exact: true }).evaluate((button) => { button.dispatchEvent(new MouseEvent("click", { bubbles: true })); button.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
   await expect(page.getByTestId("behavior-result")).toContainText("expected nondecreasing", { timeout: 15_000 });
   expect(behaviorSpecPosts).toBe(1);
+  await page.getByTestId("behavior-result").getByText("Model reference", { exact: true }).click();
   await expect(page.getByText(/artifact [0-9a-f]{12}/)).toBeVisible();
   await page.getByRole("button", { name: "Create and run BehaviorSpec", exact: true }).click();
   await expect(page.getByTestId("behavior-result")).toContainText("expected nondecreasing", { timeout: 15_000 });

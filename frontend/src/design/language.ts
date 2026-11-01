@@ -20,6 +20,11 @@ const statusLabels: Record<string, string> = {
   RUNNING: "Выполняется",
   QUEUED: "Ожидает запуска",
   CANCELLED: "Отменено",
+  FROZEN: "Зафиксировано",
+  LOCKED_NOT_EVALUATED: "Итоговый тест закрыт",
+  completed: "Завершено",
+  succeeded: "Завершено",
+  train_only: "Только обучение",
   PASS: "Пройдено",
   FAIL: "Не пройдено",
   WARN: "Предупреждение",
@@ -31,6 +36,10 @@ const statusLabels: Record<string, string> = {
   "N/A": "Н/Д",
   ACCEPT: "Принять",
   REVIEW: "Проверить",
+  LOW_CONFIDENCE: "Низкая уверенность",
+  RUN_DISAGREEMENT: "Модели расходятся в решении",
+  HIGH_DISPERSION: "Большой разброс вероятностей",
+  INSUFFICIENT_RUN_SUPPORT: "Недостаточно сопоставимых обучений",
   OUT_OF_SCOPE: "Вне области применения",
 };
 

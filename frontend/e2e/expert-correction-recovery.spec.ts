@@ -49,7 +49,10 @@ test("PRODUCT-13 recovers a persisted TRAIN-only Sugeno correction without refit
   let releaseRecovery: () => void = () => {};
   let recoveryStarted: () => void = () => {};
   const recoveryStartedPromise = new Promise<void>((resolve) => { recoveryStarted = resolve; });
+  let delayFirstRecovery = true;
   await page.route("**/fis/expert-correction/latest", async (route) => {
+    if (!delayFirstRecovery) return route.continue();
+    delayFirstRecovery = false;
     const response = await route.fetch();
     recoveryStarted();
     await new Promise<void>((resolve) => { releaseRecovery = resolve; });

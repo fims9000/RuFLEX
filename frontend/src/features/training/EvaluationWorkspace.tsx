@@ -1,4 +1,5 @@
 import { EChartsOption } from "echarts";
+import { PredictionDistribution } from "./PredictionDistribution";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AnalysisComparison,
@@ -868,7 +869,7 @@ export function EvaluationWorkspace({
     </div>
 
     <div className="evaluation-grid">
-      <ChartSurface title={run.task === "binary_classification" ? ui("Validation reliability", "Надёжность на валидации") : ui("Validation predictions", "Прогнозы на валидации")} option={option} theme={theme} />
+      {run.task === "binary_classification" ? <ChartSurface title={ui("Validation reliability", "Надёжность на валидации")} option={option} theme={theme} /> : <PredictionDistribution run={run} evaluation={activeEvaluation} theme={theme} />}
       {matrix ? <section className="confusion-card">
         <div><span className="eyebrow">{ui("CONFUSION MATRIX · VALIDATION", "МАТРИЦА ОШИБОК · ВАЛИДАЦИЯ")}</span><h3>{activeThreshold ? ui(`Frozen policy threshold ${activeThreshold.selected_threshold.toFixed(2)}`, `Зафиксированный порог ${activeThreshold.selected_threshold.toFixed(2)}`) : ui("Preview at default cutoff 0.50 · no frozen threshold policy", "Предпросмотр с порогом 0,50 · политика ещё не сохранена")}</h3></div>
         <div className="confusion-grid">
@@ -907,6 +908,7 @@ export function EvaluationWorkspace({
       {activeSelectivePolicy && <><p><StatusBadge tone="warning">REVIEW BELOW {activeSelectivePolicy.confidence_cutoff.toFixed(2)}</StatusBadge> ACCEPT at or above cutoff · class threshold {activeSelectivePolicy.class_threshold.toFixed(2)} · {activeSelectivePolicy.probability_source} probability.</p><small className="mono">threshold {activeSelectivePolicy.class_threshold_id.slice(0, 12)} · validation cases {activeSelectivePolicy.fit_sample_identity.slice(0, 24)}…</small><div className="data-table-wrap"><table className="data-table"><thead><tr><th>{ui("confidence", "Уверенность")}</th><th>{ui("coverage", "Доля принятых")}</th><th>{ui("accepted risk", "Доля ошибок среди принятых")}</th><th>{ui("accepted", "Принято")}</th></tr></thead><tbody>{activeSelectivePolicy.risk_coverage.map((point) => <tr key={point.confidence_cutoff}><td>{point.confidence_cutoff.toFixed(2)}</td><td>{(point.coverage * 100).toFixed(1)}%</td><td>{point.accepted_risk === null ? "—" : `${(point.accepted_risk * 100).toFixed(1)}%`}</td><td>{point.accepted_count}</td></tr>)}</tbody></table></div><small>{activeSelectivePolicy.scientific_note}</small></>}
     </section>}
 
+    {run.task === "binary_classification" && <PredictionDistribution run={run} evaluation={activeEvaluation} theme={theme} />}
     <section>
       <h3>{ui("Validation prediction evidence", "Прогнозы на валидации")}</h3>
       <div className="data-table-wrap"><table className="data-table"><thead><tr><th>{ui("row", "Строка")}</th><th>{ui("target", "Ответ")}</th><th>{run.task === "binary_classification" ? "logit" : "prediction"}</th>{run.task === "binary_classification" ? <><th>{ui("raw probability", "Вероятность модели")}</th><th>{ui("calibrated probability", "После калибровки")}</th><th>{ui("final class", "Класс")}</th></> : <th>{ui("residual", "Ошибка")}</th>}</tr></thead><tbody>

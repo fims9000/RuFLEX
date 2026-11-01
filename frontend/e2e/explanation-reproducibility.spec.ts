@@ -6,13 +6,18 @@ const projectPath = () => join(tmpdir(), `ruflex-repro-${Date.now()}-${Math.rand
 function csv() { const rows=["temperature,torque,target"]; for(let i=0;i<50;i+=1) rows.push(`${10+i*.7},${20+(i*9)%60},${10+i*.7+20+(i*9)%60>60?1:0}`); return `${rows.join("\n")}\n`; }
 
 test("PRODUCT-08 persists separate cross-run prediction and explanation reproducibility evidence", async ({ page }) => {
+  async function editTemperature() {
+    const summary = page.getByText("Change the explained input", { exact: true });
+    if (await summary.locator("..").getAttribute("open") === null) await summary.click();
+    await page.getByLabel("temperature").fill("30");
+  }
   test.setTimeout(90_000); const path=projectPath(); await page.goto("/");
   await page.getByLabel("Project path").fill(path); await page.getByLabel("Project name").fill("Repro route"); await page.getByRole("button", {name:"Create project", exact:true}).click();
   await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click(); await page.getByLabel("CSV data").fill(csv()); await page.getByRole("button", {name:"Inspect dataset",exact:true}).click(); await page.getByRole("button", {name:"Confirm dataset contract",exact:true}).click();
   await page.getByRole("button", {name:"S",exact:true}).click(); await page.getByLabel("Training model").selectOption("logistic_regression"); await page.getByRole("button", {name:"Run real training",exact:true}).click(); await expect(page.locator(".run-provenance")).toContainText("model artifact persisted",{timeout:30000});
-  await page.getByRole("button", {name:"E",exact:true}).click(); const generate=page.getByRole("button", {name:"Generate explanation",exact:true}); await generate.click(); await expect(generate).toBeEnabled(); await page.getByLabel("temperature").fill("30"); await generate.click(); await expect(generate).toBeEnabled();
+  await page.getByRole("button", {name:"E",exact:true}).click(); const generate=page.getByRole("button", {name:"Generate explanation",exact:true}); await generate.click(); await expect(generate).toBeEnabled(); await editTemperature(); await generate.click(); await expect(generate).toBeEnabled();
   await page.getByRole("button", {name:"S",exact:true}).click(); await page.getByLabel("Training model").selectOption("decision_tree"); await page.getByRole("button", {name:"Run real training",exact:true}).click(); await expect(page.locator(".run-provenance")).toContainText("model artifact persisted",{timeout:30000});
-  await page.getByRole("button", {name:"E",exact:true}).click(); await generate.click(); await expect(generate).toBeEnabled(); await page.getByLabel("temperature").fill("30"); await generate.click(); await expect(generate).toBeEnabled();
+  await page.getByRole("button", {name:"E",exact:true}).click(); await generate.click(); await expect(generate).toBeEnabled(); await editTemperature(); await generate.click(); await expect(generate).toBeEnabled();
   const checks=page.locator('.comparison-choice input[type="checkbox"]'); await expect(checks).toHaveCount(4); for(let i=0;i<4;i+=1) await checks.nth(i).check();
   let reproducibilityPostCount = 0;
   await page.route("**/api/projects/evidence/explanation-reproducibility", async (route) => { if (route.request().method() === "POST") reproducibilityPostCount += 1; await route.continue(); });

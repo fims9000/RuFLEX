@@ -109,6 +109,7 @@ def _validate_relationships(objects: list[BaseModel]) -> list[str]:
     objects_by_type: dict[type[BaseModel], dict[str, BaseModel]] = {}
     for object_ in objects:
         identifier_field = {
+            GeneralizationContract: "contract_id",
             DatasetContract: "dataset_fingerprint", SplitContract: "split_id", TransformPipelineContract: "pipeline_id", LeakageAuditReport: "audit_id", TrainingRun: "run_id", TrainingStudy: "study_id", AnalysisEvaluation: "evaluation_id", CalibrationTransform: "calibration_id", DecisionThresholdPolicy: "threshold_id", SelectivePredictionPolicy: "policy_id", StudyStabilityAnalysis: "analysis_id", StabilityGatePolicy: "policy_id", FinalTestEvaluation: "final_test_id", ExplanationContract: "explanation_id", ExplanationCheck: "check_id", ExplanationReproducibilityAnalysis: "analysis_id", TreePathEvidence: "evidence_id", ExpertCorrectionRevision: "correction_id", ExhaustiveLabResult: "result_id", ConditionMonitoringDemo: "demo_id", FISSpec: "fis_id", BehaviorSpec: "spec_id", BehaviorSpecResult: "result_id", BehaviorRevisionComparison: "comparison_id", AssuranceCase: "assurance_id",
         }.get(type(object_))
         identifier = getattr(object_, identifier_field) if identifier_field else None

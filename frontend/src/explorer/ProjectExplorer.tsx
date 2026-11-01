@@ -23,7 +23,7 @@ import {
   StabilityGatePolicy,
   TreePathEvidence,
 } from "../api";
-import { ui, uiStatus } from "../design/language";
+import { ui, uiLanguage, uiStatus } from "../design/language";
 
 type ObjectTarget = "DATA" | "MODELS" | "STUDIES" | "ANALYSES" | "EVIDENCE";
 
@@ -179,7 +179,8 @@ export function ProjectExplorer({
               trainingStudy.name,
               ui(`${trainingStudy.seed_runs.length} seed runs`, `${trainingStudy.seed_runs.length} запусков`),
             )}
-            <div className="object-tree-children" aria-label={ui(`${trainingStudy.name} seed runs`, `${trainingStudy.name}: запуски`)}>
+            <details className="object-tree-children" open={uiLanguage === "en"} aria-label={ui(`${trainingStudy.name} seed runs`, `${trainingStudy.name}: запуски`)}>
+              <summary>{ui("Training runs", "Запуски обучения")}</summary>
               <small>{ui("Trial · declared validation selection", "Эксперимент · выбор по валидации")}</small>
               {trainingStudy.seed_runs.map((run) => (
                 <button
@@ -188,10 +189,10 @@ export function ProjectExplorer({
                   onClick={() => onSelect("STUDIES")}
                 >
                   <span>{ui(`SeedRun split ${run.split_seed ?? run.split.split_seed} · train ${run.training_seed ?? run.seed}`, `Разбиение ${run.split_seed ?? run.split.split_seed} · обучение ${run.training_seed ?? run.seed}`)}</span>
-                  <small>{run.run_id === trainingStudy.selected_run_id ? ui("selected", "выбран") : run.status}</small>
+                  <small>{run.run_id === trainingStudy.selected_run_id ? ui("selected", "выбран") : uiStatus(run.status)}</small>
                 </button>
               ))}
-            </div>
+            </details>
           </div>
         ) : trainingRun ? (
           item(

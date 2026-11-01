@@ -182,6 +182,9 @@ test("PRODUCT-EVIDENCE captures the frozen V1 Studio route from persisted object
   expect(selectivePostCount).toBe(1);
   await expect(page.getByText("REVIEW BELOW 0.80", { exact: false })).toBeVisible();
   await capture(page, screenshots, "12_selective_review_policy.png", page.getByText("REVIEW BELOW 0.80", { exact: false }));
+  // Final-test access is deferred until every demonstration fit/refit is done.
+  // The original route attempted a second fit after opening the holdout.
+  async function evaluateFrozenTest() {
   await page.getByText(/I confirm this policy was frozen before final-test access/).click();
   let finalTestPostCount = 0;
   await page.route("**/api/projects/analyses/final-test", async (route) => {
@@ -197,6 +200,7 @@ test("PRODUCT-EVIDENCE captures the frozen V1 Studio route from persisted object
   await expect(page.getByTestId("final-test-recovery")).toHaveCount(0);
   expect(finalTestPostCount).toBe(1);
   await expect(page.getByRole("heading", { name: "Final-test evidence persisted separately", exact: true })).toBeVisible();
+  }
   await page.getByLabel("Slice minimum").fill("10");
   await page.getByLabel("Slice maximum").fill("30");
   let slicePostCount = 0;
@@ -374,6 +378,13 @@ test("PRODUCT-EVIDENCE captures the frozen V1 Studio route from persisted object
   await expect(page.getByTestId("evidence-operation-resume")).toHaveCount(0);
   expect(evidenceOperationStatusUrls.every((url) => url.endsWith(`/evidence/explanation-jobs/${assuranceJob.job_id}`) || url.endsWith(`/evidence/explanation-jobs/${bundleJob.job_id}`))).toBeTruthy();
   await capture(page, screenshots, "17_verification_bundle.png", page.getByTestId("verification-bundle"));
+  // Restore the original saved policy and its exact model/validation chain,
+  // rather than applying it to the subsequently trained decision tree.
+  await page.getByRole("button", { name: "P", exact: true }).click();
+  await page.locator(".lineage-selective_policy").first().evaluate((node) => node.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+  await expect(page.getByText("REVIEW BELOW 0.80", { exact: false })).toBeVisible();
+  await evaluateFrozenTest();
+  await page.getByRole("button", { name: "E", exact: true }).click();
   let conditionDemoPostCount = 0;
   let conditionDemoRequest: { telemetry: Record<string, number>; policy_id: string; generalization_contract_id: string | null } | null = null;
   let recoveredConditionDemo: { telemetry: Record<string, number>; policy_id: string; generalization_contract_id: string | null; metadata: Record<string, unknown> } | null = null;

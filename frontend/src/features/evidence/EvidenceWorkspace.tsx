@@ -1160,6 +1160,10 @@ export function EvidenceWorkspace({
                 {selectableMethods.map((candidate) => <option value={candidate} key={candidate}>{candidate === "occlusion" ? "Occlusion" : candidate === "shap" ? "SHAP · permutation" : candidate === "tree_shap" ? "TreeSHAP" : candidate === "integrated_gradients" ? "Integrated Gradients" : candidate === "gradient_shap" ? "GradientSHAP" : `${candidate} · runtime explainer`}</option>)}
               </select>
             </label>
+            <div className="shap-methods" aria-label="Варианты SHAP">
+              {([ ["shap", "SHAP · перестановки"], ["tree_shap", "TreeSHAP · деревья"], ["gradient_shap", "GradientSHAP · градиенты"] ] as const).map(([key, label]) => <Button key={key} view={method === key ? "action" : "outlined"} disabled={!selectableMethods.includes(key) || busy} onClick={() => setMethod(key)} title={selectableMethods.includes(key) ? "Выбрать метод" : "Этот метод недоступен для выбранной модели"}>{label}</Button>)}
+              <small>Доступность зависит от сохранённой модели. Неактивный метод не подменяется другим алгоритмом.</small>
+            </div>
             <details open={uiLanguage === "en"}><summary>{ui("Execution details", "Технические настройки")}</summary>            <label className="field-label evidence-method-select">{ui("Execution backend", "Среда выполнения")}<select aria-label={ui("Evidence execution backend", "Среда выполнения объяснения")} value={executionBackendKey} disabled={busy || project.read_only || runtimeCatalogHydrationStatus !== "available" || !executionBackends.length} onChange={(event) => setExecutionBackendKey(event.target.value)}>{executionBackends.map((backend) => <option key={backend.identity.key} value={backend.identity.key}>{backend.identity.key} · {backend.identity.provider}</option>)}</select></label></details>
             <details className="evidence-advanced-details">
               <summary>{ui("Change the explained input", "Изменить значения для объяснения")}</summary>
@@ -1196,6 +1200,7 @@ export function EvidenceWorkspace({
         {error && <div className="error" role="alert">{error}</div>}
         {explanation && (
           <div className="evidence-explanation-result">
+            {selectableMethods.includes(method) && explanation.family !== method && <p className="info-message" role="status">{ui("The saved chart belongs to another explanation method. Generate the selected method to update it.", "Ниже сохранён результат другого метода. Нажмите «Построить объяснение», чтобы получить результат выбранного метода.")}</p>}
             <div className="evidence-explanation-summary"><strong>{ui("Explained model output", "Объясняемый выход модели")}: {explanation.prediction.toFixed(4)}</strong><span>{explanation.output_space}</span></div>
             <AttributionChart explanation={explanation} />
             <details className="evidence-advanced-details" data-testid="explanation-technical-details">

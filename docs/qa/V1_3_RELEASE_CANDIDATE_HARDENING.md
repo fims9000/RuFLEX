@@ -1,0 +1,44 @@
+# V1.3 release-candidate hardening
+
+Status: LOCAL CODE GATES VERIFIED; source-package verification is recorded separately in the companion `release/RuFLEX_V1_3_RELEASE_CANDIDATE_QA.json`. This document alone is not a package PASS, a public release, or a claim that every platform/research roadmap item is complete.
+
+## Scope and preservation
+
+Base: `3644197fde0f72db3c2a98404a25e830b39a96ac`, branch `feature/v1.3-data-governance-runtime`.
+
+Includes the preceding teaching-dataset/SHAP/history changes plus release verification and Russian Stability Lab presentation. Native scientific calculations, model parameters, persisted schemas and A01/S03 frozen artifacts are not modified. Existing article edits and user project `1/` are unrelated and must not be included in the product commit.
+
+The release target is the existing native product: local Studio, CSV/XLSX data, declared native estimators, manual FIS workflows, validation evidence, supported explanations, frozen policies, explicit final-test evaluation, lineage, checks and portable evidence. It does not add AutoML search, arbitrary Python libraries, arbitrary classification targets, or production certification.
+
+## Corrections found by the full audit
+
+- Actual product defect: portable VerificationBundle relationship validation omitted `GeneralizationContract` from its object-identity index. A valid scope-bound SliceAnalysis was therefore falsely rejected even though its scope object was present and matched. A regression reproduced this before the fix. The correction adds only `GeneralizationContract: contract_id` to the index. Positive scope binding, missing scope and foreign-dataset scope are explicitly checked, along with a native exported archive. No slice calculation, scope rule, persisted schema or historical artifact is edited.
+- The action inventory had 46 actions but Studio actually declared 49: dataset continuation and two model-navigation actions were missing from the inventory. All three already have native browser tests. The inventory is extended, not the equality/uniqueness verifier weakened.
+- A BehaviorSpec browser assertion expected a model hash to be visible without opening its now-collapsed model-reference section. The test opens that section and retains the original exact-hash assertion.
+- The expert-correction test delayed every subsequent GET, including hydration after its final save, leaving an unresolved route in the next test. Only the intended first recovery GET is now delayed; later requests use the real backend.
+- The explanation-reproducibility scenario now opens the advanced input section before editing the actual example, retaining its original four-explanation pairing and persisted-replay checks.
+- The legacy product-evidence capture opened the final test and then requested a second model fit and TRAIN-only FIS refit. The product correctly blocked it. Capture now finishes fitting first, restores the exact original saved policy through history, and only then explicitly opens the synthetic holdout. Product final-test restrictions remain unchanged.
+- Stability Lab primary headings, actions, figures, statistics and case-inspection copy are translated for Russian users. Persisted scientific identifiers and calculations remain unchanged; original scientific notes remain inspectable.
+- Actual narrow-screen defect: at 1100px the non-wrapping Stability toolbar pushed its action beneath the Properties inspector, which intercepted the user's click. A native Russian acceptance test reproduced it without forced clicks. Toolbar wrapping and responsive summary cards are scoped to Stability Lab; the test retains ordinary pointer interaction, three-run evidence, policy freeze, dark theme and close/reopen assertions.
+- Root-cause refinement: wrapping alone did not resolve the click interception. CSS uses inclusive `max-width: 1100px/720px`, while initial panel state used strict `<` comparisons. Exactly at the breakpoint the Properties drawer was therefore open over the workspace by default. Initial state now uses matching `<=` comparisons, with explicit 720px/1100px native browser regressions for hidden defaults and manual show/hide. No forced click or larger timeout is used to hide the defect.
+- The old light/dark visual baselines predated the new-project template selector. Actual and diff images were inspected: differences are the added selector and shifted controls, not a lost panel or changed contrast. The selector is also styled consistently with the existing light/dark fields before rebaselining. No screenshot tolerance is increased.
+
+## Verification ledger
+
+- Full configured Python suite: **442 passed**, 11 warnings, 92.78 seconds. Numerical-library threads limited to one. Warnings include short-budget fixture convergence and upstream SHAP deprecations; they are not concealed.
+- Frontend build: TypeScript/Vite passed after localization. A focused unit assertion caught an omitted English `independent fits` suffix; the suffix was restored rather than weakening the test. Final unit rerun: **138 Vitest + 1 API-client passed**, with one Vitest worker. Storybook production build passed.
+- Initial full English browser inventory: **100 passed / 28 language-specific skipped / 7 failures**, 6.9 minutes. Failures cover the listed stale inventory, hidden-field access, test-route lifetime, old post-test fitting sequence and two stale visual baselines. Explicit correction/rerun is required; this initial non-green result is retained rather than presented as a successful full run.
+- Correction verification: 8/9 focused browser regressions passed; the ninth exposed the actual portable scope-index defect described above. After the narrow product correction and positive/negative Python regression, the complete product-evidence capture passed (1/1, 41.5 seconds), including its portable bundle and explicit final-test/reopen route.
+- Final complete English inventory after all code corrections: **107 passed / 29 Russian-specific skipped / 0 failed**, 5.1 minutes. The Russian-only cases are verified separately, not counted as successful English tests. Both light/dark visual tests pass at the normal unchanged screenshot tolerance.
+- Russian inventory: 28 existing cases passed, including twelve model/task routes, all three SHAP routes and user CSV/XLSX replacement. The added 29th case exposed the exact-breakpoint drawer defect. After correcting the inclusive breakpoint, the native Russian Stability freeze/dark/reopen test passed (13.5 seconds), and four English Stability/compact-layout tests passed (22 seconds), including both boundary widths.
+- Final Russian Stability follow-up after visual polish: PASS (14.3 seconds), including collapsed/expanded run details, localized status, native analysis/policy creation, responsive dark theme and reopen. Combined with the existing 28 Russian cases, all 29 Russian scenarios have passing evidence. All twelve model/task combinations, three native SHAP routes and CSV/XLSX replacement were actually executed.
+- Storybook, current frontend unit/build, focused portable-scope regressions and diff integrity: PASS. Exact-commit archive creation, extracted-source tests/import/build and final package checksum are intentionally recorded in the external companion receipt after this source snapshot is committed.
+
+## Resource policy
+
+One test worker; BLAS/OpenMP/MKL threads = 1; no benchmark/research execution. Browser, Python suite and builds are run sequentially because this laptop has heavily used memory/swap. Fresh archive dependency installation should use an ignored on-disk release directory, not a large tmpfs copy.
+Vitest now defaults to one worker as well, so an ordinary `npm test` does not create one jsdom environment per CPU concurrently. This changes verification resource usage, not product model behavior. The tested environment is recorded in `V1_3_TESTED_ENVIRONMENT.json`.
+
+## Scientific/product limits
+
+Synthetic fixtures are not real field data. Method/model compatibility is explicit. A valid persisted explanation/replay does not establish causality. Assurance is a collection of scoped checks, not a universal reliability or safety certificate. A software final-test boundary is not a universal leakage detector. Native inference and evaluation do not authorize post-test tuning. Full AutoML and trained neuro-fuzzy rule-topology editing remain outside this release-hardening scope.

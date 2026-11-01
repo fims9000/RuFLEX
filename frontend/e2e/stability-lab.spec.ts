@@ -112,7 +112,11 @@ test("Stability Lab persists fixed-split multi-run evidence and its validation-o
   await expect(frozenPolicyNode).toBeVisible();
   await frozenPolicyNode.click({ force: true });
   await expect(page.getByText("Opened lineage object: Stability-aware review", { exact: true })).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText("The saved Stability Gate is bound to a different run, Evaluation, threshold or dataset and will not be applied here.", { exact: true })).toBeVisible();
+  // History restores the gate's exact persisted run/evaluation/threshold chain.
+  // A mismatch remains covered by EvaluationWorkspace's negative unit test.
+  await expect(page.getByText(/Stability Gate .* is validation-derived and will be bound to this final-test evidence/)).toBeVisible();
+  await expect(page.getByText("The saved Stability Gate is bound to a different run, Evaluation, threshold or dataset and will not be applied here.", { exact: true })).toHaveCount(0);
+  expect(stabilityGateCreateCount).toBe(1);
 
   await page.getByRole("button", { name: "E", exact: true }).click();
   await page.getByRole("button", { name: "Build AssuranceCase", exact: true }).click();

@@ -194,6 +194,10 @@ deployment in every domain.
 
 ## Run the Studio
 
+For the Russian human-facing workflow, see [Studio quick start](docs/STUDIO_QUICK_START_RU.md).
+The scoped release-hardening record and remaining limitations are maintained in
+[release-candidate QA](docs/qa/V1_3_RELEASE_CANDIDATE_HARDENING.md).
+
 RuFLEX requires Python 3.11+ and Node.js for the Studio.
 
 ```bash

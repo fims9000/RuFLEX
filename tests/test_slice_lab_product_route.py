@@ -8,6 +8,9 @@ from fastapi.testclient import TestClient
 
 from ruflex.api.main import app
 from ruflex.application.project_integrity import inspect_project_integrity
+from ruflex.application.verification_bundle import _validate_relationships, validate_verification_bundle
+from ruflex.application.generalization import GeneralizationContract, SliceAnalysis
+from ruflex.domain.training import AnalysisEvaluation, TrainingRun
 
 
 def _slice_frame(rows: int = 60) -> pd.DataFrame:
@@ -117,6 +120,19 @@ def test_slice_lab_uses_original_validation_source_rows_and_persists_all_slice_k
     assert next(row for row in analysis["results"] if row["kind"] == "manual")["n"] == 1
 
     assert inspect_project_integrity(root).status == "PASS"
+    # Scope objects must be resolvable in portable evidence, not just in a live project.
+    scope = GeneralizationContract.model_validate(generalization.json()["contract"])
+    portable_objects = [TrainingRun.model_validate(trained.json()), AnalysisEvaluation.model_validate(evaluation.json()), SliceAnalysis.model_validate(analysis)]
+    assert not any("Slice analysis" in error for error in _validate_relationships([*portable_objects, scope]))
+    assert any("Slice analysis" in error for error in _validate_relationships(portable_objects))
+    wrong_scope = scope.model_copy(update={"dataset_fingerprint": "other-dataset"})
+    assert any("Slice analysis" in error for error in _validate_relationships([*portable_objects, wrong_scope]))
+    assurance_export = client.post("/api/projects/evidence/assurance-cases", json={"session_id": session_id})
+    assert assurance_export.status_code == 201, assurance_export.text
+    exported = client.post("/api/projects/evidence/verification-bundles", json={"session_id": session_id})
+    assert exported.status_code == 201, exported.text
+    portable = validate_verification_bundle(Path(exported.json()["path"]))
+    assert portable.status == "PASS", portable.errors
     analysis_path = root / "analyses" / "slices" / f"{analysis['analysis_id']}.json"
     analysis_payload = json.loads(analysis_path.read_text(encoding="utf-8"))
     original_evaluation_id = analysis_payload["evaluation_id"]

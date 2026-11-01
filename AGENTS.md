@@ -37,6 +37,8 @@ Do not integrate unpublished/ownership-sensitive fuzzy-XAI operator internals. K
 A user-facing backend feature is incomplete without its React Studio route, states and browser E2E. Scientific logic remains below the frontend.
 Keep RuFLEX CSS theme state and Gravity UI `ThemeProvider` state synchronized; test both light and dark browser routes.
 Studio defaults to Russian for user-facing copy; keep persisted scientific identifiers unchanged and verify the Russian browser route.
+Register new `data-ruflex-action` IDs in `frontend/e2e/action-inventory.json` with real route coverage.
+For portable evidence references, test valid, missing and mismatched bindings; parsing a bundled object is not enough unless its identity is indexed.
 
 ## Git/outward actions
 Local reversible work is autonomous. No push/merge/release/destructive migration/external upload/publication without explicit authorization.

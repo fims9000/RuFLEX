@@ -54,6 +54,8 @@ import {
 } from "../api";
 import { StudioTheme } from "../design/tokens";
 import { ui, uiLanguage } from "../design/language";
+import { DatasetLibrary } from "../features/data/DatasetLibrary";
+import { learningDatasetForHash } from "../features/data/learningDatasets";
 import { BuildWorkspace } from "../features/modelbuild/BuildWorkspace";
 import { EvidenceWorkspace } from "../features/evidence/EvidenceWorkspace";
 import { ExperimentWorkspace } from "../features/training/ExperimentWorkspace";
@@ -129,8 +131,8 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
   const [projectWriteOperation, setProjectWriteOperation] = useState<"save" | "description" | null>(null);
   const [active, setActive] = useState("PROJECT");
   const [collapsed, setCollapsed] = useState<Record<Panels, boolean>>({
-    explorer: window.innerWidth < 720,
-    inspector: window.innerWidth < 1100,
+    explorer: window.innerWidth <= 720,
+    inspector: window.innerWidth <= 1100,
     bottom: true,
   });
   const [artifacts, setArtifacts] = useState<ArtifactRecord[]>([]);
@@ -1075,6 +1077,16 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
       return true;
     };
     const objectId = node.object_id;
+    const bindSavedRun = async (runId: string, evaluationId?: string) => {
+      const savedRun = await studioApi.getTrainingRun(sessionId, runId);
+      if (savedRun.run_id !== runId) throw new Error("Получена другая версия модели. Объект не открыт.");
+      const savedEvaluation = evaluationId ? await studioApi.getAnalysisEvaluation(sessionId, evaluationId) : null;
+      if (savedEvaluation && savedEvaluation.run_id !== savedRun.run_id) throw new Error("Связь оценки с моделью повреждена. Объект не открыт.");
+      if (!isCurrent()) return false;
+      setTrainingRun(savedRun);
+      if (savedEvaluation) { setAnalysisEvaluation(savedEvaluation); setAnalysisEvaluationStatus("available"); }
+      return true;
+    };
     setError(null);
     setLineageObjectError(null);
     setLineageRetryNode(null);
@@ -1097,46 +1109,81 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
         if (!commit(setFis, revision)) return;
       } else if (node.kind === "study" && objectId) {
         const value = await studioApi.getTrainingStudy(sessionId, objectId);
+        if (!await bindSavedRun(value.selected_run_id)) return;
         if (!commit(setTrainingStudy, value)) return;
         setTrainingStudyStatus("available");
       } else if (node.kind === "study_stability" && objectId) {
         const value = await studioApi.getStudyStabilityAnalysis(sessionId, objectId);
-        if (!commit(setStabilityAnalysis, value)) return;
+        const study = await studioApi.getTrainingStudy(sessionId, value.study_id);
+        const threshold = value.class_threshold_id ? await studioApi.getAnalysisThreshold(sessionId, value.class_threshold_id) : null;
+        if (!await bindSavedRun(value.selected_run_id, value.evaluation_id ?? undefined)) return;
+        setTrainingStudy(study); setTrainingStudyStatus("available"); setDecisionThreshold(threshold);
+        if (!commit(handleStabilityAnalysisChange, value)) return;
       } else if (node.kind === "evaluation" && objectId) {
         const value = await studioApi.getAnalysisEvaluation(sessionId, objectId);
+        if (!await bindSavedRun(value.run_id)) return;
         if (!commit(setAnalysisEvaluation, value)) return;
         setAnalysisEvaluationStatus("available");
       } else if (node.kind === "calibration" && objectId) {
         const value = await studioApi.getAnalysisCalibration(sessionId, objectId);
+        if (!await bindSavedRun(value.run_id, value.evaluation_id)) return;
         if (!commit(setCalibrationTransform, value)) return;
       } else if (node.kind === "decision_threshold" && objectId) {
         const value = await studioApi.getAnalysisThreshold(sessionId, objectId);
+        const calibration = value.calibration_id ? await studioApi.getAnalysisCalibration(sessionId, value.calibration_id) : null;
+        if (!await bindSavedRun(value.run_id, value.evaluation_id)) return;
+        setCalibrationTransform(calibration);
         if (!commit(setDecisionThreshold, value)) return;
       } else if (node.kind === "stability_gate_policy" && objectId) {
         const value = await studioApi.getStabilityGatePolicy(sessionId, objectId);
+        const analysis = await studioApi.getStudyStabilityAnalysis(sessionId, value.stability_analysis_id);
+        const study = await studioApi.getTrainingStudy(sessionId, value.study_id);
+        const threshold = value.class_threshold_id ? await studioApi.getAnalysisThreshold(sessionId, value.class_threshold_id) : null;
+        if (!await bindSavedRun(value.selected_run_id, value.evaluation_id)) return;
+        setTrainingStudy(study); setTrainingStudyStatus("available"); handleStabilityAnalysisChange(analysis); setDecisionThreshold(threshold);
         if (!commit(setStabilityGatePolicy, value)) return;
       } else if (node.kind === "selective_policy" && objectId) {
         const value = await studioApi.getSelectivePolicy(sessionId, objectId);
+        const threshold = await studioApi.getAnalysisThreshold(sessionId, value.class_threshold_id);
+        const calibration = value.calibration_id ? await studioApi.getAnalysisCalibration(sessionId, value.calibration_id) : null;
+        if (!await bindSavedRun(value.run_id, value.evaluation_id)) return;
+        setDecisionThreshold(threshold); setCalibrationTransform(calibration);
         if (!commit(setSelectivePolicy, value)) return;
       } else if (node.kind === "final_test_evaluation" && objectId) {
         const value = await studioApi.getFinalTestEvaluation(sessionId, objectId);
+        const threshold = value.threshold_id ? await studioApi.getAnalysisThreshold(sessionId, value.threshold_id) : null;
+        const calibration = value.calibration_id ? await studioApi.getAnalysisCalibration(sessionId, value.calibration_id) : null;
+        if (!await bindSavedRun(value.run_id, value.evaluation_id)) return;
+        setDecisionThreshold(threshold); setCalibrationTransform(calibration);
         if (!commit(setFinalTestEvaluation, value)) return;
         setFinalTestEvidenceStatus("available");
+        setFinalTestEvidenceError(null);
       } else if (node.kind === "comparison" && objectId) {
         const value = await studioApi.getAnalysisComparison(sessionId, objectId);
         if (!commit(setAnalysisComparison, value)) return;
       } else if (node.kind === "slice_analysis" && objectId) {
         const value = await studioApi.getSliceAnalysis(sessionId, objectId);
+        if (!await bindSavedRun(value.run_id, value.evaluation_id)) return;
         if (!commit(setSliceAnalysis, value)) return;
+        setSliceAnalysisHydrationStatus("available");
       } else if (node.kind === "tree_path" && objectId) {
         const value = await studioApi.getTreePath(sessionId, objectId);
+        if (!await bindSavedRun(value.run_id)) return;
         if (!commit(setTreeEvidence, value)) return;
+        setTreeEvidenceHydrationStatus("available"); setTreeEvidenceHydrationError(null);
       } else if (node.kind === "explanation" && objectId) {
         const value = await studioApi.getExplanation(sessionId, objectId);
+        if (!await bindSavedRun(value.run_id)) return;
         if (!commit(setExplanation, value)) return;
+        setExplanationHydrationStatus("available"); setExplanationHydrationError(null);
       } else if (node.kind === "explanation_check" && objectId) {
         const value = await studioApi.getExplanationCheck(sessionId, objectId);
+        const explanation = await studioApi.getExplanation(sessionId, value.explanation_id);
+        if (!await bindSavedRun(explanation.run_id)) return;
+        setExplanation(explanation);
+        setExplanationHydrationStatus("available"); setExplanationHydrationError(null);
         if (!commit(setExplanationCheck, value)) return;
+        setExplanationCheckHydrationStatus("available"); setExplanationCheckHydrationError(null);
       } else if (node.kind === "generalization_contract" && objectId) {
         const value = await studioApi.getGeneralization(sessionId, objectId);
         if (!commit(setGeneralization, value)) return;
@@ -1164,6 +1211,7 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
         if (!isCurrent()) return;
         const spec = specs.find((candidate) => candidate.spec_id === objectId);
         if (!spec) throw new Error(`BehaviorSpec is no longer available: ${objectId}`);
+        if (spec.run_id && !await bindSavedRun(spec.run_id)) return;
         if (!commit(setBehaviorSpec, spec)) return;
         setBehaviorResult(null);
       } else if (node.kind === "behavior_spec_result" && objectId) {
@@ -1175,6 +1223,7 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
         if (!isCurrent()) return;
         const spec = specs.find((candidate) => candidate.spec_id === result.spec_id);
         if (!spec) throw new Error(`BehaviorSpec ${result.spec_id} for this result is no longer available`);
+        if (result.run_id && !await bindSavedRun(result.run_id)) return;
         if (!commit(setBehaviorSpec, spec) || !commit(setBehaviorResult, result)) return;
       } else if (node.kind === "behavior_revision_comparison" && objectId) {
         const comparisons = await studioApi.listBehaviorRevisionComparisons(sessionId);
@@ -1201,7 +1250,7 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
       }
       if (!isCurrent()) return;
       setActive(node.target);
-      setStatus(`Opened lineage object: ${node.label}`);
+      setStatus(ui(`Opened lineage object: ${node.label}`, "Сохранённый объект открыт"));
     } catch (reason) {
       if (!isCurrent()) return;
       setLineageRetryNode(node);
@@ -1983,8 +2032,8 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
       {(!project || active !== "PROJECT") && <div className="workspace-header">
         <div>
           <h1>{project ? ui(WORKBENCH_TITLES_EN[active] ?? active, WORKBENCH_TITLES_RU[active] ?? active) : ui("Create or open a RuFLEX project", "Создайте или откройте проект")}</h1>
-          {project && datasetStateStatus === "available" && datasetState?.contract.source_artifact_sha256 === SYNTHETIC_PRACTICE_SHA256 && (
-            <p className="practice-context" data-testid="synthetic-practice-context">{ui("Synthetic practice data · results are not benchmark or research evidence.", "Учебные данные · результаты не являются исследовательским доказательством.")}</p>
+          {project && datasetStateStatus === "available" && (datasetState?.contract.source_artifact_sha256 === SYNTHETIC_PRACTICE_SHA256 || learningDatasetForHash(datasetState?.contract.source_artifact_sha256)) && (
+            <p className="practice-context" data-testid="synthetic-practice-context">{ui("Synthetic practice data · results are not benchmark or research evidence.", learningDatasetForHash(datasetState?.contract.source_artifact_sha256) ? "Синтетический учебный набор · не реальные измерения и не исследовательские результаты." : "Учебные данные · результаты не являются исследовательским доказательством.")}</p>
           )}
         </div>
       </div>}
@@ -2096,6 +2145,14 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
           </section>}
           <div className="data-layout">
             <div>
+              <DatasetLibrary disabled={project.read_only || !datasetStateResolved || importingDatasetFile || confirmingCsvDataset} onLoad={(item) => {
+                updateCsvText(item.csv);
+                setTarget(item.target);
+                setTask(item.task);
+                setIdColumns(item.idColumns.join(", "));
+                setExcludedColumns("");
+                setStatus("Учебный набор подставлен в черновик. Проверьте данные и нажмите «Далее».");
+              }} />
               <div className="data-next-step" data-testid="data-next-step">
                 <div><strong>{ui("Data → Model → Results", "Данные → Модель → Результат")}</strong><p>{ui("Choose the target and task. Continue saves any data changes and opens model choice; training starts separately.", "Выберите цель и задачу. Далее изменения данных сохранятся и откроется выбор модели. Обучение запускается отдельно.")}</p></div>
                 <Button view="action" data-ruflex-action="dataset.continue" disabled={!datasetStateResolved || project.read_only || importingDatasetFile || confirmingCsvDataset || inspectingDatasetFile || !target.trim() || !(pendingDatasetFile ? pendingDatasetProfile : profile)} onClick={continueFromData}>
@@ -2241,7 +2298,7 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
               {ui("Contract:", "Набор:")} {dataset.contract.target} · {dataset.contract.task}
               <small> · {ui("Row identity:", "Идентификатор строки:")} {dataset.contract.row_identity_scheme}</small>
               <small> · {ui("Source:", "Источник:")} {dataset.contract.source_format.toUpperCase()} · SHA-256: <code>{dataset.contract.source_artifact_sha256}</code></small>
-              {dataset.contract.source_artifact_sha256 === SYNTHETIC_PRACTICE_SHA256 && <p className="scientific-note" data-testid="synthetic-practice-provenance">{ui("These exact dataset bytes match the RuFLEX synthetic practice fixture. This is a training walkthrough, not benchmark or research evidence.", "Это учебный набор RuFLEX, а не исследовательские данные.")}</p>}
+              {(dataset.contract.source_artifact_sha256 === SYNTHETIC_PRACTICE_SHA256 || learningDatasetForHash(dataset.contract.source_artifact_sha256)) && <p className="scientific-note" data-testid="synthetic-practice-provenance">{ui("These exact dataset bytes match the RuFLEX synthetic practice fixture. This is a training walkthrough, not benchmark or research evidence.", "Это синтетический учебный набор RuFLEX, не реальные измерения и не исследовательские результаты.")}</p>}
               <details aria-label={ui("Frozen dataset roles", "Зафиксированные роли столбцов")}>
                 <summary>{ui(`Confirmed roles · ${dataset.contract.feature_columns.length} model features · ${dataset.contract.id_columns.length} IDs · ${dataset.contract.excluded_columns.length} other columns excluded`, `Роли столбцов · признаков: ${dataset.contract.feature_columns.length} · ID: ${dataset.contract.id_columns.length} · исключено: ${dataset.contract.excluded_columns.length}`)}</summary>
                 <p><strong>{ui("Model features:", "Признаки модели:")}</strong> {dataset.contract.feature_columns.join(", ") || ui("none", "нет")}</p>
@@ -2497,7 +2554,7 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
           onRun={bindProjectSession(project.session_id, (run) => {
             setTrainingRun(run);
             setTrainingRunsReload((current) => current + 1);
-            setStatus(`Training run ${run.run_id.slice(0, 8)} completed`);
+            setStatus(ui(`Training run ${run.run_id.slice(0, 8)} completed`, "Обучение завершено. Результат сохранён."));
             void refreshArtifactInventory(project.session_id);
           })}
           onStudy={bindProjectSession(project.session_id, (study) => { setTrainingStudy(study); setTrainingStudyStatus("available"); setTrainingStudyError(null); })}
@@ -2630,8 +2687,8 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
           {(lineageStatus === "error" || (lineageStatus === "loaded" && lineage?.nodes.some((node) => node.target !== "PROJECT"))) && <div className="project-lineage-panel">
             <div>
               <span className="eyebrow">{ui("PROJECT LINEAGE", "ИСТОРИЯ ПРОЕКТА")}</span>
-              <h3>{ui("Persisted provenance graph", "Связи сохранённых объектов")}</h3>
-              <p>{ui("Saved data, models and results.", "Связи сохранённых данных, моделей и результатов.")}</p>
+              <h3>{ui("Persisted provenance graph", "Данные, модели и результаты")}</h3>
+              <p>{ui("Saved data, models and results.", "Выберите объект, чтобы открыть именно его сохранённую версию.")}</p>
             </div>
             <ProjectLineage
               graph={lineage}
