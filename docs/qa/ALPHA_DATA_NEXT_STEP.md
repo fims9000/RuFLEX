@@ -31,6 +31,27 @@ Serial browser runs with `OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREA
 - `npm run build`: TypeScript/Vite PASS; existing chunk-size advisory retained.
 - `git diff --check`: PASS.
 
+## Main integration verification
+
+The current main branch is named `master`, not `main`. Historical main commits
+were merged without changing their frozen research files; README conflicts were
+resolved by preserving the V1.3 product description alongside the historical
+V1.0.1/A01 reference. Backup refs preserve both pre-integration heads.
+Uncommitted article files and R8 research work were not staged.
+
+The merged-state configured Python product suite passed: **440 tests**, with
+the repository's existing `--ignore=tests/upstream`. The 46 legacy upstream
+tests are outside that configured suite, not silently claimed as executed.
+Compileall passed. The prior workflow receipt's unrestricted collection count
+was corrected to distinguish collection from execution.
+
+Merged-state regression: `npx playwright test e2e/dataset-xlsx-import.spec.ts
+e2e/project-lifecycle.spec.ts e2e/training-evaluate.spec.ts --reporter=line
+--max-failures=1` with one worker: **33 passed**. It includes stale preview
+invalidation, role isolation, rejected-file preservation, read-only/reopen,
+uncertain-write serialization and final-test-state error recovery. Combined
+with the Russian routes above, this task verified **52 unique browser scenarios**.
+
 An initial new test fixture omitted the required project name; the UI correctly
 refused to create it. The fixture was corrected, not the product validation.
 Low-budget MLP convergence and approximate GradientSHAP warnings remain honest

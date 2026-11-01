@@ -20,7 +20,8 @@
   },
   "checks": {
     "python_full_suite": {
-      "passed": 484
+      "passed": 438,
+      "scope": "configured product suite; 46 legacy upstream tests excluded by pyproject; earlier 484 unrestricted collection count corrected"
     },
     "python_focused": {
       "passed": 45,

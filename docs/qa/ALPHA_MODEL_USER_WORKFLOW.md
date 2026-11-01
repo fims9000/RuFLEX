@@ -52,7 +52,12 @@ the previous model artifact remains unchanged.
 Run serially with `OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1`.
 No parallel model fits, new dependencies, benchmark fits or user-project edits.
 
-- `.venv/bin/python -m pytest -q`: **484 passed**, full Python suite.
+- `.venv/bin/python -m pytest -q`: **438 passed**, configured product suite.
+  Count corrected during main integration: the originally reported 484 was the
+  unrestricted collection count, including 46 legacy upstream tests explicitly
+  excluded by the repository's pytest configuration. Those were not executed
+  by this command. The merged-state product suite has 440 tests (two additional
+  existing main-branch Quantus tests) and was independently rerun successfully.
 - Focused training/input/model/explainer checks: **45 passed**, also in full suite.
 - `python -m compileall -q src/ruflex tests/test_training_input_preflight.py tests/test_training_runtime_error_identity.py`: PASS.
 - `cd frontend && npm test -- --run`: **130 Vitest + 1 API-client passed**.
