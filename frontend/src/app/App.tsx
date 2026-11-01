@@ -1763,21 +1763,21 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
   const inspector = project ? (
     <>
       <dl className="properties-list">
-        <dt>Project ID</dt>
+        <dt>{ui("Project ID", "ID проекта")}</dt>
         <dd>ID: {project.project_id}</dd>
-        <dt>Schema</dt>
+        <dt>{ui("Schema", "Версия схемы")}</dt>
         <dd>v{project.schema_version}</dd>
-        <dt>Location</dt>
+        <dt>{ui("Location", "Папка")}</dt>
         <dd className="mono">{project.root}</dd>
       </dl>
       <label className="field-label">
-        Description
+        {ui("Description", "Описание")}
         <TextInput
-          aria-label="Description"
+          aria-label={ui("Description", "Описание")}
           value={description}
           disabled={project.read_only || projectWriteOperation !== null || generalizationMutationOperation !== null || confirmingCsvDataset || importingDatasetFile}
           onUpdate={setDescription}
-          placeholder="Project description"
+          placeholder={ui("Project description", "Описание проекта")}
         />
       </label>
       <Button
@@ -1787,27 +1787,27 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
         onClick={updateDescription}
         data-ruflex-action="project.description.update"
       >
-        {projectWriteOperation === "description" ? "Updating description…" : "Update description"}
+        {projectWriteOperation === "description" ? ui("Updating description…", "Сохранение описания…") : ui("Update description", "Сохранить описание")}
       </Button>
       <p className="property-description">
-        Description: {project.description ?? "None"}
+        {ui("Description:", "Описание:")} {project.description ?? ui("None", "Нет")}
       </p>
       <div className="artifact-details">
-        <strong>Artifacts</strong>
-        {artifactsHydrationStatus === "loading" && <span role="status">Loading project artifacts…</span>}
+        <strong>{ui("Artifacts", "Файлы проекта")}</strong>
+        {artifactsHydrationStatus === "loading" && <span role="status">{ui("Loading project artifacts…", "Загрузка файлов…")}</span>}
         {artifactsHydrationStatus === "error" && <div className="error" role="alert" data-testid="artifact-hydration-error"><span>Project artifacts could not be verified. {artifactsHydrationError}</span><Button view="outlined" size="s" onClick={() => setArtifactsHydrationReload((current) => current + 1)}>Retry artifact list</Button></div>}
         {artifactsHydrationStatus === "loaded" && artifacts.length ? (
           <ul className="artifact-inventory" data-testid="artifact-inventory">
             {artifacts.map((artifact) => (
               <li key={artifact.sha256}>
-                <strong>{artifact.original_name || "Unnamed artifact"}</strong>
-                <span>{artifact.source_kind} · {artifact.size_bytes.toLocaleString()} bytes</span>
+                <strong>{artifact.original_name || ui("Unnamed artifact", "Файл без имени")}</strong>
+                <span>{artifact.source_kind} · {artifact.size_bytes.toLocaleString()} {ui("bytes", "байт")}</span>
                 <code>SHA-256 {artifact.sha256}</code>
               </li>
             ))}
           </ul>
         ) : artifactsHydrationStatus === "loaded" ? (
-          <span>No immutable artifacts yet.</span>
+          <span>{ui("No immutable artifacts yet.", "Сохранённых файлов пока нет.")}</span>
         ) : null}
       </div>
     </>
@@ -2176,37 +2176,37 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
           )}
           {dataset && (
             <>
-              <h2>What counts as new?</h2>
+              <h2>{ui("What counts as new?", "Что считать новыми данными?")}</h2>
               {generalizationHydrationStatus === "loading" && <p role="status" data-testid="generalization-loading">Checking the saved GeneralizationContract… Scope-dependent review is paused until this read completes.</p>}
               {generalizationHydrationStatus === "none" && <p className="property-description" data-testid="generalization-empty">No saved GeneralizationContract exists for this project yet.</p>}
               {generalizationHydrationStatus === "error" && <div className="error" role="alert" data-testid="generalization-hydration-error"><strong>Saved GeneralizationContract could not be verified. Scope-dependent review is paused.</strong><p>{generalizationHydrationError}</p><Button view="outlined" onClick={() => setGeneralizationHydrationReload((current) => current + 1)}>Retry GeneralizationContract</Button></div>}
               <div className="contract-grid">
                 <label className="field-label">
-                  Intended use
+                  {ui("Intended use", "Назначение")}
                   <TextInput
-                    aria-label="Intended use"
+                    aria-label={ui("Intended use", "Назначение")}
                     value={intendedUse}
                     disabled={generalizationMutationOperation !== null}
                     onUpdate={setIntendedUse}
                   />
                 </label>
                 <label className="field-label">
-                  Novelty axis
+                  {ui("Novelty axis", "Ось новизны")}
                   <select
-                    aria-label="Novelty axis"
+                    aria-label={ui("Novelty axis", "Ось новизны")}
                     value={noveltyAxis}
                     disabled={generalizationMutationOperation !== null}
                     onChange={(event) => setNoveltyAxis(event.target.value)}
                   >
-                    <option value="entity">Entity</option>
-                    <option value="time">Time</option>
-                    <option value="site">Site</option>
-                    <option value="device">Device</option>
-                    <option value="regime">Regime</option>
+                    <option value="entity">{ui("Entity", "Объект")}</option>
+                    <option value="time">{ui("Time", "Время")}</option>
+                    <option value="site">{ui("Site", "Площадка")}</option>
+                    <option value="device">{ui("Device", "Устройство")}</option>
+                    <option value="regime">{ui("Regime", "Режим")}</option>
                   </select>
                 </label>
                 <label className="field-label">
-                  Scope field
+                  {ui("Scope field", "Поле области применения")}
                   <select
                     aria-label="Generalization scope field"
                     value={scopeField || datasetState?.contract.id_columns[0] || datasetState?.contract.feature_columns[0] || ""}
@@ -2249,15 +2249,15 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
                   />
                 </label>
                 <label className="field-label">
-                  Outside declared supported scope
+                  {ui("Outside declared supported scope", "Вне заявленной области применения")}
                   <select
-                    aria-label="Unsupported scope action"
+                    aria-label={ui("Unsupported scope action", "Действие вне области применения")}
                     value={unsupportedAction}
                     disabled={generalizationMutationOperation !== null}
                     onChange={(event) => setUnsupportedAction(event.target.value as "BLOCK" | "REVIEW")}
                   >
-                    <option value="BLOCK">Block</option>
-                    <option value="REVIEW">Require review</option>
+                    <option value="BLOCK">{ui("Block", "Блокировать")}</option>
+                    <option value="REVIEW">{ui("Require review", "Передать на проверку")}</option>
                   </select>
                 </label>
               </div>
