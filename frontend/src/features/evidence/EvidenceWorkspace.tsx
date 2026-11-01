@@ -1101,8 +1101,8 @@ export function EvidenceWorkspace({
         </div>
       </div>
 
-      {treeEvidenceHydrationStatus === "loading" && <p role="status">Checking saved structural trace…</p>}
-      {treeEvidenceHydrationStatus === "none" && <p className="property-description" data-testid="tree-evidence-empty">No saved structural tree trace is available for this project.</p>}
+      {treeEvidenceHydrationStatus === "loading" && <p role="status">{ui("Checking saved structural trace…", "Проверка сохранённой трассы…")}</p>}
+      {treeEvidenceHydrationStatus === "none" && <p className="property-description" data-testid="tree-evidence-empty">{ui("No saved structural tree trace is available for this project.", "Сохранённой трассы дерева пока нет.")}</p>}
       {treeEvidenceHydrationStatus === "error" && <div className="error" role="alert" data-testid="tree-evidence-hydration-error"><strong>Saved structural trace could not be verified.</strong><p>{treeEvidenceHydrationError}</p>{onRetryTreeEvidence && <Button view="outlined" onClick={onRetryTreeEvidence}>Retry structural trace</Button>}</div>}
 
       {hasExact && (
@@ -1120,8 +1120,8 @@ export function EvidenceWorkspace({
           </div>
           <StatusBadge tone="warning">post-hoc</StatusBadge>
         </div>
-        {explanationHydrationStatus === "loading" && <p role="status">Loading saved explanation…</p>}
-        {explanationHydrationStatus === "none" && <p className="property-description" data-testid="explanation-empty">No saved explanation is available for this project.</p>}
+        {explanationHydrationStatus === "loading" && <p role="status">{ui("Loading saved explanation…", "Загрузка объяснения…")}</p>}
+        {explanationHydrationStatus === "none" && <p className="property-description" data-testid="explanation-empty">{ui("No saved explanation is available for this project.", "Сохранённого объяснения пока нет.")}</p>}
         {explanationHydrationStatus === "error" && <div className="error" role="alert" data-testid="explanation-hydration-error"><strong>Saved explanation could not be verified.</strong><p>{explanationHydrationError}</p>{onRetryExplanation && <Button view="outlined" onClick={onRetryExplanation}>Retry saved explanation</Button>}</div>}
         {!run ? (
           <EmptyState title={ui("No trained model selected", "Модель не выбрана")}>{ui("Train or reopen a catalog model to generate a local attribution.", "Обучите модель или откройте сохранённый запуск.")}</EmptyState>
@@ -1204,7 +1204,7 @@ export function EvidenceWorkspace({
           </div>
           {explanationCheck && explanationCheck.explanation_id !== explanation.explanation_id ? <div className="error" role="alert" data-testid="explanation-check-mismatch"><strong>Saved check belongs to a different explanation.</strong><p>The persisted ExplanationCheck is not displayed as validation of the currently selected explanation.</p></div> : explanationCheck ? (
             <div className="trace-card">
-              <div className="evidence-check-header"><strong>Check result</strong><StatusBadge tone={statusTone(explanationCheck.status)}>{explanationCheck.status}</StatusBadge></div>
+              <div className="evidence-check-header"><strong>{ui("Check result", "Результат проверки")}</strong><StatusBadge tone={statusTone(explanationCheck.status)}>{explanationCheck.status}</StatusBadge></div>
               {validatorPlugins.filter((plugin) => explanationCheck.checks.some((item) => item.validator_key === plugin.key)).map((plugin) => <p className="property-description" data-testid="validator-plugin" key={plugin.key}>Validator · {plugin.key} v{plugin.version} · {Object.entries(plugin.capabilities).filter(([, available]) => available).map(([key]) => key.replaceAll("_", " ")).join(", ")}</p>)}
               {explanationCheck.checks.map((item) => (
                 <div key={item.name}>
@@ -1214,11 +1214,11 @@ export function EvidenceWorkspace({
               ))}
               <p>{explanationCheck.scientific_note}</p>
             </div>
-          ) : explanationCheckHydrationStatus === "error" ? <div className="error" role="alert" data-testid="explanation-check-hydration-error"><strong>Saved explanation check could not be verified.</strong><p>{explanationCheckHydrationError}</p>{onRetryExplanationCheck && <Button view="outlined" onClick={onRetryExplanationCheck}>Retry explanation check</Button>}</div> : explanationCheckHydrationStatus === "loading" ? <p role="status">Loading saved explanation check…</p> : <p className="property-description">Not checked yet. A generated explanation is not automatically validated.</p>}
+          ) : explanationCheckHydrationStatus === "error" ? <div className="error" role="alert" data-testid="explanation-check-hydration-error"><strong>{ui("Saved explanation check could not be verified.", "Не удалось проверить сохранённый результат.")}</strong><p>{explanationCheckHydrationError}</p>{onRetryExplanationCheck && <Button view="outlined" onClick={onRetryExplanationCheck}>{ui("Retry explanation check", "Повторить проверку")}</Button>}</div> : explanationCheckHydrationStatus === "loading" ? <p role="status">{ui("Loading saved explanation check…", "Загрузка проверки…")}</p> : <p className="property-description">{ui("Not checked yet. A generated explanation is not automatically validated.", "Проверка ещё не запускалась. Создание объяснения не подтверждает его корректность.")}</p>}
         </section>
       )}
       <section className="evidence-section">
-        <div className="feature-toolbar compact-toolbar"><div><span className="eyebrow">BEHAVIOR SPECS</span><h3>Revision-bound engineering checks</h3><p>Each execution binds to the persisted model artifact; PASS/FAIL is evidence, not a trust score.</p></div></div>
+        <div className="feature-toolbar compact-toolbar"><div><span className="eyebrow">{ui("BEHAVIOR SPECS", "ТРЕБОВАНИЯ К ПОВЕДЕНИЮ")}</span><h3>{ui("Revision-bound engineering checks", "Проверки конкретной версии модели")}</h3><p>{ui("Each execution binds to the persisted model artifact; PASS/FAIL is evidence, not a trust score.", "Результат относится к сохранённой версии модели, а не к универсальной оценке доверия.")}</p></div></div>
         {behaviorSpecResultStatus === "loading" && <p role="status">Loading saved BehaviorSpec result and its exact specification…</p>}
         {behaviorSpecResultStatus === "none" && <p className="property-description" data-testid="behavior-result-empty">No saved BehaviorSpec result is available for this project.</p>}
         {behaviorSpecResultStatus === "error" && <div className="error" role="alert"><strong>Saved BehaviorSpec evidence could not be verified.</strong><p>{behaviorSpecResultError}</p>{onRetryBehaviorSpecResult && <Button view="outlined" onClick={onRetryBehaviorSpecResult}>Retry saved BehaviorSpec</Button>}</div>}

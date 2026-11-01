@@ -22,6 +22,8 @@ test("основной маршрут Studio отображается по-ру�
   await page.getByRole("navigation", { name: "Разделы Studio" }).getByRole("button", { name: "Модели" }).click();
   await expect(page.getByText("Нет нечёткой модели", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Создать модель из данных" })).toBeVisible();
+  await page.getByRole("navigation", { name: "Разделы Studio" }).getByRole("button", { name: "Обучение" }).click();
+  await expect(page.getByText("Нет подтверждённых данных", { exact: true })).toBeVisible();
   await page.getByRole("navigation", { name: "Разделы Studio" }).getByRole("button", { name: "Доказательства" }).click();
   await expect(page.getByRole("heading", { name: "Вычисления и объяснения" })).toBeVisible();
 });
