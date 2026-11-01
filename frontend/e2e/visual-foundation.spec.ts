@@ -7,7 +7,7 @@ test.describe("P0 visual foundation", () => {
     await expect(page).toHaveScreenshot("light-shell-1440x900.png", { fullPage: true, animations: "disabled" });
     await page.getByLabel("Collapse explorer").click();
     await page.getByLabel("Collapse properties").click();
-    await page.getByLabel("Collapse jobs panel").click();
+    await expect(page.locator(".bottom-panel")).toBeHidden();
     await page.setViewportSize({ width: 1180, height: 720 });
     await page.keyboard.press("Tab");
     await expect(page.locator(":focus")).toBeVisible();

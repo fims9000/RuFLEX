@@ -35,6 +35,7 @@ Do not integrate unpublished/ownership-sensitive fuzzy-XAI operator internals. K
 
 ## UI rule
 A user-facing backend feature is incomplete without its React Studio route, states and browser E2E. Scientific logic remains below the frontend.
+Keep RuFLEX CSS theme state and Gravity UI `ThemeProvider` state synchronized; test both light and dark browser routes.
 
 ## Git/outward actions
 Local reversible work is autonomous. No push/merge/release/destructive migration/external upload/publication without explicit authorization.

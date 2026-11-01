@@ -1,4 +1,5 @@
 import { ReactNode, useEffect } from "react";
+import { ChartBar, Cube, Flask, House, ShieldCheck } from "@gravity-ui/icons";
 import { StudioTheme } from "../design/tokens";
 import { PanelHeader, StatusBadge } from "../components/StudioPrimitives";
 
@@ -26,7 +27,8 @@ type Props = {
   saveDisabled?: boolean;
   closeDisabled?: boolean;
 };
-const workbenches = ["PROJECT", "MODELS", "STUDIES", "ANALYSES", "EVIDENCE"];
+const workbenches = ["PROJECT", "MODELS", "STUDIES", "ANALYSES", "EVIDENCE"] as const;
+const workbenchIcons = { PROJECT: House, MODELS: Cube, STUDIES: Flask, ANALYSES: ChartBar, EVIDENCE: ShieldCheck };
 export function AppShell({
   children,
   inspector,
@@ -76,6 +78,9 @@ export function AppShell({
           )}
         </div>
         <div className="command-actions">
+          <button className="tool-button panel-toggle" aria-label={explorerCollapsed ? "Show project explorer" : "Hide project explorer"} aria-pressed={!explorerCollapsed} onClick={toggleExplorer}>Tree</button>
+          <button className="tool-button panel-toggle" aria-label={inspectorCollapsed ? "Show properties" : "Hide properties"} aria-pressed={!inspectorCollapsed} onClick={toggleInspector}>Details</button>
+          <button className="tool-button panel-toggle" aria-label={bottomCollapsed ? "Show jobs panel" : "Hide jobs panel"} aria-pressed={!bottomCollapsed} onClick={toggleBottom}>Jobs</button>
           <button
             className="icon-button"
             aria-label="Toggle theme"
@@ -100,20 +105,23 @@ export function AppShell({
         </div>
       </header>
       <nav className="activity-rail" aria-label="Workbench navigation">
-        {workbenches.map((section) => (
-          <button
-            key={section}
-            className={active === section ? "active" : ""}
-            onClick={() => setActive(section)}
-            title={section}
-            aria-label={section.slice(0, 1)}
-            aria-description={`Open ${section.toLowerCase()} workspace`}
-            aria-current={active === section ? "page" : undefined}
-          >
-            <span className="rail-initial" aria-hidden="true">{section.slice(0, 1)}</span>
-            <span className="rail-label" aria-hidden="true">{section.slice(0, 1) + section.slice(1).toLowerCase()}</span>
-          </button>
-        ))}
+        {workbenches.map((section) => {
+          const Icon = workbenchIcons[section];
+          return (
+            <button
+              key={section}
+              className={active === section ? "active" : ""}
+              onClick={() => setActive(section)}
+              title={section}
+              aria-label={section.slice(0, 1)}
+              aria-description={`Open ${section.toLowerCase()} workspace`}
+              aria-current={active === section ? "page" : undefined}
+            >
+              <Icon className="rail-icon" aria-hidden="true" />
+              <span className="rail-label" aria-hidden="true">{section.slice(0, 1) + section.slice(1).toLowerCase()}</span>
+            </button>
+          );
+        })}
       </nav>
       <aside className="tool-window explorer">
         <PanelHeader

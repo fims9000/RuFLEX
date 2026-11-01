@@ -58,7 +58,7 @@ test("Stability Lab persists fixed-split multi-run evidence and its validation-o
   expect(stabilityGateCreateCount).toBe(1);
   await page.getByLabel("Collapse explorer").click();
   await page.getByLabel("Collapse properties").click();
-  await page.getByLabel("Collapse jobs panel").click();
+  await expect(page.locator(".bottom-panel")).toBeHidden();
   await page.getByText("Case Stability Map · selected-run agreement; red = high-confidence unstable", { exact: true }).scrollIntoViewIfNeeded();
   await page.locator(".workspace").evaluate((workspace) => { workspace.scrollLeft = 0; });
   const screenshotPath = updateProductEvidence ? evidenceScreenshot : testInfo.outputPath("20_stability_lab.png");

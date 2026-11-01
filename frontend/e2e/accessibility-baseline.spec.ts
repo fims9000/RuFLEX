@@ -52,3 +52,11 @@ test("accessibility baseline covers the primary Studio workspaces", async ({ pag
   await page.getByTitle("EVIDENCE").click();
   await assertBaseline(page, "Evidence Assurance and Bundle");
 });
+
+test("dark Studio keeps the project entry readable", async ({ page }) => {
+  await page.setViewportSize({ width: 920, height: 720 });
+  await page.goto("/");
+  await page.getByLabel("Toggle theme").click();
+  await assertBaseline(page, "Dark project entry");
+  await expect(page.getByLabel("Project path")).toBeVisible();
+});

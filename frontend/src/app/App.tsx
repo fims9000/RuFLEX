@@ -74,8 +74,6 @@ type DataGovernanceObject =
   | { kind: "split_contract"; value: SplitContract }
   | { kind: "transform_pipeline"; value: TransformPipelineContract }
   | { kind: "leakage_audit"; value: LeakageAuditReport };
-const initialTheme =
-  (localStorage.getItem("ruflex.theme") as StudioTheme | null) ?? "light";
 const RECENT_PROJECTS_STORAGE_KEY = "ruflex.recent-projects.v1";
 type RecentProject = { name: string; path: string };
 type PendingDatasetWrite = {
@@ -110,7 +108,7 @@ async function sha256Hex(bytes: ArrayBuffer): Promise<string> {
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-export function App() {
+export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme: StudioTheme) => void }) {
   const [project, setProject] = useState<ProjectSummary | null>(null);
   const [recentProjects, setRecentProjects] = useState<RecentProject[]>(loadRecentProjects);
   const [recentProjectError, setRecentProjectError] = useState<string | null>(null);
@@ -125,12 +123,11 @@ export function App() {
   const [projectFormError, setProjectFormError] = useState<string | null>(null);
   const [projectLifecycleOperation, setProjectLifecycleOperation] = useState<"create" | "open" | "recent" | null>(null);
   const [projectWriteOperation, setProjectWriteOperation] = useState<"save" | "description" | null>(null);
-  const [theme, setTheme] = useState<StudioTheme>(initialTheme);
   const [active, setActive] = useState("PROJECT");
   const [collapsed, setCollapsed] = useState<Record<Panels, boolean>>({
-    explorer: false,
-    inspector: false,
-    bottom: false,
+    explorer: window.innerWidth < 720,
+    inspector: window.innerWidth < 1100,
+    bottom: true,
   });
   const [artifacts, setArtifacts] = useState<ArtifactRecord[]>([]);
   const [artifactsHydrationStatus, setArtifactsHydrationStatus] = useState<"idle" | "loading" | "loaded" | "error">("idle");
@@ -1887,10 +1884,7 @@ export function App() {
         <div>
           <span className="eyebrow">{active}</span>
           <h1>{project ? project.name : "Create or open a RuFLEX project"}</h1>
-          <p>
-            Evidence-centered model engineering · persisted data, fuzzy models,
-            real training and validation
-          </p>
+          <p>Build models, inspect results and keep the evidence together in one project.</p>
           {project && datasetStateStatus === "available" && datasetState?.contract.source_artifact_sha256 === SYNTHETIC_PRACTICE_SHA256 && (
             <p className="practice-context" data-testid="synthetic-practice-context">Synthetic practice data · results are not benchmark or research evidence.</p>
           )}
@@ -1899,7 +1893,7 @@ export function App() {
           <StatusBadge tone={project.read_only ? "warning" : "success"}>
             {project.read_only
               ? "Read-only session"
-              : "Canonical workspace open"}
+              : "Project open"}
           </StatusBadge>
         )}
       </div>
@@ -2476,24 +2470,21 @@ export function App() {
             <div className="feature-toolbar">
             <div>
               <span className="eyebrow">PROJECT OVERVIEW</span>
-              <h2>Scientific objects, not a required pipeline</h2>
-              <p>
-                Select Data, Models, Studies, Analyses or Evidence from the
-                Project Explorer.
-              </p>
+              <h2>Choose what you want to work on</h2>
+              <p>Import data, edit fuzzy rules, train models or inspect saved results. You can revisit any section without starting a new run.</p>
             </div>
             </div>
           {overviewContextStatus === "loading" && <div role="status">Checking saved model and training context before showing project next steps…</div>}
           {overviewContextStatus === "error" && <div className="error" role="alert"><strong>Could not verify saved model or training context.</strong><p>{overviewContextError ?? "The project is not assumed to be empty after a failed read."}</p><Button view="outlined" onClick={() => setOverviewContextReload((current) => current + 1)}>Retry project context check</Button></div>}
           {integrityStatus === "loading" && <div role="status">Checking persisted project integrity…</div>}
           {integrityStatus === "error" && <div className="error" role="alert"><strong>Project integrity is unavailable.</strong><p>{integrityError ?? "Persisted project evidence has not been verified."}</p><Button view="outlined" onClick={() => setIntegrityReload((current) => current + 1)}>Retry integrity check</Button></div>}
-          {integrityStatus === "available" && integrity && <div className="trace-card" data-testid="project-integrity"><div className="evidence-check-header"><strong>Reopen integrity</strong><StatusBadge tone={integrity.status === "PASS" ? "success" : integrity.status === "FAIL" ? "danger" : "warning"}>{integrity.status}</StatusBadge></div><p>{integrity.checked_objects} persisted objects checked. {integrity.scientific_note}</p>{integrity.issues.map((issue) => <p className="property-description" key={`${issue.code}-${issue.path}`}>{issue.code} · {issue.path} · {issue.detail}</p>)}</div>}
+          {integrityStatus === "available" && integrity && <div className="trace-card project-integrity-summary" data-testid="project-integrity"><div className="evidence-check-header"><strong>Saved project evidence</strong><StatusBadge tone={integrity.status === "PASS" ? "success" : integrity.status === "FAIL" ? "danger" : "warning"}>{integrity.status}</StatusBadge></div><p>{integrity.checked_objects} saved objects checked · {integrity.status === "PASS" ? "No integrity problems found." : `${integrity.issues.length} issue(s) need review.`}</p><details open={integrity.status !== "PASS"}><summary>Inspection details</summary><p>{integrity.scientific_note}</p>{integrity.issues.map((issue) => <p className="property-description" key={`${issue.code}-${issue.path}`}>{issue.code} · {issue.path} · {issue.detail}</p>)}</details></div>}
           {overviewContextStatus === "loaded" && datasetStateStatus === "none" && !fis && !trainingRun && (
             <section className="quick-start-card" aria-label="Optional quick start">
               <div>
                 <span className="eyebrow">OPTIONAL QUICK START</span>
                 <h2>Start with your data</h2>
-                <p>Inspect a CSV or Excel file, choose its target and task, then confirm a DatasetContract. This shortcut only opens the Data workspace; it does not start training or access the locked test split.</p>
+                <p>Review a CSV or Excel file, choose what to predict, then confirm the dataset. Opening Data does not start training or unlock the held-out test set.</p>
               </div>
               <Button view="action" onClick={() => setActive("DATA")} data-ruflex-action="project.quickstart.data">Review or import data</Button>
             </section>
@@ -2522,8 +2513,7 @@ export function App() {
           )}
           <div className="project-overview-grid">
             <button onClick={() => setActive("DATA")}>
-              Data
-              <br />
+              <strong>Data</strong><span>Import and inspect</span>
               <small>
                 {datasetState
                   ? `${datasetState.profile.row_count} rows`
@@ -2531,8 +2521,7 @@ export function App() {
               </small>
             </button>
             <button onClick={() => setActive("MODELS")}>
-              Models
-              <br />
+              <strong>Models</strong><span>Edit fuzzy rules</span>
               <small>{projectModelOverviewLabel({
                 status: overviewContextStatus,
                 fisName: fis?.name ?? null,
@@ -2540,8 +2529,7 @@ export function App() {
               })}</small>
             </button>
             <button onClick={() => setActive("STUDIES")}>
-              Studies
-              <br />
+              <strong>Studies</strong><span>Train and compare</span>
               <small>
                 {trainingStudyOverviewLabel({
                   status: trainingStudyStatus,
@@ -2552,8 +2540,7 @@ export function App() {
               </small>
             </button>
             <button onClick={() => setActive("ANALYSES")}>
-              Analyses
-              <br />
+              <strong>Analyses</strong><span>Review validation</span>
               <small>
                 {analysisOverviewLabel({
                   hasValidationEvaluation: Boolean(analysisEvaluation),
@@ -2562,8 +2549,7 @@ export function App() {
               </small>
             </button>
             <button onClick={() => setActive("EVIDENCE")}>
-              Evidence
-              <br />
+              <strong>Evidence</strong><span>Explain and audit</span>
               <small>
                 {evidenceOverviewLabel(Boolean(fisEvaluation))}
               </small>

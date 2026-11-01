@@ -20,7 +20,7 @@ test("E2E-01 creates a project and exposes it in Explorer and Properties", async
   await expect(page.locator(".project-identity")).toContainText("Pump-01");
   await expect(page.locator(".project-object-tree")).toContainText("Pump-01");
   await expect(page.getByText(/^ID: [0-9a-f-]{36}$/)).toBeVisible();
-  await expect(page.getByRole("region", { name: "Optional quick start" })).toContainText("does not start training or access the locked test split");
+  await expect(page.getByRole("region", { name: "Optional quick start" })).toContainText("does not start training or unlock the held-out test set");
   await page.getByRole("button", { name: "Review or import data", exact: true }).click();
   await expect(page.locator(".data-workspace")).toBeVisible();
   await expect(page.getByLabel("Target", { exact: true })).toHaveValue("target");
@@ -267,10 +267,11 @@ test("E2E-07 persists a content-addressed artifact and restores its Studio inven
   const opened = await response.json();
   const ingested = await page.request.post("http://127.0.0.1:8010/api/projects/artifacts/text", { data: { session_id: opened.session_id, text: "persisted studio evidence" } });
   expect(ingested.status()).toBe(201);
+  const artifactSha = (await ingested.json()).sha256 as string;
   await page.getByRole("button", { name: "Close", exact: true }).click();
   await page.getByLabel("Project path").fill(path);
   await page.getByRole("button", { name: "Open project", exact: true }).click();
-  await expect(page.getByText(/^[0-9a-f]{12} · 25 B · generated$/)).toBeVisible();
+  await expect(page.locator(".artifact-inventory li").filter({ hasText: artifactSha })).toContainText("generated · 25 bytes");
 });
 
 test("E2E-08 confirms a dataset contract in Data workspace and preserves it across reopen", async ({ page }) => {
@@ -279,17 +280,17 @@ test("E2E-08 confirms a dataset contract in Data workspace and preserves it acro
   await page.getByRole("button", { name: /Data.*No dataset/ }).click();
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
   await expect(page.getByText(/Rows: 3/)).toBeVisible();
-  await expect(page.getByText("Role proposals are advisory: choose target and ID columns before freezing the authoritative DatasetContract.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Role proposals are advisory. Select each column's role here or edit the fields above; changes remain a draft until you confirm the DatasetContract.", { exact: true })).toBeVisible();
   await expect(page.getByLabel("ID columns")).toHaveValue("entity_id");
   await page.getByLabel("ID columns").fill("");
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
   await expect(page.getByText(/Contract: target/)).toBeVisible();
   await expect(page.getByText(/Row identity: dataset-fingerprint\/source-row\/v1/)).toBeVisible();
   const frozenRoles = page.getByLabel("Frozen dataset roles");
-  await expect(frozenRoles.locator("summary")).toContainText("3 model features · 0 IDs excluded");
+  await expect(frozenRoles.locator("summary")).toContainText("3 model features · 0 IDs · 0 other columns excluded");
   await frozenRoles.locator("summary").click();
   await expect(frozenRoles).toContainText("Model features: entity_id, temperature, torque");
-  await expect(frozenRoles).toContainText("Excluded IDs: none");
+  await expect(frozenRoles).toContainText("ID columns: none");
   await page.getByRole("button", { name: "Close", exact: true }).click();
   await page.getByLabel("Project path").fill(path);
   await page.getByRole("button", { name: "Open project", exact: true }).click();

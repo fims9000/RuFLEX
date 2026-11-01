@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 test("FIS output is bound to the saved model revision and exact inputs", async ({ page }) => {
+  await page.setViewportSize({ width: 920, height: 720 });
   const projectPath = join(tmpdir(), `ruflex-fis-result-${Date.now()}`);
   let evaluationRequests = 0;
   await page.route("**/api/projects/fis/evaluate", async (route) => {

@@ -108,7 +108,6 @@ export function ProjectLineage({
             const item = (node.data as { node: LineageNode }).node;
             onOpen(item);
           }}
-          proOptions={{ hideAttribution: true }}
         >
           <Background gap={18} size={1} />
           <Controls showInteractive={false} />
