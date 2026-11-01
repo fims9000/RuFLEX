@@ -2,6 +2,8 @@
 
 Status: LOCAL CODE GATES VERIFIED; source-package verification is recorded separately in the companion `release/RuFLEX_V1_3_RELEASE_CANDIDATE_QA.json`. This document alone is not a package PASS, a public release, or a claim that every platform/research roadmap item is complete.
 
+Preservation correction: earlier statements that article files were unchanged are withdrawn. The checkout-preservation incident below takes precedence; the full-suite verifier itself regenerated article outputs. Research artifacts were not regenerated.
+
 ## Scope and preservation
 
 Base: `3644197fde0f72db3c2a98404a25e830b39a96ac`, branch `feature/v1.3-data-governance-runtime`.
@@ -33,6 +35,14 @@ The release target is the existing native product: local Studio, CSV/XLSX data, 
 - Russian inventory: 28 existing cases passed, including twelve model/task routes, all three SHAP routes and user CSV/XLSX replacement. The added 29th case exposed the exact-breakpoint drawer defect. After correcting the inclusive breakpoint, the native Russian Stability freeze/dark/reopen test passed (13.5 seconds), and four English Stability/compact-layout tests passed (22 seconds), including both boundary widths.
 - Final Russian Stability follow-up after visual polish: PASS (14.3 seconds), including collapsed/expanded run details, localized status, native analysis/policy creation, responsive dark theme and reopen. Combined with the existing 28 Russian cases, all 29 Russian scenarios have passing evidence. All twelve model/task combinations, three native SHAP routes and CSV/XLSX replacement were actually executed.
 - Storybook, current frontend unit/build, focused portable-scope regressions and diff integrity: PASS. Exact-commit archive creation, extracted-source tests/import/build and final package checksum are intentionally recorded in the external companion receipt after this source snapshot is committed.
+
+## Checkout-preservation incident
+
+The final byte audit of the extracted `9223ee6` source found 13 changed article outputs. Root cause: `tests/test_article_package_scripts.py` invoked real document generators in the checkout. The earlier full-suite run also invoked that unsafe test in the working repository. Articles already had unrelated uncommitted edits; no exact pre-run binary backup was captured, so preservation of those pre-existing bytes cannot be asserted. Do not restore them from Git or another worktree without the user's direction.
+
+Current articles are preserved in `release/RuFLEX_ARTICLE_PRESERVATION_20261102_021142.zip`, SHA-256 `27e31ee31c10015195740f99144dc6cb4b0bbbd60978c43bd1defc4bf506e74f`; ZIP integrity passes. This is a post-incident preservation copy, not proof of pre-run content. The affected test now uses independent temporary script/article copies, a separate LibreOffice profile, and a source-byte hash guard without weakening document/readiness assertions. A release handoff remains conditional on explicitly resolving or accepting this preservation incident. No article outputs are included in product commits.
+
+Isolation verification: all three document tests pass with the byte guard; the full configured Python suite then passes **442 tests / 11 warnings in 125.55 seconds**. The post-incident checkout article diff remains byte-identical to its preservation hash throughout these runs. `compileall` and `git diff --check` pass. The safety patch changes only tests, the project rule and QA/state records; product/frontend blobs remain identical to the freshly tested `9223ee6` snapshot (109 English browser tests, 29 Russian native production-preview tests, 138 Vitest + 3 Node checks, Vite/Storybook builds, installed-wheel smoke 9, npm audit zero). New exact-source archive verification is recorded separately, not inferred from these checkout results.
 
 ## Resource policy
 

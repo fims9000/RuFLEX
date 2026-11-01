@@ -23,6 +23,7 @@ the historical repository skill names are not present in this checkout.
 
 ## Verifier protection
 Never delete, skip, weaken, retry-away or rewrite a required verifier merely to get green. A wrong verifier requires evidence and a decision record.
+Document-generator tests must run in independent temporary copies, never regenerate checkout deliverables; isolate LibreOffice profiles from interactive sessions.
 
 ## Two-fix rule
 After two failed fixes of the same defect, build a minimal reproduction/root-cause record before another production fix.
