@@ -11,6 +11,14 @@ import { frozenOrdinalCodes } from "./frozenOrdinalCodes";
 import { trainingRunMatchesRecovery } from "./trainingRecovery";
 
 const NATIVE_ONE_SHOT_ADAPTERS = new Set(["native_linear", "native_decision_tree", "native_random_forest", "native_gradient_boosting"]);
+const MODEL_NAMES_RU: Record<string, string> = {
+  flat_neuro_fuzzy: "Нейро-нечёткая модель ANFIS",
+  linear: "Логистическая / линейная регрессия",
+  decision_tree: "Дерево решений",
+  random_forest: "Случайный лес",
+  gradient_boosting: "Градиентный бустинг",
+  mlp: "Многослойный перцептрон (MLP)",
+};
 
 function hasMeasuredTrajectory(run: TrainingRun): boolean {
   if (!run.trajectory.length) return false;
@@ -155,10 +163,12 @@ const API_TRAINING_CONSTRAINTS: Record<string, NumericConstraint & { integer?: b
   max_rules: { minimum: 1, maximum: 128, integer: true },
   n_estimators: { minimum: 1, maximum: 5000, nullable: true, integer: true },
   max_depth: { minimum: 1, maximum: 1000, nullable: true, integer: true },
+  hidden_units: { minimum: 2, maximum: 512, integer: true },
 };
 const PARAMETER_LABELS: Record<string, string> = {
   max_epochs: "Epochs", learning_rate: "Learning rate", batch_size: "Batch size", patience: "Patience",
   max_rules: "Max rules / layer", n_estimators: "Trees / estimators", max_depth: "Maximum depth",
+  hidden_units: "Hidden units",
 };
 
 function canonicalJson(value: unknown): string {
@@ -254,6 +264,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
   const [maxRules, setMaxRules] = useState(8);
   const [nEstimators, setNEstimators] = useState(25);
   const [maxDepth, setMaxDepth] = useState<number | null>(null);
+  const [hiddenUnits, setHiddenUnits] = useState(32);
   const [seedList, setSeedList] = useState("42, 43, 44");
   const [studyMode, setStudyMode] = useState<"TRAINING_VARIABILITY" | "SPLIT_VARIABILITY" | "COMBINED_VARIABILITY">("TRAINING_VARIABILITY");
   const [splitSeedText, setSplitSeedText] = useState("42");
@@ -486,8 +497,8 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
   const selectedModel = compatibleModels.find((entry) => !!datasetTask && supportsModelKindTask(entry, modelKind, datasetTask)) ?? null;
   const selectedAdapterKey = selectedModel?.provider === "ruflex.builtin" ? null : selectedModel?.key ?? null;
   const supportsParameter = (name: string) => Boolean(selectedModel?.parameter_constraints[name]);
-  const trainingParameterValues: Record<string, number | null> = { max_epochs: maxEpochs, learning_rate: learningRate, batch_size: batchSize, patience, max_rules: maxRules, n_estimators: nEstimators, max_depth: maxDepth };
-  const parameterErrors = useMemo(() => validateTrainingParameters(selectedModel, trainingParameterValues), [selectedModel, maxEpochs, learningRate, batchSize, patience, maxRules, nEstimators, maxDepth]);
+  const trainingParameterValues: Record<string, number | null> = { max_epochs: maxEpochs, learning_rate: learningRate, batch_size: batchSize, patience, max_rules: maxRules, n_estimators: nEstimators, max_depth: maxDepth, hidden_units: hiddenUnits };
+  const parameterErrors = useMemo(() => validateTrainingParameters(selectedModel, trainingParameterValues), [selectedModel, maxEpochs, learningRate, batchSize, patience, maxRules, nEstimators, maxDepth, hiddenUnits]);
   const canExactTreePath = runCapabilities?.decisions.some((decision) => decision.capability === "exact_tree_path" && decision.status === "AVAILABLE") ?? false;
   const treeOrdinalCodes = frozenOrdinalCodes(transformPipeline, run);
   const categoricalTreeColumns = (run?.feature_columns ?? []).filter((column) => dataset?.profile.columns.some((item) => item.name === column && item.semantic_type === "categorical"));
@@ -510,6 +521,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
     if (typeof defaults.patience === "number") setPatience(defaults.patience);
     if (typeof defaults.max_rules === "number") setMaxRules(defaults.max_rules);
     if (typeof defaults.n_estimators === "number") setNEstimators(defaults.n_estimators);
+    if (typeof defaults.hidden_units === "number") setHiddenUnits(defaults.hidden_units);
     if ("max_depth" in defaults) setMaxDepth(typeof defaults.max_depth === "number" ? defaults.max_depth : null);
   }, [selectedModel?.key]);
   useEffect(() => {
@@ -601,6 +613,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
       max_rules: maxRules,
       n_estimators: nEstimators,
       max_depth: maxDepth,
+      hidden_units: hiddenUnits,
     };
     const requestedAt = Date.now();
     try {
@@ -771,7 +784,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
     setError(null);
     try {
       const selectionMetric = dataset?.contract.task === "regression" ? "rmse" : "f1";
-      const request: Parameters<typeof studioApi.startStudyJob>[1] = { client_request_id: crypto.randomUUID(), name: `Study ${new Date().toLocaleString()}`, model_kind: trainingModelKind, adapter_key: selectedAdapterKey, seeds, randomness_protocol: studyMode, split_seed: studyMode === "TRAINING_VARIABILITY" ? splitContract?.split_seed ?? splitSeed : null, training_seed: studyMode === "SPLIT_VARIABILITY" ? seed : null, split_contract_id: studyMode === "TRAINING_VARIABILITY" ? splitContract?.split_id ?? null : null, execution_backend_key: executionBackendKey, selection_metric: selectionMetric, normalization, max_epochs: maxEpochs, learning_rate: learningRate, batch_size: batchSize, patience, validation_fraction: validationFraction, test_fraction: testFraction, max_rules: maxRules, n_estimators: nEstimators, max_depth: maxDepth };
+      const request: Parameters<typeof studioApi.startStudyJob>[1] = { client_request_id: crypto.randomUUID(), name: `Study ${new Date().toLocaleString()}`, model_kind: trainingModelKind, adapter_key: selectedAdapterKey, seeds, randomness_protocol: studyMode, split_seed: studyMode === "TRAINING_VARIABILITY" ? splitContract?.split_seed ?? splitSeed : null, training_seed: studyMode === "SPLIT_VARIABILITY" ? seed : null, split_contract_id: studyMode === "TRAINING_VARIABILITY" ? splitContract?.split_id ?? null : null, execution_backend_key: executionBackendKey, selection_metric: selectionMetric, normalization, max_epochs: maxEpochs, learning_rate: learningRate, batch_size: batchSize, patience, validation_fraction: validationFraction, test_fraction: testFraction, max_rules: maxRules, n_estimators: nEstimators, max_depth: maxDepth, hidden_units: hiddenUnits };
       pendingStudyRequestRef.current = request;
       setPendingStudyRequest(request);
       let job = await studioApi.startStudyJob(project.session_id, request);
@@ -906,7 +919,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
           {run && <><dt>{ui("Saved run scaling", "Нормализация запуска")}</dt><dd>{String(run.normalization?.mode ?? "unknown")}</dd></>}
         </dl>
         <div className="training-config-grid">
-          <label className="field-label">{ui("Model", "Модель")}<select aria-label={ui("Training model", "Модель для обучения")} value={modelKind} disabled={running || project.read_only || !compatibleModels.length} onChange={(event) => setModelKind(event.target.value)}>{compatibleModels.map((entry) => <option key={entry.key} value={firstModelKindForTask(entry, datasetTask!)}>{entry.display_name}</option>)}</select></label>
+          <label className="field-label">{ui("Model", "Модель")}<select aria-label={ui("Training model", "Модель для обучения")} value={modelKind} disabled={running || project.read_only || !compatibleModels.length} onChange={(event) => setModelKind(event.target.value)}>{compatibleModels.map((entry) => <option key={entry.key} value={firstModelKindForTask(entry, datasetTask!)}>{ui(entry.display_name, MODEL_NAMES_RU[entry.key] ?? entry.display_name)}</option>)}</select></label>
           <label className="field-label">{ui("Scaling", "Нормализация")}<select aria-label={ui("Training normalization", "Нормализация обучения")} value={normalization} disabled={running || project.read_only || activeStudyJob} onChange={(event) => setNormalization(event.target.value as "none" | "standard" | "minmax")}><option value="standard">{ui("Standard (TRAIN only)", "Стандартная (только TRAIN)")}</option><option value="minmax">{ui("Min–max (TRAIN only)", "Min–max (только TRAIN)")}</option><option value="none">{ui("None", "Без нормализации")}</option></select></label>
           <label className="field-label">{ui("Single-run training seed", "Seed обучения")}<input type="text" inputMode="numeric" value={seedText} aria-invalid={seed === null} aria-describedby="seed-input-help" disabled={running || project.read_only} onChange={(event) => setSeedText(event.target.value)} /></label>
           <label className="field-label">{ui("Split seed", "Seed разбиения")}<input type="text" inputMode="numeric" value={splitSeedText} aria-invalid={splitSeed === null} aria-describedby="seed-input-help" disabled={running || project.read_only} onChange={(event) => setSplitSeedText(event.target.value)} /></label>
@@ -920,6 +933,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
           {supportsParameter("max_rules") && <NumberField label={ui("Max rules / layer", "Правил на слой")} value={maxRules} {...parameterBounds("max_rules", selectedModel?.parameter_constraints.max_rules)} step={1} disabled={running || project.read_only} onChange={setMaxRules} />}
           {supportsParameter("n_estimators") && <NumberField label={ui("Trees / estimators", "Число деревьев")} value={nEstimators} {...parameterBounds("n_estimators", selectedModel?.parameter_constraints.n_estimators)} step={1} disabled={running || project.read_only} onChange={setNEstimators} />}
           {supportsParameter("max_depth") && <label className="field-label">{ui("Maximum depth", "Максимальная глубина")}<input aria-label={ui("Maximum depth", "Максимальная глубина")} type="number" min={parameterBounds("max_depth", selectedModel?.parameter_constraints.max_depth).min} max={parameterBounds("max_depth", selectedModel?.parameter_constraints.max_depth).max} value={maxDepth ?? ""} placeholder={ui("unlimited", "без ограничения")} disabled={running || project.read_only} onChange={(event) => setMaxDepth(event.target.value === "" ? null : Number(event.target.value))} /></label>}
+          {supportsParameter("hidden_units") && <NumberField label={ui("Hidden units", "Нейронов в скрытом слое")} value={hiddenUnits} {...parameterBounds("hidden_units", selectedModel?.parameter_constraints.hidden_units)} step={1} disabled={running || project.read_only} onChange={setHiddenUnits} />}
           <label className="field-label">{ui("Study seeds", "Seed эксперимента")}<input aria-label={ui("Study seeds", "Seed эксперимента")} aria-invalid={Boolean(studySeedValidation.error)} aria-describedby="study-seeds-help" value={seedList} disabled={running || project.read_only} onChange={(event) => setSeedList(event.target.value)} /></label>
           <label className="field-label">{ui("Study randomness protocol", "Что меняется между запусками")}<select aria-label={ui("Study randomness protocol", "Что меняется между запусками")} value={studyMode} disabled={running || project.read_only} onChange={(event) => setStudyMode(event.target.value as typeof studyMode)}><option value="TRAINING_VARIABILITY">{ui("Training variability (fixed split)", "Обучение (разбиение фиксировано)")}</option><option value="SPLIT_VARIABILITY">{ui("Split variability (fixed training seed)", "Разбиение (seed обучения фиксирован)")}</option><option value="COMBINED_VARIABILITY">{ui("Combined variability", "Обучение и разбиение")}</option></select></label>
           <label className="field-label">{ui("Study execution backend", "Среда выполнения")}<select aria-label={ui("Study execution backend", "Среда выполнения")} value={executionBackendKey} disabled={running || project.read_only || executionBackendStatus !== "loaded" || !executionBackends.length} onChange={(event) => setExecutionBackendKey(event.target.value)}>{executionBackends.map((backend) => <option key={backend.identity.key} value={backend.identity.key}>{backend.identity.key} · {backend.identity.provider}</option>)}</select></label>
@@ -981,6 +995,16 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
             <span>training seed {run.training_seed ?? run.seed}</span>
             <span>{run.split.train_count}/{run.split.validation_count}/{run.split.test_count} rows</span>
           </div>
+          {run.model_kind === "mlp" && <details className="data-governance-evidence" data-testid="mlp-run-summary">
+            <summary>{ui("Saved MLP configuration", "Сохранённая конфигурация MLP")}</summary>
+            <dl className="compact-definition">
+              <dt>{ui("Architecture", "Архитектура")}</dt><dd>{Array.isArray(run.model_spec.layers) ? run.model_spec.layers.join(" → ") : "—"}</dd>
+              <dt>{ui("Hidden units", "Нейронов в скрытом слое")}</dt><dd>{String(run.model_spec.hidden_units ?? "—")}</dd>
+              <dt>{ui("Training settings", "Параметры обучения")}</dt><dd>{["max_epochs", "learning_rate", "batch_size", "patience"].map((key) => `${key}: ${String(run.declared_training_config?.parameters[key] ?? "—")}`).join(" · ")}</dd>
+              <dt>{ui("Input features", "Входные признаки")}</dt><dd>{run.feature_columns.join(", ")}</dd>
+            </dl>
+            <p className="scientific-note">{ui("Occlusion and permutation SHAP describe this fitted model's predictions; they do not establish causal effects.", "Occlusion и permutation SHAP описывают предсказания обученной модели, но не доказывают причинное влияние признаков.")}</p>
+          </details>}
           <details className="data-governance-evidence" data-testid="data-governance-evidence">
             <summary>Data governance evidence</summary>
             {dataEvidenceState === "loading" && <p role="status">Loading persisted split, preprocessing and leakage-audit evidence…</p>}

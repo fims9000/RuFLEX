@@ -89,6 +89,7 @@ _ENTRIES = (
     ModelCatalogEntry("random_forest", "Random Forest", "Classical baseline", True, _capabilities(fit=True, predict=True, predict_proba=True, tree_structure=True, structural_trace=True, tree_shap=True, occlusion=True, shap=True), "TreeSHAP attributes the full persisted forest aggregation; RuFLEX never presents one constituent path as an exact ensemble explanation."),
     ModelCatalogEntry("gradient_boosting", "Gradient Boosting", "Classical baseline", True, _capabilities(fit=True, predict=True, predict_proba=True, tree_structure=True, structural_trace=True, tree_shap=True, occlusion=True, shap=True), "TreeSHAP explains the additive raw score for binary boosting; no constituent path is mislabeled as exact ensemble explanation."),
     ModelCatalogEntry("linear", "Logistic / Linear Regression", "Classical baseline", True, _capabilities(fit=True, predict=True, predict_proba=True, export=True, occlusion=True, shap=True), "Trains a safe declarative coefficient artifact; binary data use logistic regression and regression data use linear regression."),
+    ModelCatalogEntry("mlp", "MLP · one hidden layer", "Neural baseline", True, _capabilities(fit=True, predict=True, predict_proba=True, occlusion=True, shap=True), "One hidden ReLU layer with a safe declarative weight artifact. Occlusion and permutation SHAP are post-hoc, not causal explanations."),
 )
 
 
@@ -106,6 +107,11 @@ _TRAINING_RUNTIME: dict[str, dict] = {
         "supported_tasks": ("binary_classification", "regression"),
         "defaults": {"seed": 42},
         "constraints": {},
+    },
+    "mlp": {
+        "supported_tasks": ("binary_classification", "regression"),
+        "defaults": {"seed": 42, "hidden_units": 32, "max_epochs": 20, "learning_rate": 0.01, "batch_size": 32, "patience": 8},
+        "constraints": {"hidden_units": {"minimum": 2, "maximum": 512}, "max_epochs": {"minimum": 1, "maximum": 2000}, "learning_rate": {"exclusiveMinimum": 0.0, "maximum": 1.0}, "batch_size": {"minimum": 1, "maximum": 100000}, "patience": {"minimum": 1, "maximum": 2000}},
     },
     "decision_tree": {
         "supported_tasks": ("binary_classification", "regression"),

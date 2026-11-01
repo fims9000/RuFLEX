@@ -150,7 +150,7 @@ export function ProjectExplorer({
         {trainingRun &&
           item(
             "MODELS",
-            `${trainingRun.model_kind === "flat_neuro_fuzzy" ? "ANFIS" : trainingRun.model_kind === "decision_tree" ? "Decision Tree" : trainingRun.model_kind === "random_forest" ? "Random Forest" : trainingRun.model_kind === "gradient_boosting" ? "Gradient Boosting" : trainingRun.model_kind === "logistic_regression" ? "Logistic Regression" : "Linear Regression"} ${trainingRun.run_id.slice(0, 8)}`,
+            `${trainingRun.model_kind === "flat_neuro_fuzzy" ? "ANFIS" : trainingRun.model_kind === "decision_tree" ? "Decision Tree" : trainingRun.model_kind === "random_forest" ? "Random Forest" : trainingRun.model_kind === "gradient_boosting" ? "Gradient Boosting" : trainingRun.model_kind === "logistic_regression" ? "Logistic Regression" : trainingRun.model_kind === "linear_regression" ? "Linear Regression" : trainingRun.model_kind === "mlp" ? "MLP" : trainingRun.model_kind} ${trainingRun.run_id.slice(0, 8)}`,
             ui("trained revision", "обученная версия"),
           )}
         {expertCorrection && item(

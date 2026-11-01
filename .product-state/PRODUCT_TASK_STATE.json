@@ -367,7 +367,8 @@
     "alpha_guided_validation_model_choice",
     "alpha_compact_studio_shell",
     "alpha_quiet_project_overview",
-    "alpha_uncluttered_studio_navigation"
+    "alpha_uncluttered_studio_navigation",
+    "alpha_tabular_mlp_training_and_saved_evidence"
   ],
   "active_capability": "alpha_human_centered_workflow_polish",
   "active_acceptance": [
@@ -375,8 +376,9 @@
     "Keep all six Studio sections usable at laptop width, with accessible light/dark states and browser E2E."
   ],
   "blockers": [],
-  "next_executable_work": "Continue Russian localization and progressive disclosure inside dense Model/Training/Analysis/Evidence workbenches, including backend-origin error and scientific-note presentation. Verify each route at laptop width without changing persisted scientific identifiers or final-test boundaries. Then return to the declared validation-only AutoML candidate workflow and separate neuro-fuzzy rule-structure assessment. Preserve frozen research and unrelated article edits.",
+  "next_executable_work": "Continue Russian localization and progressive disclosure inside dense Model/Training/Analysis/Evidence workbenches, including backend-origin error and scientific-note presentation. Verify each route at laptop width without changing persisted scientific identifiers or final-test boundaries. Assess trained neuro-fuzzy rule-structure editing separately, then implement the declared validation-only AutoML candidate workflow. Preserve frozen research and unrelated article edits.",
   "qa": {
+    "alpha_tabular_mlp_training_and_saved_evidence": "PASS for scoped product route: CSV/XLSX table persistence checked; a configured binary or regression MLP uses a safe declarative artifact with exact reopen, validation and supported post-hoc explanations. New real Studio MLP route passed; full Python and frontend unit suites, Vite build, 106 broad browser tests with one skip excluding the known legacy PRODUCT-EVIDENCE script passed. See docs/qa/ALPHA_TABULAR_MODELS_AND_EVIDENCE.md. This is not arbitrary-data support, AutoML search or trained neuro-fuzzy rule-topology editing.",
     "alpha_uncluttered_studio_navigation": "PASS for the scoped UI route: removed duplicated project overview tiles, green success badges and repeated empty-tree placeholders; added a permanent Data rail destination so failed dataset reads cannot strand users; shortened instructional copy; fixed dark outlined-button contrast. Frontend unit 126/126 plus API-client 1/1, Vite build, 40+ focused browser checks including Russian/compact/visual and Stability Lab routes passed. Full Playwright remains non-green because the legacy PRODUCT-EVIDENCE capture attempts a new model fit after final-test unlock; product correctly blocks it. See docs/qa/ALPHA_UNCLUTTERED_STUDIO_NAVIGATION.md.",
     "alpha_quiet_project_overview": "PASS: the project landing page hides healthy integrity diagnostics and empty lineage, removes redundant overview copy and idle footer counters, and retains failed integrity/lineage alerts. Healthy integrity remains inspectable in Properties. TypeScript/Vite, 126 frontend unit tests, 20 project/compact browser tests, Russian 920px route and light/dark visual routes passed. See docs/qa/ALPHA_QUIET_PROJECT_OVERVIEW.md.",
     "alpha_russian_studio_primary_route": "PARTIAL: Russian is the default Studio presentation language. Project entry, navigation, Data, primary Model/Training/Analysis/Evidence actions and key boundary copy are localized and shortened. Deep technical forms, backend-origin errors and persisted scientific notes still contain English. Russian 920px Playwright route, English compact visual route, 18 project-lifecycle E2E tests, 126 Vitest tests, API-client test, TypeScript/Vite build and git diff --check passed. See docs/qa/ALPHA_RUSSIAN_STUDIO.md.",

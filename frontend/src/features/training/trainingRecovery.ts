@@ -20,6 +20,7 @@ export function trainingRunMatchesRecovery(
     flat_neuro_fuzzy: "native_flat_neuro_fuzzy", decision_tree: "native_decision_tree",
     random_forest: "native_random_forest", gradient_boosting: "native_gradient_boosting",
     logistic_regression: "native_linear", linear_regression: "native_linear",
+    mlp: "native_mlp",
   };
   const resolvedAdapterKey = config.adapter_key ?? builtInAdapterByModel[config.model_kind ?? "flat_neuro_fuzzy"] ?? null;
   if (candidate.model_kind !== config.model_kind || candidate.adapter_key !== resolvedAdapterKey || candidate.seed !== (config.training_seed ?? config.seed) || candidate.training_seed !== (config.training_seed ?? config.seed) || candidate.split_seed !== requestedSplitSeed) return false;

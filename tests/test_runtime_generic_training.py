@@ -518,6 +518,7 @@ def test_late_executor_start_cannot_run_a_cancelled_study_job(tmp_path: Path, mo
     ("native_decision_tree", "decision_tree", {"max_depth": 2}),
     ("native_random_forest", "random_forest", {"n_estimators": 3}),
     ("native_gradient_boosting", "gradient_boosting", {"n_estimators": 3, "learning_rate": .1, "max_depth": 2}),
+    ("native_mlp", "mlp", {"hidden_units": 4, "max_epochs": 12, "learning_rate": .01, "batch_size": 8, "patience": 4}),
 ])
 def test_generic_core_service_executes_builtin_native_adapters(tmp_path: Path, adapter_key: str, model_kind: str, parameters: dict) -> None:
     _project(tmp_path)
@@ -531,6 +532,78 @@ def test_generic_core_service_executes_builtin_native_adapters(tmp_path: Path, a
     assert result.probability is not None
     assert result.raw_score is not None
     assert np.allclose(result.probability, 1.0 / (1.0 + np.exp(-np.asarray(result.raw_score))), rtol=1e-10, atol=1e-12)
+
+
+def test_native_mlp_reopens_with_frozen_parameters_and_explanation(tmp_path: Path) -> None:
+    from ruflex.application.evidence import check_explanation, create_runtime_explanation, load_explanation, predict_run_sample
+    from ruflex.application.training import create_validation_evaluation, train_model
+
+    _project(tmp_path)
+    config = {"hidden_units": 6, "max_epochs": 15, "learning_rate": .005, "batch_size": 8, "patience": 5}
+    run = train_model(tmp_path, model_kind="mlp", seed=23, **config)
+    reopened = load_training_run(tmp_path, run.run_id)
+    assert reopened.adapter_key == "native_mlp"
+    assert reopened.declared_training_config["parameters"]["hidden_units"] == 6
+    assert reopened.split.test_status == "LOCKED_NOT_EVALUATED"
+    assert reopened.preprocessing_artifact_sha256
+    assert reopened.model_spec["hidden_units"] == 6
+    assert ArtifactStore(tmp_path).verify(ArtifactRef(sha256=reopened.model_artifact_sha256)).valid
+    evaluation = create_validation_evaluation(tmp_path, reopened.run_id)
+    assert evaluation.run_id == reopened.run_id
+    sample = {"x": 12.0}
+    prediction = predict_run_sample(tmp_path, reopened.run_id, sample)
+    explanation = create_runtime_explanation(tmp_path, explainer_key="occlusion", run_id=reopened.run_id, sample=sample)
+    assert load_explanation(tmp_path, explanation.explanation_id).prediction == pytest.approx(prediction)
+    assert check_explanation(tmp_path, explanation.explanation_id).status == "PASSED_AVAILABLE_CHECKS"
+    shap_explanation = create_runtime_explanation(tmp_path, explainer_key="shap", run_id=reopened.run_id, sample=sample)
+    assert load_explanation(tmp_path, shap_explanation.explanation_id).family == "shap"
+    assert check_explanation(tmp_path, shap_explanation.explanation_id).status == "PASSED_AVAILABLE_CHECKS"
+
+
+def test_native_mlp_regression_replays_safe_artifact_after_reopen(tmp_path: Path) -> None:
+    from ruflex.application.training import create_validation_evaluation, train_model
+
+    frame = pd.DataFrame({"x": range(40), "target": [float(index * 2 + 1) for index in range(40)]})
+    source = persist_dataset_bytes(tmp_path, frame.to_csv(index=False).encode())
+    profile = inspect_dataset(frame, source_artifact_sha256=source.sha256)
+    contract = build_dataset_contract(profile, target="target", task="regression")
+    persist_dataset_contract(tmp_path, contract, run_data_audit(contract, frame), profile)
+    run = train_model(tmp_path, model_kind="mlp", seed=5, hidden_units=5, max_epochs=12, batch_size=8, patience=4)
+    reopened = load_training_run(tmp_path, run.run_id)
+    assert reopened.task == "regression"
+    assert reopened.declared_training_config["parameters"]["hidden_units"] == 5
+    with ArtifactStore(tmp_path).open(ArtifactRef(sha256=reopened.model_artifact_sha256)) as handle:
+        artifact = handle.read()
+    assert b"pickle" not in artifact
+    result = builtin_runtime_registry().resolve_model_adapter("native_mlp").predict(PredictionRequest(
+        task="regression", feature_names=("x",), features=np.asarray([[1.], [2.]]),
+        artifact=artifact, model_spec=reopened.model_spec,
+        preprocessing_identity=reopened.preprocessing_artifact_sha256 or "",
+    ))
+    assert len(result.prediction) == 2
+    assert result.probability is None
+    assert create_validation_evaluation(tmp_path, reopened.run_id).run_id == reopened.run_id
+    adapter = builtin_runtime_registry().resolve_model_adapter("native_mlp")
+    with pytest.raises(RuntimeIncompatibleError, match="prediction contract"):
+        adapter.predict(PredictionRequest(task="regression", feature_names=("wrong_feature",), features=np.asarray([[1.]]), artifact=artifact, preprocessing_identity=reopened.preprocessing_artifact_sha256 or ""))
+    malformed = json.loads(artifact.decode())
+    malformed["weights"][1] = [[float("inf")]] * len(malformed["weights"][1])
+    with pytest.raises(RuntimeIncompatibleError, match="non-finite"):
+        adapter.predict(PredictionRequest(task="regression", feature_names=("x",), features=np.asarray([[1.]]), artifact=json.dumps(malformed).encode(), preprocessing_identity=reopened.preprocessing_artifact_sha256 or ""))
+
+
+def test_mlp_and_logistic_comparison_uses_same_frozen_validation_cases(tmp_path: Path) -> None:
+    from ruflex.application.training import create_validation_comparison, load_validation_comparison, train_model
+
+    _project(tmp_path)
+    mlp = train_model(tmp_path, model_kind="mlp", seed=3, split_seed=42, hidden_units=4, max_epochs=12, batch_size=8)
+    logistic = train_model(tmp_path, model_kind="logistic_regression", seed=3, split_seed=42)
+    comparison = create_validation_comparison(tmp_path, [mlp.run_id, logistic.run_id])
+    reopened = load_validation_comparison(tmp_path, comparison.comparison_id)
+    assert reopened.validation_alignment == "same_cases"
+    assert {row["model_kind"] for row in reopened.metric_rows} == {"mlp", "logistic_regression"}
+    assert reopened.candidate_suggestion.run_id in {mlp.run_id, logistic.run_id}
+    assert mlp.split.test_status == logistic.split.test_status == "LOCKED_NOT_EVALUATED"
 
 
 @pytest.mark.parametrize(("model_kind", "parameters"), [

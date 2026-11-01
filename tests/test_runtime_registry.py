@@ -35,6 +35,7 @@ def test_builtin_runtime_snapshot_is_frozen_and_deterministic() -> None:
         "native_flat_neuro_fuzzy",
         "native_gradient_boosting",
         "native_linear",
+        "native_mlp",
         "native_random_forest",
     ]
     assert first == registry.snapshot()
@@ -66,11 +67,27 @@ def test_native_training_model_kind_mapping_is_exact_and_versioned() -> None:
         "decision_tree": "native_decision_tree",
         "random_forest": "native_random_forest",
         "gradient_boosting": "native_gradient_boosting",
+        "mlp": "native_mlp",
     }
     for model_kind, key in expected.items():
         adapter = registry.resolve_training_model_kind(model_kind)
         assert adapter.descriptor.identity.key == key
         assert registry.resolve_model_adapter(key, version="1") is adapter
+
+
+def test_mlp_catalog_declares_exact_adjustable_parameters_and_honest_explanation_support() -> None:
+    from fastapi.testclient import TestClient
+    from ruflex.api.main import app
+
+    response = TestClient(app).get("/api/models/mlp")
+    assert response.status_code == 200
+    contract = response.json()
+    assert contract["training_model_kinds"] == ["mlp"]
+    assert contract["supported_tasks"] == ["binary_classification", "regression"]
+    assert contract["defaults"]["hidden_units"] == 32
+    assert contract["parameter_constraints"]["hidden_units"] == {"minimum": 2, "maximum": 512}
+    assert contract["supported_explainers"] == ["occlusion", "shap"]
+    assert contract["capabilities"]["integrated_gradients"] is False
 
 
 def test_model_kind_default_remains_native_when_external_adapter_is_selectable() -> None:

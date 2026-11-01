@@ -613,6 +613,27 @@ describe("ExperimentWorkspace dynamic model controls", () => {
     expect(screen.queryByLabelText("Max rules / layer")).not.toBeInTheDocument();
   });
 
+  it("offers MLP with bounded hidden units without showing fuzzy-only controls", async () => {
+    studioApi.getModels.mockResolvedValueOnce([{
+      key: "mlp", display_name: "MLP · one hidden layer", version: "1", provider: "ruflex.builtin", family: "Neural baseline",
+      supported_tasks: ["binary_classification", "regression"], training_model_kinds: ["mlp"], input_modalities: ["tabular"], available: true,
+      unavailability_reason: null, capabilities: { fit: true, predict: true, predict_proba: true, occlusion: true, shap: true },
+      supported_explainers: ["occlusion", "shap"], export_formats: [], config_schema: {},
+      defaults: { hidden_units: 32, max_epochs: 20, learning_rate: 0.01, batch_size: 32, patience: 8 },
+      parameter_constraints: { hidden_units: { minimum: 2, maximum: 512 }, max_epochs: { minimum: 1 }, learning_rate: { exclusiveMinimum: 0 }, batch_size: { minimum: 1 }, patience: { minimum: 1 } },
+      optional_dependencies: [], evidence_objects_produced: ["TrainingRun", "ModelArtifact"], limitations: [],
+    }]);
+    render(<ExperimentWorkspace project={project} dataset={dataset as never} run={null} study={null} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);
+    expect(await screen.findByRole("option", { name: "MLP · one hidden layer" })).toHaveValue("mlp");
+    expect(await screen.findByLabelText("Hidden units")).toHaveValue(32);
+    expect(screen.queryByLabelText("Max rules / layer")).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Hidden units"), { target: { value: "513" } });
+    expect(screen.getByLabelText("Hidden units")).toHaveAttribute("max", "512");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Run real training" })).toBeDisabled());
+    fireEvent.change(screen.getByLabelText("Hidden units"), { target: { value: "12" } });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Run real training" })).toBeEnabled());
+  });
+
   it("rejects ambiguous Study seed lists before submission and recovers when corrected", async () => {
     render(<ExperimentWorkspace project={project} dataset={dataset as never} run={null} study={null} theme={"light" as never} onRun={vi.fn()} onStudy={vi.fn()} />);
 

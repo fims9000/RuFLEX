@@ -1045,4 +1045,10 @@ def test_verification_bundle_rejects_rechecksummed_comparison_metrics(tmp_path: 
     )
     validation = validate_verification_bundle(extracted)
     assert validation.status == "FAIL"
-    assert any("comparison" in error and "frozen validation runs" in error for error in validation.errors)
+    # Schema v3 may reject the corrupted candidate suggestion before the
+    # cross-object frozen-run check. Both paths must reject this comparison.
+    assert any(
+        ("Analysis comparison" in error and "frozen validation runs" in error)
+        or ("Invalid AnalysisComparison evidence" in error and "candidate suggestion" in error)
+        for error in validation.errors
+    )

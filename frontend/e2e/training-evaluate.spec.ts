@@ -236,7 +236,8 @@ test("PRODUCT-02 performs real neuro-fuzzy training, validation evaluation and r
   await page.getByRole("button", { name: "Retry exact SplitContract lookup", exact: true }).click();
   await expect(page.getByTestId("split-contract-recovery")).toHaveCount(0);
   expect(splitContractPostCount).toBe(1);
-  await expect(page.getByLabel("Training model").locator("option")).toHaveCount(5);
+  await expect(page.getByLabel("Training model").locator("option")).toHaveCount(6);
+  await expect(page.getByRole("option", { name: "MLP · one hidden layer" })).toHaveAttribute("value", "mlp");
   await page.getByLabel("Training model").selectOption("decision_tree");
   await expect(page.getByLabel("Maximum depth")).toBeVisible();
   await expect(page.getByLabel("Epochs")).toHaveCount(0);

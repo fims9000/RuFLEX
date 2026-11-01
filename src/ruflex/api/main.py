@@ -262,6 +262,7 @@ class TrainModelRequest(SessionRequest):
     max_rules: int = Field(default=8, ge=1, le=128)
     n_estimators: int | None = Field(default=None, ge=1, le=5000)
     max_depth: int | None = Field(default=None, ge=1, le=1000)
+    hidden_units: int = Field(default=32, ge=2, le=512)
 
     @model_validator(mode="after")
     def validate_split_fractions(self) -> "TrainModelRequest":
@@ -1149,6 +1150,7 @@ def run_training(request: TrainModelRequest) -> TrainingRun:
             rigor_profile=request.rigor_profile,
             max_rules=request.max_rules,
             n_estimators=request.n_estimators, max_depth=request.max_depth,
+            hidden_units=request.hidden_units,
         )
     except ProjectError as error:
         raise _project_error(error) from error
@@ -1671,6 +1673,7 @@ def run_multi_seed_training_study(request: MultiSeedStudyRequest) -> TrainingStu
             test_fraction=request.test_fraction, max_rules=request.max_rules,
             split_contract_id=(None if request.split_contract_id is None else str(request.split_contract_id)),
             n_estimators=request.n_estimators, max_depth=request.max_depth,
+            hidden_units=request.hidden_units,
         )
     except ProjectError as error:
         raise _project_error(error) from error
@@ -1686,7 +1689,7 @@ def start_multi_seed_study_job(request: MultiSeedStudyRequest) -> StudyJob:
         _require_trainable_model(request.model_kind, request.adapter_key)
         if session.project.read_only:
             raise ProjectReadOnlyError("Project was opened read-only and cannot start a study.")
-        return start_study_job(session.project.root, client_request_id=request.client_request_id, name=request.name, model_kind=request.model_kind, seeds=request.seeds, selection_metric=request.selection_metric, randomness_protocol=request.randomness_protocol, split_seed=request.split_seed, training_seed=request.training_seed, normalization=request.normalization, execution_backend_key=request.execution_backend_key, adapter_key=request.adapter_key, split_contract_id=(None if request.split_contract_id is None else str(request.split_contract_id)), max_epochs=request.max_epochs, learning_rate=request.learning_rate, batch_size=request.batch_size, patience=request.patience, validation_fraction=request.validation_fraction, test_fraction=request.test_fraction, max_rules=request.max_rules, n_estimators=request.n_estimators, max_depth=request.max_depth)
+        return start_study_job(session.project.root, client_request_id=request.client_request_id, name=request.name, model_kind=request.model_kind, seeds=request.seeds, selection_metric=request.selection_metric, randomness_protocol=request.randomness_protocol, split_seed=request.split_seed, training_seed=request.training_seed, normalization=request.normalization, execution_backend_key=request.execution_backend_key, adapter_key=request.adapter_key, split_contract_id=(None if request.split_contract_id is None else str(request.split_contract_id)), max_epochs=request.max_epochs, learning_rate=request.learning_rate, batch_size=request.batch_size, patience=request.patience, validation_fraction=request.validation_fraction, test_fraction=request.test_fraction, max_rules=request.max_rules, n_estimators=request.n_estimators, max_depth=request.max_depth, hidden_units=request.hidden_units)
     except ProjectError as error:
         raise _project_error(error) from error
     except RuntimeErrorBase as error:

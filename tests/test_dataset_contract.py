@@ -8,7 +8,7 @@ import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
-from ruflex.application.datasets import DatasetConfirmationError, build_dataset_contract, inspect_dataset, load_dataset_contract, persist_dataset_contract, row_identity, run_data_audit
+from ruflex.application.datasets import DatasetConfirmationError, build_dataset_contract, inspect_dataset, load_dataset_contract, load_dataset_frame, persist_dataset_contract, row_identity, run_data_audit
 from ruflex.api.main import app
 
 
@@ -178,6 +178,12 @@ def test_csv_inspect_confirm_and_reopen_contract_through_api(tmp_path) -> None:
     assert inspected.status_code == 200 and "entity_id" in inspected.json()["profile"]["id_candidates"]
     assert confirmed.status_code == 200 and (root / "data" / "dataset-contract.json").is_file()
     assert load_dataset_contract(root).target == "target"
+    assert load_dataset_contract(root).source_artifact_sha256 == hashlib.sha256(csv_text.encode()).hexdigest()
+    assert load_dataset_frame(root).equals(pd.read_csv(BytesIO(csv_text.encode())))
+    assert client.post("/api/projects/close", json={"session_id": created["session_id"]}).status_code == 204
+    reopened = client.post("/api/projects/open", json={"path": str(root), "read_only": True})
+    assert reopened.status_code == 200
+    assert load_dataset_frame(root).equals(pd.read_csv(BytesIO(csv_text.encode())))
 
 
 def test_excluded_feature_is_persisted_reopened_and_omitted_from_training(tmp_path) -> None:
@@ -231,6 +237,11 @@ def test_xlsx_import_is_persisted_as_an_artifact_and_reopens(tmp_path) -> None:
     state = client.get(f"/api/projects/{session_id}/dataset")
     assert state.status_code == 200, state.text
     assert state.json()["contract"]["source_format"] == "xlsx"
+    assert state.json()["contract"]["source_artifact_sha256"] == hashlib.sha256(workbook.getvalue()).hexdigest()
+    assert client.post("/api/projects/close", json={"session_id": session_id}).status_code == 204
+    reopened = client.post("/api/projects/open", json={"path": str(tmp_path / "xlsx-project"), "read_only": True})
+    assert reopened.status_code == 200
+    assert load_dataset_frame(tmp_path / "xlsx-project").equals(pd.read_excel(BytesIO(workbook.getvalue())))
 
 
 def test_xlsx_file_inspection_is_read_only_until_explicit_import(tmp_path) -> None:

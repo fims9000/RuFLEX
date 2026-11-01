@@ -1,0 +1,58 @@
+import { expect, test } from "@playwright/test";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+test("Studio saves tabular data, trains a configured MLP, and reopens its validation and explanation evidence", async ({ page }) => {
+  test.setTimeout(90_000);
+  const path = join(tmpdir(), `ruflex-mlp-route-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  const rows = ["temperature,torque,target"];
+  for (let index = 0; index < 48; index += 1) {
+    const temperature = 10 + index * 0.8;
+    const torque = 20 + (index * 9) % 60;
+    rows.push(`${temperature.toFixed(2)},${torque.toFixed(2)},${temperature + torque > 60 ? 1 : 0}`);
+  }
+  await page.goto("/");
+  await page.getByLabel("Project path").fill(path);
+  await page.getByLabel("Project name").fill("MLP user route");
+  await page.getByRole("button", { name: "Create project", exact: true }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
+  await page.getByLabel("CSV data").fill(rows.join("\n"));
+  await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
+  await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
+  await page.getByRole("button", { name: "S", exact: true }).click();
+  await page.getByLabel("Training model").selectOption("mlp");
+  await page.getByLabel("Hidden units").fill("8");
+  await page.getByLabel("Epochs").fill("20");
+  await page.getByLabel("Batch size").fill("8");
+  const trainingResponse = page.waitForResponse((response) => response.url().endsWith("/api/projects/training/run") && response.request().method() === "POST");
+  await page.getByRole("button", { name: "Run real training", exact: true }).click();
+  const training = await trainingResponse;
+  expect(training.status()).toBe(201);
+  expect(training.request().postDataJSON()).toMatchObject({ model_kind: "mlp", hidden_units: 8, max_epochs: 20, batch_size: 8 });
+  const run = await training.json() as { run_id: string; model_artifact_sha256: string; preprocessing_artifact_sha256: string; model_spec: { hidden_units: number } };
+  expect(run.model_spec.hidden_units).toBe(8);
+  expect(run.model_artifact_sha256).toMatch(/^[a-f0-9]{64}$/);
+  expect(run.preprocessing_artifact_sha256).toMatch(/^[a-f0-9]{64}$/);
+  await page.getByRole("button", { name: "A", exact: true }).click();
+  await page.getByRole("button", { name: "Save validation evidence", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Validation prediction evidence" })).toBeVisible();
+  await page.getByRole("button", { name: "E", exact: true }).click();
+  await expect(page.getByTestId("run-capability-negotiation")).toContainText("occlusion");
+  await page.getByRole("button", { name: "Generate explanation", exact: true }).click();
+  await expect(page.getByTestId("explanation-job")).toContainText("SUCCEEDED");
+  await page.getByRole("button", { name: "Run explanation checks", exact: true }).click();
+  await expect(page.getByText("PASSED_AVAILABLE_CHECKS", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await page.getByLabel("Project path").fill(path);
+  await page.getByRole("button", { name: "Open project", exact: true }).click();
+  await page.getByRole("button", { name: "S", exact: true }).click();
+  await expect(page.getByLabel("Training model")).toHaveValue("mlp");
+  await expect(page.locator(".run-provenance")).toContainText("native_mlp@1");
+  await page.getByTestId("mlp-run-summary").locator("summary").click();
+  await expect(page.getByTestId("mlp-run-summary")).toContainText("8");
+  await expect(page.getByTestId("mlp-run-summary")).toContainText("max_epochs: 20");
+  await page.getByRole("button", { name: "A", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Validation prediction evidence" })).toBeVisible();
+  await page.getByRole("button", { name: "E", exact: true }).click();
+  await expect(page.getByText("PASSED_AVAILABLE_CHECKS", { exact: true })).toBeVisible();
+});

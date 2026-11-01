@@ -16,6 +16,7 @@ import numpy as np
 import pandas as pd
 from sklearn.ensemble import GradientBoostingClassifier, GradientBoostingRegressor, RandomForestClassifier, RandomForestRegressor
 from sklearn.linear_model import LinearRegression, LogisticRegression
+from sklearn.neural_network import MLPClassifier, MLPRegressor
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from ruflex.core.enums import TaskType
 from ruflex.models.flat_nf.model import FlatNeuroFuzzyModel
@@ -47,6 +48,9 @@ _NATIVE_CAPABILITIES: dict[str, dict[str, bool]] = {
     "native_gradient_boosting": asdict(ModelCapabilities(
         fit=True, predict=True, predict_proba=True, tree_structure=True, structural_trace=True,
         tree_shap=True, occlusion=True, shap=True,
+    )),
+    "native_mlp": asdict(ModelCapabilities(
+        fit=True, predict=True, predict_proba=True, occlusion=True, shap=True,
     )),
 }
 
@@ -104,6 +108,49 @@ class _BuiltinAdapter:
                 raw = np.asarray(estimator.predict(X_validation), dtype=float).reshape(-1)
             payload = {"format": "ruflex.declarative-linear-baseline/v1", "model_kind": "logistic_regression" if task == "binary_classification" else "linear_regression", "task": task, "feature_columns": list(request.feature_names), "coefficients": np.asarray(estimator.coef_).reshape(-1).astype(float).tolist(), "intercept": float(np.asarray(estimator.intercept_).reshape(-1)[0]), "split_seed": request.split_seed, "training_seed": seed}
             return FitResult(serialized_artifact=json.dumps(payload, sort_keys=True, separators=(",", ":")).encode(), artifact_media_type="application/vnd.ruflex.declarative-linear-model+json", model_spec={"coefficients": payload["coefficients"], "intercept": payload["intercept"]}, training_summary={"source": "linear", "fit_calls": 1}, validation_raw_predictions=raw.tolist(), validation_raw_probabilities=(1 / (1 + np.exp(-np.clip(raw, -60, 60)))).tolist() if task == "binary_classification" else None)
+        if key == "native_mlp":
+            hidden_units = int(parameters.get("hidden_units", 32))
+            max_epochs = int(parameters.get("max_epochs", 20))
+            learning_rate = float(parameters.get("learning_rate", .01))
+            batch_size = int(parameters.get("batch_size", 32))
+            patience = int(parameters.get("patience", 8))
+            if not (2 <= hidden_units <= 512 and 1 <= max_epochs <= 2000 and 0 < learning_rate <= 1 and 1 <= batch_size <= 100000 and 1 <= patience <= 2000):
+                raise RuntimeIncompatibleError("MLP parameters are outside the declared catalog constraints.")
+            settings = dict(hidden_layer_sizes=(hidden_units,), activation="relu", solver="adam", alpha=.0001,
+                            batch_size=min(batch_size, len(X_train)), learning_rate_init=learning_rate,
+                            max_iter=max_epochs, random_state=seed, shuffle=True, early_stopping=False,
+                            tol=.0001, n_iter_no_change=patience)
+            estimator = (MLPClassifier(**settings) if task == "binary_classification" else MLPRegressor(**settings)).fit(
+                X_train, y_train.astype(int) if task == "binary_classification" else y_train,
+            )
+            payload = {
+                "format": "ruflex.declarative-mlp/v1", "model_kind": "mlp", "task": task,
+                "feature_columns": list(request.feature_names), "split_seed": request.split_seed,
+                "training_seed": seed, "activation": "relu", "output_activation": estimator.out_activation_,
+                "weights": [np.asarray(layer, dtype=float).tolist() for layer in estimator.coefs_],
+                "biases": [np.asarray(layer, dtype=float).tolist() for layer in estimator.intercepts_],
+                "parameters": {"hidden_units": hidden_units, "max_epochs": max_epochs, "learning_rate": learning_rate,
+                               "batch_size": batch_size, "effective_batch_size": min(batch_size, len(X_train)), "patience": patience, "alpha": .0001, "tol": .0001,
+                               "solver": "adam", "shuffle": True, "early_stopping": False, "random_state": seed},
+            }
+            raw = _mlp_forward(payload, X_validation)
+            if task == "binary_classification":
+                probabilities = 1 / (1 + np.exp(-np.clip(raw, -60, 60)))
+                if not np.allclose(probabilities, estimator.predict_proba(X_validation)[:, 1], rtol=1e-8, atol=1e-10):
+                    raise RuntimeExecutionError("MLP declarative replay does not match fitted classifier.")
+            else:
+                probabilities = None
+                if not np.allclose(raw, estimator.predict(X_validation), rtol=1e-8, atol=1e-10):
+                    raise RuntimeExecutionError("MLP declarative replay does not match fitted regressor.")
+            return FitResult(
+                serialized_artifact=json.dumps(payload, sort_keys=True, separators=(",", ":")).encode(),
+                artifact_media_type="application/vnd.ruflex.declarative-mlp+json",
+                model_spec={"hidden_units": hidden_units, "layers": [len(request.feature_names), hidden_units, 1]},
+                training_summary={"source": "mlp", "fit_calls": 1, "epochs_ran": int(estimator.n_iter_),
+                                  "loss": float(estimator.loss_), "loss_curve": [float(value) for value in estimator.loss_curve_]},
+                validation_raw_predictions=raw.tolist(),
+                validation_raw_probabilities=None if probabilities is None else probabilities.tolist(),
+            )
         if key == "native_decision_tree":
             estimator = DecisionTreeClassifier(random_state=seed, max_depth=parameters.get("max_depth")).fit(X_train, y_train.astype(int)) if task == "binary_classification" else DecisionTreeRegressor(random_state=seed, max_depth=parameters.get("max_depth")).fit(X_train, y_train)
             raw = np.log(np.clip(estimator.predict_proba(X_validation)[:, 1], 1e-12, 1 - 1e-12) / np.clip(1 - estimator.predict_proba(X_validation)[:, 1], 1e-12, 1)) if task == "binary_classification" else estimator.predict(X_validation)
@@ -156,6 +203,10 @@ class _BuiltinAdapter:
         kind = self.descriptor.identity.key
         if kind == "native_linear":
             raw = values @ np.asarray(payload["coefficients"], dtype=float) + float(payload["intercept"])
+        elif kind == "native_mlp":
+            if payload.get("format") != "ruflex.declarative-mlp/v1" or payload.get("task") != request.task or payload.get("feature_columns") != list(request.feature_names):
+                raise RuntimeIncompatibleError("MLP artifact does not match the declared prediction contract.")
+            raw = _mlp_forward(payload, values)
         elif kind == "native_decision_tree":
             raw = np.asarray([_tree_prediction(payload["tree"], row, task=request.task) for row in values])
             if request.task == "binary_classification":
@@ -177,6 +228,24 @@ class _BuiltinAdapter:
             probability = 1.0 / (1.0 + np.exp(-np.clip(raw, -60, 60)))
             return PredictionResult(prediction=(probability >= .5).astype(float).tolist(), probability=probability.tolist(), score=probability.tolist(), raw_score=np.asarray(raw).tolist())
         return PredictionResult(prediction=np.asarray(raw, dtype=float).tolist(), score=np.asarray(raw, dtype=float).tolist())
+
+def _mlp_forward(payload: dict[str, Any], values: np.ndarray) -> np.ndarray:
+    """Replay one frozen hidden ReLU layer from declarative weights only."""
+    matrix = np.asarray(values, dtype=float)
+    if matrix.ndim == 1:
+        matrix = matrix.reshape(1, -1)
+    weights = [np.asarray(layer, dtype=float) for layer in payload["weights"]]
+    biases = [np.asarray(layer, dtype=float) for layer in payload["biases"]]
+    expected_output = "logistic" if payload["task"] == "binary_classification" else "identity"
+    if (len(weights) != 2 or len(biases) != 2 or weights[0].ndim != 2 or weights[1].ndim != 2
+            or matrix.shape[1] != weights[0].shape[0] or weights[0].shape[1] != weights[1].shape[0]
+            or weights[1].shape[1] != 1 or biases[0].shape != (weights[0].shape[1],)
+            or biases[1].shape != (1,) or payload.get("activation") != "relu"
+            or payload.get("output_activation") != expected_output
+            or not all(np.isfinite(array).all() for array in (matrix, *weights, *biases))):
+        raise RuntimeIncompatibleError("MLP artifact has incompatible architecture or non-finite values.")
+    return (np.maximum(matrix @ weights[0] + biases[0], 0) @ weights[1] + biases[1]).reshape(-1)
+
 
 def _tree_artifact(estimator: Any, *, request: FitRequest, model_kind: str) -> dict[str, Any]:
     """Serialize sklearn tree state as safe declarative JSON, not pickle."""
@@ -251,4 +320,5 @@ def builtin_model_adapters() -> tuple[_BuiltinAdapter, ...]:
         _BuiltinAdapter(_descriptor("native_decision_tree", kinds=("decision_tree",))),
         _BuiltinAdapter(_descriptor("native_random_forest", kinds=("random_forest",))),
         _BuiltinAdapter(_descriptor("native_gradient_boosting", kinds=("gradient_boosting",))),
+        _BuiltinAdapter(_descriptor("native_mlp", kinds=("mlp",))),
     )

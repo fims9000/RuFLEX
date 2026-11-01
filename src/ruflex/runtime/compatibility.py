@@ -14,6 +14,7 @@ LEGACY_MODEL_KIND_TO_ADAPTER: dict[str, tuple[str, str]] = {
     "decision_tree": ("native_decision_tree", "1"),
     "random_forest": ("native_random_forest", "1"),
     "gradient_boosting": ("native_gradient_boosting", "1"),
+    "mlp": ("native_mlp", "1"),
 }
 
 
