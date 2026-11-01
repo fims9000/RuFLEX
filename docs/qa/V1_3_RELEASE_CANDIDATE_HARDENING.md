@@ -42,3 +42,15 @@ Vitest now defaults to one worker as well, so an ordinary `npm test` does not cr
 ## Scientific/product limits
 
 Synthetic fixtures are not real field data. Method/model compatibility is explicit. A valid persisted explanation/replay does not establish causality. Assurance is a collection of scoped checks, not a universal reliability or safety certificate. A software final-test boundary is not a universal leakage detector. Native inference and evaluation do not authorize post-test tuning. Full AutoML and trained neuro-fuzzy rule-topology editing remain outside this release-hardening scope.
+
+## Fresh-install security gate
+
+The first exact-source candidate `e27ea1b` passed extracted Python (442), frontend units and both builds, but its fresh `npm ci` reported 9 advisories (1 critical, 2 high, 6 moderate). That ZIP is retained as a superseded QA checkpoint, **not** the final release candidate.
+
+The dependency refresh leaves scientific Python code and model settings untouched and updates existing tooling: Vite 8.2.4, Vitest 5.0.5, Storybook/react-vite 10.6.5 and the compatible Undici patch 8.12.3. The docgen plugin still declares Glob 13, so a narrowly scoped override selects Glob 14.0.3 for that plugin only; its Minimatch resolves to 11.0.3. Refreshed clean install, 138 Vitest checks, Node version checks, Vite and Storybook compilation passed; full installed dependency audit reports zero advisories. Native browser/archive gates are repeated on the final source snapshot before handoff. No `audit fix --force` or major Storybook downgrade is used.
+
+Primary advisory references: [Storybook origin validation](https://github.com/advisories/GHSA-f2ph-cmg5-wxc8), [Vite filesystem boundary](https://github.com/advisories/GHSA-rq7h-c2jc-7f22). The actual npm audit JSON is part of the companion local QA evidence; zero reported advisories is not a general security certification.
+
+The existing jsdom tool dependency requires newer Node branches than the old launcher allowed. Package engines, a tested launcher version guard and CI now agree on the supported branches; local verification uses Node 26.12.0. CI also explicitly runs the Russian-only routes instead of leaving their language skips untested. Remote CI is not claimed as executed without a push.
+
+The old API-client test asserted only that a hardcoded URL began with another literal, not the actual client configuration. The strengthened test reads the real declaration and caught a second startup defect: the built frontend defaulted to port 8000 while the documented launcher/backend use 8010. The fallback now matches 8010; the explicit environment override remains supported. Native integration tests already use 8010; the final production-preview smoke additionally verifies the no-override build path.

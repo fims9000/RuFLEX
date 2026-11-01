@@ -22,8 +22,8 @@ import ruflex.api.main  # noqa: F401
 import uvicorn  # noqa: F401
 PY
 
-node -e 'const [major, minor] = process.versions.node.split(".").map(Number); if (!(major > 22 || (major === 22 && minor >= 12) || (major === 20 && minor >= 19))) process.exit(1)' \
-  || fail "Node.js 20.19+ or 22.12+ is required by the current Studio toolchain."
+node "$ROOT/frontend/scripts/check-node-version.mjs" \
+  || fail "Node.js 22.22.2+ (22.x), 24.15+ (24.x), or 26+ is required by the current Studio toolchain."
 
 for port in "$API_PORT" "$STUDIO_PORT"; do
   [[ "$port" =~ ^[0-9]+$ ]] || fail "Invalid local port: '$port'."

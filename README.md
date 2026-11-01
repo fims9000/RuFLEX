@@ -198,7 +198,10 @@ For the Russian human-facing workflow, see [Studio quick start](docs/STUDIO_QUIC
 The scoped release-hardening record and remaining limitations are maintained in
 [release-candidate QA](docs/qa/V1_3_RELEASE_CANDIDATE_HARDENING.md).
 
-RuFLEX requires Python 3.11+ and Node.js for the Studio.
+RuFLEX requires Python 3.11+ and Node.js for the Studio. Use Node.js 26
+(tested: 26.12.0) for this source candidate. The complete frontend toolchain
+declares Node 22.22.2+ within 22.x, 24.15+ within 24.x, or 26+; older Node
+versions do not satisfy the installed test-tool dependencies.
 
 ```bash
 python -m venv .venv

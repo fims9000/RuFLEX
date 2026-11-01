@@ -7,6 +7,17 @@
   "node": "26.12.0",
   "npm": "12.2.1",
   "frontend_resolution": "frontend/package-lock.json via npm ci",
+  "frontend_node_branches": "^22.22.2 || ^24.15.0 || >=26.0.0",
+  "frontend_packages": {
+    "vite": "8.2.4",
+    "vitest": "5.0.5",
+    "storybook": "10.6.5",
+    "@storybook/react-vite": "10.6.5",
+    "glob": "14.0.3",
+    "minimatch": "11.0.3",
+    "undici": "8.12.3"
+  },
+  "npm_audit_reported_vulnerabilities_at_check": 0,
   "numerical_threads": 1,
   "browser_workers": 1,
   "packages": {

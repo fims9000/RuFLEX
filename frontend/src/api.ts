@@ -179,7 +179,7 @@ export type VerificationBundleValidation = { bundle_path: string; status: "PASS"
 export type ProjectIntegrityReport = { project_id: string; status: "PASS" | "WARN" | "FAIL"; checked_objects: number; issues: Array<{ code: string; status: "WARN" | "FAIL"; path: string; detail: string }>; scientific_note: string };
 export type ConditionMonitoringDemo = { demo_id: string; policy_id: string; telemetry: Record<string, number>; metadata?: Record<string, unknown>; generalization_contract_id?: string | null; predicted_class: number; probability: number; confidence: number; decision: "ACCEPT" | "REVIEW" | "OUT_OF_SCOPE"; scope_disposition: string; explanation_id: string | null; explanation_check_id: string | null; assurance_id: string | null; verification_bundle_sha256: string | null; explanation_note: string; safety_note: string };
 
-const apiBase = import.meta.env.VITE_RUFLEX_API_URL ?? "http://127.0.0.1:8000";
+const apiBase = import.meta.env.VITE_RUFLEX_API_URL ?? "http://127.0.0.1:8010";
 
 export type ProductErrorCode =
   | "INVALID_STATE"
