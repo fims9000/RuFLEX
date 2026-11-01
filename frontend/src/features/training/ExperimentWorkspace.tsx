@@ -904,7 +904,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
         <h3>{ui("Protocol", "Настройки запуска")}</h3>
         {studyHydrationStatus === "loading" && <p role="status">Checking for a saved TrainingStudy…</p>}
         {studyHydrationStatus === "idle" && <p role="status">Saved TrainingStudy status has not been checked.</p>}
-        {studyHydrationStatus === "none" && <p className="info-message" role="status">No saved TrainingStudy exists for this project yet; completed individual runs remain available.</p>}
+        {studyHydrationStatus === "none" && <p className="info-message" role="status">{ui("No saved TrainingStudy exists for this project yet; completed individual runs remain available.", "Сохранённого исследования пока нет. Отдельные обученные модели остаются доступны.")}</p>}
         {studyHydrationStatus === "error" && <div className="error" role="alert"><strong>Could not restore saved TrainingStudy.</strong> {studyHydrationError ?? "No empty Study state is inferred from this failure."} <Button view="outlined" size="s" onClick={onRetryStudyHydration}>Retry Study check</Button></div>}
         {studyJobsStatus === "loading" && <p role="status">Checking saved Study jobs…</p>}
         {studyJobsStatus === "error" && <div className="error" role="alert"><strong>Could not restore saved Study jobs.</strong> {studyJobsError ?? "No empty job state is inferred from this failure."} <Button view="outlined" size="s" onClick={() => setStudyJobsReload((current) => current + 1)}>Retry Study jobs</Button></div>}

@@ -117,6 +117,7 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
   const [recentProjectError, setRecentProjectError] = useState<string | null>(null);
   const [path, setPath] = useState("");
   const [name, setName] = useState("");
+  const [newProjectTemplate, setNewProjectTemplate] = useState<"empty" | "practice">("empty");
   const [description, setDescription] = useState("");
   const [readOnly, setReadOnly] = useState(false);
   const [status, setStatus] = useState(ui("Connecting to backend…", "Подключение к серверу…"));
@@ -1224,14 +1225,52 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
     projectLifecycleInFlightRef.current = true;
     setProjectLifecycleOperation(operation);
     const requestId = ++projectLifecycleRequestRef.current;
+    let createdProject: ProjectSummary | null = null;
     setError(null);
     try {
       const result =
         operation === "create"
           ? await studioApi.createProject(path, name)
           : await studioApi.openProject(path, readOnly);
+      if (operation === "create") createdProject = result;
       if (requestId !== projectLifecycleRequestRef.current) {
         closeStaleProjectSession(result.session_id);
+        return;
+      }
+      if (operation === "create" && newProjectTemplate === "practice") {
+        setStatus(ui("Saving practice dataset…", "Сохранение учебных данных…"));
+        try {
+          await studioApi.confirmCsv(result.session_id, SYNTHETIC_PRACTICE_CSV, "target", "binary_classification", ["entity_id"], []);
+        } catch (writeError) {
+          // A lost response does not authorize repeating the dataset write.
+          // Reopen the exact saved contract before deciding whether setup failed.
+          const recovered = await studioApi.getDatasetState(result.session_id).catch(() => null);
+          if (recovered?.contract.source_artifact_sha256 !== SYNTHETIC_PRACTICE_SHA256
+            || recovered.contract.target !== "target" || recovered.contract.task !== "binary_classification"
+            || recovered.contract.id_columns.join(",") !== "entity_id") throw writeError;
+        }
+        const saved = await studioApi.getDatasetState(result.session_id);
+        if (saved.contract.source_artifact_sha256 !== SYNTHETIC_PRACTICE_SHA256
+          || saved.contract.target !== "target" || saved.contract.task !== "binary_classification"
+          || saved.contract.id_columns.join(",") !== "entity_id") throw new Error("Saved practice DatasetContract does not match the declared template.");
+        if (requestId !== projectLifecycleRequestRef.current) {
+          closeStaleProjectSession(result.session_id);
+          return;
+        }
+        setProject(result);
+        setDataset({ contract: saved.contract, audit: saved.audit });
+        setDatasetState(saved);
+        setDatasetStateStatus("available");
+        setDatasetStateError(null);
+        setProfile(saved.profile);
+        setCsvText(SYNTHETIC_PRACTICE_CSV);
+        setTarget("target");
+        setTask("binary_classification");
+        setIdColumns("entity_id");
+        setExcludedColumns("");
+        setActive("STUDIES");
+        rememberRecentProject(result);
+        setStatus(ui("Practice project ready; choose a model", "Учебный проект готов — выберите модель"));
         return;
       }
       setProject(result);
@@ -1241,6 +1280,13 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
     } catch (reason) {
       if (requestId !== projectLifecycleRequestRef.current) return;
       const message = reason instanceof Error ? reason.message : "Unknown request failure";
+      if (createdProject) {
+        setProject(createdProject);
+        rememberRecentProject(createdProject);
+        setActive("DATA");
+        setError(ui(`Project was created, but practice data could not be verified: ${message}. Review Data before training.`, `Проект создан, но учебные данные не подтверждены: ${message}. Проверьте раздел «Данные» перед обучением.`));
+        return;
+      }
       setProjectFormError(operation === "create" && message.includes("Refusing to create a project over an existing path:")
         ? ui("A project already exists at this path. Choose Open project to reopen it, or enter a different path.", "Проект в этой папке уже есть. Откройте его или выберите другую папку.")
         : message);
@@ -1294,7 +1340,7 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
     }
   }
   async function close() {
-    if (projectWriteInFlightRef.current || generalizationMutationInFlightRef.current || datasetMutationInFlightRef.current) return;
+    if (projectLifecycleInFlightRef.current || projectWriteInFlightRef.current || generalizationMutationInFlightRef.current || datasetMutationInFlightRef.current) return;
     const requestId = ++projectLifecycleRequestRef.current;
     datasetFileSelectionId.current += 1;
     csvInspectionRequestRef.current += 1;
@@ -1820,8 +1866,8 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
       )}
     </>
   ) : (
-    <EmptyState title="No selection">
-      Open a project to inspect canonical properties.
+    <EmptyState title={ui("No selection", "Ничего не выбрано")}>
+      {ui("Open a project to inspect canonical properties.", "Откройте проект, чтобы посмотреть его свойства.")}
     </EmptyState>
   );
   const explorer = (
@@ -1882,7 +1928,7 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
       readOnly={project?.read_only}
       saving={projectWriteOperation === "save"}
       saveDisabled={projectWriteOperation !== null || generalizationMutationOperation !== null || confirmingCsvDataset || importingDatasetFile}
-      closeDisabled={projectWriteOperation !== null || generalizationMutationOperation !== null || confirmingCsvDataset || importingDatasetFile}
+      closeDisabled={projectLifecycleOperation !== null || projectWriteOperation !== null || generalizationMutationOperation !== null || confirmingCsvDataset || importingDatasetFile}
       status={status}
       error={error}
       onSave={save}
@@ -1918,6 +1964,14 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
                 placeholder="Pump-01"
               />
             </label>
+            <label className="field-label">
+              {ui("New project type", "Тип нового проекта")}
+              <select aria-label={ui("New project type", "Тип нового проекта")} value={newProjectTemplate} onChange={(event) => setNewProjectTemplate(event.target.value as "empty" | "practice")} disabled={projectLifecycleOperation !== null}>
+                <option value="empty">{ui("Empty project", "Пустой проект")}</option>
+                <option value="practice">{ui("Practice project · saved 80-row dataset", "Учебный проект · сохранённые данные (80 строк)")}</option>
+              </select>
+            </label>
+            {newProjectTemplate === "practice" && <p className="property-description">{ui("Creates a synthetic binary table and opens model selection. Training and final test remain manual; practice results are not research evidence.", "Создаст учебную таблицу и откроет выбор моделей. Обучение и финальный тест запускаются отдельно; это не исследовательские результаты.")}</p>}
             <label className="check-label">
               <input
                 aria-label={ui("Read-only", "Только чтение")}

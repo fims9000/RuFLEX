@@ -369,7 +369,8 @@
     "alpha_quiet_project_overview",
     "alpha_uncluttered_studio_navigation",
     "alpha_tabular_mlp_training_and_saved_evidence",
-    "alpha_model_choice_navigation"
+    "alpha_model_choice_navigation",
+    "alpha_persisted_practice_project_template"
   ],
   "active_capability": "alpha_human_centered_workflow_polish",
   "active_acceptance": [
@@ -379,6 +380,7 @@
   "blockers": [],
   "next_executable_work": "Continue Russian localization and progressive disclosure inside dense Training/Analysis/Evidence workbenches, including backend-origin error and scientific-note presentation. Verify each route at laptop width without changing persisted scientific identifiers or final-test boundaries. Assess trained neuro-fuzzy rule-structure editing separately, then implement the declared validation-only AutoML candidate workflow. Preserve frozen research and unrelated article edits.",
   "qa": {
+    "alpha_persisted_practice_project_template": "PASS: new-project template persists the declared 80-row synthetic DatasetContract before opening model choice; explicit training and final-test boundaries remain intact. Russian Studio browser E2E verified create, decision-tree fit, validation evaluation and F1 threshold, Occlusion explanation/check, explicit final test and close/reopen. MLP browser route and runtime model/explainer backend matrix passed. Screenshots and scope: docs/qa/ALPHA_PRACTICE_PROJECT.md.",
     "alpha_model_choice_navigation": "PASS: Models now distinguishes the editable FIS from trainable estimator selection, routes an empty project to Data and a confirmed project to Training, and does not offer default FIS creation without a saved DatasetContract. Russian-language real Studio browser route passed through 80-row synthetic data confirmation and six-family model selection. See docs/qa/ALPHA_MODEL_CHOICE_NAVIGATION.md.",
     "alpha_tabular_mlp_training_and_saved_evidence": "PASS for scoped product route: CSV/XLSX table persistence checked; a configured binary or regression MLP uses a safe declarative artifact with exact reopen, validation and supported post-hoc explanations. New real Studio MLP route passed; full Python and frontend unit suites, Vite build, 106 broad browser tests with one skip excluding the known legacy PRODUCT-EVIDENCE script passed. See docs/qa/ALPHA_TABULAR_MODELS_AND_EVIDENCE.md. This is not arbitrary-data support, AutoML search or trained neuro-fuzzy rule-topology editing.",
     "alpha_uncluttered_studio_navigation": "PASS for the scoped UI route: removed duplicated project overview tiles, green success badges and repeated empty-tree placeholders; added a permanent Data rail destination so failed dataset reads cannot strand users; shortened instructional copy; fixed dark outlined-button contrast. Frontend unit 126/126 plus API-client 1/1, Vite build, 40+ focused browser checks including Russian/compact/visual and Stability Lab routes passed. Full Playwright remains non-green because the legacy PRODUCT-EVIDENCE capture attempts a new model fit after final-test unlock; product correctly blocks it. See docs/qa/ALPHA_UNCLUTTERED_STUDIO_NAVIGATION.md.",
