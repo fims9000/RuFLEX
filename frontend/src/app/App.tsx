@@ -2335,6 +2335,16 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
           )}
         </section>
       ) : active === "MODELS" ? (
+        <>
+        <section className="feature-workspace model-route-guide" data-testid="model-route-guide">
+          <strong>{ui("Trainable models", "Обучаемые модели")}</strong>
+          <p>{ui("Choose logistic or linear regression, trees, ensembles, MLP, or a neuro-fuzzy model in Training. This section below edits a separate rule-based FIS.", "Регрессия, деревья, ансамбли, MLP и нейро-нечёткая модель выбираются в «Обучении». Ниже — отдельный редактор правил FIS.")}</p>
+          {datasetStateStatus === "available" && datasetState ? (
+            <Button view="action" onClick={() => setActive("STUDIES")} data-ruflex-action="models.open-training">{ui("Choose a model to train", "Выбрать модель для обучения")}</Button>
+          ) : datasetStateStatus === "none" ? (
+            <Button view="action" onClick={() => setActive("DATA")} data-ruflex-action="models.open-data">{ui("Save data first", "Сначала сохранить данные")}</Button>
+          ) : <p role="status">{datasetStateStatus === "error" ? ui("Dataset state could not be verified. Open Data and retry before creating a model.", "Не удалось проверить данные. Откройте «Данные» и повторите проверку.") : ui("Checking saved data…", "Проверка сохранённых данных…")}</p>}
+        </section>
         <BuildWorkspace
           project={project}
           dataset={datasetState}
@@ -2360,6 +2370,7 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
           })}
           onOpenTrace={() => setActive("EVIDENCE")}
         />
+        </>
       ) : active === "STUDIES" ? (
         <ExperimentWorkspace
           project={project}

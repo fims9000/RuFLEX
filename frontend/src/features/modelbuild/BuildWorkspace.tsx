@@ -625,7 +625,7 @@ export function BuildWorkspace({
     setWorking(next);
   }
   async function createDefault() {
-    if (fisImportRecovery || createDefaultFisInFlightRef.current || !beginFisAction()) return;
+    if (!dataset || fisImportRecovery || createDefaultFisInFlightRef.current || !beginFisAction()) return;
     setError(null);
     createDefaultFisInFlightRef.current = true;
     setCreatingDefaultFis(true);
@@ -1375,18 +1375,18 @@ export function BuildWorkspace({
   if (!working)
     return (
       <section className="feature-workspace">
-        <EmptyState title={ui("No FIS model", "Нет нечёткой модели")}>
+        <EmptyState title={ui("No FIS model", "Нет модели FIS")}>
           {ui("Confirm a dataset, then create the first editable fuzzy model.", "Сохраните набор данных и создайте модель.")}
         </EmptyState>
         <div className="form-actions">
-          <Button
+          {dataset && <Button
             view="action"
             disabled={project.read_only || !!fisImportRecovery || creatingDefaultFis || fisActionBusy}
             onClick={createDefault}
             data-ruflex-action="fis.create"
           >
             {creatingDefaultFis ? ui("Creating FIS…", "Создание модели…") : ui("Create FIS from dataset", "Создать модель из данных")}
-          </Button>
+          </Button>}
           <input
             ref={importInputRef}
             aria-label="MATLAB FIS file"

@@ -26,8 +26,9 @@ test("основной маршрут Studio отображается по-ру�
   await expect(page.getByRole("button", { name: "Проверить данные" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Сохранить набор данных" })).toBeVisible();
   await page.getByRole("navigation", { name: "Разделы Studio" }).getByRole("button", { name: "Модели" }).click();
-  await expect(page.getByText("Нет нечёткой модели", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Создать модель из данных" })).toBeVisible();
+  await expect(page.getByText("Нет модели FIS", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Сначала сохранить данные" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Создать модель из данных" })).toHaveCount(0);
   await page.getByRole("navigation", { name: "Разделы Studio" }).getByRole("button", { name: "Обучение" }).click();
   await expect(page.getByText("Нет подтверждённых данных", { exact: true })).toBeVisible();
   await page.getByRole("navigation", { name: "Разделы Studio" }).getByRole("button", { name: "Доказательства" }).click();
