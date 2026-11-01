@@ -119,6 +119,17 @@ export function ProjectExplorer({
   ).length;
   const hasSavedObjects = Boolean(dataset || fis || trainingRun || trainingStudy || stabilityAnalysis || stabilityGatePolicy || evaluation || analysisEvaluation || analysisComparison || calibrationTransform || decisionThreshold || finalTestEvaluation || sliceAnalysis || generalization || treeEvidence || explanation || explanationCheck || behaviorResult || reproducibility || exhaustive || assurance || expertCorrection || traceCount);
   const hasReadError = stabilityAnalysisHydrationStatus === "error" || evaluationStatus === "error" || treeEvidenceHydrationStatus === "error";
+  const boundAnalyses = [
+    { key: "validation", evidence: analysisEvaluation, label: ui("Validation evaluation", "Оценка на валидации"), detail: analysisEvaluation ? ui(`${Object.keys(analysisEvaluation.metrics).length} metrics`, `${Object.keys(analysisEvaluation.metrics).length} метрик`) : "" },
+    { key: "calibration", evidence: calibrationTransform, label: ui("Calibration transform", "Калибровка"), detail: calibrationTransform ? `${calibrationTransform.method} · ${ui("validation", "валидация")}` : "" },
+    { key: "threshold", evidence: decisionThreshold, label: ui("Decision threshold", "Порог решения"), detail: decisionThreshold ? `${decisionThreshold.selected_threshold.toFixed(2)} · ${decisionThreshold.probability_source}` : "" },
+    { key: "final-test", evidence: finalTestEvaluation, label: ui("Final-test evaluation", "Оценка на финальном тесте"), detail: finalTestEvaluation ? ui(`${finalTestEvaluation.test_row_count} rows · frozen policy`, `${finalTestEvaluation.test_row_count} строк · правило зафиксировано`) : "" },
+  ].filter((entry) => entry.evidence !== null);
+  const belongsToCurrentRun = (entry: typeof boundAnalyses[number]) => !trainingRun || (
+    entry.evidence?.run_id === trainingRun.run_id
+    && (!dataset || trainingRun.dataset_fingerprint === dataset.contract.dataset_fingerprint)
+  );
+  const previousAnalyses = boundAnalyses.filter((entry) => !belongsToCurrentRun(entry));
   const item = (target: ObjectTarget, label: string, detail?: string) => (
     <button
       className={
@@ -194,12 +205,10 @@ export function ProjectExplorer({
       </section>}
       {(analysisEvaluation || stabilityGatePolicy || analysisComparison || calibrationTransform || decisionThreshold || finalTestEvaluation || sliceAnalysis || generalization) && <section>
         <strong>{ui("ANALYSES", "АНАЛИЗ")}</strong>
-        {analysisEvaluation && item("ANALYSES", ui("Validation evaluation", "Оценка на валидации"), ui(`${Object.keys(analysisEvaluation.metrics).length} metrics`, `${Object.keys(analysisEvaluation.metrics).length} метрик`))}
+        {boundAnalyses.filter(belongsToCurrentRun).map((entry) => <div key={entry.key}>{item("ANALYSES", entry.label, entry.detail)}</div>)}
         {stabilityGatePolicy && item("ANALYSES", ui("Stability-Aware Review Gate", "Порог проверки устойчивости"), ui(`${stabilityGatePolicy.decisions.filter((item) => item.disposition === "REVIEW").length} REVIEW`, `${stabilityGatePolicy.decisions.filter((item) => item.disposition === "REVIEW").length} на проверку`))}
         {analysisComparison && item("ANALYSES", ui("Model comparison", "Сравнение моделей"), ui(`${analysisComparison.metric_rows.length} subjects`, `${analysisComparison.metric_rows.length} объекта`))}
-        {calibrationTransform && item("ANALYSES", ui("Calibration transform", "Калибровка"), `${calibrationTransform.method} · ${ui("validation", "валидация")}`)}
-        {decisionThreshold && item("ANALYSES", ui("Decision threshold", "Порог решения"), `${decisionThreshold.selected_threshold.toFixed(2)} · ${decisionThreshold.probability_source}`)}
-        {finalTestEvaluation && item("ANALYSES", ui("Final-test evaluation", "Оценка на финальном тесте"), ui(`${finalTestEvaluation.test_row_count} rows · frozen policy`, `${finalTestEvaluation.test_row_count} строк · правило зафиксировано`))}
+        {previousAnalyses.length > 0 && <details className="object-tree-history" data-testid="previous-analysis-history"><summary>{ui("Previous results", "Предыдущие результаты")} · {previousAnalyses.length}</summary>{previousAnalyses.map((entry) => <p key={entry.key}><span>{entry.label}</span><small>{entry.detail} · {ui("run", "запуск")} {entry.evidence?.run_id.slice(0, 8)}</small></p>)}</details>}
         {sliceAnalysis && item("ANALYSES", ui("Slice analysis", "Анализ срезов"), ui(`${sliceAnalysis.results.length} slices · ${sliceAnalysis.metric}`, `${sliceAnalysis.results.length} срезов · ${sliceAnalysis.metric}`))}
         {generalization && item("ANALYSES", ui("Generalization contract", "Область применимости"), generalization.contract.frozen_at ? ui("frozen", "зафиксирована") : ui("draft", "черновик"))}
       </section>}

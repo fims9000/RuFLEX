@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { openTrainingSettings } from "./helpers/trainingSettings";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -30,6 +31,7 @@ test("PRODUCT-03 persists a multi-seed Study and restores it through the project
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
 
   await page.getByRole("button", { name: "S", exact: true }).click();
+  await openTrainingSettings(page);
   await page.getByLabel("Epochs").fill("1");
   await page.getByLabel("Batch size").fill("16");
   await page.getByLabel("Study seeds").fill("7, 8, 9");

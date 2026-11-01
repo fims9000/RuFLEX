@@ -1034,7 +1034,9 @@ def train_model(project_root: Path, *, model_kind: str, adapter_key: str | None 
             raise
         if isinstance(error, TrainingError):
             raise
-        raise TrainingError(f"Unsupported or unavailable model adapter for {model_kind!r}.") from error
+        if isinstance(error, OSError):
+            raise
+        raise TrainingError(f"Training failed for {model_kind!r}: {error}") from error
     run.runtime_seconds = time.perf_counter() - started
     persist_training_run(project_root, run, registry=registry)
     return run

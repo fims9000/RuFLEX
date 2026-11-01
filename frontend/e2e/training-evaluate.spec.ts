@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { openTrainingSettings } from "./helpers/trainingSettings";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -29,6 +30,7 @@ test("Studio freezes selected TRAIN-only scaling in a run and restores it after 
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
   await page.getByRole("button", { name: "S", exact: true }).click();
   await page.getByLabel("Training model").selectOption("logistic_regression");
+  await openTrainingSettings(page);
   await page.getByLabel("Training normalization").selectOption("minmax");
   await expect(page.locator(".compact-definition")).toContainText("min–max scaling");
   const trainingResponse = page.waitForResponse((response) => response.url().endsWith("/api/projects/training/run") && response.request().method() === "POST");
@@ -125,6 +127,7 @@ test("a near-exact regression Study remains visible through its metric chart and
   await page.getByLabel("Task").selectOption("regression");
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
   await page.getByRole("button", { name: "S", exact: true }).click();
+  await openTrainingSettings(page);
   await page.getByRole("button", { name: "Freeze RANDOM SplitContract", exact: true }).click();
   await expect(page.getByRole("button", { name: "SplitContract frozen", exact: true })).toBeVisible();
   await page.getByLabel("Training model").selectOption("linear_regression");
@@ -166,6 +169,7 @@ test("a rejected GROUP split can be corrected without uncertain-write recovery",
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
   await page.getByRole("button", { name: "S", exact: true }).click();
 
+  await openTrainingSettings(page);
   await page.getByLabel("Split family").selectOption("GROUP");
   await page.getByLabel("Split identity column").selectOption("group");
   let releaseGroupSplit!: () => void;
@@ -198,6 +202,7 @@ test("a rejected GROUP split can be corrected without uncertain-write recovery",
   await expect(page.getByRole("button", { name: "Run multi-seed study", exact: true })).toBeDisabled();
 
   await page.getByLabel("Split family").selectOption("RANDOM");
+  await openTrainingSettings(page);
   await page.getByRole("button", { name: "Freeze RANDOM SplitContract", exact: true }).click();
   const frozenSplitLabel = page.locator(".compact-definition dt").filter({ hasText: "Frozen split" });
   await expect(frozenSplitLabel.locator("xpath=following-sibling::dd[1]")).toContainText("RANDOM");
@@ -230,6 +235,7 @@ test("PRODUCT-02 performs real neuro-fuzzy training, validation evaluation and r
     await route.fetch();
     await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "SplitContract response lost after persistence" }) });
   });
+  await openTrainingSettings(page);
   await page.getByRole("button", { name: "Freeze RANDOM SplitContract", exact: true }).click();
   await expect(page.getByTestId("split-contract-recovery")).toContainText("SplitContract response lost after persistence");
   await expect(page.getByRole("button", { name: "Run real training", exact: true })).toBeDisabled();
@@ -373,6 +379,7 @@ test("PRODUCT-02b retries a persisted decision-tree capability check without cla
     return route.continue();
   });
   await page.getByRole("button", { name: "S", exact: true }).click();
+  await openTrainingSettings(page);
   const backendCatalogError = page.getByTestId("execution-backend-catalog-error");
   await expect(backendCatalogError).toContainText("execution backend catalog temporarily unavailable");
   await expect(page.getByRole("button", { name: "Run multi-seed study", exact: true })).toBeDisabled();
@@ -381,6 +388,7 @@ test("PRODUCT-02b retries a persisted decision-tree capability check without cla
   await expect(page.getByRole("button", { name: "Run multi-seed study", exact: true })).toBeEnabled();
   expect(backendCatalogReads).toBe(2);
   await page.getByLabel("Training model").selectOption("decision_tree");
+  await openTrainingSettings(page);
   await page.getByLabel("Training normalization").selectOption("minmax");
   let capabilityReads = 0;
   let treePathReads = 0;
@@ -491,6 +499,7 @@ test("Studio traces a categorical tree sample through frozen ordinal codes and r
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
   await page.getByRole("button", { name: "S", exact: true }).click();
   await page.getByLabel("Training model").selectOption("decision_tree");
+  await openTrainingSettings(page);
   await page.getByLabel("Training normalization").selectOption("minmax");
   let transformReads = 0;
   await page.route("**/api/projects/*/dataset/transforms/*", async (route) => {
@@ -527,6 +536,7 @@ test("Studio traces a categorical tree sample through frozen ordinal codes and r
   expect((await persisted.json()).evidence_id).toBe(evidenceId);
   await page.getByRole("button", { name: "E", exact: true }).click();
   const evidenceCategory = page.getByRole("combobox", { name: "Evidence material" });
+  await page.getByText("Change the explained input", { exact: true }).click();
   await expect(evidenceCategory).toBeEnabled();
   await expect(evidenceCategory.locator("option")).toHaveText(["brass", "steel"]);
   await evidenceCategory.selectOption("1");
@@ -542,11 +552,20 @@ test("Studio traces a categorical tree sample through frozen ordinal codes and r
   await page.getByRole("button", { name: "Open project", exact: true }).click();
   await page.getByRole("button", { name: "E", exact: true }).click();
   await expect(page.getByText("POST-HOC ATTRIBUTION", { exact: true }).first()).toBeVisible();
+  await page.getByText("Change the explained input", { exact: true }).click();
   await expect(page.getByRole("combobox", { name: "Evidence material" })).toBeEnabled();
 });
 
 test("PRODUCT-02 blocks validation policy changes when final-test access status is unavailable", async ({ page }) => {
   test.setTimeout(45_000);
+  const path = projectPath();
+  const created = await page.request.post("http://127.0.0.1:8010/api/projects", { data: { path, name: "Final-test boundary recovery" } });
+  expect(created.status()).toBe(201);
+  const sessionId = (await created.json()).session_id;
+  const confirmed = await page.request.post("http://127.0.0.1:8010/api/projects/dataset/confirm", { data: { session_id: sessionId, csv_text: trainingCsv(), target: "target", task: "binary_classification", id_columns: [] } });
+  expect(confirmed.status()).toBe(200);
+  const trained = await page.request.post("http://127.0.0.1:8010/api/projects/training/run", { data: { session_id: sessionId, model_kind: "decision_tree", seed: 42 } });
+  expect(trained.status()).toBe(201);
   let boundaryRequests = 0;
   let evaluationRequests = 0;
   let selectivePolicyRequests = 0;
@@ -571,19 +590,12 @@ test("PRODUCT-02 blocks validation policy changes when final-test access status 
     }
     return route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ detail: "No selective policy exists in this project." }) });
   });
-  const path = projectPath();
   await page.goto("/");
   await page.getByLabel("Project path").fill(path);
-  await page.getByLabel("Project name").fill("Final-test boundary recovery");
-  await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
-  await page.getByLabel("CSV data").fill(trainingCsv());
-  await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
-  await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
+  await page.getByRole("button", { name: "Open project", exact: true }).click();
   await page.getByRole("button", { name: "S", exact: true }).click();
-  await page.getByRole("button", { name: "Freeze RANDOM SplitContract", exact: true }).click();
-  await page.getByLabel("Training model").selectOption("decision_tree");
-  await page.getByRole("button", { name: "Run real training", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Run real training", exact: true })).toBeDisabled();
+  await expect(page.getByText("Could not verify final-test status. Training is paused.")).toBeVisible();
   await expect(page.locator(".run-provenance")).toBeVisible({ timeout: 30_000 });
   await page.getByRole("button", { name: "A", exact: true }).click();
 

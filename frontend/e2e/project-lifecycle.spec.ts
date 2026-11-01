@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { openTrainingSettings } from "./helpers/trainingSettings";
 import { mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -175,6 +176,7 @@ test("E2E-02c pauses training while saved split provenance is unavailable and re
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
   await page.getByRole("button", { name: "S", exact: true }).click();
   const error = page.getByRole("alert").filter({ hasText: "Saved split provenance is unavailable" });
+  await openTrainingSettings(page);
   await expect(error).toContainText("saved split state temporarily unavailable");
   await expect(page.getByRole("button", { name: "Run real training", exact: true })).toBeDisabled();
   await expect(page.getByRole("button", { name: /Freeze .* SplitContract/ })).toBeDisabled();
@@ -328,6 +330,7 @@ test("E2E-08 confirms a dataset contract in Data workspace and preserves it acro
   await page.route("**/api/models", (route) => route.fulfill({ status: 503, body: "model catalog unavailable" }));
   await optionalTraining.getByRole("button", { name: "Open Training", exact: true }).click();
   await expect(page.locator(".training-workspace")).toBeVisible();
+  await openTrainingSettings(page);
   await expect(page.getByRole("region", { name: "Training choices" })).toContainText("creates one fitted TrainingRun");
   await expect(page.getByRole("region", { name: "Training choices" })).toContainText("preserves the per-seed results as a TrainingStudy");
   await expect(page.getByRole("region", { name: "Training choices" })).toContainText("does not start computation or unlock the test split");
@@ -496,6 +499,7 @@ test("E2E-10 distinguishes unavailable saved training history from an empty proj
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
   await page.getByRole("button", { name: "S", exact: true }).click();
   const studyError = page.getByRole("alert").filter({ hasText: "Could not restore saved TrainingStudy" });
+  await openTrainingSettings(page);
   await expect(studyError).toContainText("saved Study temporarily unavailable");
   await expect(page.getByRole("button", { name: "Run multi-seed study", exact: true })).toBeDisabled();
   await page.getByRole("button", { name: "Retry Study check", exact: true }).click();

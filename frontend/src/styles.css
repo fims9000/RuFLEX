@@ -17,9 +17,10 @@ body {
   background: var(--rf-bg-app);
 }
 .app-shell .g-button_view_action {
-  --g-button-background-color: var(--rf-accent);
-  --g-button-background-color-hover: var(--rf-accent-hover);
+  --g-button-background-color: var(--rf-action-bg);
+  --g-button-background-color-hover: var(--rf-action-bg-hover);
   --g-button-text-color: var(--rf-action-text);
+  --g-button-text-color-hover: var(--rf-action-text);
 }
 .app-shell .g-button_view_outlined {
   --g-button-text-color: var(--rf-text);
@@ -1038,6 +1039,19 @@ input:focus-visible,
   color: var(--rf-text);
   padding: 0 7px;
 }
+.training-details { min-width: 0; padding: 10px 12px; border: 1px solid var(--rf-border); border-radius: 6px; background: var(--rf-bg-surface); }
+.training-details summary { cursor: pointer; font-weight: 600; }
+.training-details[open] > summary { margin-bottom: 12px; }
+details.run-provenance { display: block; }
+.run-provenance-values { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.training-metric-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.training-metric-summary > div { display: grid; gap: 4px; padding: 10px; background: var(--rf-bg-surface-2); border-radius: 6px; }
+.training-metric-summary span { color: var(--rf-text-secondary); font-size: 12px; }
+.training-metric-summary strong { font-size: 22px; font-variant-numeric: tabular-nums; }
+.object-tree-history { padding: 6px; color: var(--rf-text-secondary); font-size: 12px; }
+.object-tree-history summary { cursor: pointer; }
+.object-tree-history p { display: grid; gap: 3px; margin: 10px 0; }
+.object-tree-history small { color: var(--rf-text-muted); overflow-wrap: anywhere; }
 .compact-definition {
   display: grid;
   grid-template-columns: 100px 1fr;

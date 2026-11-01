@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { openTrainingSettings } from "./helpers/trainingSettings";
 import { mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -96,6 +97,7 @@ test("PRODUCT-EVIDENCE captures the frozen V1 Studio route from persisted object
   await page.getByLabel("Training model").selectOption("logistic_regression");
   await page.getByRole("button", { name: "Run real training", exact: true }).click();
   await expect(page.locator(".run-provenance")).toContainText("model artifact persisted", { timeout: 30_000 });
+  await openTrainingSettings(page);
   await page.getByLabel("Study seeds").fill("7, 8, 9");
   await page.getByRole("button", { name: "Run multi-seed study", exact: true }).click();
   await expect(page.getByText("Validation f1 across seeds", { exact: true })).toBeVisible({ timeout: 45_000 });

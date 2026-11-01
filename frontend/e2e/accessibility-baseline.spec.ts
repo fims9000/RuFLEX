@@ -42,6 +42,7 @@ test("accessibility baseline covers the primary Studio workspaces", async ({ pag
 
   await page.getByTitle("STUDIES").click();
   await expect(page.getByText("REAL TRAINING ENGINE", { exact: true })).toBeVisible();
+  await page.getByTestId("model-capability-details").locator("summary").click();
   await expect(page.getByRole("region", { name: "Model adapter capabilities table" })).toHaveAttribute("tabindex", "0");
   await assertBaseline(page, "Training and Stability Lab");
 

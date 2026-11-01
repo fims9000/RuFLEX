@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { openTrainingSettings } from "./helpers/trainingSettings";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -43,6 +44,7 @@ test("a first-time user can persist synthetic evidence and apply a frozen final-
   expect(await page.locator(".training-config-grid select").evaluateAll((selects) => selects.every((select) => select.getBoundingClientRect().right <= select.parentElement!.getBoundingClientRect().right + 1))).toBeTruthy();
   await page.setViewportSize({ width: 1180, height: 720 });
   await page.getByLabel("Training model").selectOption("logistic_regression");
+  await openTrainingSettings(page);
   await page.getByLabel("Single-run training seed").fill("");
   await expect(page.getByLabel("Single-run training seed")).toHaveAttribute("aria-invalid", "true");
   await expect(page.getByRole("button", { name: "Run real training", exact: true })).toBeDisabled();

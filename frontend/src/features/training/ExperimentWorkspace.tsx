@@ -20,6 +20,11 @@ const MODEL_NAMES_RU: Record<string, string> = {
   mlp: "Многослойный перцептрон (MLP)",
 };
 
+function modelNameRu(kind: string, task: string | undefined): string {
+  if (["linear", "linear_regression", "logistic_regression"].includes(kind)) return task === "regression" ? "Линейная регрессия" : "Логистическая регрессия";
+  return MODEL_NAMES_RU[kind] ?? kind;
+}
+
 function hasMeasuredTrajectory(run: TrainingRun): boolean {
   if (!run.trajectory.length) return false;
   // Earlier one-shot native runs persisted two repeated proxy points with an
@@ -184,6 +189,12 @@ function isDefinitiveValidationRejection(reason: unknown): reason is ProductApiE
     && typeof reason.detail === "string";
 }
 
+function trainingErrorText(message: string): string {
+  if (message.startsWith("TRAIN_REQUIRES_BOTH_BINARY_CLASSES:")) return ui(message, "В обучающей выборке остался только один класс. Для обучения нужны примеры обоих классов: 0 и 1. Загрузите больше данных или проверьте разбиение. Для знакомства доступен учебный набор из 80 строк.");
+  if (message.startsWith("BINARY_TARGET_LABELS_INVALID:")) return ui(message, "Для бинарной классификации целевой столбец должен содержать 0 и 1. Приведите метки к этим значениям перед загрузкой.");
+  return message;
+}
+
 function numericConstraint(value: unknown): NumericConstraint {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   const record = value as Record<string, unknown>;
@@ -237,7 +248,7 @@ function validateTrainingParameters(model: ModelCapabilityContract | null, value
   return errors;
 }
 
-export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus = "available", datasetHydrationError = null, onRetryDatasetHydration = () => undefined, run, study: restoredStudy, studyHydrationStatus = "available", studyHydrationError = null, onRetryStudyHydration = () => undefined, theme, onRun, onStudy, onStabilityAnalysisChange, onStabilityGatePolicyChange }: {
+export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus = "available", datasetHydrationError = null, onRetryDatasetHydration = () => undefined, run, study: restoredStudy, studyHydrationStatus = "available", studyHydrationError = null, onRetryStudyHydration = () => undefined, finalTestState = "closed", onRetryFinalTestState, theme, onRun, onStudy, onOpenData, onOpenAnalysis, onOpenExplanation, onStabilityAnalysisChange, onStabilityGatePolicyChange }: {
   project: ProjectSummary;
   dataset: DatasetState | null;
   datasetHydrationStatus?: "idle" | "loading" | "none" | "available" | "error";
@@ -248,13 +259,19 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
   studyHydrationStatus?: "idle" | "loading" | "none" | "available" | "error";
   studyHydrationError?: string | null;
   onRetryStudyHydration?: () => void;
+  finalTestState?: "closed" | "opened" | "loading" | "error";
+  onRetryFinalTestState?: () => void;
   theme: StudioTheme;
   onRun: (run: TrainingRun) => void;
   onStudy: (study: TrainingStudy) => void;
+  onOpenData?: () => void;
+  onOpenAnalysis?: () => void;
+  onOpenExplanation?: () => void;
   onStabilityAnalysisChange?: (analysis: StudyStabilityAnalysis | null) => void;
   onStabilityGatePolicyChange?: (policy: StabilityGatePolicy | null) => void;
 }) {
   const [seedText, setSeedText] = useState("42");
+  const canStartTraining = finalTestState === "closed";
   const seed = parseSeed(seedText);
   const [modelKind, setModelKind] = useState("flat_neuro_fuzzy");
   const [maxEpochs, setMaxEpochs] = useState(20);
@@ -579,6 +596,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
   }
 
   async function train() {
+    if (!canStartTraining) return;
     if (singleTrainingInFlightRef.current || studyStartInFlightRef.current || splitContractMutationInFlightRef.current || running || splitContractRecovery || trainingRecovery) return;
     if (!studyJobStateResolved) {
       setError("Resolve saved Study job status before starting a single TrainingRun.");
@@ -623,7 +641,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
       if (!definitiveValidationRejection) {
         setTrainingRecovery({ config, requestedAt, error: reason instanceof Error ? reason.message : "Training result response was uncertain.", notFound: false });
       }
-      setError(reason instanceof Error ? reason.message : "Training failed");
+      setError(trainingErrorText(reason instanceof Error ? reason.message : "Training failed"));
     } finally {
       singleTrainingInFlightRef.current = false;
       setRunning(false);
@@ -649,6 +667,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
     } finally { setRecoveringTraining(false); }
   }
   async function explicitlyRepeatTraining() {
+    if (!canStartTraining) return;
     const pending = trainingRecovery;
     if (!pending?.notFound || project.read_only || running || singleTrainingInFlightRef.current || studyStartInFlightRef.current || splitContractMutationInFlightRef.current || !studyJobStateResolved || activeStudyJob) return;
     singleTrainingInFlightRef.current = true;
@@ -730,6 +749,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
     } finally { splitContractMutationInFlightRef.current = false; setSplitContractMutationInFlight(false); setRecoveringSplitContract(false); setRunning(false); }
   }
   async function trainStudy() {
+    if (!canStartTraining) return;
     if (studyStartInFlightRef.current || singleTrainingInFlightRef.current || splitContractMutationInFlightRef.current || running || splitContractRecovery || trainingRecovery) return;
     const pendingRequest = pendingStudyRequestRef.current;
     if (pendingRequest) {
@@ -871,6 +891,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
     finally { studyCancelInFlightRef.current = false; setCancellingStudy(false); }
   }
   async function resumeStudy() {
+    if (!canStartTraining) return;
     if (studyResumeInFlightRef.current || !studyJob || !["QUEUED", "RUNNING"].includes(studyJob.status)) return;
     studyResumeInFlightRef.current = true;
     setRunning(true); setError(null);
@@ -895,31 +916,46 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
 
   return <section className="feature-workspace training-workspace">
     <div className="feature-toolbar">
-      <div><span className="eyebrow">{ui("REAL TRAINING ENGINE", "ОБУЧЕНИЕ")}</span><h2>{ui("Train a model revision", "Обучить модель")}</h2><p>{ui("Canonical train-only preprocessing · held-out test remains locked.", "Преобразования обучаются только на TRAIN. Финальный тест закрыт.")}</p></div>
+      <div><span className="eyebrow">{ui("REAL TRAINING ENGINE", "ОБУЧЕНИЕ")}</span><h2>{ui("Train a model revision", "Обучить модель")}</h2><p>{finalTestState === "opened" ? ui("The final test is open for this dataset. Inspect saved results; further fitting is disabled.", "Финальный тест для этого набора уже открыт. Доступен просмотр сохранённых результатов; новое обучение отключено.") : canStartTraining ? ui("Canonical train-only preprocessing · held-out test remains locked.", "Преобразования обучаются только на TRAIN. Финальный тест закрыт.") : ui("Verifying final-test status before enabling training…", "Проверка статуса финального теста перед обучением…")}</p></div>
       <StatusBadge tone={running ? "warning" : run ? "success" : "info"}>{splitContractMutationInFlight ? ui("Saving split contract", "Сохранение разбиения") : running ? ui("Training", "Обучение") : run ? ui("Completed run", "Запуск завершён") : ui("Ready", "Готово")}</StatusBadge>
     </div>
+    {finalTestState === "error" && <div className="error" role="alert">{ui("Could not verify final-test status. Training is paused.", "Не удалось проверить статус финального теста. Обучение приостановлено.")}{onRetryFinalTestState && <Button view="outlined" onClick={onRetryFinalTestState}>{ui("Retry final-test status", "Повторить проверку статуса теста")}</Button>}</div>}
+
+    {dataset.contract.task === "binary_classification" && dataset.profile.row_count < 4 && <div className="info-message" role="status" data-testid="training-small-dataset">
+      <strong>{ui("This is a schema example, not enough training data.", "Это пример структуры таблицы — строк для обучения недостаточно.")}</strong>
+      <p>{ui("The dataset has fewer than four rows. Binary TRAIN needs both classes, in addition to validation and held-out test rows. Load the 80-row practice table or import your own file in Data.", "Для обучения нужны оба класса, а также отдельные строки для проверки. В разделе «Данные» доступен учебный набор из 80 строк и загрузка своего файла.")}</p>
+      {onOpenData && <Button view="outlined" onClick={onOpenData}>{ui("Open Data", "Перейти к данным")}</Button>}
+    </div>}
 
     <div className="training-grid">
       <section className="training-config-panel">
         <h3>{ui("Protocol", "Настройки запуска")}</h3>
         {studyHydrationStatus === "loading" && <p role="status">Checking for a saved TrainingStudy…</p>}
         {studyHydrationStatus === "idle" && <p role="status">Saved TrainingStudy status has not been checked.</p>}
-        {studyHydrationStatus === "none" && <p className="info-message" role="status">{ui("No saved TrainingStudy exists for this project yet; completed individual runs remain available.", "Сохранённого исследования пока нет. Отдельные обученные модели остаются доступны.")}</p>}
         {studyHydrationStatus === "error" && <div className="error" role="alert"><strong>Could not restore saved TrainingStudy.</strong> {studyHydrationError ?? "No empty Study state is inferred from this failure."} <Button view="outlined" size="s" onClick={onRetryStudyHydration}>Retry Study check</Button></div>}
         {studyJobsStatus === "loading" && <p role="status">Checking saved Study jobs…</p>}
         {studyJobsStatus === "error" && <div className="error" role="alert"><strong>Could not restore saved Study jobs.</strong> {studyJobsError ?? "No empty job state is inferred from this failure."} <Button view="outlined" size="s" onClick={() => setStudyJobsReload((current) => current + 1)}>Retry Study jobs</Button></div>}
+        <details className="training-details" data-testid="training-data-summary"><summary>{dataset.profile.row_count} {ui("rows", "строк")} · {dataset.contract.feature_columns.length} {ui("features", "признаков")} · {ui("target", "цель")}: {dataset.contract.target}</summary>
         <dl className="compact-definition">
           <dt>{ui("Target", "Цель")}</dt><dd>{dataset.contract.target}</dd>
           <dt>{ui("Task", "Задача")}</dt><dd>{dataset.contract.task}</dd>
           <dt>{ui("Features", "Признаки")}</dt><dd>{dataset.contract.feature_columns.join(", ")}</dd>
           {(dataset.contract.excluded_columns?.length ?? 0) > 0 && <><dt>{ui("Excluded from model", "Исключено")}</dt><dd>{dataset.contract.excluded_columns.join(", ")}</dd></>}
           <dt>{ui("Split", "Разбиение")}</dt><dd>{Math.round((1 - validationFraction - testFraction) * 100)}% {ui("train", "обучение")} · {Math.round(validationFraction * 100)}% {ui("validation", "валидация")} · {Math.round(testFraction * 100)}% {ui("locked test", "закрытый тест")}</dd>
-          <dt>{ui("Frozen split", "Разбиение сохранено")}</dt><dd>{splitContract ? `${splitContract.family} · ${splitContract.split_id.slice(0, 8)}` : ui("No SplitContract saved; the selected split settings are not frozen as a contract", "Нет. Сохраните выбранное разбиение перед запуском.")}</dd>
+          <dt>{ui("Frozen split", "Разбиение сохранено")}</dt><dd>{splitContract ? `${splitContract.family} · ${splitContract.split_id.slice(0, 8)}` : ui("No SplitContract saved; the selected split settings are not frozen as a contract", "Отдельный контракт не сохранён. Использованные строки разбиения сохранятся в результате обучения.")}</dd>
           <dt>{ui("Preprocessing", "Подготовка")}</dt><dd>{ui("train-only median/mode fill + ordinal encoding + ", "Заполнение и кодирование только на TRAIN · ")}{normalization === "none" ? ui("no scaling", "без нормализации") : normalization === "minmax" ? ui("min–max scaling", "масштабирование min–max") : ui("standardization", "стандартизация")}</dd>
           {run && <><dt>{ui("Saved run scaling", "Нормализация запуска")}</dt><dd>{String(run.normalization?.mode ?? "unknown")}</dd></>}
-        </dl>
+        </dl></details>
+        <label className="field-label">{ui("Model", "Модель")}<select aria-label={ui("Training model", "Модель для обучения")} value={modelKind} disabled={running || project.read_only || !compatibleModels.length} onChange={(event) => setModelKind(event.target.value)}>{compatibleModels.map((entry) => <option key={entry.key} value={firstModelKindForTask(entry, datasetTask!)}>{ui(entry.display_name, MODEL_NAMES_RU[entry.key] ? modelNameRu(entry.key, datasetTask) : entry.display_name)}</option>)}</select></label>
+        {trainingRecovery && <div className="error" role="alert" data-testid="training-run-recovery"><strong>Training response is uncertain; no second fit was started.</strong><p>{trainingRecovery.error}</p><Button view="outlined" disabled={recoveringTraining} onClick={recoverTrainingRun}>Retry exact TrainingRun lookup</Button>{trainingRecovery.notFound && <Button view="outlined" disabled={!canStartTraining || recoveringTraining || running || project.read_only || !studyJobStateResolved || activeStudyJob} onClick={explicitlyRepeatTraining}>Explicitly start a new fit with these settings</Button>}</div>}
+        <Button view="action" disabled={!canStartTraining || running || !!trainingRecovery || !!splitContractRecovery || !studyJobStateResolved || activeStudyJob || seed === null || splitSeed === null || !splitSelectionMatchesFrozenContract || project.read_only || splitEvidenceStatus !== "loaded" || catalogStatus !== "loaded" || !selectedModel || parameterErrors.length > 0} onClick={train} data-ruflex-action="training.run">{running ? ui("Training…", "Обучение…") : ui("Run real training", "Обучить модель")}</Button>
+        {parameterErrors.length > 0 && <div className="error" role="alert">Review model settings before training: {parameterErrors.join(" ")}</div>}
+        {catalogStatus === "loading" && <p role="status">Checking available model adapters for this task…</p>}
+        {catalogStatus === "error" && <div className="error" role="alert"><strong>Could not check available models.</strong> {catalogError} <Button view="outlined" size="s" onClick={() => setCatalogReload((current) => current + 1)} data-ruflex-action="training.catalog.retry">Retry model check</Button></div>}
+        {catalogStatus === "loaded" && compatibleModels.length === 0 && <div className="info-message" role="status"><strong>No compatible model is available.</strong> The catalog loaded, but no available adapter declares fit support for {datasetTask}. Training remains disabled; install/register a compatible adapter or choose a dataset for a supported task.</div>}
+        <details className="training-details" data-testid="training-settings"><summary>{ui("Training, split and experiment settings", "Параметры обучения, разбиения и эксперимента")}</summary>
+        {studyHydrationStatus === "none" && <p className="property-description" role="status">{ui("No saved TrainingStudy exists for this project yet; completed individual runs remain available.", "Эксперимент с несколькими запусками пока не сохранён.")}</p>}
         <div className="training-config-grid">
-          <label className="field-label">{ui("Model", "Модель")}<select aria-label={ui("Training model", "Модель для обучения")} value={modelKind} disabled={running || project.read_only || !compatibleModels.length} onChange={(event) => setModelKind(event.target.value)}>{compatibleModels.map((entry) => <option key={entry.key} value={firstModelKindForTask(entry, datasetTask!)}>{ui(entry.display_name, MODEL_NAMES_RU[entry.key] ?? entry.display_name)}</option>)}</select></label>
           <label className="field-label">{ui("Scaling", "Нормализация")}<select aria-label={ui("Training normalization", "Нормализация обучения")} value={normalization} disabled={running || project.read_only || activeStudyJob} onChange={(event) => setNormalization(event.target.value as "none" | "standard" | "minmax")}><option value="standard">{ui("Standard (TRAIN only)", "Стандартная (только TRAIN)")}</option><option value="minmax">{ui("Min–max (TRAIN only)", "Min–max (только TRAIN)")}</option><option value="none">{ui("None", "Без нормализации")}</option></select></label>
           <label className="field-label">{ui("Single-run training seed", "Seed обучения")}<input type="text" inputMode="numeric" value={seedText} aria-invalid={seed === null} aria-describedby="seed-input-help" disabled={running || project.read_only} onChange={(event) => setSeedText(event.target.value)} /></label>
           <label className="field-label">{ui("Split seed", "Seed разбиения")}<input type="text" inputMode="numeric" value={splitSeedText} aria-invalid={splitSeed === null} aria-describedby="seed-input-help" disabled={running || project.read_only} onChange={(event) => setSplitSeedText(event.target.value)} /></label>
@@ -942,9 +978,6 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
         {executionBackendStatus === "loading" && <p role="status">Checking available Study execution backends…</p>}
         {executionBackendStatus === "error" && <div className="error" role="alert" data-testid="execution-backend-catalog-error"><strong>Could not verify Study execution backends.</strong> {executionBackendError} <Button view="outlined" size="s" onClick={() => setExecutionBackendReload((current) => current + 1)}>Retry backend check</Button></div>}
         {executionBackendStatus === "loaded" && executionBackends.length === 0 && <p role="status">No Study execution backend is currently available.</p>}
-        {catalogStatus === "loading" && <p role="status">Checking available model adapters for this task…</p>}
-        {catalogStatus === "error" && <div className="error" role="alert"><strong>Could not check available models.</strong> {catalogError} <Button view="outlined" size="s" onClick={() => setCatalogReload((current) => current + 1)} data-ruflex-action="training.catalog.retry">Retry model check</Button></div>}
-        {catalogStatus === "loaded" && compatibleModels.length === 0 && <div className="info-message" role="status"><strong>No compatible model is available.</strong> The catalog loaded, but no available adapter declares fit support for {datasetTask}. Training remains disabled; install/register a compatible adapter or choose a dataset for a supported task.</div>}
         {splitContractRecovery && <div className="error" role="alert" data-testid="split-contract-recovery"><strong>SplitContract save is uncertain; training is paused.</strong><p>{splitContractRecovery.error}</p><Button view="outlined" disabled={recoveringSplitContract} onClick={recoverSplitContract}>Retry exact SplitContract lookup</Button>{splitContractRecovery.notFound && <Button view="outlined" disabled={recoveringSplitContract || running || project.read_only} onClick={explicitlyRepeatSplitContract}>Explicitly repeat these exact split settings</Button>}</div>}
         {!splitSelectionMatchesFrozenContract && !splitContractRecovery && <p className="error" role="status">The selected split settings do not match a frozen SplitContract. Single-run training and fixed-split Studies require a matching contract; varying-split Studies use their declared RANDOM seeds instead.</p>}
         {studyMode !== "TRAINING_VARIABILITY" && <p className="info-message" role="status">This Study varies RANDOM split membership. Its runs do not reuse the project's active SplitContract; that frozen contract remains available for single runs and fixed-split Studies. Case-level Stability agreement is not claimed for unmatched validation rows.</p>}
@@ -954,25 +987,26 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
           <strong>{ui("Choose how to start", "Выберите запуск")}</strong>
           {uiLanguage === "en" ? <><p><strong>Run real training</strong> creates one fitted TrainingRun. Its training seed controls model fitting; the split seed controls row membership, even before an explicit SplitContract is saved.</p><p><strong>Run multi-seed study</strong> executes the distinct seeds listed above under the selected randomness protocol and preserves the per-seed results as a TrainingStudy. It requires at least three seeds.</p><p>For a fixed-split Study, listed seeds control fitting and the Split seed field is fixed. For split variability, listed seeds control row membership and the Single-run training seed field supplies the fixed training seed. Combined variability uses each listed seed for both.</p><p>Both paths use the declared training/validation workflow; opening this screen or changing settings does not start computation or unlock the test split.</p></> : <p>Один запуск или эксперимент от трёх seed. Seed обучения меняет модель, seed разбиения — состав выборок. Финальный тест не откроется автоматически.</p>}
         </section>
-        {trainingRecovery && <div className="error" role="alert" data-testid="training-run-recovery"><strong>Training response is uncertain; no second fit was started.</strong><p>{trainingRecovery.error}</p><Button view="outlined" disabled={recoveringTraining} onClick={recoverTrainingRun}>Retry exact TrainingRun lookup</Button>{trainingRecovery.notFound && <Button view="outlined" disabled={recoveringTraining || running || project.read_only || !studyJobStateResolved || activeStudyJob} onClick={explicitlyRepeatTraining}>Explicitly start a new fit with these settings</Button>}</div>}
-        <Button view="action" disabled={running || !!trainingRecovery || !!splitContractRecovery || !studyJobStateResolved || activeStudyJob || seed === null || splitSeed === null || !splitSelectionMatchesFrozenContract || project.read_only || splitEvidenceStatus !== "loaded" || catalogStatus !== "loaded" || !selectedModel || parameterErrors.length > 0} onClick={train} data-ruflex-action="training.run">{running ? ui("Training…", "Обучение…") : ui("Run real training", "Обучить модель")}</Button>
-        <p id="study-seeds-help" className={studySeedValidation.error ? "error" : "property-description"} role={studySeedValidation.error ? "alert" : undefined}>{studySeedValidation.error ?? "Enter 3–32 distinct whole-number seeds from 0 to 4294967295, separated by commas."}</p>
-        {parameterErrors.length > 0 && <div className="error" role="alert">Review model settings before training: {parameterErrors.join(" ")}</div>}
-        <Button view="outlined" disabled={running || project.read_only || (!pendingStudyRequest && (!!(studyJob && ["QUEUED", "RUNNING"].includes(studyJob.status)) || !!trainingRecovery || !!splitContractRecovery || !studySplitReady || splitEvidenceStatus !== "loaded" || catalogStatus !== "loaded" || !selectedModel || Boolean(studySeedValidation.error) || parameterErrors.length > 0 || (studyHydrationStatus !== "none" && studyHydrationStatus !== "available") || studyJobsStatus !== "loaded" || executionBackendStatus !== "loaded" || !executionBackends.some((backend) => backend.identity.key === executionBackendKey)))} onClick={trainStudy} data-ruflex-action="study.start">{running ? ui("Training…", "Обучение…") : pendingStudyRequest ? ui("Retry same Study request", "Повторить запрос эксперимента") : ui("Run multi-seed study", "Запустить эксперимент")}</Button>
+        <p id="study-seeds-help" className={studySeedValidation.error ? "error" : "property-description"} role={studySeedValidation.error ? "alert" : undefined}>{studySeedValidation.error ?? ui("Enter 3–32 distinct whole-number seeds from 0 to 4294967295, separated by commas.", "Для эксперимента: от 3 до 32 разных seed через запятую.")}</p>
+        <Button view="outlined" disabled={!canStartTraining || running || project.read_only || (!pendingStudyRequest && (!!(studyJob && ["QUEUED", "RUNNING"].includes(studyJob.status)) || !!trainingRecovery || !!splitContractRecovery || !studySplitReady || splitEvidenceStatus !== "loaded" || catalogStatus !== "loaded" || !selectedModel || Boolean(studySeedValidation.error) || parameterErrors.length > 0 || (studyHydrationStatus !== "none" && studyHydrationStatus !== "available") || studyJobsStatus !== "loaded" || executionBackendStatus !== "loaded" || !executionBackends.some((backend) => backend.identity.key === executionBackendKey)))} onClick={trainStudy} data-ruflex-action="study.start">{running ? ui("Training…", "Обучение…") : pendingStudyRequest ? ui("Retry same Study request", "Повторить запрос эксперимента") : ui("Run multi-seed study", "Запустить эксперимент")}</Button>
         {pendingStudyRequest && !running && <p role="status">Study submission status is uncertain. Retry uses the same request ID and frozen configuration; it will recover the existing job or safely report a mismatch.</p>}
+        </details>
         {studyJob && <div className="info-message"><strong>Study job {studyJob.status}</strong> · {studyJob.execution_backend_key ?? studyJob.execution_backend} · {studyJob.seed_states.map((state) => `split ${state.split_seed ?? "unrecorded"} / train ${state.training_seed ?? state.seed}: ${state.status}`).join(" · ")} {(["QUEUED", "RUNNING"].includes(studyJob.status) && !studyJob.cancel_requested) && <><Button view="flat" size="s" disabled={running} onClick={resumeStudy} data-ruflex-action="study.resume">Resume persisted study</Button><Button view="flat" size="s" disabled={cancellingStudy} onClick={cancelStudy} data-ruflex-action="study.cancel">{cancellingStudy ? "Requesting cancellation…" : "Cancel study"}</Button></>} {studyJob.cancel_requested && ["QUEUED", "RUNNING"].includes(studyJob.status) && <small role="status">Cancellation requested. The active seed fit may finish; remaining seeds will not start, and this job cannot be resumed.</small>} {studyJob.recovery_note && <small>{studyJob.recovery_note}</small>}{studyJobPollError && <div className="error" role="alert"><strong>Study status could not be refreshed.</strong> {studyJobPollError} <Button view="outlined" size="s" disabled={running} onClick={retryStudyStatus}>Retry Study status</Button></div>}</div>}
         {studyJob?.status === "CANCELLED" && <p className="property-description">This StudyJob is terminal and cannot be resumed. Seed fits completed before cancellation remain persisted; starting another Study creates new fits.</p>}
         {studyJob?.status === "FAILED" && <p className="property-description">This StudyJob is terminal and did not produce a selected TrainingStudy. Review the per-seed errors before starting another set of fits.</p>}
         {studyJob?.error && <p className="error" role="alert">StudyJob error: {studyJob.error}</p>}
-        {studyJob?.seed_states.map((state, index) => state.error ? <p className="error" role="alert" key={`${studyJob.job_id}-${index}`}>Split {state.split_seed ?? "unrecorded"} / train {state.training_seed ?? state.seed}: {state.error}</p> : null)}
-        <div className="info-message">A frozen SplitContract assigns exact source rows before fitting. GROUP keeps each declared identity in one role. It makes split membership auditable; it does not by itself establish generalization validity.</div>
+        {studyJob?.seed_states.map((state, index) => state.error ? <p className="error" role="alert" key={`${studyJob.job_id}-${index}`}>Split {state.split_seed ?? "unrecorded"} / train {state.training_seed ?? state.seed}: {trainingErrorText(state.error)}</p> : null)}
         {splitEvidenceStatus === "loading" && <div role="status">Checking saved split provenance before enabling training…</div>}
         {splitEvidenceStatus === "error" && <div className="error" role="alert"><strong>Saved split provenance is unavailable.</strong> Training is blocked rather than falling back to an unverified split. {splitEvidenceError} <Button view="outlined" size="s" onClick={() => setSplitEvidenceReload((current) => current + 1)}>Retry saved split check</Button></div>}
         {project.read_only && <div className="info-message">Read-only projects cannot start training runs.</div>}
       </section>
 
       <section className="training-result-panel">
-        {!run || !option ? <EmptyState title="No training run yet">Start a run to produce a model artifact and validation evidence. Epoch-wise trajectories appear only when the estimator records them.</EmptyState> : <>
+        {!run || !option ? <EmptyState title={ui("No training run yet", "Модель ещё не обучена")}>{ui("Start a run to produce a model artifact and validation evidence. Epoch-wise trajectories appear only when the estimator records them.", "Выберите модель и нажмите «Обучить модель». Здесь появятся результат и оценки качества.")}</EmptyState> : <>
+          <h3 data-testid="trained-model-name">{ui("Saved result", "Сохранённый результат")}: {ui(catalog.find((entry) => entry.training_model_kinds.includes(run.model_kind))?.display_name ?? run.model_kind, modelNameRu(run.model_kind, run.task ?? datasetTask))}</h3>
+          {run.dataset_fingerprint !== dataset.contract.dataset_fingerprint ? <p className="info-message" role="status">{ui("This saved result belongs to a previous dataset. Train a model on the current dataset to continue.", "Этот результат относится к предыдущему набору данных. Обучите модель на текущем наборе, чтобы продолжить.")}</p> : run.model_kind !== trainingModelKind && <p className="info-message" role="status">{ui("This result belongs to the previously trained model. The model selected in the form has not been trained yet.", "Показан предыдущий результат. Модель, выбранная в настройках, ещё не обучена.")}</p>}
+          <div className="training-metric-summary">{((run.task ?? dataset.contract.task) === "binary_classification" ? ["f1", "accuracy"] : ["rmse", "mae"]).map((name) => <div key={name}><span>{name.toUpperCase()} · {ui("validation", "валидация")}</span><strong>{typeof run.validation_metrics?.[name] === "number" ? formatEvidenceNumber(run.validation_metrics[name]!, 4) : "—"}</strong></div>)}</div>
+          <div className="form-actions">{onOpenAnalysis && <Button view="action" disabled={run.dataset_fingerprint !== dataset.contract.dataset_fingerprint} onClick={onOpenAnalysis}>{ui("Open analysis", "Перейти к анализу")}</Button>}{onOpenExplanation && <Button view="outlined" disabled={run.dataset_fingerprint !== dataset.contract.dataset_fingerprint} onClick={onOpenExplanation}>{ui("Explain prediction", "Объяснить прогноз")}</Button>}</div>
           {run.model_kind === "decision_tree" && runCapabilitiesStatus === "loading" && <p role="status">Checking exact tree-path support for this persisted run…</p>}
           {run.model_kind === "decision_tree" && runCapabilitiesStatus === "error" && <div className="error" role="alert"><strong>Could not verify saved run capabilities.</strong> {runCapabilitiesError} Exact tree-path actions remain unavailable until this run is checked. <Button view="outlined" size="s" onClick={() => setRunCapabilitiesReload((current) => current + 1)}>Retry run capability check</Button></div>}
           {hasMeasuredTrajectory(run) && <div className="run-summary-strip">
@@ -983,8 +1017,8 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
           </div>}
           {hasMeasuredTrajectory(run)
             ? <ChartSurface title="Training trajectory · epoch 0 included" option={option} theme={theme} />
-            : <p className="scientific-note">This estimator does not provide measured epoch-wise history; validation metrics remain available.</p>}
-          <div className="run-provenance">
+            : <p className="scientific-note">{ui("This estimator does not provide measured epoch-wise history; validation metrics remain available.", "Для этой модели история по эпохам не предусмотрена. Оценки качества показаны выше.")}</p>}
+          <details className="run-provenance training-details"><summary>{ui("Saved model details", "Сведения о сохранённой модели")}</summary><div className="run-provenance-values">
             <StatusBadge tone="success">model artifact persisted</StatusBadge>
             <code>{run.model_artifact_sha256.slice(0, 24)}…</code>
             {run.adapter_key && run.adapter_version && <><StatusBadge tone="info">runtime adapter</StatusBadge><code data-testid="run-adapter-identity">{run.adapter_key}@{run.adapter_version}</code></>}
@@ -994,7 +1028,7 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
             <span>split seed {run.split_seed ?? run.split.split_seed}</span>
             <span>training seed {run.training_seed ?? run.seed}</span>
             <span>{run.split.train_count}/{run.split.validation_count}/{run.split.test_count} rows</span>
-          </div>
+          </div></details>
           {run.model_kind === "mlp" && <details className="data-governance-evidence" data-testid="mlp-run-summary">
             <summary>{ui("Saved MLP configuration", "Сохранённая конфигурация MLP")}</summary>
             <dl className="compact-definition">
@@ -1056,8 +1090,8 @@ export function ExperimentWorkspace({ project, dataset, datasetHydrationStatus =
         </>}
       </section>
     </div>
-    <section className="comparison-card"><span className="eyebrow">MODEL RUNTIME · DECLARED CAPABILITIES</span><div className="data-table-wrap" tabIndex={0} role="region" aria-label="Model adapter capabilities table"><table className="data-table"><thead><tr><th>model</th><th>family</th><th>available</th><th>capabilities</th><th>evidence boundary</th></tr></thead><tbody>{catalog.map((entry) => <tr key={entry.key}><td>{entry.display_name}</td><td>{entry.family}</td><td>{entry.available ? "available" : entry.unavailability_reason ?? "not available"}</td><td>{Object.entries(entry.capabilities).filter(([, value]) => value).map(([key]) => key).join(", ") || "—"}</td><td>{entry.limitations.join(" ") || "—"}</td></tr>)}</tbody></table></div></section>
-    <StabilityLab key={project.session_id} project={project} study={study} theme={theme} onAnalysisChange={onStabilityAnalysisChange} onPolicyChange={onStabilityGatePolicyChange} />
+    <details className="training-details" data-testid="model-capability-details"><summary>{ui("Model capabilities", "Возможности моделей")}</summary><div className="data-table-wrap" tabIndex={0} role="region" aria-label="Model adapter capabilities table"><table className="data-table"><thead><tr><th>model</th><th>family</th><th>available</th><th>capabilities</th><th>evidence boundary</th></tr></thead><tbody>{catalog.map((entry) => <tr key={entry.key}><td>{entry.display_name}</td><td>{entry.family}</td><td>{entry.available ? "available" : entry.unavailability_reason ?? "not available"}</td><td>{Object.entries(entry.capabilities).filter(([, value]) => value).map(([key]) => key).join(", ") || "—"}</td><td>{entry.limitations.join(" ") || "—"}</td></tr>)}</tbody></table></div></details>
+    <details className="training-details" open={!!study}><summary>{ui("Cross-run stability", "Стабильность между запусками")}</summary><StabilityLab key={project.session_id} project={project} study={study} theme={theme} onAnalysisChange={onStabilityAnalysisChange} onPolicyChange={onStabilityGatePolicyChange} /></details>
     {error && <div className="error" role="alert">{error}</div>}
   </section>;
 }

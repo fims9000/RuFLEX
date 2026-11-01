@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom/vitest";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render as renderView, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ButtonHTMLAttributes } from "react";
 
@@ -56,6 +56,14 @@ const dataset = {
   preview: [], audit: { findings: [] },
 };
 
+// These tests operate the optional settings; use the same disclosure as a user.
+function render(...args: Parameters<typeof renderView>) {
+  const view = renderView(...args);
+  const settings = view.container.querySelector('[data-testid="training-settings"] > summary');
+  if (settings) fireEvent.click(settings);
+  return view;
+}
+
 beforeEach(() => {
   studioApi.listSplitContracts.mockResolvedValue([]);
   studioApi.createSplitContract.mockReset();
@@ -75,6 +83,20 @@ beforeEach(() => {
 });
 
 describe("ExperimentWorkspace dynamic model controls", () => {
+  it.each(["opened", "loading", "error"] as const)("prevents model and study fitting while the final-test state is %s", async (finalTestState) => {
+    const retry = vi.fn();
+    render(<ExperimentWorkspace project={project} dataset={dataset as never} run={null} study={null} finalTestState={finalTestState} onRetryFinalTestState={retry} theme="light" onRun={vi.fn()} onStudy={vi.fn()} />);
+    const train = await screen.findByRole("button", { name: "Run real training" });
+    expect(train).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Run multi-seed study" })).toBeDisabled();
+    fireEvent.click(train);
+    expect(studioApi.runTraining).not.toHaveBeenCalled();
+    expect(studioApi.startStudyJob).not.toHaveBeenCalled();
+    if (finalTestState === "error") {
+      fireEvent.click(screen.getByRole("button", { name: "Retry final-test status" }));
+      expect(retry).toHaveBeenCalledOnce();
+    }
+  });
   it("anchors Study metric bars at zero without altering near-zero persisted values", async () => {
     const run = {
       run_id: "regression-run-1", task: "regression", model_kind: "linear_regression", dataset_fingerprint: "fingerprint",
@@ -142,6 +164,7 @@ describe("ExperimentWorkspace dynamic model controls", () => {
     expect(screen.getByRole("button", { name: "Freezing split…" })).toBeDisabled();
     expect(screen.getByText("Saving split contract")).toBeVisible();
     await act(async () => { finishSplit(frozenSplit as never); });
+    fireEvent.click(screen.getByTestId("training-data-summary").querySelector("summary")!);
     await waitFor(() => expect(screen.getByText(/RANDOM · split-on/)).toBeVisible());
     expect(studioApi.createSplitContract).toHaveBeenCalledTimes(1);
     expect(screen.getByRole("button", { name: "SplitContract frozen" })).toBeDisabled();
@@ -185,6 +208,7 @@ describe("ExperimentWorkspace dynamic model controls", () => {
 
     const runButton = await screen.findByRole("button", { name: "Run real training" });
     await waitFor(() => expect(runButton).toBeEnabled());
+    fireEvent.click(screen.getByTestId("training-data-summary").querySelector("summary")!);
     expect(screen.getByText("50% train · 25% validation · 25% locked test")).toBeVisible();
     fireEvent.change(screen.getByLabelText("Split family"), { target: { value: "RANDOM" } });
     expect(runButton).toBeDisabled();

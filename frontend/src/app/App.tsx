@@ -2052,13 +2052,13 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
           <div className="data-layout">
             <div>
               {!dataset && datasetStateStatus === "none" && !pendingDatasetFile && <div className="info-message" role="status">{ui("This CSV is an editable draft only; inspect it and confirm the dataset contract to save it.", "Это черновик. Проверьте данные и сохраните набор.")}</div>}
-              {datasetStateStatus === "none" && !project.read_only && <div className="info-message" role="group" aria-label={ui("Synthetic practice dataset", "Учебный набор данных")}>
+              {(datasetStateStatus === "none" || datasetStateStatus === "available" && (datasetState?.profile.row_count ?? 0) <= 3) && !project.read_only && <div className="info-message" role="group" aria-label={ui("Synthetic practice dataset", "Учебный набор данных")}>
                 <p>{ui("The three-row editor example is for inspecting roles, not model training. For a first training run, load 80 deterministic synthetic practice rows or import your own dataset. Practice data is not research evidence.", "Для тренировки можно загрузить учебный набор из 80 строк или свои данные. Учебный набор не является исследовательским доказательством.")}</p>
                 <Button view="outlined" disabled={importingDatasetFile || confirmingCsvDataset} onClick={() => {
                   updateCsvText(SYNTHETIC_PRACTICE_CSV);
                   setTarget("target");
                   setTask("binary_classification");
-                  setIdColumns("");
+                  setIdColumns("entity_id");
                   setExcludedColumns("");
                   setStatus("Synthetic practice draft loaded; inspect and confirm it before training");
                 }}>{ui("Load synthetic practice CSV (80 rows)", "Загрузить учебные данные (80 строк)")}</Button>
@@ -2437,6 +2437,11 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
           studyHydrationStatus={trainingStudyStatus}
           studyHydrationError={trainingStudyError}
           onRetryStudyHydration={() => setTrainingStudyReload((current) => current + 1)}
+          finalTestState={finalTestEvidenceStatus === "none" || finalTestEvidenceStatus === "available" ? finalTestEvaluation && datasetState && finalTestEvaluation.dataset_fingerprint === datasetState.contract.dataset_fingerprint ? "opened" : "closed" : finalTestEvidenceStatus === "error" ? "error" : "loading"}
+          onRetryFinalTestState={() => setFinalTestEvidenceReload((current) => current + 1)}
+          onOpenData={() => setActive("DATA")}
+          onOpenAnalysis={() => setActive("ANALYSES")}
+          onOpenExplanation={() => setActive("EVIDENCE")}
           theme={theme}
           onRun={bindProjectSession(project.session_id, (run) => {
             setTrainingRun(run);

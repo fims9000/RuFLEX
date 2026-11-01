@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { openTrainingSettings } from "./helpers/trainingSettings";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -23,5 +24,6 @@ test("Models guides a new Russian-language user to data and then to trainable mo
   await expect(model).toBeEnabled();
   await expect(model.locator("option")).toHaveCount(6);
   await model.selectOption("mlp");
+  await openTrainingSettings(page);
   await expect(page.getByLabel("Нейронов в скрытом слое")).toBeVisible();
 });

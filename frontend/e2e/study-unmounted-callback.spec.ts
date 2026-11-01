@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { openTrainingSettings } from "./helpers/trainingSettings";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -56,6 +57,7 @@ test("a completed Study response from a closed project cannot hydrate the next p
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
   await page.getByRole("button", { name: "S", exact: true }).click();
   await page.getByLabel("Training model").selectOption("decision_tree");
+  await openTrainingSettings(page);
   await page.getByLabel("Study seeds").fill("3101, 3102, 3103");
   await page.getByRole("button", { name: "Run multi-seed study", exact: true }).click();
   await studyPersisted;

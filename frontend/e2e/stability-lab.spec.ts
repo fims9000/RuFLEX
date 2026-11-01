@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { openTrainingSettings } from "./helpers/trainingSettings";
 import { mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -17,6 +18,7 @@ test("Stability Lab persists fixed-split multi-run evidence and its validation-o
   await page.getByLabel("Project path").fill(root); await page.getByLabel("Project name").fill("Stability Lab"); await page.getByRole("button", { name: "Create project", exact: true }).click();
   await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click(); await page.getByLabel("CSV data").fill(csv()); await page.getByRole("button", { name: "Inspect dataset", exact: true }).click(); await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
   await page.getByRole("button", { name: "S", exact: true }).click();
+  await openTrainingSettings(page);
   await page.getByLabel("Training model").selectOption("random_forest"); await page.getByLabel("Study randomness protocol").selectOption("TRAINING_VARIABILITY"); await page.getByLabel("Split seed").fill("42"); await page.getByLabel("Study seeds").fill("11, 13, 17");
   await page.getByRole("button", { name: "Run multi-seed study", exact: true }).click();
   await expect(page.getByText("Validation f1 across seeds", { exact: true })).toBeVisible({ timeout: 60_000 });
@@ -124,6 +126,7 @@ test("Stability Lab persists fixed-split multi-run evidence and its validation-o
   await expect(bundle).toContainText("PASS");
 
   await page.getByRole("button", { name: "S", exact: true }).click();
+  await openTrainingSettings(page);
   await page.getByLabel("Study seeds").fill("21, 22, 23");
   await page.getByRole("button", { name: "Run multi-seed study", exact: true }).click();
   await expect(page.getByText("Validation f1 across seeds", { exact: true })).toBeVisible({ timeout: 60_000 });

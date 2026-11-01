@@ -1,0 +1,407 @@
+{
+  "schema_version": 1,
+  "scope": "Studio user workflows on synthetic fixtures; not A01/S03 research evidence",
+  "source_parent": "2b91253",
+  "implementation_sha256": {
+    "src/ruflex/application/runtime_training.py": "93c5a2b1c8cd657751541186536fa42d9e6b3966aa7aafcc959fd21e5d5dc8bb",
+    "src/ruflex/application/training.py": "f1945e82cadca810b7359c5e0cf0ccf79176ff2ccbe5a3004d764e8378220097",
+    "frontend/src/app/App.tsx": "d41c30372c47caf2ddae8aaeb5cf0f1975bc206468b2ab439fbd227b412399c7",
+    "frontend/src/features/training/ExperimentWorkspace.tsx": "dca5304a3c5a371435d1e8d81c21f0c24dec7387f906448f2515ebe7eb1027d6",
+    "frontend/src/explorer/ProjectExplorer.tsx": "cc6e78064286b713465e62789cef0aba17e9e29953e31d91d6a18799afee2196",
+    "frontend/src/styles.css": "80add798f41086ce05ae71d9088714abfbb4a285bad0e1e68a324455282314f0",
+    "frontend/src/design/theme.css": "122c18dc271db14b42a3a5b6bc593fd6ceaf362f0e80d57f054e8b2d68bf16e9",
+    "frontend/e2e/model-user-matrix.spec.ts": "32b43d16986f3d332df83d07b4cf5f1fa39cfdb4cb7520baabdef43b0f76db3b"
+  },
+  "execution": {
+    "model_fits": "serial",
+    "blas_threads": 1,
+    "benchmark_datasets_used": false,
+    "user_project_modified": false
+  },
+  "checks": {
+    "python_full_suite": {
+      "passed": 484
+    },
+    "python_focused": {
+      "passed": 45,
+      "included_in_full": true
+    },
+    "frontend_unit": {
+      "passed": 130
+    },
+    "api_client": {
+      "passed": 1
+    },
+    "production_build": "PASS; existing bundle-size warning",
+    "compileall": "PASS",
+    "browser_unique_scenarios": 70,
+    "browser_russian": {
+      "passed": 17
+    },
+    "browser_english": {
+      "passed": 53,
+      "note": "51 passed in broader run; two affected disclosure/final-boundary tests passed in targeted follow-up; not the full repository Playwright suite"
+    },
+    "explorer_followup": {
+      "passed": 2,
+      "note": "same-project practice-to-user-file transition and binary logistic route after final Explorer history fix"
+    }
+  },
+  "native_model_routes": [
+    {
+      "model": "logistic_regression",
+      "task": "binary_classification",
+      "run_id": "8fe17a18-93ab-4fec-a3f5-8f913f12b2f4",
+      "model_artifact_sha256": "1c1d92cf48a3bf928c5bcf707b9dc4775e931bcf1aa332a3470712abb3dc3f00",
+      "metrics": {
+        "accuracy": 0.9375,
+        "precision": 0.875,
+        "recall": 1,
+        "f1": 0.9333333333333333,
+        "brier": 0.0518806658996193,
+        "roc_auc": 1,
+        "pr_auc": 0.9999999999999998,
+        "ece": 0.17316047884953206
+      },
+      "methods": [
+        "occlusion",
+        "shap"
+      ],
+      "checks": [
+        {
+          "method": "occlusion",
+          "status": "PASSED_AVAILABLE_CHECKS"
+        },
+        {
+          "method": "shap",
+          "status": "PASSED_AVAILABLE_CHECKS"
+        }
+      ],
+      "final_test_id": "cc8107ba-032d-456a-823b-2deb0aaf29b4",
+      "reopen_verified": true,
+      "fixture_only": true
+    },
+    {
+      "model": "decision_tree",
+      "task": "binary_classification",
+      "run_id": "8a1e8886-62b0-4893-9f6d-de514ec6d452",
+      "model_artifact_sha256": "40aa666b7b58731bc37fbab7f3716698ce5fe72e263052724d411f882cc57291",
+      "metrics": {
+        "accuracy": 1,
+        "precision": 1,
+        "recall": 1,
+        "f1": 1,
+        "brier": 1.000077791466124e-24,
+        "roc_auc": 1,
+        "pr_auc": 1,
+        "ece": 1.0000388940042122e-12
+      },
+      "methods": [
+        "occlusion",
+        "tree_shap"
+      ],
+      "checks": [
+        {
+          "method": "occlusion",
+          "status": "PASSED_AVAILABLE_CHECKS"
+        },
+        {
+          "method": "tree_shap",
+          "status": "PASSED_AVAILABLE_CHECKS"
+        }
+      ],
+      "final_test_id": "23ffed8f-0161-4a76-9e51-688886f03826",
+      "reopen_verified": true,
+      "fixture_only": true
+    },
+    {
+      "model": "random_forest",
+      "task": "binary_classification",
+      "run_id": "36ed5bef-d986-4b18-a6df-bab0d7ef8aaf",
+      "model_artifact_sha256": "a595d069da0470a27182fcb7686517308cd4bfdfb2b3582074d816861cf2e404",
+      "metrics": {
+        "accuracy": 1,
+        "precision": 1,
+        "recall": 1,
+        "f1": 1,
+        "brier": 0.025390625,
+        "roc_auc": 1,
+        "pr_auc": 1,
+        "ece": 0.10937500000043751
+      },
+      "methods": [
+        "occlusion",
+        "shap"
+      ],
+      "checks": [
+        {
+          "method": "occlusion",
+          "status": "PASSED_AVAILABLE_CHECKS"
+        },
+        {
+          "method": "shap",
+          "status": "PASSED_AVAILABLE_CHECKS"
+        }
+      ],
+      "final_test_id": "8da8cf8a-0a7a-4cd5-911a-b7a0ba13350f",
+      "reopen_verified": true,
+      "fixture_only": true
+    },
+    {
+      "model": "gradient_boosting",
+      "task": "binary_classification",
+      "run_id": "eedbc881-1fa0-496b-9e2f-6f909b9f6319",
+      "model_artifact_sha256": "7b17d25e2cce1d8938a47e23b38e677f863e58f2b6734c16d0101c5f91bd3703",
+      "metrics": {
+        "accuracy": 1,
+        "precision": 1,
+        "recall": 1,
+        "f1": 1,
+        "brier": 0.04874008834017262,
+        "roc_auc": 1,
+        "pr_auc": 1,
+        "ece": 0.22059922364315762
+      },
+      "methods": [
+        "occlusion",
+        "tree_shap"
+      ],
+      "checks": [
+        {
+          "method": "occlusion",
+          "status": "PASSED_AVAILABLE_CHECKS"
+        },
+        {
+          "method": "tree_shap",
+          "status": "PASSED_AVAILABLE_CHECKS"
+        }
+      ],
+      "final_test_id": "a984e93e-7120-4d26-b78e-70ed859b7626",
+      "reopen_verified": true,
+      "fixture_only": true
+    },
+    {
+      "model": "mlp",
+      "task": "binary_classification",
+      "run_id": "4fb1f943-6a5b-4a5a-9f58-90ea98b36682",
+      "model_artifact_sha256": "3afebeca2cceb9993ca7de8e779b2fa56b5ccba8d1780f8613edd9dedf593fca",
+      "metrics": {
+        "accuracy": 0.6875,
+        "precision": 1,
+        "recall": 0.2857142857142857,
+        "f1": 0.4444444444444444,
+        "brier": 0.2128593671877368,
+        "roc_auc": 0.761904761904762,
+        "pr_auc": 0.7785714285714285,
+        "ece": 0.1252641808107048
+      },
+      "methods": [
+        "occlusion",
+        "shap"
+      ],
+      "checks": [
+        {
+          "method": "occlusion",
+          "status": "PASSED_AVAILABLE_CHECKS"
+        },
+        {
+          "method": "shap",
+          "status": "PASSED_AVAILABLE_CHECKS"
+        }
+      ],
+      "final_test_id": "89abf246-61b8-4cf5-875a-39fe562ab994",
+      "reopen_verified": true,
+      "fixture_only": true
+    },
+    {
+      "model": "flat_neuro_fuzzy",
+      "task": "binary_classification",
+      "run_id": "5322628c-6202-4b51-9b9c-445a4777e08c",
+      "model_artifact_sha256": "21425a050d0ad7c020b9396f38a4e3f2c51fce76bb7cd40a3b555fdcfa0b82b4",
+      "metrics": {
+        "accuracy": 1,
+        "precision": 1,
+        "recall": 1,
+        "f1": 1,
+        "brier": 0.03515647974699684,
+        "roc_auc": 1,
+        "pr_auc": 0.9999999999999998,
+        "ece": 0.12273492772446178
+      },
+      "methods": [
+        "occlusion",
+        "integrated_gradients",
+        "gradient_shap"
+      ],
+      "checks": [
+        {
+          "method": "occlusion",
+          "status": "PASSED_AVAILABLE_CHECKS"
+        },
+        {
+          "method": "integrated_gradients",
+          "status": "PASSED_AVAILABLE_CHECKS"
+        },
+        {
+          "method": "gradient_shap",
+          "status": "WARNING"
+        }
+      ],
+      "final_test_id": "e7d62978-1677-468d-bdb5-e74ba765b5e8",
+      "reopen_verified": true,
+      "fixture_only": true
+    },
+    {
+      "model": "linear_regression",
+      "task": "regression",
+      "run_id": "8ff9c0ed-9a01-4398-98c4-0d8790f659b8",
+      "model_artifact_sha256": "26584d243035b5796705630e64a033bac0a21d8c1bd1a3110dcf754566460661",
+      "metrics": {
+        "mse": 0.01459671416899463,
+        "mae": 0.10043141400510996,
+        "rmse": 0.12081686210539748,
+        "r2": 0.999879335612205
+      },
+      "methods": [
+        "occlusion"
+      ],
+      "checks": [
+        {
+          "method": "occlusion",
+          "status": "PASSED_AVAILABLE_CHECKS"
+        }
+      ],
+      "final_test_id": "9a07d352-530c-4bb1-a32e-2a84d4b6b4ca",
+      "reopen_verified": true,
+      "fixture_only": true
+    },
+    {
+      "model": "decision_tree",
+      "task": "regression",
+      "run_id": "a0e1fc62-48dd-4ebc-8b15-e8c7ef771195",
+      "model_artifact_sha256": "c56d24709af592e1b40be59679564eea934e23c19abce13f5a59dae484ca1ae1",
+      "metrics": {
+        "mse": 12.753684210526313,
+        "mae": 3.073684210526315,
+        "rmse": 3.571230069671557,
+        "r2": 0.894571101442638
+      },
+      "methods": [
+        "occlusion"
+      ],
+      "checks": [
+        {
+          "method": "occlusion",
+          "status": "PASSED_AVAILABLE_CHECKS"
+        }
+      ],
+      "final_test_id": "7b0d6027-ccf8-4160-826e-b6140067fdb7",
+      "reopen_verified": true,
+      "fixture_only": true
+    },
+    {
+      "model": "random_forest",
+      "task": "regression",
+      "run_id": "923ab2e8-9322-46a3-9b05-9794777952d2",
+      "model_artifact_sha256": "f34ed141330589703dc63223eddc8a055e87d414f43b3454224a7e771cbf72b4",
+      "metrics": {
+        "mse": 5.3655592105263175,
+        "mae": 1.8302631578947375,
+        "rmse": 2.316367676023458,
+        "r2": 0.9556453658117701
+      },
+      "methods": [
+        "occlusion"
+      ],
+      "checks": [
+        {
+          "method": "occlusion",
+          "status": "PASSED_AVAILABLE_CHECKS"
+        }
+      ],
+      "final_test_id": "40f06ac5-415e-43aa-a292-8b2a6f0ed21e",
+      "reopen_verified": true,
+      "fixture_only": true
+    },
+    {
+      "model": "gradient_boosting",
+      "task": "regression",
+      "run_id": "99858d3c-f633-49cb-a9b2-89130d09c619",
+      "model_artifact_sha256": "1731f7106bb641f6e3fbe8763867319c8641d7cb74d958aa1bac6f15ae85246a",
+      "metrics": {
+        "mse": 41.400493868659645,
+        "mae": 5.7646863587874355,
+        "rmse": 6.4343215546520245,
+        "r2": 0.6577609735153164
+      },
+      "methods": [
+        "occlusion"
+      ],
+      "checks": [
+        {
+          "method": "occlusion",
+          "status": "PASSED_AVAILABLE_CHECKS"
+        }
+      ],
+      "final_test_id": "c5062165-49d8-4dd6-a881-5db19d60798a",
+      "reopen_verified": true,
+      "fixture_only": true
+    },
+    {
+      "model": "mlp",
+      "task": "regression",
+      "run_id": "c5400dca-e014-4c64-9fea-77795e27a126",
+      "model_artifact_sha256": "8d23b00e4136b9f833ee57666d6057a37e2f403df7b41fa375f8134665fa20b8",
+      "metrics": {
+        "mse": 1830.4237635285294,
+        "mae": 41.48522948266998,
+        "rmse": 42.783451982379,
+        "r2": -14.13127956569268
+      },
+      "methods": [
+        "occlusion"
+      ],
+      "checks": [
+        {
+          "method": "occlusion",
+          "status": "PASSED_AVAILABLE_CHECKS"
+        }
+      ],
+      "final_test_id": "3b2b692d-6e87-4a9b-8c46-7f729c0e2b74",
+      "reopen_verified": true,
+      "fixture_only": true
+    },
+    {
+      "model": "flat_neuro_fuzzy",
+      "task": "regression",
+      "run_id": "4e4d6188-3640-4859-ac4f-ace4b99e8d17",
+      "model_artifact_sha256": "6abd2ffb5013a789da6cd6a19119f33a28e1d5bc90d12f1fe2c9bf04a9d7f67f",
+      "metrics": {
+        "mse": 100.43507734561722,
+        "mae": 8.65929970992239,
+        "rmse": 10.021730257077229,
+        "r2": 0.16974895988624172
+      },
+      "methods": [
+        "occlusion"
+      ],
+      "checks": [
+        {
+          "method": "occlusion",
+          "status": "PASSED_AVAILABLE_CHECKS"
+        }
+      ],
+      "final_test_id": "c849c558-8eaa-4d98-9a93-7e426a55ed96",
+      "reopen_verified": true,
+      "fixture_only": true
+    }
+  ],
+  "limitations": [
+    "Short synthetic training verifies mechanics, not predictive quality; MLP convergence warnings retained.",
+    "GradientSHAP numerical completeness WARNING retained (difference 0.135355 > tolerance 0.05); no threshold tuning.",
+    "CSV/XLSX supported paths tested, not arbitrary files or every third-party Python estimator.",
+    "Existing product-evidence capture scenario not rerun as part of this scoped acceptance."
+  ],
+  "research_frozen_artifacts_modified": false,
+  "push_performed": false
+}

@@ -14,6 +14,7 @@ import numpy as np
 from ruflex.application.artifacts import ArtifactMetadata, ArtifactStore
 from ruflex.application.datasets import create_transform_pipeline_contract, load_dataset_contract, load_dataset_frame, load_split_contract, run_leakage_audit
 from ruflex.application.training import (
+    TrainingError,
     _baseline_metrics, _normalization_dict, _persist_preprocessing_artifact,
     _ensure_validation_policy_selection_open, _provenance, _resolve_randomness, _split_identity, _validation_payload,
     persist_training_run,
@@ -59,6 +60,17 @@ def train_with_adapter(
     ))
     if split.validation_features.shape[0] == 0:
         raise RuntimeIncompatibleError("The resolved validation split is empty.")
+    if contract.task == "binary_classification":
+        train_labels = np.asarray(split.train_targets, dtype=float).reshape(-1)
+        validation_labels = np.asarray(split.validation_targets, dtype=float).reshape(-1)
+        if not np.isin(train_labels, [0.0, 1.0]).all() or not np.isin(validation_labels, [0.0, 1.0]).all():
+            raise TrainingError("BINARY_TARGET_LABELS_INVALID: Binary classification requires target values 0 and 1 in TRAIN and VALIDATION. Map the target explicitly before importing it.")
+        if np.unique(train_labels).size != 2:
+            raise TrainingError(
+                "TRAIN_REQUIRES_BOTH_BINARY_CLASSES: The resolved TRAIN split contains only one class "
+                f"({len(train_labels)} row(s)). Training requires examples of both 0 and 1. "
+                "Use a larger dataset or review the declared split; the split was not changed automatically."
+            )
     preprocessing_sha = _persist_preprocessing_artifact(project_root, contract, split)
     transform_pipeline = create_transform_pipeline_contract(project_root, contract=contract, split=split, preprocessing_artifact_sha256=preprocessing_sha, split_contract_id=(None if split_contract is None else str(split_contract.split_id)))
     leakage_audit = run_leakage_audit(project_root, split_contract_id=(None if split_contract is None else str(split_contract.split_id)), transform_pipeline_id=str(transform_pipeline.pipeline_id), rigor_profile=str((parameters or {}).get("rigor_profile", "CONFIRMATORY")).upper())

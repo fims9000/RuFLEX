@@ -10,14 +10,18 @@ from ruflex.application.training import train_model
 from ruflex.runtime.errors import RuntimeIncompatibleError
 
 
-def test_train_model_preserves_typed_runtime_incompatibility(monkeypatch, tmp_path) -> None:
-    root = tmp_path / "project"
+def _confirmed_project(root) -> None:
     ProjectService().create(root, name="Runtime error identity")
     frame = pd.DataFrame({"x": range(36), "target": [index % 2 for index in range(36)]})
     source = persist_dataset_bytes(root, frame.to_csv(index=False).encode())
     profile = inspect_dataset(frame, source_artifact_sha256=source.sha256)
     contract = build_dataset_contract(profile, target="target", task="binary_classification")
     persist_dataset_contract(root, contract, run_data_audit(contract, frame), profile)
+
+
+def test_train_model_preserves_typed_runtime_incompatibility(monkeypatch, tmp_path) -> None:
+    root = tmp_path / "project"
+    _confirmed_project(root)
     expected = RuntimeIncompatibleError("The frozen split is incompatible with this training request.")
 
     def reject(*args, **kwargs):
@@ -30,3 +34,17 @@ def test_train_model_preserves_typed_runtime_incompatibility(monkeypatch, tmp_pa
 
     assert captured.value.code == "RUNTIME_INCOMPATIBLE"
     assert str(captured.value) == str(expected)
+
+
+@pytest.mark.parametrize("failure", [ValueError("Estimator input is invalid"), OSError("Artifact storage failed")])
+def test_train_model_preserves_actual_failure_category(monkeypatch, tmp_path, failure) -> None:
+    root = tmp_path / "project"
+    _confirmed_project(root)
+    def reject(*args, **kwargs):
+        raise failure
+
+    monkeypatch.setattr(runtime_training, "train_with_adapter", reject)
+    expected_type = OSError if isinstance(failure, OSError) else RuntimeError
+    with pytest.raises(expected_type, match=str(failure)) as captured:
+        train_model(root, model_kind="decision_tree", seed=42)
+    assert "unavailable model adapter" not in str(captured.value)

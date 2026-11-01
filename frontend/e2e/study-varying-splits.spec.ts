@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { openTrainingSettings } from "./helpers/trainingSettings";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -21,6 +22,7 @@ test("a varying-split Study does not reuse a previously frozen fixed SplitContra
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
   await page.getByRole("button", { name: "S", exact: true }).click();
+  await openTrainingSettings(page);
   await page.getByRole("button", { name: "Freeze RANDOM SplitContract", exact: true }).click();
   await expect(page.getByRole("button", { name: "SplitContract frozen", exact: true })).toBeVisible();
 
@@ -54,6 +56,7 @@ test("a varying-split Study does not reuse a previously frozen fixed SplitContra
   await expect(page.getByText(/Split variability fixes the training seed but changes split membership/)).toBeVisible();
   await expect(page.getByRole("button", { name: /SeedRun split 17 · train 5/ })).toBeVisible();
 
+  await openTrainingSettings(page);
   await page.getByLabel("Study randomness protocol").selectOption("COMBINED_VARIABILITY");
   await page.getByLabel("Study seeds").fill("3, 7, 9");
   const combinedSubmission = page.waitForResponse((item) => item.url().endsWith("/api/projects/training/study-jobs") && item.request().method() === "POST");

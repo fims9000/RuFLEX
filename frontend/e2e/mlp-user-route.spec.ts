@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { openTrainingSettings } from "./helpers/trainingSettings";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -21,6 +22,7 @@ test("Studio saves tabular data, trains a configured MLP, and reopens its valida
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
   await page.getByRole("button", { name: "S", exact: true }).click();
   await page.getByLabel("Training model").selectOption("mlp");
+  await openTrainingSettings(page);
   await page.getByLabel("Hidden units").fill("8");
   await page.getByLabel("Epochs").fill("20");
   await page.getByLabel("Batch size").fill("8");
