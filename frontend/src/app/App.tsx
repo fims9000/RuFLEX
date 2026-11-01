@@ -1810,6 +1810,13 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
           <span>{ui("No immutable artifacts yet.", "Сохранённых файлов пока нет.")}</span>
         ) : null}
       </div>
+      {integrityStatus === "available" && integrity?.status === "PASS" && (
+        <details className="project-integrity-summary" data-testid="project-integrity">
+          <summary>{ui("Project checks", "Состояние проекта")} · <StatusBadge tone="success">PASS</StatusBadge></summary>
+          <p>{ui(`${integrity.checked_objects} saved objects checked.`, `Проверено объектов: ${integrity.checked_objects}.`)}</p>
+          <p>{integrity.scientific_note}</p>
+        </details>
+      )}
     </>
   ) : (
     <EmptyState title="No selection">
@@ -2466,18 +2473,10 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
         />
       ) : (
         <section className="foundation-workspace">
-            <div className="feature-toolbar">
-            <div>
-              <span className="eyebrow">{ui("PROJECT OVERVIEW", "ОБЗОР ПРОЕКТА")}</span>
-              <h2>{ui("Choose what you want to work on", "С чего начнём?")}</h2>
-              <p>{ui("Import data, edit fuzzy rules, train models or inspect saved results. You can revisit any section without starting a new run.", "Выберите раздел. Сохранённые результаты останутся на месте.")}</p>
-            </div>
-            </div>
           {overviewContextStatus === "loading" && <div role="status">{ui("Checking saved model and training context before showing project next steps…", "Проверка сохранённых моделей…")}</div>}
           {overviewContextStatus === "error" && <div className="error" role="alert"><strong>{ui("Could not verify saved model or training context.", "Не удалось проверить сохранённые модели.")}</strong><p>{overviewContextError ?? ui("The project is not assumed to be empty after a failed read.", "Состояние проекта неизвестно.")}</p><Button view="outlined" onClick={() => setOverviewContextReload((current) => current + 1)}>{ui("Retry project context check", "Повторить проверку")}</Button></div>}
-          {integrityStatus === "loading" && <div role="status">{ui("Checking persisted project integrity…", "Проверка целостности проекта…")}</div>}
           {integrityStatus === "error" && <div className="error" role="alert"><strong>{ui("Project integrity is unavailable.", "Проверка целостности недоступна.")}</strong><p>{integrityError ?? ui("Persisted project evidence has not been verified.", "Сохранённые объекты не проверены.")}</p><Button view="outlined" onClick={() => setIntegrityReload((current) => current + 1)}>{ui("Retry integrity check", "Повторить проверку")}</Button></div>}
-          {integrityStatus === "available" && integrity && <div className="trace-card project-integrity-summary" data-testid="project-integrity"><div className="evidence-check-header"><strong>{ui("Saved project evidence", "Сохранённые данные проекта")}</strong><StatusBadge tone={integrity.status === "PASS" ? "success" : integrity.status === "FAIL" ? "danger" : "warning"}>{integrity.status}</StatusBadge></div><p>{ui(`${integrity.checked_objects} saved objects checked · ${integrity.status === "PASS" ? "No integrity problems found." : `${integrity.issues.length} issue(s) need review.`}`, `${integrity.checked_objects} объектов проверено · ${integrity.status === "PASS" ? "Проблем нет." : `Проблем: ${integrity.issues.length}.`}`)}</p><details open={integrity.status !== "PASS"}><summary>{ui("Inspection details", "Подробности")}</summary><p>{integrity.scientific_note}</p>{integrity.issues.map((issue) => <p className="property-description" key={`${issue.code}-${issue.path}`}>{issue.code} · {issue.path} · {issue.detail}</p>)}</details></div>}
+          {integrityStatus === "available" && integrity && integrity.status !== "PASS" && <div className="trace-card project-integrity-summary" data-testid="project-integrity" role="alert"><div className="evidence-check-header"><strong>{ui("Project needs attention", "Нужно проверить проект")}</strong><StatusBadge tone={integrity.status === "FAIL" ? "danger" : "warning"}>{integrity.status}</StatusBadge></div><p>{ui(`${integrity.issues.length} issue(s) need review.`, `Проблем: ${integrity.issues.length}.`)}</p><details open><summary>{ui("Inspection details", "Подробности")}</summary><p>{integrity.scientific_note}</p>{integrity.issues.map((issue) => <p className="property-description" key={`${issue.code}-${issue.path}`}>{issue.code} · {issue.path} · {issue.detail}</p>)}</details></div>}
           {overviewContextStatus === "loaded" && datasetStateStatus === "none" && !fis && !trainingRun && (
             <section className="quick-start-card" aria-label={ui("Optional quick start", "Начало работы")}>
               <div>
@@ -2554,7 +2553,7 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
               </small>
             </button>
           </div>
-          <div className="project-lineage-panel">
+          {(lineageStatus === "error" || (lineageStatus === "loaded" && lineage?.nodes.some((node) => node.target !== "PROJECT"))) && <div className="project-lineage-panel">
             <div>
               <span className="eyebrow">{ui("PROJECT LINEAGE", "ИСТОРИЯ ПРОЕКТА")}</span>
               <h3>{ui("Persisted provenance graph", "Связи сохранённых объектов")}</h3>
@@ -2569,7 +2568,7 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
               onRetry={() => setLineageReload((current) => current + 1)}
               onOpen={openLineageNode}
             />
-          </div>
+          </div>}
         </section>
       )}
     </AppShell>

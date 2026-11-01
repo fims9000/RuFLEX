@@ -223,6 +223,24 @@ test("E2E-02e shows and retries an unavailable project integrity check", async (
   expect(integrityReads).toBe(2);
 });
 
+test("keeps a failed project check visible on the overview", async ({ page }) => {
+  await page.route("**/api/projects/*/integrity", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({
+      project_id: "00000000-0000-0000-0000-000000000001",
+      status: "FAIL",
+      checked_objects: 1,
+      issues: [{ code: "BROKEN_REFERENCE", status: "FAIL", path: "study.json", detail: "Saved study reference is missing." }],
+      scientific_note: "The saved project needs repair before its evidence is trusted.",
+    }),
+  }));
+  await createProject(page, projectPath("integrity-failure"), "Check failure");
+  const warning = page.locator(".foundation-workspace").getByRole("alert").filter({ hasText: "Project needs attention" });
+  await expect(warning).toContainText("BROKEN_REFERENCE");
+  await expect(warning).toContainText("Saved study reference is missing.");
+});
+
 test("E2E-03 read-only opening disables mutating Studio controls", async ({ page }) => {
   const path = projectPath("readonly");
   await createProject(page, path, "Read only");
@@ -511,6 +529,6 @@ test("E2E-11 distinguishes unavailable lineage from a genuinely empty graph and 
   await expect(panel.getByRole("alert")).toContainText("lineage store temporarily unavailable");
   await expect(panel.getByText("Lineage will appear as persisted datasets, runs, analyses and evidence are created.", { exact: true })).toHaveCount(0);
   await panel.getByRole("button", { name: "Retry lineage" }).click();
-  await expect(panel.getByText("Lineage will appear as persisted datasets, runs, analyses and evidence are created.", { exact: true })).toBeVisible();
+  await expect(panel).toHaveCount(0);
   expect(lineageRequests).toBe(2);
 });

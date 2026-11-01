@@ -181,10 +181,8 @@ export function AppShell({
       <footer className="status-strip">
         <span className="connection-indicator">●</span>
         <span>{status}</span>
-        <span>{ui("Local-first jobs", "Локальные задачи")}</span>
-        <span>{ui("Warnings", "Предупреждения")} {error ? 1 : 0}</span>
+        {error && <span>{ui("1 problem", "1 проблема")}</span>}
         <span className="status-spacer" />
-        <span>{ui("Local", "Локально")}</span>
       </footer>
     </main>
   );

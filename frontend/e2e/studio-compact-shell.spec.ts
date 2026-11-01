@@ -29,6 +29,7 @@ test("compact Studio keeps every workbench and optional panel reachable", async 
   await navigation.getByTitle("PROJECT").click();
   await expect(page.getByRole("region", { name: "Optional quick start" })).toBeVisible();
   await expect(page.locator(".project-object-tree")).not.toContainText("Checking");
+  await page.mouse.move(0, 0);
   await expect(page).toHaveScreenshot("compact-studio-920.png", { fullPage: true, animations: "disabled" });
 
   await page.setViewportSize({ width: 640, height: 720 });
@@ -39,5 +40,6 @@ test("compact Studio keeps every workbench and optional panel reachable", async 
   await page.getByRole("button", { name: "Hide project explorer" }).click();
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(1);
+  await page.mouse.move(0, 0);
   await expect(page).toHaveScreenshot("compact-studio-640.png", { fullPage: true, animations: "disabled" });
 });

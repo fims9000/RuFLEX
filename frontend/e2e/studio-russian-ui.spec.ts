@@ -10,12 +10,14 @@ test("основной маршрут Studio отображается по-ру�
   await page.getByLabel("Папка проекта").fill(join(tmpdir(), `ruflex-russian-ui-${Date.now()}`));
   await page.getByLabel("Название проекта").fill("Проверка интерфейса");
   await page.getByRole("button", { name: "Создать проект" }).click();
-  await expect(page.getByRole("heading", { name: "С чего начнём?" })).toBeVisible();
   await expect(page.getByRole("region", { name: "Начало работы" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Разделы Studio" }).getByRole("button", { name: "Обучение" })).toBeVisible();
+  await page.mouse.move(0, 0);
+  await expect(page).toHaveScreenshot("studio-russian-920.png", { fullPage: true, animations: "disabled" });
+  await page.getByRole("button", { name: "Показать свойства" }).click();
   await expect(page.getByTestId("project-integrity")).toBeVisible();
   await expect(page.getByTestId("project-integrity").getByText("Пройдено")).toBeVisible();
-  await expect(page.getByRole("navigation", { name: "Разделы Studio" }).getByRole("button", { name: "Обучение" })).toBeVisible();
-  await expect(page).toHaveScreenshot("studio-russian-920.png", { fullPage: true, animations: "disabled" });
+  await page.getByRole("button", { name: "Скрыть свойства" }).click();
   await page.getByRole("button", { name: "Открыть данные" }).click();
   await expect(page.getByLabel("Целевой столбец")).toBeVisible();
   await expect(page.getByRole("button", { name: "Проверить данные" })).toBeVisible();

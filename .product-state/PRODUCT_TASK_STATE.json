@@ -365,7 +365,8 @@
     "alpha_exact_tree_input_validation",
     "alpha_categorical_tree_path_studio",
     "alpha_guided_validation_model_choice",
-    "alpha_compact_studio_shell"
+    "alpha_compact_studio_shell",
+    "alpha_quiet_project_overview"
   ],
   "active_capability": "alpha_human_centered_workflow_polish",
   "active_acceptance": [
@@ -375,6 +376,7 @@
   "blockers": [],
   "next_executable_work": "Continue Russian localization and progressive disclosure inside dense Model/Training/Analysis/Evidence workbenches, including backend-origin error and scientific-note presentation. Verify each route at laptop width without changing persisted scientific identifiers or final-test boundaries. Then return to the declared validation-only AutoML candidate workflow and separate neuro-fuzzy rule-structure assessment. Preserve frozen research and unrelated article edits.",
   "qa": {
+    "alpha_quiet_project_overview": "PASS: the project landing page hides healthy integrity diagnostics and empty lineage, removes redundant overview copy and idle footer counters, and retains failed integrity/lineage alerts. Healthy integrity remains inspectable in Properties. TypeScript/Vite, 126 frontend unit tests, 20 project/compact browser tests, Russian 920px route and light/dark visual routes passed. See docs/qa/ALPHA_QUIET_PROJECT_OVERVIEW.md.",
     "alpha_russian_studio_primary_route": "PARTIAL: Russian is the default Studio presentation language. Project entry, navigation, Data, primary Model/Training/Analysis/Evidence actions and key boundary copy are localized and shortened. Deep technical forms, backend-origin errors and persisted scientific notes still contain English. Russian 920px Playwright route, English compact visual route, 18 project-lifecycle E2E tests, 126 Vitest tests, API-client test, TypeScript/Vite build and git diff --check passed. See docs/qa/ALPHA_RUSSIAN_STUDIO.md.",
     "alpha_compact_studio_shell": "PASS for the scoped UI: 126 frontend unit tests, TypeScript/Vite build, Storybook build, 920/640 visual baselines, a 920px FIS route, Stability Lab route, light/dark accessibility and 18/18 project lifecycle browser tests. Full browser suite: 102/105; three unchanged legacy scenarios conflict with current serialized project operations or post-final-test training lock. See docs/qa/ALPHA_COMPACT_STUDIO.md; no scientific or backend code changed.",
     "alpha_guided_validation_model_choice": "PASS: schema-v3 same-case AnalysisComparison persists a deterministic validation-only F1/RMSE suggestion among selected trained runs, and Studio opens the exact suggested run after save/reopen. Mixed/unknown alignment has no suggestion; manual FIS is not automatically ranked. Focused comparison/integrity Python tests, 42 frontend unit tests, Vite build and synthetic two-family Studio E2E passed. See docs/qa/ALPHA_GUIDED_MODEL_CHOICE.md. This is not AutoML search or deployment approval.",
