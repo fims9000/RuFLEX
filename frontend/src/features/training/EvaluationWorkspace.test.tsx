@@ -63,6 +63,8 @@ function renderWorkspace(readOnly = false, overrides: {
   fis?: unknown;
   modelContextStatus?: "idle" | "loading" | "loaded" | "error";
   runs?: unknown[];
+  comparison?: unknown;
+  onSelectSuggestedRun?: (runId: string) => Promise<void>;
   runListStatus?: "idle" | "loading" | "loaded" | "error";
   runListError?: string | null;
   onRetryRunList?: () => void;
@@ -91,8 +93,8 @@ function workspaceElement(readOnly = false, overrides: Parameters<typeof renderW
     project={(overrides.project ?? { ...project, read_only: readOnly }) as never} dataset={(overrides.dataset === undefined ? dataset : overrides.dataset) as never} datasetHydrationStatus={overrides.datasetHydrationStatus ?? "available"} datasetHydrationError={overrides.datasetHydrationError ?? null} onRetryDatasetHydration={overrides.onRetryDatasetHydration ?? vi.fn()} fis={(overrides.fis ?? null) as never} modelContextStatus={overrides.modelContextStatus ?? "loaded"} run={(overrides.run === undefined ? run : overrides.run) as never} runs={(overrides.runs ?? [run]) as never} runListStatus={overrides.runListStatus ?? "loaded"} runListError={overrides.runListError ?? null} onRetryRunList={overrides.onRetryRunList ?? vi.fn()} study={null}
     evaluation={(overrides.evaluationStatus === "error" ? null : evaluation) as never} evaluationStatus={overrides.evaluationStatus ?? "available"} evaluationError={overrides.evaluationError ?? null} onRetryEvaluation={overrides.onRetryEvaluation ?? vi.fn()} validationPolicyEvidenceStatus={overrides.validationPolicyEvidenceStatus ?? "available"} validationPolicyEvidenceError={overrides.validationPolicyEvidenceError ?? null} onRetryValidationPolicyEvidence={overrides.onRetryValidationPolicyEvidence ?? vi.fn()} calibrationTransform={null} decisionThreshold={(overrides.decisionThreshold === undefined ? threshold : overrides.decisionThreshold) as never} finalTestEvaluation={(overrides.finalTestEvaluation ?? null) as never}
     finalTestEvidenceStatus={overrides.finalTestEvidenceStatus ?? "none"} finalTestEvidenceError={overrides.finalTestEvidenceError ?? null} onRetryFinalTestEvidence={overrides.onRetryFinalTestEvidence ?? vi.fn()}
-    comparison={null} sliceAnalysis={null} selectivePolicy={(overrides.selectivePolicy ?? null) as never} stabilityGatePolicy={(overrides.stabilityGatePolicy ?? null) as never} theme={"light" as never}
-    onEvaluation={overrides.onEvaluation ?? vi.fn()} onCalibration={overrides.onCalibration ?? vi.fn()} onThreshold={overrides.onThreshold ?? vi.fn()} onFinalTest={vi.fn()} onComparison={vi.fn()} onSliceAnalysis={vi.fn()} onSelectivePolicy={overrides.onSelectivePolicy ?? vi.fn()}
+    comparison={(overrides.comparison ?? null) as never} sliceAnalysis={null} selectivePolicy={(overrides.selectivePolicy ?? null) as never} stabilityGatePolicy={(overrides.stabilityGatePolicy ?? null) as never} theme={"light" as never}
+    onEvaluation={overrides.onEvaluation ?? vi.fn()} onCalibration={overrides.onCalibration ?? vi.fn()} onThreshold={overrides.onThreshold ?? vi.fn()} onFinalTest={vi.fn()} onComparison={vi.fn()} onSelectSuggestedRun={overrides.onSelectSuggestedRun} onSliceAnalysis={vi.fn()} onSelectivePolicy={overrides.onSelectivePolicy ?? vi.fn()}
   />;
 }
 
@@ -228,6 +230,38 @@ describe("EvaluationWorkspace final-test boundary", () => {
     expect(compare).toBeEnabled();
     fireEvent.click(compare);
     await waitFor(() => expect(studioApi.createAnalysisComparison).toHaveBeenCalledWith("session", [run.run_id], true, "fis-1", "saved-semantic-hash"));
+  });
+
+  it("offers the persisted same-case validation candidate and opens its exact saved run", async () => {
+    const candidate = { ...run, run_id: "run-candidate-123456", model_kind: "decision_tree" };
+    const onSelectSuggestedRun = vi.fn().mockResolvedValue(undefined);
+    renderWorkspace(false, { runs: [run, candidate], onSelectSuggestedRun, comparison: {
+      comparison_id: "comparison-guided", task: "binary_classification", validation_alignment: "same_cases",
+      metric_rows: [], candidate_suggestion: { run_id: candidate.run_id, model_kind: candidate.model_kind, metric: "f1", direction: "max", value: 0.85, candidate_count: 2, tie_break: "lowest_run_id" },
+      scientific_note: "Validation only",
+    } });
+    expect(screen.getByTestId("validation-candidate-suggestion")).toHaveTextContent("Best observed candidate");
+    expect(screen.getByTestId("validation-candidate-suggestion")).toHaveTextContent("not hyperparameter search");
+    fireEvent.click(screen.getByRole("button", { name: "Inspect suggested run" }));
+    await waitFor(() => expect(onSelectSuggestedRun).toHaveBeenCalledWith(candidate.run_id));
+  });
+
+  it("does not suggest a winner for mixed validation cases", () => {
+    renderWorkspace(false, { runs: [run, { ...run, run_id: "other-run" }], comparison: {
+      comparison_id: "comparison-mixed", task: "binary_classification", validation_alignment: "mixed_cases",
+      metric_rows: [], candidate_suggestion: null, scientific_note: "Different validation cases",
+    } });
+    expect(screen.getByTestId("validation-candidate-suggestion")).toHaveTextContent("No automatic candidate suggestion");
+    expect(screen.queryByRole("button", { name: "Inspect suggested run" })).not.toBeInTheDocument();
+  });
+
+  it("labels an older saved comparison without a frozen suggestion", () => {
+    renderWorkspace(false, { comparison: {
+      schema_version: 2, comparison_id: "comparison-legacy", task: "binary_classification",
+      validation_alignment: "same_cases", metric_rows: [], scientific_note: "Legacy validation comparison",
+    } });
+    expect(screen.getByTestId("validation-candidate-suggestion")).toHaveTextContent("older saved comparison");
+    expect(screen.queryByRole("button", { name: "Inspect suggested run" })).not.toBeInTheDocument();
   });
 
   it("does not recover a comparison from a different FIS semantic revision", async () => {

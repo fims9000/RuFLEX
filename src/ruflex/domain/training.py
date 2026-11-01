@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import math
 from typing import Literal
 from uuid import UUID, uuid4
 
@@ -471,6 +472,43 @@ class FinalTestStabilityEvidence(BaseModel):
     scientific_note: str = "Frozen policy application only; no final-test fitting, selection, or threshold adjustment occurred."
 
 
+class ValidationCandidateSuggestion(BaseModel):
+    """A validation-only shortlist aid, not an automatic policy or final-test claim."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    run_id: UUID
+    model_kind: str
+    metric: Literal["f1", "rmse"]
+    direction: Literal["max", "min"]
+    value: float
+    candidate_count: int = Field(ge=2)
+    tie_break: Literal["lowest_run_id"] = "lowest_run_id"
+
+
+def validation_candidate_suggestion(
+    *, task: str, alignment: str, rows: list[dict[str, float | str]],
+) -> ValidationCandidateSuggestion | None:
+    """Suggest only among trained runs scored on proven identical validation cases."""
+    run_rows = [row for row in rows if row.get("subject_type") == "training_run"]
+    if alignment != "same_cases" or len(run_rows) < 2:
+        return None
+    metric = "f1" if task == "binary_classification" else "rmse"
+    direction = "max" if metric == "f1" else "min"
+    candidates: list[tuple[float, str, dict[str, float | str]]] = []
+    for row in run_rows:
+        value = row.get(metric)
+        run_id = row.get("run_id")
+        if not isinstance(value, (float, int)) or not math.isfinite(float(value)) or not isinstance(run_id, str):
+            return None
+        candidates.append((float(value), str(UUID(run_id)), row))
+    best = min(candidates, key=lambda item: ((-item[0] if direction == "max" else item[0]), item[1]))
+    return ValidationCandidateSuggestion(
+        run_id=UUID(best[1]), model_kind=str(best[2]["model_kind"]), metric=metric,
+        direction=direction, value=best[0], candidate_count=len(candidates),
+    )
+
+
 class AnalysisComparison(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -487,6 +525,7 @@ class AnalysisComparison(BaseModel):
     fis_id: UUID | None = None
     fis_semantic_hash: str | None = None
     metric_rows: list[dict[str, float | str]]
+    candidate_suggestion: ValidationCandidateSuggestion | None = None
     scientific_note: str = "Comparison is validation-only. Locked final test data are not included."
 
     @model_validator(mode="after")
@@ -495,6 +534,14 @@ class AnalysisComparison(BaseModel):
             raise ValueError("AnalysisComparison requires two distinct subjects: two runs or one run and a manual FIS.")
         if (self.fis_id is None) != (self.fis_semantic_hash is None):
             raise ValueError("AnalysisComparison manual FIS ID and semantic hash must be bound together.")
+        if self.schema_version < 3 and self.candidate_suggestion is not None:
+            raise ValueError("Legacy AnalysisComparison cannot carry a candidate suggestion.")
+        if self.schema_version >= 3 and self.candidate_suggestion != validation_candidate_suggestion(
+            task=self.task, alignment=self.validation_alignment, rows=self.metric_rows,
+        ):
+            raise ValueError("AnalysisComparison candidate suggestion does not match its validation rows and alignment.")
+        if self.candidate_suggestion is not None and self.candidate_suggestion.run_id not in self.run_ids:
+            raise ValueError("AnalysisComparison candidate suggestion must reference a compared run.")
         return self
 
 

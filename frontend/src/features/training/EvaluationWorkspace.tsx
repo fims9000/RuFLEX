@@ -175,6 +175,7 @@ type Props = {
   onThreshold: (threshold: DecisionThresholdPolicy | null) => void;
   onFinalTest: (evaluation: FinalTestEvaluation | null) => void;
   onComparison: (comparison: AnalysisComparison) => void;
+  onSelectSuggestedRun?: (runId: string) => Promise<void>;
   onSliceAnalysis: (analysis: SliceAnalysis) => void;
   onSelectivePolicy: (policy: SelectivePredictionPolicy | null) => void;
 };
@@ -224,9 +225,12 @@ export function EvaluationWorkspace({
   onThreshold,
   onFinalTest,
   onComparison,
+  onSelectSuggestedRun,
   onSliceAnalysis,
   onSelectivePolicy,
 }: Props) {
+  const [suggestionOpenBusy, setSuggestionOpenBusy] = useState(false);
+  const [suggestionOpenError, setSuggestionOpenError] = useState<string | null>(null);
   const validationMutationInFlightRef = useRef(false);
   const [saving, setSaving] = useState(false);
   const [evaluationRecoveryRunId, setEvaluationRecoveryRunId] = useState<string | null>(null);
@@ -939,6 +943,24 @@ export function EvaluationWorkspace({
     {comparisonRecovery && <div className="error" role="alert" data-testid="comparison-recovery"><strong>Validation comparison save is uncertain; no duplicate was submitted.</strong><p>{comparisonRecovery.error}</p><Button view="outlined" disabled={recoveringComparison} onClick={recoverComparison}>Retry exact comparison lookup</Button>{comparisonRecovery.notFound && <Button view="outlined" disabled={recoveringComparison || project.read_only} onClick={explicitlyRepeatComparison}>Explicitly repeat this exact comparison</Button>}</div>}
     {comparison && <section className="comparison-card"><span className="eyebrow">SAVED MODEL COMPARISON · VALIDATION ONLY</span><h3>{comparison.metric_rows.length} compatible model subjects</h3><div className="comparison-protocol-line"><StatusBadge tone={comparison.validation_alignment === "same_cases" ? "success" : comparison.validation_alignment === "mixed_cases" ? "warning" : "info"}>{comparison.validation_alignment === "same_cases" ? "same validation cases" : comparison.validation_alignment === "mixed_cases" ? "mixed validation cases" : "validation alignment unknown"}</StatusBadge>{comparison.dataset_fingerprint && <span className="mono">dataset {comparison.dataset_fingerprint.slice(0, 12)}</span>}</div><div className="data-table-wrap"><table className="data-table"><thead><tr>{[...new Set(comparison.metric_rows.flatMap((row) => Object.keys(row)))].map((key) => <th key={key}>{key}</th>)}</tr></thead><tbody>{comparison.metric_rows.map((row) => <tr key={String(row.subject_id ?? row.run_id)}>{[...new Set(comparison.metric_rows.flatMap((candidate) => Object.keys(candidate)))].map((key) => <td key={key}>{typeof row[key] === "number" ? Number(row[key]).toFixed(4) : row[key] === undefined ? "—" : String(row[key])}</td>)}</tr>)}</tbody></table></div><p>{comparison.scientific_note}</p></section>}
     {comparison && comparison.metric_rows.length > 0 && <ChartSurface title="Shared validation metrics by model subject" option={comparisonOption(comparison)} theme={theme} />}
+    {comparison && <section className="comparison-card" data-testid="validation-candidate-suggestion">
+      <span className="eyebrow">GUIDED MODEL CHOICE · VALIDATION ONLY</span>
+      {comparison.candidate_suggestion ? <>
+        <h3>Best observed candidate among {comparison.candidate_suggestion.candidate_count} selected trained runs</h3>
+        <p><strong>{comparison.candidate_suggestion.model_kind}</strong> · {comparison.candidate_suggestion.metric.toUpperCase()} {comparison.candidate_suggestion.value.toFixed(4)} · run <code>{comparison.candidate_suggestion.run_id.slice(0, 12)}</code></p>
+        <p>Compared on the same saved validation cases. Exact metric ties use the lowest run ID. This is a shortlist suggestion, not hyperparameter search, final-test evidence, or approval for deployment.</p>
+        {onSelectSuggestedRun && <Button view="outlined" disabled={suggestionOpenBusy || runListStatus !== "loaded" || !runs.some((candidate) => candidate.run_id === comparison.candidate_suggestion?.run_id)} onClick={async () => {
+          setSuggestionOpenBusy(true); setSuggestionOpenError(null);
+          try { await onSelectSuggestedRun(comparison.candidate_suggestion!.run_id); }
+          catch (reason) { setSuggestionOpenError(reason instanceof Error ? reason.message : "Suggested run could not be reopened."); }
+          finally { setSuggestionOpenBusy(false); }
+        }}>{suggestionOpenBusy ? "Opening saved run…" : "Inspect suggested run"}</Button>}
+        {suggestionOpenError && <div role="alert" className="error">Could not open suggested run: {suggestionOpenError}</div>}
+      </> : <>
+        <h3>No automatic candidate suggestion</h3>
+        <p>{comparison.validation_alignment === "mixed_cases" ? "These runs used different validation cases; ranking them as one matched comparison would be misleading." : comparison.validation_alignment === "unknown" ? "Exact validation case alignment is unavailable." : comparison.schema_version < 3 ? "This older saved comparison has no frozen candidate suggestion. Create a new comparison to record one without changing the original evidence." : "At least two trained runs with the task metric are required; a manual FIS is shown separately and is not ranked as a calibrated model."}</p>
+      </>}
+    </section>}
     {(modelContextStatus === "idle" || modelContextStatus === "loading") && <p role="status" data-testid="comparison-model-context-loading">Checking saved FIS availability before enabling manual-FIS comparison…</p>}
     {modelContextStatus === "error" && <div className="error" role="alert" data-testid="comparison-model-context-error"><strong>Manual FIS availability could not be verified.</strong><p>{modelContextError ?? "No empty-FIS state is inferred from this failed read."}</p>{onRetryModelContext && <Button view="outlined" onClick={onRetryModelContext}>Retry saved model context</Button>}</div>}
     {(runs.length > 1 || (runs.length > 0 && fis)) && <section className="comparison-card"><span className="eyebrow">MODEL COMPARISON · VALIDATION ONLY</span><h3>Compare compatible models on declared validation evidence</h3>{fis && <label className="comparison-choice"><input type="checkbox" disabled={!!comparisonRecovery || modelContextStatus !== "loaded" || !fis.semantic_hash} checked={includeManualFis} onChange={(event) => setIncludeManualFis(event.target.checked)} />Manual {fis.system_type} FIS · semantic {(fis.semantic_hash ?? "unsaved").slice(0, 12)} · {fis.rules.length} rules</label>}{runs.map((candidate) => <label className="comparison-choice" key={candidate.run_id}><input type="checkbox" disabled={!!comparisonRecovery} checked={selectedRunIds.includes(candidate.run_id)} onChange={(event) => setSelectedRunIds((current) => event.target.checked ? [...current, candidate.run_id] : current.filter((id) => id !== candidate.run_id))} />{candidate.model_kind} · seed {candidate.seed} · {candidate.run_id.slice(0, 12)} · nodes {typeof candidate.model_spec.node_count === "number" ? candidate.model_spec.node_count : "—"}</label>)}<Button view="outlined" disabled={comparing || !!comparisonRecovery || project.read_only || !["none", "available"].includes(comparisonHydrationStatus) || selectedRunIds.length + (includeManualFis ? 1 : 0) < 2 || (includeManualFis && (selectedRunIds.length < 1 || modelContextStatus !== "loaded" || !fis?.semantic_hash))} onClick={saveSelectedComparison} data-ruflex-action="comparison.selected.create">{comparing ? "Comparing…" : `Compare ${selectedRunIds.length + (includeManualFis ? 1 : 0)} selected models`}</Button><p>Manual FIS is evaluated on exactly the persisted validation cases of the selected trained run(s). If selected runs use different validation cases, RuFLEX blocks adding the FIS instead of pretending the comparison is paired. FIS scores are not labeled calibrated probabilities.</p></section>}

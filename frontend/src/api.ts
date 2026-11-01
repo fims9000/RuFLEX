@@ -975,6 +975,15 @@ export type AnalysisComparison = {
   fis_id: string | null;
   fis_semantic_hash: string | null;
   metric_rows: Array<Record<string, string | number>>;
+  candidate_suggestion?: {
+    run_id: string;
+    model_kind: string;
+    metric: "f1" | "rmse";
+    direction: "max" | "min";
+    value: number;
+    candidate_count: number;
+    tie_break: "lowest_run_id";
+  } | null;
   scientific_note: string;
 };
 

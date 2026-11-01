@@ -25,6 +25,7 @@ from ruflex.application.training import load_latest_training_run, train_flat_neu
 from ruflex.application.project_integrity import inspect_project_integrity
 from ruflex.application.datasets import load_transform_pipeline_contract
 from ruflex.application.evidence import predict_run_sample
+from ruflex.domain.training import validation_candidate_suggestion
 
 
 def _binary_frame(rows: int = 36) -> pd.DataFrame:
@@ -968,6 +969,7 @@ def test_validation_comparison_persists_compatible_seed_runs_and_rejects_duplica
     assert comparison["run_ids"] == run_ids
     assert comparison["dataset_fingerprint"]
     assert comparison["validation_alignment"] == "mixed_cases"
+    assert comparison["candidate_suggestion"] is None
     assert len(comparison["validation_sample_identities"]) == 3
     assert len(set(comparison["validation_sample_identities"].values())) > 1
     assert "not a paired same-case" in comparison["scientific_note"].lower()
@@ -1047,6 +1049,41 @@ def test_validation_comparison_marks_same_cases_for_same_seed_cross_model_runs(t
     assert payload["validation_alignment"] == "same_cases"
     assert len(set(payload["validation_sample_identities"].values())) == 1
     assert "same persisted validation cases" in payload["scientific_note"].lower()
+    suggestion = payload["candidate_suggestion"]
+    assert suggestion["metric"] == "f1"
+    assert suggestion["direction"] == "max"
+    assert suggestion["candidate_count"] == 2
+    assert suggestion["run_id"] in {logistic.json()["run_id"], tree.json()["run_id"]}
+    assert suggestion["value"] == max(row["f1"] for row in payload["metric_rows"])
+    reopened = client.get(f"/api/projects/{session_id}/analyses/comparisons/{payload['comparison_id']}")
+    assert reopened.status_code == 200
+    assert reopened.json()["candidate_suggestion"] == suggestion
+
+    comparison_path = root / "analyses" / "comparisons" / f"{payload['comparison_id']}.json"
+    tampered = json.loads(comparison_path.read_text(encoding="utf-8"))
+    tampered["candidate_suggestion"]["value"] = -1.0
+    comparison_path.write_text(json.dumps(tampered), encoding="utf-8")
+    issues = inspect_project_integrity(root).issues
+    assert any(issue.code == "ANALYSIS_COMPARISON_EVIDENCE_MALFORMED" for issue in issues)
+
+
+def test_validation_candidate_suggestion_uses_declared_metric_and_exact_tie_break() -> None:
+    from uuid import UUID
+
+    low = str(UUID(int=1))
+    high = str(UUID(int=2))
+    binary_rows = [
+        {"subject_type": "training_run", "run_id": high, "model_kind": "decision_tree", "f1": 0.8},
+        {"subject_type": "training_run", "run_id": low, "model_kind": "logistic_regression", "f1": 0.8},
+    ]
+    suggestion = validation_candidate_suggestion(task="binary_classification", alignment="same_cases", rows=binary_rows)
+    assert suggestion is not None and str(suggestion.run_id) == low
+    assert suggestion.metric == "f1" and suggestion.tie_break == "lowest_run_id"
+    assert validation_candidate_suggestion(task="binary_classification", alignment="mixed_cases", rows=binary_rows) is None
+    regression_rows = [{**row, "rmse": 0.3 if row["run_id"] == high else 0.5} for row in binary_rows]
+    regression = validation_candidate_suggestion(task="regression", alignment="same_cases", rows=regression_rows)
+    assert regression is not None and str(regression.run_id) == high
+    assert regression.metric == "rmse" and regression.direction == "min"
 
 
 

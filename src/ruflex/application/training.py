@@ -30,7 +30,7 @@ from ruflex.core.membership import GaussianMembershipSpec
 from ruflex.core.variables import VariableSpec
 from ruflex.data.datasets import DatasetConfig, NormalizationArtifact, TabularDataset
 from ruflex.domain.fis import FISSpec
-from ruflex.domain.training import AnalysisComparison, AnalysisEvaluation, FinalTestEvaluation, FinalTestStabilityCase, FinalTestStabilityEvidence, CalibratedPrediction, CalibrationBin, CalibrationProvenance, CalibrationTransform, ConfusionMatrix, DecisionThresholdPolicy, EpochPoint, OperatingCurvePoint, PredictionRow, SplitProvenance, StudyJob, StudySeedState, ThresholdDecision, ThresholdProvenance, TrainingRun, TrainingStudy, TreePathEvidence, TreePathStep
+from ruflex.domain.training import AnalysisComparison, AnalysisEvaluation, FinalTestEvaluation, FinalTestStabilityCase, FinalTestStabilityEvidence, CalibratedPrediction, CalibrationBin, CalibrationProvenance, CalibrationTransform, ConfusionMatrix, DecisionThresholdPolicy, EpochPoint, OperatingCurvePoint, PredictionRow, SplitProvenance, StudyJob, StudySeedState, ThresholdDecision, ThresholdProvenance, TrainingRun, TrainingStudy, TreePathEvidence, TreePathStep, validation_candidate_suggestion
 from ruflex.models.flat_nf.model import FlatNeuroFuzzyModel
 from ruflex.models.specs import DecisionLayerSpec, ShallowModelSpec, TransparentBlockSpec
 from ruflex.training.config import FineTuningOptions, ModelTrainingConfig, RefinementOptions, StagewiseOptions
@@ -2556,6 +2556,7 @@ def create_validation_comparison(
         )
 
     comparison = AnalysisComparison(
+        schema_version=3,
         task=runs[0].task,
         target=runs[0].target,
         run_ids=[run.run_id for run in runs],
@@ -2565,8 +2566,10 @@ def create_validation_comparison(
         fis_id=fis_id,
         fis_semantic_hash=fis_semantic_hash,
         metric_rows=rows,
+        candidate_suggestion=validation_candidate_suggestion(task=runs[0].task, alignment=validation_alignment, rows=rows),
         scientific_note=(
             f"Comparison is validation-only. {alignment_note} "
+            "The suggested candidate, when available, only ranks the selected trained runs by validation F1 (classification) or RMSE (regression), with exact ties broken by lowest run ID; it does not train or tune candidates, rank a manual FIS, or establish deployment suitability. "
             "Locked final test data are not included. Manual FIS outputs are not labeled calibrated probabilities unless such semantics are explicitly established."
         ),
     )
