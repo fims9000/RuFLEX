@@ -1,5 +1,11 @@
 # Stability Lab RC2 source-release QA
 
+> **Historical document.** It does not describe the current Product V1.0.1
+> state. See [README](../README.md) and
+> [docs/CURRENT_STATE.md](CURRENT_STATE.md). This receipt records the RC2
+> release checkpoint, when A01 was still pre-freeze; the later A01 final freeze
+> does not rewrite this historical QA record.
+
 Status: PASS.
 
 ## Source subject
