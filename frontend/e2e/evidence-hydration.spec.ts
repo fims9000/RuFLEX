@@ -78,7 +78,7 @@ test("late artifact inventory from a closed project is ignored after switching p
   await page.getByLabel("Project path").fill(secondPath);
   await page.getByLabel("Project name").fill("Artifact Project B");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Artifact Project B", exact: true })).toBeVisible();
+  await expect(page.locator(".project-identity")).toContainText("Artifact Project B");
   releaseFirstRead();
   await expect(page.getByText(oldArtifactSha.slice(0, 12), { exact: false })).toHaveCount(0);
   await expect(page.getByText("No immutable artifacts yet.", { exact: true })).toBeVisible();
@@ -104,7 +104,7 @@ test("older artifact inventory cannot overwrite a newer post-save refresh", asyn
   await page.getByLabel("Project name").fill("Artifact order");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
   await expect.poll(() => artifactReads).toBe(1);
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
   await page.getByLabel("CSV data").fill("x,target\n1,0\n2,1\n");
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();

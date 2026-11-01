@@ -10,7 +10,7 @@ test("recent project history reopens local projects after a browser reload and c
   await page.getByLabel("Project path").fill(path);
   await page.getByLabel("Project name").fill("Recent Alpha project");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Recent Alpha project", exact: true })).toBeVisible();
+  await expect(page.locator(".project-identity")).toContainText("Recent Alpha project");
   await page.getByRole("button", { name: "Close", exact: true }).click();
   await expect(page.getByRole("region", { name: "Recent projects" })).toBeVisible();
   await page.getByLabel("Project path").fill(secondPath);
@@ -25,7 +25,7 @@ test("recent project history reopens local projects after a browser reload and c
   await expect(recent).not.toContainText("Recent Alpha project");
   await expect(recent).toContainText("Second recent project");
   await recent.locator(".recent-project-item").filter({ hasText: "Second recent project" }).click();
-  await expect(page.getByRole("heading", { name: "Second recent project", exact: true })).toBeVisible();
+  await expect(page.locator(".project-identity")).toContainText("Second recent project");
 
   await page.getByRole("button", { name: "Close", exact: true }).click();
   await page.getByRole("region", { name: "Recent projects" }).getByRole("button", { name: "Forget history", exact: true }).click();
@@ -49,6 +49,6 @@ test("a missing recent project explains recovery and clears stale errors when hi
   await page.getByLabel("Project path").fill(replacementPath);
   await page.getByLabel("Project name").fill("Replacement project");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Replacement project", exact: true })).toBeVisible();
+  await expect(page.locator(".project-identity")).toContainText("Replacement project");
   await expect(page.getByRole("region", { name: "Recent projects" }).getByRole("alert")).toHaveCount(0);
 });

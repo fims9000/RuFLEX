@@ -30,7 +30,7 @@ test("Studio imports XLSX with an explicit target and preserves it after rejecti
   await page.getByLabel("Project path").fill(path);
   await page.getByLabel("Project name").fill("XLSX import");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
 
   let importRequests = 0;
   let inspectRequests = 0;
@@ -129,7 +129,7 @@ test("Studio invalidates a stale CSV inspection when the candidate is edited", a
   await page.getByLabel("Project path").fill(path);
   await page.getByLabel("Project name").fill("CSV inspection refresh");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
   await expect(page.getByRole("status")).toContainText("editable draft only");
   await page.getByLabel("CSV data").fill("temperature,target\n10,0\n20,1\n");
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
@@ -149,7 +149,7 @@ test("Studio drops roles for columns removed from a re-inspected CSV draft", asy
   await page.getByLabel("Project path").fill(path);
   await page.getByLabel("Project name").fill("CSV schema roles");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
 
   await page.getByLabel("CSV data").fill("old_id,old_feature,old_target\na,1,0\nb,2,1\n");
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
@@ -171,7 +171,7 @@ test("Studio does not carry ID and exclusion roles into a different selected fil
   await page.getByLabel("Project path").fill(path);
   await page.getByLabel("Project name").fill("File roles");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
 
   await page.getByLabel("Dataset CSV or XLSX file").setInputFiles({
     name: "first.csv",
@@ -202,7 +202,7 @@ test("Studio keeps the edited CSV draft separate from an inspected file", async 
   await page.getByLabel("Project path").fill(path);
   await page.getByLabel("Project name").fill("Source switch");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
 
   await page.getByLabel("Dataset CSV or XLSX file").setInputFiles({
     name: "selected.csv",
@@ -228,7 +228,7 @@ test("Studio excludes an ordinary feature without assigning it an ID role and re
   await page.getByLabel("Project path").fill(path);
   await page.getByLabel("Project name").fill("Feature scope");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
   await page.getByLabel("CSV data").fill("entity_id,temperature,leak_hint,outcome\na,10,1,0\nb,20,0,1\n");
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
   await page.getByRole("combobox", { name: "Role for outcome" }).selectOption("target");

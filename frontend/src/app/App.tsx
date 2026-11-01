@@ -10,7 +10,7 @@ import { ChartSurface } from "../charts/ChartSurface";
 import { chartFixtures } from "../charts/fixtureOptions";
 import { FlowGrammar } from "../flow/FlowGrammar";
 import { ProjectLineage } from "../flow/ProjectLineage";
-import { analysisOverviewLabel, evidenceOverviewLabel, projectModelOverviewLabel, projectStudyNextStep, trainingStudyOverviewLabel } from "./projectOverview";
+import { projectStudyNextStep } from "./projectOverview";
 import {
   ArtifactRecord,
   ProductApiError,
@@ -61,7 +61,8 @@ import { EvaluationWorkspace } from "../features/training/EvaluationWorkspace";
 import { ProjectExplorer } from "../explorer/ProjectExplorer";
 
 type Panels = "explorer" | "inspector" | "bottom";
-const WORKBENCH_TITLES_RU: Record<string, string> = { PROJECT: "ПРОЕКТ", DATA: "ДАННЫЕ", MODELS: "МОДЕЛИ", STUDIES: "ОБУЧЕНИЕ", ANALYSES: "АНАЛИЗ", EVIDENCE: "ДОКАЗАТЕЛЬСТВА" };
+const WORKBENCH_TITLES_RU: Record<string, string> = { PROJECT: "Проект", DATA: "Данные", MODELS: "Модели", STUDIES: "Обучение", ANALYSES: "Анализ", EVIDENCE: "Доказательства" };
+const WORKBENCH_TITLES_EN: Record<string, string> = { PROJECT: "Project", DATA: "Data", MODELS: "Models", STUDIES: "Training", ANALYSES: "Analysis", EVIDENCE: "Evidence" };
 const MAX_DATASET_UPLOAD_BYTES = 5_000_000;
 const SYNTHETIC_PRACTICE_CSV = [
   "entity_id,temperature,torque,target",
@@ -1826,6 +1827,7 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
   const explorer = (
     <ProjectExplorer
       projectName={project?.name}
+      emptyProjectVerified={overviewContextStatus === "loaded" && datasetStateStatus === "none"}
       dataset={datasetState}
       fis={fis}
       trainingRun={trainingRun}
@@ -1887,23 +1889,14 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
       onClose={close}
       inspector={inspector}
     >
-      <div className="workspace-header">
+      {(!project || active !== "PROJECT") && <div className="workspace-header">
         <div>
-          <span className="eyebrow">{ui(active, WORKBENCH_TITLES_RU[active] ?? active)}</span>
-          <h1>{project ? project.name : ui("Create or open a RuFLEX project", "Создайте или откройте проект")}</h1>
-          <p>{ui("Build models, inspect results and keep the evidence together in one project.", "Данные, модели и результаты — в одном проекте.")}</p>
+          <h1>{project ? ui(WORKBENCH_TITLES_EN[active] ?? active, WORKBENCH_TITLES_RU[active] ?? active) : ui("Create or open a RuFLEX project", "Создайте или откройте проект")}</h1>
           {project && datasetStateStatus === "available" && datasetState?.contract.source_artifact_sha256 === SYNTHETIC_PRACTICE_SHA256 && (
             <p className="practice-context" data-testid="synthetic-practice-context">{ui("Synthetic practice data · results are not benchmark or research evidence.", "Учебные данные · результаты не являются исследовательским доказательством.")}</p>
           )}
         </div>
-        {project && (
-          <StatusBadge tone={project.read_only ? "warning" : "success"}>
-            {project.read_only
-              ? ui("Read-only session", "Только чтение")
-              : ui("Project open", "Проект открыт")}
-          </StatusBadge>
-        )}
-      </div>
+      </div>}
       {!project ? (
         <section className="project-start">
           <form onSubmit={(event) => submit(event, "create")}>
@@ -2480,9 +2473,8 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
           {overviewContextStatus === "loaded" && datasetStateStatus === "none" && !fis && !trainingRun && (
             <section className="quick-start-card" aria-label={ui("Optional quick start", "Начало работы")}>
               <div>
-                <span className="eyebrow">{ui("OPTIONAL QUICK START", "ПЕРВЫЙ ШАГ")}</span>
                 <h2>{ui("Start with your data", "Добавьте данные")}</h2>
-                <p>{ui("Review a CSV or Excel file, choose what to predict, then confirm the dataset. Opening Data does not start training or unlock the held-out test set.", "Загрузите CSV или Excel и укажите целевой столбец.")}</p>
+                <p>{ui("Import a CSV or Excel file and choose the target column.", "Загрузите CSV или Excel и укажите целевой столбец.")}</p>
               </div>
               <Button view="action" onClick={() => setActive("DATA")} data-ruflex-action="project.quickstart.data">{ui("Review or import data", "Открыть данные")}</Button>
             </section>
@@ -2491,15 +2483,13 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
             <section className="quick-start-card" aria-label={ui("Optional next step", "Следующий шаг")}>
               {projectStudyNextStep({ status: trainingStudyStatus, hasStudy: Boolean(trainingStudy), hasTrainingRun: Boolean(trainingRun) }) === "TRAIN" && <>
               <div>
-                <span className="eyebrow">{ui("OPTIONAL NEXT STEP", "СЛЕДУЮЩИЙ ШАГ")}</span>
                 <h2>{ui("Your dataset is ready for a model fit", "Данные готовы к обучению")}</h2>
-                <p>{ui("Open Training to review the model and split settings. Nothing runs until you choose “Run real training”; the held-out test split stays locked.", "Проверьте модель и разбиение перед запуском. Финальный тест останется закрыт.")}</p>
+                <p>{ui("Review the model and split settings before training.", "Проверьте модель и разбиение перед запуском.")}</p>
               </div>
               <Button view="action" onClick={() => setActive("STUDIES")} data-ruflex-action="project.quickstart.training">{ui("Open Training", "Открыть обучение")}</Button>
               </>}
               {projectStudyNextStep({ status: trainingStudyStatus, hasStudy: Boolean(trainingStudy), hasTrainingRun: Boolean(trainingRun) }) === "OPEN_SAVED_STUDY" && <>
                 <div>
-                  <span className="eyebrow">{ui("SAVED WORK", "СОХРАНЕНО")}</span>
                   <h2>{ui("Your TrainingStudy is ready to inspect", "Эксперимент готов к просмотру")}</h2>
                   <p>{ui(`${trainingStudy?.name} · ${trainingStudy?.seed_runs.length} persisted runs. Open the study to review its selected run and validation evidence; no new fit is started.`, `${trainingStudy?.name} · ${trainingStudy?.seed_runs.length} запусков. Новое обучение не начнётся.`)}</p>
                 </div>
@@ -2509,55 +2499,18 @@ export function App({ theme, setTheme }: { theme: StudioTheme; setTheme: (theme:
               {projectStudyNextStep({ status: trainingStudyStatus, hasStudy: Boolean(trainingStudy), hasTrainingRun: Boolean(trainingRun) }) === "UNAVAILABLE" && <div role="alert"><strong>{ui("Saved study history could not be verified, so no training next step is suggested.", "Историю обучения проверить не удалось.")}</strong><p>{trainingStudyError}</p><Button view="outlined" onClick={() => setTrainingStudyReload((current) => current + 1)}>{ui("Retry study history", "Повторить проверку")}</Button></div>}
             </section>
           )}
-          <div className="project-overview-grid">
-            <button onClick={() => setActive("DATA")}>
-              <strong>{ui("Data", "Данные")}</strong><span>{ui("Import and inspect", "Импорт и просмотр")}</span>
-              <small>
-                {datasetState
-                  ? ui(`${datasetState.profile.row_count} rows`, `${datasetState.profile.row_count} строк`)
-                  : datasetStateStatus === "loading" || datasetStateStatus === "idle" ? ui("Checking dataset…", "Проверка данных…") : datasetStateStatus === "error" ? ui("Dataset state unavailable", "Данные недоступны") : ui("No dataset", "Нет данных")}
-              </small>
-            </button>
-            <button onClick={() => setActive("MODELS")}>
-              <strong>{ui("Models", "Модели")}</strong><span>{ui("Edit fuzzy rules", "Нечёткие правила")}</span>
-              <small>{projectModelOverviewLabel({
-                status: overviewContextStatus,
-                fisName: fis?.name ?? null,
-                trainingModelKind: trainingRun?.model_kind ?? null,
-              })}</small>
-            </button>
-            <button onClick={() => setActive("STUDIES")}>
-              <strong>{ui("Studies", "Обучение")}</strong><span>{ui("Train and compare", "Запуски и сравнение")}</span>
-              <small>
-                {trainingStudyOverviewLabel({
-                  status: trainingStudyStatus,
-                  studyName: trainingStudy?.name ?? null,
-                  runCount: trainingStudy?.seed_runs.length ?? null,
-                  hasTrainingRun: Boolean(trainingRun),
-                })}
-              </small>
-            </button>
-            <button onClick={() => setActive("ANALYSES")}>
-              <strong>{ui("Analyses", "Анализ")}</strong><span>{ui("Review validation", "Оценка на валидации")}</span>
-              <small>
-                {analysisOverviewLabel({
-                  hasValidationEvaluation: Boolean(analysisEvaluation),
-                  hasTrainingRun: Boolean(trainingRun),
-                })}
-              </small>
-            </button>
-            <button onClick={() => setActive("EVIDENCE")}>
-              <strong>{ui("Evidence", "Доказательства")}</strong><span>{ui("Explain and audit", "Объяснения и аудит")}</span>
-              <small>
-                {evidenceOverviewLabel(Boolean(fisEvaluation))}
-              </small>
-            </button>
-          </div>
+          {overviewContextStatus === "loaded" && trainingRun && <section className="quick-start-card" aria-label={ui("Continue work", "Продолжить работу")}>
+            <div>
+              <h2>{analysisEvaluation ? ui("Review saved validation results", "Просмотрите результаты валидации") : ui("Evaluate the trained model", "Оцените обученную модель")}</h2>
+              <p>{ui("Open Analysis to inspect the selected run and its validation evidence.", "Откройте анализ, чтобы проверить модель и результаты на валидации.")}</p>
+            </div>
+            <Button view="action" onClick={() => setActive("ANALYSES")}>{ui("Open Analysis", "Открыть анализ")}</Button>
+          </section>}
           {(lineageStatus === "error" || (lineageStatus === "loaded" && lineage?.nodes.some((node) => node.target !== "PROJECT"))) && <div className="project-lineage-panel">
             <div>
               <span className="eyebrow">{ui("PROJECT LINEAGE", "ИСТОРИЯ ПРОЕКТА")}</span>
               <h3>{ui("Persisted provenance graph", "Связи сохранённых объектов")}</h3>
-              <p>{ui("Edges come only from saved object references; the graph is not a required execution order.", "Граф показывает, как связаны данные, модели и результаты.")}</p>
+              <p>{ui("Saved data, models and results.", "Связи сохранённых данных, моделей и результатов.")}</p>
             </div>
             <ProjectLineage
               graph={lineage}

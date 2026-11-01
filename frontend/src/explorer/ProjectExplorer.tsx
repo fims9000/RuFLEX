@@ -40,6 +40,7 @@ export function assuranceGateSummary(assurance: AssuranceCase): string {
 
 export function ProjectExplorer({
   projectName,
+  emptyProjectVerified = false,
   dataset,
   fis,
   trainingRun,
@@ -76,6 +77,7 @@ export function ProjectExplorer({
   onSelect,
 }: {
   projectName?: string;
+  emptyProjectVerified?: boolean;
   dataset: DatasetState | null;
   fis: FISSpec | null;
   trainingRun: TrainingRun | null;
@@ -115,6 +117,8 @@ export function ProjectExplorer({
     (artifact) =>
       artifact.media_type === "application/vnd.ruflex.fis-trace+json",
   ).length;
+  const hasSavedObjects = Boolean(dataset || fis || trainingRun || trainingStudy || stabilityAnalysis || stabilityGatePolicy || evaluation || analysisEvaluation || analysisComparison || calibrationTransform || decisionThreshold || finalTestEvaluation || sliceAnalysis || generalization || treeEvidence || explanation || explanationCheck || behaviorResult || reproducibility || exhaustive || assurance || expertCorrection || traceCount);
+  const hasReadError = stabilityAnalysisHydrationStatus === "error" || evaluationStatus === "error" || treeEvidenceHydrationStatus === "error";
   const item = (target: ObjectTarget, label: string, detail?: string) => (
     <button
       className={
@@ -128,38 +132,21 @@ export function ProjectExplorer({
   );
   return (
     <div className="project-object-tree">
-      {projectName ? (
-        <>
-          <div className="project-tree">
-            <span className="tree-dot">◆</span>
-            <span>{projectName}</span>
-          </div>
-          <div className="tree-subtitle">{ui("canonical project objects", "сохранённые объекты проекта")}</div>
-        </>
-      ) : (
+      {!projectName && (
         <div className="tree-subtitle">{ui("No project open", "Проект не открыт")}</div>
       )}
-      <section>
+      {projectName && emptyProjectVerified && !hasSavedObjects && !hasReadError && <p className="tree-empty">{ui("No saved objects yet", "Сохранённых объектов пока нет")}</p>}
+      {dataset && <section>
         <strong>{ui("DATA", "ДАННЫЕ")}</strong>
-        {dataset ? (
-          item(
-            "DATA",
-            dataset.contract.target,
-            ui(`${dataset.profile.row_count} rows`, `${dataset.profile.row_count} строк`),
-          )
-        ) : (
-          <span className="tree-empty">{ui("No dataset yet", "Данных пока нет")}</span>
-        )}
-      </section>
-      <section>
+        {item("DATA", dataset.contract.target, ui(`${dataset.profile.row_count} rows`, `${dataset.profile.row_count} строк`))}
+      </section>}
+      {(dataset || fis || trainingRun || expertCorrection) && <section>
         <strong>{ui("MODELS", "МОДЕЛИ")}</strong>
         {fis ? (
           item("MODELS", fis.name, fis.system_type)
         ) : dataset ? (
           item("MODELS", ui("New FIS from dataset", "Новая нечёткая модель"), ui("create model", "создать модель"))
-        ) : (
-          <span className="tree-empty">{ui("Confirm data to create a model", "Сначала подтвердите данные")}</span>
-        )}
+        ) : null}
         {trainingRun &&
           item(
             "MODELS",
@@ -171,8 +158,8 @@ export function ProjectExplorer({
           ui("Expert correction", "Экспертная правка"),
           ui(`${expertCorrection.fitted_rule_ids.length} consequents · ${expertCorrection.test_status}`, `${expertCorrection.fitted_rule_ids.length} заключений · ${expertCorrection.test_status}`),
         )}
-      </section>
-      <section>
+      </section>}
+      {(trainingStudy || trainingRun || stabilityAnalysis || stabilityAnalysisHydrationStatus === "error") && <section>
         <strong>{ui("STUDIES", "ЭКСПЕРИМЕНТЫ")}</strong>
         {trainingStudy ? (
           <div className="object-tree-study">
@@ -201,22 +188,13 @@ export function ProjectExplorer({
             ui(`Training run ${trainingRun.run_id.slice(0, 8)}`, `Обучение ${trainingRun.run_id.slice(0, 8)}`),
             ui(`${trainingRun.trajectory.length} epochs`, `${trainingRun.trajectory.length} эпох`),
           )
-        ) : (
-          <span className="tree-empty">{ui("No studies yet", "Экспериментов пока нет")}</span>
-        )}
+        ) : null}
         {stabilityAnalysis && item("STUDIES", ui("Study Stability Analysis", "Анализ устойчивости"), ui(`${stabilityAnalysis.case_count} validation cases · HCIR ${stabilityAnalysis.high_confidence_instability_rate === null ? "N/A" : `${(stabilityAnalysis.high_confidence_instability_rate * 100).toFixed(1)}%`}`, `${stabilityAnalysis.case_count} случаев валидации · HCIR ${stabilityAnalysis.high_confidence_instability_rate === null ? "Н/Д" : `${(stabilityAnalysis.high_confidence_instability_rate * 100).toFixed(1)}%`}`))}
-        {!stabilityAnalysis && (stabilityAnalysisHydrationStatus === "idle" || stabilityAnalysisHydrationStatus === "loading") && <span className="tree-empty">{ui("Checking saved stability analyses…", "Проверка анализа устойчивости…")}</span>}
         {!stabilityAnalysis && stabilityAnalysisHydrationStatus === "error" && <div className="tree-empty" role="alert"><span>{ui("Saved stability analysis lookup unavailable.", "Анализ устойчивости недоступен.")} {stabilityAnalysisHydrationError}</span><button onClick={onRetryStabilityAnalysis}>{ui("Retry stability check", "Повторить проверку")}</button></div>}
-      </section>
-      <section>
+      </section>}
+      {(analysisEvaluation || stabilityGatePolicy || analysisComparison || calibrationTransform || decisionThreshold || finalTestEvaluation || sliceAnalysis || generalization) && <section>
         <strong>{ui("ANALYSES", "АНАЛИЗ")}</strong>
-        {analysisEvaluation ? (
-          item("ANALYSES", ui("Validation evaluation", "Оценка на валидации"), ui(`${Object.keys(analysisEvaluation.metrics).length} metrics`, `${Object.keys(analysisEvaluation.metrics).length} метрик`))
-        ) : trainingRun ? (
-          item("ANALYSES", ui("Unsaved validation analysis", "Анализ не сохранён"), trainingRun.task)
-        ) : (
-          <span className="tree-empty">{ui("No analyses yet", "Анализа пока нет")}</span>
-        )}
+        {analysisEvaluation && item("ANALYSES", ui("Validation evaluation", "Оценка на валидации"), ui(`${Object.keys(analysisEvaluation.metrics).length} metrics`, `${Object.keys(analysisEvaluation.metrics).length} метрик`))}
         {stabilityGatePolicy && item("ANALYSES", ui("Stability-Aware Review Gate", "Порог проверки устойчивости"), ui(`${stabilityGatePolicy.decisions.filter((item) => item.disposition === "REVIEW").length} REVIEW`, `${stabilityGatePolicy.decisions.filter((item) => item.disposition === "REVIEW").length} на проверку`))}
         {analysisComparison && item("ANALYSES", ui("Model comparison", "Сравнение моделей"), ui(`${analysisComparison.metric_rows.length} subjects`, `${analysisComparison.metric_rows.length} объекта`))}
         {calibrationTransform && item("ANALYSES", ui("Calibration transform", "Калибровка"), `${calibrationTransform.method} · ${ui("validation", "валидация")}`)}
@@ -224,20 +202,15 @@ export function ProjectExplorer({
         {finalTestEvaluation && item("ANALYSES", ui("Final-test evaluation", "Оценка на финальном тесте"), ui(`${finalTestEvaluation.test_row_count} rows · frozen policy`, `${finalTestEvaluation.test_row_count} строк · правило зафиксировано`))}
         {sliceAnalysis && item("ANALYSES", ui("Slice analysis", "Анализ срезов"), ui(`${sliceAnalysis.results.length} slices · ${sliceAnalysis.metric}`, `${sliceAnalysis.results.length} срезов · ${sliceAnalysis.metric}`))}
         {generalization && item("ANALYSES", ui("Generalization contract", "Область применимости"), generalization.contract.frozen_at ? ui("frozen", "зафиксирована") : ui("draft", "черновик"))}
-      </section>
-      <section>
+      </section>}
+      {(evaluation || treeEvidence || explanation || explanationCheck || behaviorResult || reproducibility || exhaustive || assurance || traceCount > 1 || evaluationStatus === "error" || treeEvidenceHydrationStatus === "error") && <section>
         <strong>{ui("EVIDENCE", "ДОКАЗАТЕЛЬСТВА")}</strong>
         {evaluation ? (
           item("EVIDENCE", ui("Exact trace", "Точный расчёт"), evaluation.evaluation.output_name)
-        ) : evaluationStatus === "loading" || evaluationStatus === "idle" ? (
-          <span className="tree-empty">{ui("Checking saved exact traces…", "Проверка сохранённых расчётов…")}</span>
         ) : evaluationStatus === "error" ? (
           <div className="tree-empty" role="alert"><span>{ui("Saved trace lookup unavailable.", "Сохранённый расчёт недоступен.")} {evaluationError}</span><button onClick={onRetryEvaluation}>{ui("Retry trace check", "Повторить проверку")}</button></div>
-        ) : (
-          <span className="tree-empty">{ui("No exact trace evidence yet", "Точных расчётов пока нет")}</span>
-        )}
+        ) : null}
         {treeEvidence && item("EVIDENCE", ui("Exact tree path", "Путь дерева"), ui(`leaf ${treeEvidence.leaf_id}`, `лист ${treeEvidence.leaf_id}`))}
-        {!treeEvidence && (treeEvidenceHydrationStatus === "idle" || treeEvidenceHydrationStatus === "loading") && <span className="tree-empty">{ui("Checking saved tree paths…", "Проверка путей дерева…")}</span>}
         {!treeEvidence && treeEvidenceHydrationStatus === "error" && <div className="tree-empty" role="alert"><span>{ui("Saved tree-path lookup unavailable.", "Путь дерева недоступен.")} {treeEvidenceHydrationError}</span><button onClick={onRetryTreeEvidence}>{ui("Retry tree-path check", "Повторить проверку")}</button></div>}
         {explanation && item("EVIDENCE", ui(`Post-hoc ${explanation.family.replaceAll("_", " ")}`, `Объяснение ${explanation.family.replaceAll("_", " ")}`), explanation.epistemic_category)}
         {explanationCheck && item("EVIDENCE", ui("Explanation check", "Проверка объяснения"), explanationCheck.status)}
@@ -248,7 +221,7 @@ export function ProjectExplorer({
         {traceCount > 1 && (
           <small className="tree-count">{ui(`${traceCount} persisted traces`, `${traceCount} сохранённых расчётов`)}</small>
         )}
-      </section>
+      </section>}
     </div>
   );
 }

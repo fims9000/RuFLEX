@@ -6,7 +6,7 @@ test("PRODUCT-09 persists exact finite Decision Tree Exhaustive Lab evidence", a
   test.setTimeout(60_000); const path=join(tmpdir(), `ruflex-exhaustive-${Date.now()}`); const rows=["temperature,torque,target"];
   for(let i=0;i<45;i+=1) rows.push(`${10+i},${20+(i*7)%60},${10+i+20+(i*7)%60>62?1:0}`);
   await page.goto("/"); await page.getByLabel("Project path").fill(path); await page.getByLabel("Project name").fill("Exhaustive route"); await page.getByRole("button",{name:"Create project",exact:true}).click();
-  await page.getByRole("button",{name:/Data.*No dataset/}).click(); await page.getByLabel("CSV data").fill(`${rows.join("\n")}\n`); await page.getByRole("button",{name:"Inspect dataset",exact:true}).click(); await page.getByRole("button",{name:"Confirm dataset contract",exact:true}).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click(); await page.getByLabel("CSV data").fill(`${rows.join("\n")}\n`); await page.getByRole("button",{name:"Inspect dataset",exact:true}).click(); await page.getByRole("button",{name:"Confirm dataset contract",exact:true}).click();
   await page.getByRole("button",{name:"S",exact:true}).click(); await page.getByLabel("Training model").selectOption("decision_tree"); await page.getByRole("button",{name:"Run real training",exact:true}).click(); await expect(page.locator(".run-provenance")).toContainText("model artifact persisted",{timeout:30000});
   await page.getByRole("button",{name:"E",exact:true}).click();
   let exhaustivePostCount = 0;

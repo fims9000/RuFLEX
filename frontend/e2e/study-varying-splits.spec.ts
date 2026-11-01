@@ -16,7 +16,7 @@ test("a varying-split Study does not reuse a previously frozen fixed SplitContra
   await page.getByLabel("Project path").fill(path);
   await page.getByLabel("Project name").fill("Varying split practice");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
   await page.getByLabel("CSV data").fill(`${rows.join("\n")}\n`);
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();

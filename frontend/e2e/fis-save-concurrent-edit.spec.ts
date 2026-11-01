@@ -30,7 +30,7 @@ test("edits made during a save remain as an unsaved draft", async ({ page }) => 
   await page.getByLabel("Project path").fill(projectPath);
   await page.getByLabel("Project name").fill("FIS save race");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
   await page.getByRole("button", { name: /New FIS from dataset/ }).click();
@@ -82,7 +82,7 @@ test("an undo made during save remains selected when the persisted result hydrat
   await page.getByLabel("Project path").fill(projectPath);
   await page.getByLabel("Project name").fill("FIS undo save race");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
   await page.getByRole("button", { name: /New FIS from dataset/ }).click();
@@ -131,7 +131,7 @@ test("exact retry after an uncertain FIS save preserves edits made while the ret
   await page.getByLabel("Project path").fill(projectPath);
   await page.getByLabel("Project name").fill("FIS exact retry draft preservation");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
   await page.getByRole("button", { name: /New FIS from dataset/ }).click();
@@ -184,7 +184,7 @@ test("dataset range response cannot overwrite an FIS draft edited while it is pe
   await page.getByLabel("Project path").fill(projectPath);
   await page.getByLabel("Project name").fill("FIS dataset range race");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
   await page.getByRole("button", { name: /New FIS from dataset/ }).click();
@@ -226,7 +226,7 @@ test("MATLAB import cannot race an in-flight FIS save", async ({ page }) => {
   await page.getByLabel("Project path").fill(projectPath);
   await page.getByLabel("Project name").fill("FIS write mutex");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
   await page.getByRole("button", { name: /New FIS from dataset/ }).click();

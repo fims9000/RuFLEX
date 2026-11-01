@@ -11,7 +11,7 @@ test("project entry validates required inputs and guides duplicate paths to open
   await page.getByLabel("Project path").fill(projectPath);
   await page.getByLabel("Project name").fill("Existing project");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Existing project", exact: true })).toBeVisible();
+  await expect(page.locator(".project-identity")).toContainText("Existing project");
   await page.getByRole("button", { name: "Close", exact: true }).click();
 
   await page.getByLabel("Project path").fill(projectPath);
@@ -19,5 +19,5 @@ test("project entry validates required inputs and guides duplicate paths to open
   await page.getByRole("button", { name: "Create project", exact: true }).click();
   await expect(page.getByTestId("project-form-error")).toContainText("Choose Open project to reopen it");
   await page.getByRole("button", { name: "Open project", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Existing project", exact: true })).toBeVisible();
+  await expect(page.locator(".project-identity")).toContainText("Existing project");
 });

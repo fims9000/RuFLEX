@@ -34,7 +34,7 @@ test("accessibility baseline covers the primary Studio workspaces", async ({ pag
     await expect(navigation.getByTitle(section).locator(".rail-label")).toBeVisible();
   }
   await page.screenshot({ path: testInfo.outputPath("visible-workbench-navigation.png") });
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
   await page.getByLabel("CSV data").fill("x,target\n1,0\n2,1\n3,0\n4,1\n5,0\n6,1\n7,0\n8,1\n");
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
   await assertBaseline(page, "Data");
@@ -57,6 +57,8 @@ test("dark Studio keeps the project entry readable", async ({ page }) => {
   await page.setViewportSize({ width: 920, height: 720 });
   await page.goto("/");
   await page.getByLabel("Toggle theme").click();
+  await expect(page.locator("html")).toHaveAttribute("data-ruflex-theme", "dark");
+  await expect(page.locator(".g-root_theme_dark")).toBeVisible();
   await assertBaseline(page, "Dark project entry");
   await expect(page.getByLabel("Project path")).toBeVisible();
 });

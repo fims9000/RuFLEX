@@ -41,7 +41,7 @@ test("a persisted TrainingRun response from a closed project cannot hydrate the 
   await page.getByLabel("Project path").fill(sourcePath);
   await page.getByLabel("Project name").fill("Training source project");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
   await page.getByLabel("CSV data").fill(trainingCsv());
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
@@ -53,7 +53,7 @@ test("a persisted TrainingRun response from a closed project cannot hydrate the 
   await page.getByRole("button", { name: "Close", exact: true }).click();
   await page.getByLabel("Project path").fill(nextPath);
   await page.getByRole("button", { name: "Open project", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Next run-free project", exact: true })).toBeVisible();
+  await expect(page.locator(".project-identity")).toContainText("Next run-free project");
   await page.getByRole("button", { name: "S", exact: true }).click();
 
   try {
@@ -62,7 +62,7 @@ test("a persisted TrainingRun response from a closed project cannot hydrate the 
     );
     releaseTraining();
     await trainingResponse;
-    await expect(page.locator(".project-object-tree")).toContainText("No studies yet");
+    await expect(page.locator(".project-object-tree")).toContainText("No saved objects yet");
     await expect(page.locator(".project-object-tree")).not.toContainText(persistedRunId.slice(0, 8));
     await expect(page.locator(".project-object-tree")).not.toContainText("Decision Tree");
   } finally {
@@ -92,7 +92,7 @@ test("a TrainingRun response after workbench navigation still updates its active
   await page.getByLabel("Project path").fill(path);
   await page.getByLabel("Project name").fill("Same-session navigation project");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
   await page.getByLabel("CSV data").fill(trainingCsv());
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();

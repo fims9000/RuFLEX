@@ -17,7 +17,7 @@ test("a persisted FIS response from an unmounted workbench cannot hydrate the ne
   await page.getByLabel("Project path").fill(firstPath);
   await page.getByLabel("Project name").fill("FIS source project");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
   await page.getByRole("button", { name: "M", exact: true }).click();

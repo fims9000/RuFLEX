@@ -23,7 +23,7 @@ test("Studio freezes selected TRAIN-only scaling in a run and restores it after 
   await page.getByLabel("Project path").fill(path);
   await page.getByLabel("Project name").fill("Scaling selection");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
   await page.getByLabel("CSV data").fill(trainingCsv());
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
@@ -57,7 +57,7 @@ test("Studio offers the declared linear regression kind for a regression dataset
   await page.getByLabel("Project path").fill(path);
   await page.getByLabel("Project name").fill("Regression kind contract");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
   await page.getByLabel("CSV data").fill(rows.join("\n"));
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
   await page.getByLabel("Task").selectOption("regression");
@@ -119,7 +119,7 @@ test("a near-exact regression Study remains visible through its metric chart and
   await page.getByLabel("Project path").fill(path);
   await page.getByLabel("Project name").fill("Regression Study chart");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
   await page.getByLabel("CSV data").fill(rows.join("\n"));
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
   await page.getByLabel("Task").selectOption("regression");
@@ -160,7 +160,7 @@ test("a rejected GROUP split can be corrected without uncertain-write recovery",
   await page.getByLabel("Project path").fill(path);
   await page.getByLabel("Project name").fill("Invalid split recovery");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
   await page.getByLabel("CSV data").fill(rows.join("\n"));
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
@@ -214,7 +214,7 @@ test("PRODUCT-02 performs real neuro-fuzzy training, validation evaluation and r
   await page.getByLabel("Project name").fill("Training route");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
 
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
   await page.getByLabel("CSV data").fill(trainingCsv());
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
   await expect(page.getByText(/Rows: 36/)).toBeVisible();
@@ -359,7 +359,7 @@ test("PRODUCT-02b retries a persisted decision-tree capability check without cla
   await page.getByLabel("Project path").fill(path);
   await page.getByLabel("Project name").fill("Tree capability retry");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
   await page.getByLabel("CSV data").fill(trainingCsv());
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
@@ -465,11 +465,11 @@ test("PRODUCT-02b retries a persisted decision-tree capability check without cla
     await treeNode.click();
     await treeReadStarted;
     await runNode.click();
-    await expect(page.locator(".workspace-header .eyebrow")).toHaveText("STUDIES");
+    await expect(page.locator(".workspace-header h1")).toHaveText("Training");
   } finally {
     releaseTreeRead();
   }
-  await expect(page.locator(".workspace-header .eyebrow")).toHaveText("STUDIES");
+  await expect(page.locator(".workspace-header h1")).toHaveText("Training");
 });
 
 test("Studio traces a categorical tree sample through frozen ordinal codes and reopens it", async ({ page }) => {
@@ -484,7 +484,7 @@ test("Studio traces a categorical tree sample through frozen ordinal codes and r
   await page.getByLabel("Project path").fill(path);
   await page.getByLabel("Project name").fill("Categorical tree path");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
   await page.getByLabel("CSV data").fill(rows.join("\n"));
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
@@ -575,7 +575,7 @@ test("PRODUCT-02 blocks validation policy changes when final-test access status 
   await page.getByLabel("Project path").fill(path);
   await page.getByLabel("Project name").fill("Final-test boundary recovery");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
   await page.getByLabel("CSV data").fill(trainingCsv());
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();

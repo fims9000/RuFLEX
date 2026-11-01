@@ -21,7 +21,7 @@ test("default FIS creation disables duplicate requests while the model is being 
   await page.getByLabel("Project path").fill(projectPath);
   await page.getByLabel("Project name").fill("FIS creation guard");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
   await page.getByRole("button", { name: /New FIS from dataset/ }).click();

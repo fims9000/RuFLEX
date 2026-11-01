@@ -45,7 +45,7 @@ test("a persisted AssuranceCase response from a closed project cannot hydrate th
   await page.getByRole("button", { name: "Close", exact: true }).click();
   await page.getByLabel("Project path").fill(nextPath);
   await page.getByRole("button", { name: "Open project", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Next assurance-free project", exact: true })).toBeVisible();
+  await expect(page.locator(".project-identity")).toContainText("Next assurance-free project");
   await page.getByTitle("EVIDENCE").click();
 
   try {

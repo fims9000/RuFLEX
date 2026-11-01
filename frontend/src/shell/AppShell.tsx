@@ -1,5 +1,5 @@
 import { ReactNode, useEffect } from "react";
-import { ChartBar, Cube, Flask, House, ShieldCheck } from "@gravity-ui/icons";
+import { ChartBar, Cube, Database, Flask, House, ShieldCheck } from "@gravity-ui/icons";
 import { StudioTheme } from "../design/tokens";
 import { ui } from "../design/language";
 import { PanelHeader, StatusBadge } from "../components/StudioPrimitives";
@@ -28,9 +28,9 @@ type Props = {
   saveDisabled?: boolean;
   closeDisabled?: boolean;
 };
-const workbenches = ["PROJECT", "MODELS", "STUDIES", "ANALYSES", "EVIDENCE"] as const;
-const workbenchIcons = { PROJECT: House, MODELS: Cube, STUDIES: Flask, ANALYSES: ChartBar, EVIDENCE: ShieldCheck };
-const workbenchLabels = { PROJECT: "Проект", MODELS: "Модели", STUDIES: "Обучение", ANALYSES: "Анализ", EVIDENCE: "Доказательства" };
+const workbenches = ["PROJECT", "DATA", "MODELS", "STUDIES", "ANALYSES", "EVIDENCE"] as const;
+const workbenchIcons = { PROJECT: House, DATA: Database, MODELS: Cube, STUDIES: Flask, ANALYSES: ChartBar, EVIDENCE: ShieldCheck };
+const workbenchLabels = { PROJECT: "Проект", DATA: "Данные", MODELS: "Модели", STUDIES: "Обучение", ANALYSES: "Анализ", EVIDENCE: "Доказательства" };
 const workbenchRailLabels = { ...workbenchLabels, EVIDENCE: "Проверки" };
 export function AppShell({
   children,
@@ -171,17 +171,12 @@ export function AppShell({
             </button>
           }
         />
-        <div className="bottom-body">
-          <StatusBadge tone={error ? "danger" : "success"}>
-            {error ? ui("1 problem", "1 проблема") : ui("No active jobs", "Нет активных задач")}
-          </StatusBadge>
-          <span>{error ?? ui("Ready for an evidence-producing action.", "Готово к работе.")}</span>
+        <div className="bottom-body" role={error ? "alert" : "status"}>
+          {error ?? ui("No active jobs", "Нет активных задач")}
         </div>
       </section>
       <footer className="status-strip">
-        <span className="connection-indicator">●</span>
         <span>{status}</span>
-        {error && <span>{ui("1 problem", "1 проблема")}</span>}
         <span className="status-spacer" />
       </footer>
     </main>

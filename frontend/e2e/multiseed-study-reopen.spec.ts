@@ -24,7 +24,7 @@ test("PRODUCT-03 persists a multi-seed Study and restores it through the project
   await page.getByLabel("Project path").fill(path);
   await page.getByLabel("Project name").fill("Study route");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
   await page.getByLabel("CSV data").fill(trainingCsv());
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();

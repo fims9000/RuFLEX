@@ -40,7 +40,7 @@ test("PRODUCT-04 persists validation calibration and decision-threshold provenan
   await page.getByLabel("Project name").fill("Calibration route");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
 
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
   await page.getByLabel("CSV data").fill(trainingCsv());
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
@@ -103,7 +103,7 @@ test("PRODUCT-07 persists a validation-only ACCEPT / REVIEW policy separately fr
   await page.getByLabel("Project path").fill(path);
   await page.getByLabel("Project name").fill("Selective route");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
   await page.getByLabel("CSV data").fill(trainingCsv());
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
@@ -158,7 +158,7 @@ test("PRODUCT-07 persists a validation-only ACCEPT / REVIEW policy separately fr
 test("PRODUCT-11 runs the safe condition-monitoring telemetry decision route", async ({ page }) => {
   test.setTimeout(60_000); const path = projectPath();
   await page.goto("/"); await page.getByLabel("Project path").fill(path); await page.getByLabel("Project name").fill("Condition monitoring"); await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click(); await page.getByLabel("CSV data").fill(trainingCsv()); await page.getByRole("button", { name: "Inspect dataset", exact: true }).click(); await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click(); await page.getByLabel("CSV data").fill(trainingCsv()); await page.getByRole("button", { name: "Inspect dataset", exact: true }).click(); await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
   await page.getByRole("button", { name: "S", exact: true }).click(); await page.getByLabel("Training model").selectOption("logistic_regression"); await page.getByRole("button", { name: "Run real training", exact: true }).click(); await expect(page.locator(".run-provenance")).toContainText("model artifact persisted", { timeout: 30_000 });
   await page.getByRole("button", { name: "A", exact: true }).click(); await page.getByRole("button", { name: "Save validation evidence", exact: true }).click(); await page.getByRole("button", { name: /Select F1 threshold \(raw\)/ }).click(); await page.getByRole("button", { name: "Save ACCEPT / REVIEW policy", exact: true }).click();
   await page.getByRole("button", { name: "E", exact: true }).click();

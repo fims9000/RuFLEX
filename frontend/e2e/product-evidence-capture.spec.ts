@@ -47,7 +47,7 @@ test("PRODUCT-EVIDENCE captures the frozen V1 Studio route from persisted object
   await page.getByRole("button", { name: "Create project", exact: true }).click();
   await expect(page.locator(".project-object-tree")).toBeVisible();
 
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
   await page.getByLabel("CSV data").fill(telemetryCsv());
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
   await expect(page.getByText(/Rows: 80 · columns: 4/)).toBeVisible({ timeout: 30_000 });

@@ -30,6 +30,6 @@ test("project actions recover after the backend becomes available", async ({ pag
 
   await expect(page.getByRole("button", { name: "Create project", exact: true })).toBeEnabled();
   await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Backend recovery project", exact: true })).toBeVisible();
+  await expect(page.locator(".project-identity")).toContainText("Backend recovery project");
   expect(projectCreateRequests).toHaveLength(1);
 });

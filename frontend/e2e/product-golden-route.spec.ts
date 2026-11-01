@@ -13,7 +13,7 @@ test("PRODUCT-01 persists data, builds an editable FIS, runs it and exposes exac
   await page.getByLabel("Project name").fill("Golden route");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
 
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
   await expect(page.getByText("Stored dataset preview", { exact: true })).toBeVisible();
@@ -22,7 +22,8 @@ test("PRODUCT-01 persists data, builds an editable FIS, runs it and exposes exac
   await page.getByRole("button", { name: /New FIS from dataset/ }).click();
   await page.getByRole("button", { name: "Create FIS from dataset", exact: true }).click();
   await expect(page.getByText("CANONICAL FUZZY DESIGNER", { exact: true })).toBeVisible();
-  await expect(page.getByText(/mamdani · executable model/)).toBeVisible();
+  await expect(page.getByLabel("FIS family")).toHaveValue("mamdani");
+  await expect(page.getByText(/executable model/)).toBeVisible();
   await page.getByLabel("Low family").selectOption("gaussian");
   await page.getByLabel("temperature Low p2").press("ArrowLeft");
   const handle = page.getByLabel("Low parameter 1");

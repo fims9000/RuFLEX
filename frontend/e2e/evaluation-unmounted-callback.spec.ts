@@ -42,7 +42,7 @@ test("a persisted validation Evaluation response from a closed project cannot hy
   await page.getByLabel("Project path").fill(sourcePath);
   await page.getByLabel("Project name").fill("Evaluation source project");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
   await page.getByLabel("CSV data").fill(trainingCsv());
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
@@ -57,7 +57,7 @@ test("a persisted validation Evaluation response from a closed project cannot hy
   await page.getByRole("button", { name: "Close", exact: true }).click();
   await page.getByLabel("Project path").fill(nextPath);
   await page.getByRole("button", { name: "Open project", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Next evaluation-free project", exact: true })).toBeVisible();
+  await expect(page.locator(".project-identity")).toContainText("Next evaluation-free project");
   await page.getByTitle("ANALYSES").click();
 
   try {
@@ -67,7 +67,7 @@ test("a persisted validation Evaluation response from a closed project cannot hy
     releaseEvaluation();
     await evaluationResponse;
     expect(persistedEvaluationId).toBeTruthy();
-    await expect(page.locator(".project-object-tree")).toContainText("No analyses yet");
+    await expect(page.locator(".project-object-tree")).toContainText("No saved objects yet");
     await expect(page.locator(".project-object-tree")).not.toContainText(persistedEvaluationId.slice(0, 8));
     await expect(page.locator(".project-object-tree")).not.toContainText("Decision Tree");
   } finally {

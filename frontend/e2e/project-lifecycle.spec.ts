@@ -18,9 +18,9 @@ async function createProject(page: import("@playwright/test").Page, path: string
 test("E2E-01 creates a project and exposes it in Explorer and Properties", async ({ page }) => {
   await createProject(page, projectPath("create"));
   await expect(page.locator(".project-identity")).toContainText("Pump-01");
-  await expect(page.locator(".project-object-tree")).toContainText("Pump-01");
+  await expect(page.locator(".project-object-tree")).toContainText("No saved objects yet");
   await expect(page.getByText(/^ID: [0-9a-f-]{36}$/)).toBeVisible();
-  await expect(page.getByRole("region", { name: "Optional quick start" })).toContainText("does not start training or unlock the held-out test set");
+  await expect(page.getByRole("region", { name: "Optional quick start" })).toContainText("Import a CSV or Excel file and choose the target column");
   await page.getByRole("button", { name: "Review or import data", exact: true }).click();
   await expect(page.locator(".data-workspace")).toBeVisible();
   await expect(page.getByLabel("Target", { exact: true })).toHaveValue("target");
@@ -144,7 +144,8 @@ test("E2E-02b keeps dataset import paused on a state-read failure and enables it
     return route.continue();
   });
   await createProject(page, projectPath("dataset-state-retry"), "Dataset state recovery");
-  await page.locator(".project-overview-grid button").filter({ hasText: "Data" }).click();
+  await expect(page.locator(".project-object-tree")).not.toContainText("No saved objects yet");
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
   const error = page.getByRole("alert");
   await expect(error).toContainText("Could not verify persisted dataset state");
   await expect(error).toContainText("dataset state temporarily unavailable");
@@ -169,7 +170,7 @@ test("E2E-02c pauses training while saved split provenance is unavailable and re
     return route.continue();
   });
   await createProject(page, projectPath("split-state-retry"), "Split state recovery");
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
   await page.getByRole("button", { name: "S", exact: true }).click();
@@ -248,7 +249,7 @@ test("E2E-03 read-only opening disables mutating Studio controls", async ({ page
   await page.getByLabel("Project path").fill(path);
   await page.getByLabel("Read-only").check();
   await page.getByRole("button", { name: "Open project", exact: true }).click();
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
   await expect(page.getByText(/saved data and evidence can be inspected, but dataset imports and contract changes are disabled/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Save", exact: true })).toBeDisabled();
   await expect(page.getByRole("button", { name: "Update description", exact: true })).toBeDisabled();
@@ -295,7 +296,7 @@ test("E2E-07 persists a content-addressed artifact and restores its Studio inven
 test("E2E-08 confirms a dataset contract in Data workspace and preserves it across reopen", async ({ page }) => {
   const path = projectPath("dataset");
   await createProject(page, path, "Dataset project");
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
   await expect(page.getByText(/Rows: 3/)).toBeVisible();
   await expect(page.getByText("Role proposals are advisory. Select each column's role here or edit the fields above; changes remain a draft until you confirm the DatasetContract.", { exact: true })).toBeVisible();
@@ -313,8 +314,7 @@ test("E2E-08 confirms a dataset contract in Data workspace and preserves it acro
   await page.getByLabel("Project path").fill(path);
   await page.getByRole("button", { name: "Open project", exact: true }).click();
   await page.getByRole("button", { name: "P", exact: true }).click();
-  const persistedDatasetTile = page.locator(".project-overview-grid button").filter({ hasText: "3 rows" });
-  await expect(persistedDatasetTile).toContainText("Data");
+  await expect(page.locator(".project-object-tree")).toContainText("3 rows");
   await expect(page.getByRole("region", { name: "Optional quick start" })).toHaveCount(0);
   const trainingRequests: string[] = [];
   page.on("request", (request) => {
@@ -324,8 +324,7 @@ test("E2E-08 confirms a dataset contract in Data workspace and preserves it acro
   });
   const optionalTraining = page.getByRole("region", { name: "Optional next step" });
   await expect(optionalTraining).toContainText("Your dataset is ready for a model fit");
-  await expect(optionalTraining).toContainText("Nothing runs until you choose “Run real training”");
-  await expect(optionalTraining).toContainText("held-out test split stays locked");
+  await expect(optionalTraining).toContainText("Review the model and split settings before training");
   await page.route("**/api/models", (route) => route.fulfill({ status: 503, body: "model catalog unavailable" }));
   await optionalTraining.getByRole("button", { name: "Open Training", exact: true }).click();
   await expect(page.locator(".training-workspace")).toBeVisible();
@@ -356,7 +355,7 @@ test("E2E-08 confirms a dataset contract in Data workspace and preserves it acro
 
 test("serializes DatasetContract confirmation against project persistence and close", async ({ page }) => {
   await createProject(page, projectPath("dataset-write-serialization"), "Dataset write serialization");
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
 
   let releaseConfirmation!: () => void;
@@ -386,7 +385,7 @@ test("serializes DatasetContract confirmation against project persistence and cl
 
 test("E2E-09 declares and freezes the new-entity generalization contract", async ({ page }) => {
   await createProject(page, projectPath("generalization"), "Generalization project");
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
   let releaseDeclaration!: () => void;
@@ -492,7 +491,7 @@ test("E2E-10 distinguishes unavailable saved training history from an empty proj
     return route.fulfill({ status: 200, contentType: "application/json", body: "[]" });
   });
   await createProject(page, projectPath("run-history"), "Run history project");
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
   await page.getByRole("button", { name: "S", exact: true }).click();

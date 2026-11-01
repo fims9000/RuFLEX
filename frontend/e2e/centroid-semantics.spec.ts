@@ -8,7 +8,7 @@ test("CENTROID-01 exposes midpoint sampling and persists an explicit legacy sele
   await page.getByLabel("Project path").fill(path);
   await page.getByLabel("Project name").fill("Centroid semantics");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
   await page.getByRole("button", { name: /New FIS from dataset/ }).click();

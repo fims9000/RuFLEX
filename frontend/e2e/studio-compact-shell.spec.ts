@@ -13,13 +13,13 @@ test("compact Studio keeps every workbench and optional panel reachable", async 
   await expect(page.locator(".bottom-panel")).toBeHidden();
   await expect(page.locator(".inspector")).toBeHidden();
   const navigation = page.getByRole("navigation", { name: "Workbench navigation" });
-  for (const section of ["PROJECT", "MODELS", "STUDIES", "ANALYSES", "EVIDENCE"]) {
+  for (const section of ["PROJECT", "DATA", "MODELS", "STUDIES", "ANALYSES", "EVIDENCE"]) {
     const item = navigation.getByTitle(section);
     await expect(item).toBeVisible();
     await item.click();
     await expect(item).toHaveAttribute("aria-current", "page");
   }
-  await expect(page.locator(".workspace-header .eyebrow")).toHaveText("EVIDENCE");
+  await expect(page.locator(".workspace-header h1")).toHaveText("Evidence");
   await page.getByRole("button", { name: "Show properties" }).click();
   await expect(page.locator(".inspector")).toBeVisible();
   await page.getByRole("button", { name: "Hide properties" }).click();

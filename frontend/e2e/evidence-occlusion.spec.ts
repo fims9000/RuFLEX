@@ -23,7 +23,7 @@ test("PRODUCT-05 persists post-hoc evidence separately from exact traces", async
   await page.getByLabel("Project path").fill(path);
   await page.getByLabel("Project name").fill("Evidence route");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
   await page.getByLabel("CSV data").fill(trainingCsv());
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
@@ -99,7 +99,7 @@ test("PRODUCT-06 persists revision-bound BehaviorSpec evidence through reopen", 
   await page.getByLabel("Project path").fill(path);
   await page.getByLabel("Project name").fill("Behavior route");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
   await page.getByLabel("CSV data").fill(trainingCsv());
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
@@ -189,7 +189,7 @@ test("failed BehaviorSpec exposes its persisted counterexample after reopen", as
   await page.getByLabel("Project path").fill(path);
   await page.getByLabel("Project name").fill("Behavior counterexample");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
   await page.getByLabel("CSV data").fill(trainingCsv());
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();

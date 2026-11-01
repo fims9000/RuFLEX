@@ -32,7 +32,7 @@ test("response surface refreshes when a fixed run input changes", async ({ page 
   await page.getByLabel("Project path").fill(projectPath);
   await page.getByLabel("Project name").fill("Response surface refresh");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
   await page.getByLabel("CSV data").fill("temperature,torque,pressure,target\n10,20,0.2,0\n20,50,0.5,1\n30,80,0.9,1\n40,100,0.7,1\n");
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();

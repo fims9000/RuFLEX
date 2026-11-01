@@ -20,7 +20,7 @@ test("PRODUCT-13 recovers a persisted TRAIN-only Sugeno correction without refit
   await page.getByLabel("Project path").fill(path);
   await page.getByLabel("Project name").fill("Expert correction recovery");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
   await page.getByLabel("CSV data").fill(csv());
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
@@ -90,7 +90,7 @@ test("TRAIN-only correction completion preserves a newer Sugeno editor draft", a
   await page.getByLabel("Project path").fill(path);
   await page.getByLabel("Project name").fill("Expert correction draft preservation");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
   await page.getByLabel("CSV data").fill(csv());
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
@@ -137,7 +137,7 @@ test("an in-flight FIS save blocks a concurrent TRAIN-only expert refit", async 
   await page.getByLabel("Project path").fill(path);
   await page.getByLabel("Project name").fill("FIS save refit mutex");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
   await page.getByLabel("CSV data").fill(csv());
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();

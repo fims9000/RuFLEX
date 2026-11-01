@@ -11,6 +11,9 @@ test("основной маршрут Studio отображается по-ру�
   await page.getByLabel("Название проекта").fill("Проверка интерфейса");
   await page.getByRole("button", { name: "Создать проект" }).click();
   await expect(page.getByRole("region", { name: "Начало работы" })).toBeVisible();
+  await expect(page.getByText("Проект открыт", { exact: true })).toHaveCount(0);
+  await expect(page.locator(".project-overview-grid")).toHaveCount(0);
+  await expect(page.locator(".workspace-header")).toHaveCount(0);
   await expect(page.getByRole("navigation", { name: "Разделы Studio" }).getByRole("button", { name: "Обучение" })).toBeVisible();
   await page.mouse.move(0, 0);
   await expect(page).toHaveScreenshot("studio-russian-920.png", { fullPage: true, animations: "disabled" });

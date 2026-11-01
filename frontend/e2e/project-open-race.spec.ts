@@ -6,7 +6,7 @@ function projectPath(label: string): string {
   return join(tmpdir(), `ruflex-project-open-race-${label}-${Date.now()}-${Math.random().toString(16).slice(2)}`);
 }
 
-test("a late earlier project-open response cannot replace the newer project", async ({ page }) => {
+test("project open is serialized before switching to another project", async ({ page }) => {
   test.setTimeout(20_000);
   const firstPath = projectPath("first");
   const secondPath = projectPath("second");
@@ -19,22 +19,16 @@ test("a late earlier project-open response cannot replace the newer project", as
   let markFirstOpenStarted!: () => void;
   const firstOpenGate = new Promise<void>((resolve) => { releaseFirstOpen = resolve; });
   const firstOpenStarted = new Promise<void>((resolve) => { markFirstOpenStarted = resolve; });
-  let staleSessionId = "";
-  let closedSessionId = "";
+  let secondOpenRequests = 0;
   await page.route("**/api/projects/open", async (route) => {
     const body = route.request().postDataJSON() as { path?: string };
     if (body.path === firstPath) {
       const response = await route.fetch();
-      staleSessionId = (await response.json() as { session_id: string }).session_id;
       markFirstOpenStarted();
       await firstOpenGate;
       return route.fulfill({ response });
     }
-    await route.continue();
-  });
-  await page.route("**/api/projects/close", async (route) => {
-    const body = route.request().postDataJSON() as { session_id?: string };
-    if (body.session_id === staleSessionId) closedSessionId = body.session_id;
+    if (body.path === secondPath) secondOpenRequests += 1;
     await route.continue();
   });
 
@@ -42,16 +36,10 @@ test("a late earlier project-open response cannot replace the newer project", as
   await page.getByLabel("Project path").fill(firstPath);
   await page.getByRole("button", { name: "Open project", exact: true }).click();
   await firstOpenStarted;
-  await page.getByLabel("Project path").fill(secondPath);
-  await page.getByRole("button", { name: "Open project", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Second project", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Opening project…", exact: true })).toBeDisabled();
+  expect(secondOpenRequests).toBe(0);
 
   try {
-    const staleSessionClose = page.waitForResponse((response) =>
-      response.url().endsWith("/api/projects/close")
-      && response.request().method() === "POST"
-      && (response.request().postDataJSON() as { session_id?: string }).session_id === staleSessionId,
-    );
     const firstResponse = page.waitForResponse((response) => {
       const request = response.request();
       return response.url().endsWith("/api/projects/open")
@@ -60,11 +48,13 @@ test("a late earlier project-open response cannot replace the newer project", as
     });
     releaseFirstOpen();
     await firstResponse;
-    await staleSessionClose;
-    expect(staleSessionId).toBeTruthy();
-    expect(closedSessionId).toBe(staleSessionId);
-    await expect(page.getByRole("heading", { name: "Second project", exact: true })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "First project", exact: true })).toHaveCount(0);
+    await expect(page.locator(".project-identity")).toContainText("First project");
+    await page.getByRole("button", { name: "Close", exact: true }).click();
+    await page.getByLabel("Project path").fill(secondPath);
+    await page.getByRole("button", { name: "Open project", exact: true }).click();
+    await expect(page.locator(".project-identity")).toContainText("Second project");
+    await expect(page.locator(".project-identity")).not.toContainText("First project");
+    expect(secondOpenRequests).toBe(1);
   } finally {
     releaseFirstOpen();
   }

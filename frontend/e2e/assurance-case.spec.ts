@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 test("PRODUCT-10 persists AssuranceCase independent gates without a trust score", async ({ page }) => {
   const path=join(tmpdir(),`ruflex-assurance-${Date.now()}`); await page.goto("/"); await page.getByLabel("Project path").fill(path); await page.getByLabel("Project name").fill("Assurance route"); await page.getByRole("button",{name:"Create project",exact:true}).click();
-  await page.getByRole("button",{name:/Data.*No dataset/}).click(); await page.getByLabel("CSV data").fill("temperature,target\n10,0\n20,1\n30,1\n40,1\n"); await page.getByRole("button",{name:"Inspect dataset",exact:true}).click(); await page.getByRole("button",{name:"Confirm dataset contract",exact:true}).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click(); await page.getByLabel("CSV data").fill("temperature,target\n10,0\n20,1\n30,1\n40,1\n"); await page.getByRole("button",{name:"Inspect dataset",exact:true}).click(); await page.getByRole("button",{name:"Confirm dataset contract",exact:true}).click();
   await page.getByRole("button",{name:"E",exact:true}).click();
   let assuranceJobPosts = 0;
   await page.route("**/api/projects/evidence/assurance-jobs", async (route) => { if (route.request().method() === "POST") assuranceJobPosts += 1; await route.continue(); });

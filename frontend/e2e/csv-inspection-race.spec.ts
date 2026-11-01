@@ -8,7 +8,7 @@ test("a stale CSV preview cannot replace the preview for edited input", async ({
   await page.getByLabel("Project path").fill(path);
   await page.getByLabel("Project name").fill("CSV preview race");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
 
   let releaseFirstInspection!: () => void;
   let markFirstInspectionStarted!: () => void;
@@ -53,7 +53,7 @@ test("a late inline CSV inspection cannot reintroduce roles after file selection
   await page.getByLabel("Project path").fill(path);
   await page.getByLabel("Project name").fill("Source inspection race");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
 
   let releaseCsv!: () => void;
   let markCsvStarted!: () => void;
@@ -92,7 +92,7 @@ test("a late file inspection cannot replace the active inline CSV draft", async 
   await page.getByLabel("Project path").fill(path);
   await page.getByLabel("Project name").fill("Reverse inspection race");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
 
   let releaseFile!: () => void;
   let markFileStarted!: () => void;

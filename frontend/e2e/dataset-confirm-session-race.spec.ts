@@ -6,7 +6,7 @@ function projectPath(name: string): string {
   return join(tmpdir(), `ruflex-dataset-session-race-${name}-${Date.now()}-${Math.random().toString(16).slice(2)}`);
 }
 
-test("a dataset confirmation response from a closed project cannot hydrate the next project", async ({ page }) => {
+test("dataset confirmation blocks closing until persisted and does not hydrate the next project", async ({ page }) => {
   test.setTimeout(25_000);
   const sourcePath = projectPath("source");
   const nextPath = projectPath("next");
@@ -28,16 +28,12 @@ test("a dataset confirmation response from a closed project cannot hydrate the n
   await page.getByLabel("Project path").fill(sourcePath);
   await page.getByLabel("Project name").fill("Source dataset project");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
   await page.getByLabel("CSV data").fill("temperature,target\n10,0\n20,1\n30,1\n");
   await page.getByRole("button", { name: "Inspect dataset", exact: true }).click();
   await page.getByRole("button", { name: "Confirm dataset contract", exact: true }).click();
   await confirmationPersisted;
-
-  await page.getByRole("button", { name: "Close", exact: true }).click();
-  await page.getByLabel("Project path").fill(nextPath);
-  await page.getByRole("button", { name: "Open project", exact: true }).click();
-  await expect(page.locator(".data-workspace")).toContainText("This CSV is an editable draft only");
+  await expect(page.getByRole("button", { name: "Close", exact: true })).toBeDisabled();
 
   try {
     const confirmationResponse = page.waitForResponse((response) =>
@@ -45,7 +41,12 @@ test("a dataset confirmation response from a closed project cannot hydrate the n
     );
     releaseConfirmation();
     await confirmationResponse;
-    await expect(page.getByRole("heading", { name: "Next empty project", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Close", exact: true })).toBeEnabled();
+    await page.getByRole("button", { name: "Close", exact: true }).click();
+    await page.getByLabel("Project path").fill(nextPath);
+    await page.getByRole("button", { name: "Open project", exact: true }).click();
+    await expect(page.locator(".project-identity")).toContainText("Next empty project");
+    await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
     await expect(page.locator(".data-workspace")).toContainText("This CSV is an editable draft only");
     await expect(page.getByText(/Contract: target/)).toHaveCount(0);
   } finally {

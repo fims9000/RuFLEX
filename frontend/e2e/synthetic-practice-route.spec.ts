@@ -10,7 +10,7 @@ test("a first-time user can persist synthetic evidence and apply a frozen final-
   await page.getByLabel("Project path").fill(path);
   await page.getByLabel("Project name").fill("Practice route");
   await page.getByRole("button", { name: "Create project", exact: true }).click();
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
 
   const practice = page.getByRole("group", { name: "Synthetic practice dataset" });
   await expect(practice).toContainText("not research evidence");
@@ -151,7 +151,7 @@ test("synthetic practice loading is unavailable in a read-only project", async (
   await page.getByLabel("Project path").fill(path);
   await page.getByRole("checkbox", { name: "Read-only", exact: true }).check();
   await page.getByRole("button", { name: "Open project", exact: true }).click();
-  await page.getByRole("button", { name: /Data.*No dataset/ }).click();
+  await page.getByRole("navigation", { name: "Workbench navigation" }).getByTitle("DATA").click();
   await expect(page.getByRole("group", { name: "Synthetic practice dataset" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Confirm dataset contract", exact: true })).toBeDisabled();
 });

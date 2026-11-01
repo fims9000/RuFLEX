@@ -21,6 +21,13 @@ body {
   --g-button-background-color-hover: var(--rf-accent-hover);
   --g-button-text-color: var(--rf-action-text);
 }
+.app-shell .g-button_view_outlined {
+  --g-button-text-color: var(--rf-text);
+  color: var(--rf-text);
+}
+.g-root_theme_dark .app-shell .g-button_view_outlined .g-button__text {
+  color: #f2f7ff;
+}
 button,
 input {
   font: inherit;
@@ -185,16 +192,8 @@ input:focus-visible,
 .inspector-body {
   padding: 10px;
 }
-.project-tree {
-  display: flex;
-  gap: 7px;
-  font-weight: 600;
-}
-.tree-dot {
-  color: var(--rf-accent);
-}
 .tree-subtitle {
-  margin: 4px 0 12px 20px;
+  margin: 4px 0 12px;
   color: var(--rf-text-muted);
   font-size: 11px;
 }
@@ -409,14 +408,15 @@ input:focus-visible,
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 18px;
-  padding: 16px;
+  max-width: 760px;
+  padding: 18px 20px;
   border: 1px solid var(--rf-border);
-  border-left: 3px solid var(--rf-accent);
   border-radius: 6px;
   background: var(--rf-bg-surface);
 }
 .quick-start-card h2 {
-  margin: 4px 0;
+  margin: 0 0 6px;
+  font-size: 16px;
 }
 .quick-start-card p {
   max-width: 760px;
@@ -517,9 +517,6 @@ input:focus-visible,
   background: var(--rf-bg-surface-3);
   color: var(--rf-text-muted);
   font-size: 11px;
-}
-.connection-indicator {
-  color: var(--rf-success);
 }
 .status-spacer {
   flex: 1;
@@ -1301,40 +1298,6 @@ input:focus-visible,
 .tree-count {
   color: var(--rf-text-muted);
   font-size: 11px;
-}
-.project-overview-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 10px;
-}
-.project-overview-grid button {
-  display: grid;
-  align-content: start;
-  gap: 5px;
-  min-height: 100px;
-  padding: 13px;
-  border: 1px solid var(--rf-border);
-  border-radius: 6px;
-  background: var(--rf-bg-surface);
-  color: var(--rf-text);
-  text-align: left;
-  cursor: pointer;
-}
-.project-overview-grid button strong {
-  font-size: 14px;
-}
-.project-overview-grid button span {
-  color: var(--rf-text-secondary);
-}
-.project-overview-grid button small {
-  margin-top: 4px;
-}
-.project-overview-grid button:hover {
-  border-color: var(--rf-accent);
-  background: var(--rf-accent-soft);
-}
-.project-overview-grid small {
-  color: var(--rf-text-secondary);
 }
 .model-history-panel {
   display: grid;
