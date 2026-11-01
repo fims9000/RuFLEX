@@ -9,10 +9,11 @@ export function ui(english: string, russian: string): string {
 
 const statusLabels: Record<string, string> = {
   PASS: "Пройдено",
-  FAIL: "Ошибка",
+  FAIL: "Не пройдено",
   WARN: "Предупреждение",
   WARNING: "Предупреждение",
-  FAILED: "Не пройдено",
+  FAILED: "Сбой",
+  ERROR: "Ошибка",
   SUPPORTED: "Подтверждено",
   UNSUPPORTED: "Не подтверждено",
   "N/A": "Н/Д",
