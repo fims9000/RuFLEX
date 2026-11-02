@@ -4,7 +4,7 @@ Status: LOCAL CODE GATES VERIFIED; source-package verification is recorded separ
 
 Preservation correction: earlier statements that article files were unchanged are withdrawn. The checkout-preservation incident below takes precedence; the full-suite verifier itself regenerated article outputs. Research artifacts were not regenerated.
 
-Prerelease publication scope: the user subsequently authorized finishing and pushing the code prerelease. Product verification is complete; article restoration remains a separate unresolved incident. Publish only committed product/source documentation on the existing feature branch, excluding dirty article outputs and user project `1/`. This does not authorize a master merge, a stable-release claim or scientific-result changes. See [prerelease notes](../releases/V1_3_ALPHA_PRERELEASE_RU.md).
+Prerelease publication scope: the user subsequently authorized finishing and pushing the code prerelease, then explicitly authorized merging it with master and deferring article work. Product verification is complete; article restoration remains a separate unresolved incident. Publish only committed product/source documentation, excluding dirty article outputs, user project `1/` and uncommitted R8 work. Fast-forward master from its owning worktree, preserve dirty files and a backup ref, and use ordinary pushes without force. This is not a stable-release claim or permission for scientific-result changes. See [prerelease notes](../releases/V1_3_ALPHA_PRERELEASE_RU.md).
 
 ## Scope and preservation
 
