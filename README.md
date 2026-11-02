@@ -1,5 +1,11 @@
 # RuFLEX V1.3 Alpha
 
+**Предрелиз для локального использования.** Интерфейс Studio по умолчанию на
+русском. Начните с [краткого руководства](docs/STUDIO_QUICK_START_RU.md).
+Проверенные сценарии, ограничения и известные проблемы описаны в
+[заметках к предрелизу](docs/releases/V1_3_ALPHA_PRERELEASE_RU.md).
+Это не стабильная production-версия и не обновление frozen-исследований.
+
 **RuFLEX is a local-first engineering Studio for building, inspecting and
 auditing fuzzy, neuro-fuzzy and classical ML systems as persistent evidence
 chains — not as a sequence of disposable notebook outputs.**
@@ -207,6 +213,10 @@ versions do not satisfy the installed test-tool dependencies.
 python -m venv .venv
 .venv/bin/python -m pip install -U pip
 .venv/bin/python -m pip install -e '.[dev,studio]'
+cd frontend
+npm ci
+cd ..
+./scripts/run_studio.sh
 ```
 
 After installing the Python and frontend dependencies, the simplest local

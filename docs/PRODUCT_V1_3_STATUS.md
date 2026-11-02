@@ -2,6 +2,11 @@
 
 Target branch: `feature/v1.3-data-governance-runtime`.
 
+The local alpha prerelease is documented in
+[release notes](releases/V1_3_ALPHA_PRERELEASE_RU.md), including tested source
+identities, user workflow coverage and the unresolved article-document incident.
+This is not a stable release or a revision of frozen scientific results.
+
 ## Implemented in the current development baseline
 
 - persisted `SplitContract` evidence for random, group, temporal and declared
