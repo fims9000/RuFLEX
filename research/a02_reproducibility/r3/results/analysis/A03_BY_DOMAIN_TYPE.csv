@@ -1,0 +1,9 @@
+kind,policy,cells,mean_delta,improved,worsened
+public_bundled,combined_fixed,40,-0.00342796840958605,10,2
+public_bundled,confidence_only,40,0.0,0,0
+public_bundled,disagreement_only,40,0.0018075980392156898,11,11
+public_bundled,dispersion_fixed,40,-0.0033332198620188796,6,3
+synthetic_shared_generator,combined_fixed,40,-0.007499999999999983,18,3
+synthetic_shared_generator,confidence_only,40,0.0,0,0
+synthetic_shared_generator,disagreement_only,40,-0.001249999999999995,20,14
+synthetic_shared_generator,dispersion_fixed,40,-0.00513888888888888,12,5

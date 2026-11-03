@@ -1,0 +1,32 @@
+name: A06 R4 external-domain research checks
+
+on:
+  push:
+    paths:
+      - "research/a02_reproducibility/r4/**"
+      - ".github/workflows/a06-r4-research.yml"
+  pull_request:
+    paths:
+      - "research/a02_reproducibility/r4/**"
+      - ".github/workflows/a06-r4-research.yml"
+
+jobs:
+  a06-frozen-protocol-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install R4 dependencies
+        run: python -m pip install -r research/a02_reproducibility/r4/requirements-R4.txt
+      - name: Compile all experiment and audit scripts
+        run: python -m compileall -q research/a02_reproducibility/r4/code
+      - name: Run negative and deterministic audit tests
+        working-directory: research/a02_reproducibility/r4
+        run: python -m pytest -q code/test_a06.py
+      - name: Verify A06 locally frozen protocol bytes
+        working-directory: research/a02_reproducibility/r4
+        run: |
+          python -c "import hashlib,pathlib; p=pathlib.Path('code/protocol.json'); assert hashlib.sha256(p.read_bytes()).hexdigest()=='736ed5fa72f662307cb1e6534eaf134c7c6d2590c55a5414c4d76939b399e7fe'"

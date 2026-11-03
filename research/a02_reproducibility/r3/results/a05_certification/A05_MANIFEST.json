@@ -1,0 +1,14 @@
+{
+  "protocol_sha256": "4cd6d2e07bbc72bfb33b23db5332757826b28331e645d8479119e1c34906225e",
+  "cells": 40,
+  "fits": 4040,
+  "test_case_cells": 5400,
+  "certified_case_cells": 4601,
+  "certified_wrong_case_cells": 184,
+  "runtime_s": 50.54,
+  "files_sha256": {
+    "A05_CASE_LEVEL.csv": "354a17f14f97d380886b967aebef35d33ecc1de97664cdfa6c6b81d4e09a7338",
+    "A05_CELLS.csv": "9d6f825b0bceb6279ddccfeee0da1c54e6795b4869de90afa095a9c59cc393b9",
+    "A05_SEEDS.json": "4f810da6fea115a684bf5326ac466011dba2cc98696bb0acb240322cf29ded56"
+  }
+}
