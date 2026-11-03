@@ -173,6 +173,18 @@ def make(docx_r3,out):
       'a disagreement-aware review policy can miss such errors. On Fair, SGD Logistic split 303 also lost review of a wrong '
       'reference prediction at case 162 despite agreement 1.0 and confidence 0.526. '
       'Across eight tie seeds, pure disagreement and vote-based uncertainty were more sensitive to tie resolution than the combined rule.',base_body)
+    text_like(anchor,'D. Review-effort sensitivity after outcome inspection',subhead,kind='subheader')
+    text_like(anchor,
+      'To avoid comparing accepted-case risk alone when streaming workloads differ, we also compute a post-hoc operational burden '
+      'L(lambda) = (E_auto + lambda N_review)/N, where E_auto counts wrong predictions retained in the automated stream and '
+      'lambda is the hypothetical cost of reviewing one case measured in units of one automatic classification error. '
+      'No reviewer quality is assumed or estimated: this is a transparent workload-error accounting proxy, not realized human-in-the-loop utility. '
+      'Under the fixed streaming tie seed, the combined method was Pareto better (no more errors and no more reviews) in five '
+      'of 32 cells, Pareto worse in one, identical in eight and involved an error/workload tradeoff in 18. '
+      'At lambda = 0.1, its burden was lower/equal/higher in 17/8/7 cells; at lambda = 0.5, in 19/8/5. '
+      'Across the exploratory lambda grid from 0 to 1 the unweighted mean burden contrast ranged from -0.534 to -0.502 '
+      'error-equivalents per 100 cases. No lambda was selected as a deployment-relevant cost, and these post-hoc calculations '
+      'do not establish an optimal streaming policy.',base_body)
     # Revision of sections and implications, not rewriting source results.
     find(doc,'VII. DISCUSSION').runs[0].text='VIII. DISCUSSION'
     find(doc,'VIII. LIMITATIONS').runs[0].text='IX. LIMITATIONS'
