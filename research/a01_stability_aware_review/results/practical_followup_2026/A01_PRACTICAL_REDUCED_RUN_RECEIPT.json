@@ -1,0 +1,20 @@
+{
+  "schema_version": 2,
+  "role": "POST_HOC_EXPLORATORY_PRACTICAL_ANALYSIS",
+  "source_validation_bundle_sha256": "435ed839fd7e5e97daaa227adf2f652777908e99e5a19f93fb171ad947c980d8",
+  "frozen_confirmatory_results_modified": false,
+  "training_performed": false,
+  "threshold_or_policy_refitting_performed": false,
+  "additional_final_test_opening_performed": false,
+  "files": [
+    "A01_PRACTICAL_REDUCED_RUN.md",
+    "A01_PRACTICAL_REDUCED_RUN_QA.md",
+    "A01_PRACTICAL_REDUCED_RUN_RESULTS.json",
+    "E03_reduced_run_tradeoff.svg",
+    "E04_operational_workflow.svg",
+    "T13_reduced_run_practical_tradeoff.csv",
+    "T14_reduced_run_macro_summary.csv",
+    "T15_bank_dt_illustrative_cases.csv"
+  ],
+  "note": "This is a branch-level inventory of the post-hoc reduced-run practical analysis; it does not amend the frozen confirmatory A01 evidence."
+}
