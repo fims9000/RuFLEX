@@ -1,0 +1,28 @@
+{
+  "protocol": "A03-frozen-budget-held-out-selective-review",
+  "version": 1,
+  "status": "LOCAL_PRE_EXECUTION_FREEZE_NOT_EXTERNALLY_PREREGISTERED",
+  "purpose": "held-out, exactly-matched-coverage benchmark of reproducibility-aware selective review against fixed-reference confidence baselines",
+  "data": "sklearn_iris_virginica, sklearn_wine_class0, sklearn_digits_5_to_9, sklearn_breast_cancer_malignant, synthetic_sep{0.5,1.5}_noise{0.01,0.15}",
+  "split_seeds": [101,202],
+  "split_fractions": [0.6,0.2,0.2],
+  "reference_seed": 30000,
+  "audit_seed_start": 31000,
+  "audit_seed_count": 30,
+  "model_families": ["logistic_regression", "decision_tree", "random_forest", "extra_trees", "sgd_log_loss"],
+  "preprocessing": "StandardScaler fit on train partition only; no model selection, tuning, calibration on test",
+  "budgets": [0.8,0.9,0.95],
+  "primary_budget": 0.9,
+  "policies": {
+    "confidence_only": "1-max(p_ref,1-p_ref)",
+    "disagreement_only": "1-(number of audit fits matching reference class)/30",
+    "combined_fixed": "(1-confidence)+0.5*(1-agreement)",
+    "dispersion_fixed": "(1-confidence)+0.5*std(audit p(class1))"
+  },
+  "selection": "per test dataset-model cell and budget, select the top ceil((1-coverage)*N) review candidates using unlabeled scores; exact matched coverage across policies; deterministic SHA-256(caseID,tie_seed) to break ties; no test labels consumed in selection",
+  "tie_sensitivity_seeds": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],
+  "inference": "paired nonparametric case bootstrap with 2000 fixed-mask replicates, seed 20261104, per-cell exploratory 95-percentile intervals; no multiplicity-corrected superiority claim",
+  "primary_claim": "heterogeneity and held-out score-ranking comparison; no universal superiority without external data",
+  "leakage_guards": ["train-only normalization", "reference fixed before audits", "audit seeds excluded from ref", "test labels never determine rankings", "no policy parameters fit to test labels", "A01 unmodified"],
+  "note": "All reported results from this protocol remain independent of the prior A01 validation-selected model and A02 split-42/split-73 explorations. Dataset selection and methods were informed by A01/A02, so inference is not a preregistered discovery test."
+}
