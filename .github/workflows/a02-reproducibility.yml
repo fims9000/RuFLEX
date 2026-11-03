@@ -1,0 +1,27 @@
+name: A02 reproducibility research checks
+on:
+  push:
+    paths:
+      - "research/a02_reproducibility/**"
+      - ".github/workflows/a02-reproducibility.yml"
+  pull_request:
+    paths:
+      - "research/a02_reproducibility/**"
+      - ".github/workflows/a02-reproducibility.yml"
+jobs:
+  scientific-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install locked-range research dependencies
+        run: python -m pip install -r research/a02_reproducibility/requirements.txt
+      - name: Run statistical and protocol negative tests
+        working-directory: research/a02_reproducibility
+        run: python -m pytest -q test_certificates.py test_protocol.py
+      - name: Independently validate frozen A02 main aggregate counts
+        working-directory: research/a02_reproducibility
+        run: python -c "import json; d=json.load(open('results/A02_SUMMARY.json')); assert d['cell_count']==35 and d['training_fits_including_references']==3535 and d['validation_case_cell_pairs']==6125"
