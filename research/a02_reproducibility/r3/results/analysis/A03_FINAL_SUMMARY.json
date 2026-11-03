@@ -1,0 +1,62 @@
+{
+  "protocol": "A03 held-out, exact budgeted selective review",
+  "experiment_cells": 80,
+  "trainings": 2480,
+  "validation_and_heldout_case_rows": 26790,
+  "test_case_model_rows": 13400,
+  "dataset_regimes": [
+    "breast_cancer_malignant",
+    "digits_5_to_9",
+    "iris_virginica",
+    "synthetic_sep0.5_noise0.01",
+    "synthetic_sep0.5_noise0.15",
+    "synthetic_sep1.5_noise0.01",
+    "synthetic_sep1.5_noise0.15",
+    "wine_class0"
+  ],
+  "models": [
+    "decision_tree",
+    "extra_trees",
+    "logistic_regression",
+    "random_forest",
+    "sgd_log_loss"
+  ],
+  "budget_list": [
+    0.8,
+    0.9,
+    0.95
+  ],
+  "primary_budget": 0.9,
+  "by_policy": {
+    "combined_fixed": {
+      "mean_delta": -0.005463984204793017,
+      "improved_cells": 28,
+      "worsened_cells": 5,
+      "tied_cells": 47,
+      "median_delta": 0.0
+    },
+    "confidence_only": {
+      "mean_delta": 0.0,
+      "improved_cells": 0,
+      "worsened_cells": 0,
+      "tied_cells": 80,
+      "median_delta": 0.0
+    },
+    "disagreement_only": {
+      "mean_delta": 0.00027879901960784734,
+      "improved_cells": 31,
+      "worsened_cells": 25,
+      "tied_cells": 24,
+      "median_delta": 0.0
+    },
+    "dispersion_fixed": {
+      "mean_delta": -0.00423605437545388,
+      "improved_cells": 18,
+      "worsened_cells": 8,
+      "tied_cells": 54,
+      "median_delta": 0.0
+    }
+  },
+  "no_universal_superiority": true,
+  "interpretation": "Exploratory, correlated cells; significance cannot be inferred from pooled outcomes. Exact matched coverage is an unlabeled batch-ranking evaluation."
+}
