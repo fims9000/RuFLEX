@@ -1,0 +1,16 @@
+{
+  "protocol_sha256": "e039550bf4c340538dfd0d6e7ec4deb563fc2467eb169c69db7fb7cc36d93845",
+  "protocol": "A03-frozen-budget-held-out-selective-review",
+  "frozen_before_labels": true,
+  "n_requested_cells": 80,
+  "n_completed_cells": 40,
+  "n_trainings": 1240,
+  "n_case_records": 13395,
+  "n_policy_records": 480,
+  "elapsed_s": 24.558,
+  "files_sha256": {
+    "A03_POLICY_OUTCOMES.csv": "60f4f38b3e2a5d3f6a87a6f988246b03ffbc0f31c161ee4be9af1fbf5c91489e",
+    "A03_CASE_LEVEL.csv": "30e695e6d6700d39e0e3b61da5d27c3bdb73e8a2f31819677edb9075d788625d",
+    "A03_TIE_SENSITIVITY.csv": "39a614f365f1413a59a43ddca46484cb23fe609f877df6fe5ccbe6e28586d688"
+  }
+}
