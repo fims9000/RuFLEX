@@ -1,0 +1,17 @@
+{
+ "name": "A05 held-out pseudo-random-seed reproducibility certificate audit",
+ "status": "post-A03 exploratory protocol locked before A05 runs",
+ "reference_seed":30000,
+ "master_seed":20261104,
+ "audit_fits_per_cell":100,
+ "seed_space":"uniform PRNG integers in [0,2^31), with replacement; reference seed excluded and redrawn",
+ "split_seeds":[101,202],
+ "datasets":["iris_virginica","wine_class0","digits_5_to_9","breast_cancer_malignant"],
+ "models":["logistic_regression","decision_tree","random_forest","extra_trees","sgd_log_loss"],
+ "estimand":"probability that fresh model fit with random training seed repeats fixed reference class on a fixed case",
+ "target":0.90,
+ "alpha":0.05,
+ "multiplicity":"Bonferroni per fixed dataset-model-split cell over held-out test cases (n_test)",
+ "evidence":"exact one-sided Clopper-Pearson lower probability bound; score is never a bound on correctness",
+ "claim_limitation":"PRNG-generated seeds approximate an IID seed sampler; formal model-based coverage presumes independent uniform seeds, which a fixed deterministic PRNG trace cannot guarantee. Data and model family chosen after A01/A02/A03."
+}
