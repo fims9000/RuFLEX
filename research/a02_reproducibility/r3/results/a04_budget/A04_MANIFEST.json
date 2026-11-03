@@ -1,0 +1,184 @@
+{
+  "purpose": "post-hoc audit budget ablation, not confirmatory",
+  "cells": 32,
+  "model_fits": 992,
+  "splits": [
+    101,
+    202
+  ],
+  "models": [
+    "decision_tree",
+    "sgd_log_loss"
+  ],
+  "seed_budgets": [
+    5,
+    10,
+    20,
+    30
+  ],
+  "coverage": 0.9,
+  "elapsed_s": 5.35,
+  "cell_artifacts": [
+    {
+      "cell_key": "iris_virginica::decision_tree::split101",
+      "prediction_sha256": "7d720b4411faef93f699bfbd3d79f89c55330be9244939b339e225bf7c39c29e",
+      "duration_s": 0.018
+    },
+    {
+      "cell_key": "iris_virginica::sgd_log_loss::split101",
+      "prediction_sha256": "acd4a8dece025bdcf0aaa63605154abab464edab4219baee2639664d26e5bf6d",
+      "duration_s": 0.022
+    },
+    {
+      "cell_key": "wine_class0::decision_tree::split101",
+      "prediction_sha256": "903dbe3d492358ae1338e46127ceb4b35dbeb5046917f8b3c3e545a400b46bd4",
+      "duration_s": 0.022
+    },
+    {
+      "cell_key": "wine_class0::sgd_log_loss::split101",
+      "prediction_sha256": "b877354bb35bc0a924d875e2953225513656be62abd4e5c6fcc622e3890e442c",
+      "duration_s": 0.029
+    },
+    {
+      "cell_key": "digits_5_to_9::decision_tree::split101",
+      "prediction_sha256": "2ef2d6d95565559feff325000d3161eb92c940c87d680f45316b14057a6bba34",
+      "duration_s": 0.322
+    },
+    {
+      "cell_key": "digits_5_to_9::sgd_log_loss::split101",
+      "prediction_sha256": "30141ad06bfa76f50cd0ac8364e77da3649eb5972ba7df9a3c3919d82b4323e1",
+      "duration_s": 0.373
+    },
+    {
+      "cell_key": "breast_cancer_malignant::decision_tree::split101",
+      "prediction_sha256": "9d32974d9cb3fcf8ed67fce99f583a6c49c6151bdc17154f36f4a1fb7adc1b67",
+      "duration_s": 0.133
+    },
+    {
+      "cell_key": "breast_cancer_malignant::sgd_log_loss::split101",
+      "prediction_sha256": "87056090931583b7670da06bbe8f79bfcd2adba78fb7d7af192d8b01867e118d",
+      "duration_s": 0.056
+    },
+    {
+      "cell_key": "synthetic_sep0.5_noise0.01::decision_tree::split101",
+      "prediction_sha256": "a1a395aafa3d11c8e36fa3f49de50c6a44e5d3e640ac8ba7af53b55e37349e17",
+      "duration_s": 0.239
+    },
+    {
+      "cell_key": "synthetic_sep0.5_noise0.01::sgd_log_loss::split101",
+      "prediction_sha256": "2d74ce4ac9c56b646af55f4ec6c6d3b8171c46921b2b221533bec428a0c91729",
+      "duration_s": 0.162
+    },
+    {
+      "cell_key": "synthetic_sep0.5_noise0.15::decision_tree::split101",
+      "prediction_sha256": "d2c760544abc7c7212d48211f1a7a52399fc6466331f8a42a38a788247b1ae35",
+      "duration_s": 0.263
+    },
+    {
+      "cell_key": "synthetic_sep0.5_noise0.15::sgd_log_loss::split101",
+      "prediction_sha256": "b642bd88b8f26282e999281b57a433c9d2f05e8e5aa13980505303a6a9f10744",
+      "duration_s": 0.156
+    },
+    {
+      "cell_key": "synthetic_sep1.5_noise0.01::decision_tree::split101",
+      "prediction_sha256": "0edfaa46fce897d47733c9e30454c2ee546e4b4b206325e11a6851e487b77e79",
+      "duration_s": 0.222
+    },
+    {
+      "cell_key": "synthetic_sep1.5_noise0.01::sgd_log_loss::split101",
+      "prediction_sha256": "6dab3809150e01fc2f5dc400f785e9668d7bbddb22bdad1bc1667bf53deeff08",
+      "duration_s": 0.109
+    },
+    {
+      "cell_key": "synthetic_sep1.5_noise0.15::decision_tree::split101",
+      "prediction_sha256": "a1622ee804edb34a1dc3bfbf8561afaaf0d42ed602b452d8e585889a393c50f5",
+      "duration_s": 0.348
+    },
+    {
+      "cell_key": "synthetic_sep1.5_noise0.15::sgd_log_loss::split101",
+      "prediction_sha256": "5fce79f1b3a7c85946bd29d89f21e82aaf9e7b1f199dba416953df56f18f7f8a",
+      "duration_s": 0.137
+    },
+    {
+      "cell_key": "iris_virginica::decision_tree::split202",
+      "prediction_sha256": "313791e6a47aa39390836d809e3b5bd09603de82c6240fc0ac1271f3d90d760f",
+      "duration_s": 0.018
+    },
+    {
+      "cell_key": "iris_virginica::sgd_log_loss::split202",
+      "prediction_sha256": "6392e547b6658501af54be17a4b834938b609e2ca9d04f335ba85a517b00e58e",
+      "duration_s": 0.025
+    },
+    {
+      "cell_key": "wine_class0::decision_tree::split202",
+      "prediction_sha256": "e353ac3195e7e2b32dae31ca70c94397a5d6745cd7f77a6ad4499d8ecb1d64e0",
+      "duration_s": 0.024
+    },
+    {
+      "cell_key": "wine_class0::sgd_log_loss::split202",
+      "prediction_sha256": "4b012683a51d939a8db1e4d6f30ad1982c1b43937ba1e2050db858dd7958812b",
+      "duration_s": 0.028
+    },
+    {
+      "cell_key": "digits_5_to_9::decision_tree::split202",
+      "prediction_sha256": "9b5eb8b6d0fd7148032dd3083a0171b8693d5c606183e8f04cef440a48f1a528",
+      "duration_s": 0.35
+    },
+    {
+      "cell_key": "digits_5_to_9::sgd_log_loss::split202",
+      "prediction_sha256": "f9c19b314345ce93a42340c18471f464a300014d4133521a85660a3ea83c0347",
+      "duration_s": 0.413
+    },
+    {
+      "cell_key": "breast_cancer_malignant::decision_tree::split202",
+      "prediction_sha256": "69a47aa64fc8c48854d91df8a9567e80698053daf7fc671cd9593a018f3eae10",
+      "duration_s": 0.137
+    },
+    {
+      "cell_key": "breast_cancer_malignant::sgd_log_loss::split202",
+      "prediction_sha256": "26b6f3e80a67589fb8dd7bd0a318323c277494cecfcc32e67455f49d91cb320c",
+      "duration_s": 0.06
+    },
+    {
+      "cell_key": "synthetic_sep0.5_noise0.01::decision_tree::split202",
+      "prediction_sha256": "2827dcb2bba12c0ec43205db0114ecde52b6abe63260a030992bfc856a95e31e",
+      "duration_s": 0.223
+    },
+    {
+      "cell_key": "synthetic_sep0.5_noise0.01::sgd_log_loss::split202",
+      "prediction_sha256": "444bc5c27fd3665cad8a7d40572f456b447c27ae710a89e691d82931738111d1",
+      "duration_s": 0.149
+    },
+    {
+      "cell_key": "synthetic_sep0.5_noise0.15::decision_tree::split202",
+      "prediction_sha256": "a9914709a3069b166a1b56341ab4be4abc81fba7510613e40d302c2f25ae83ba",
+      "duration_s": 0.229
+    },
+    {
+      "cell_key": "synthetic_sep0.5_noise0.15::sgd_log_loss::split202",
+      "prediction_sha256": "f31df37d0cc24d3b6e968088a727d318feac38ec075e8640fc9b5ad307b777b3",
+      "duration_s": 0.165
+    },
+    {
+      "cell_key": "synthetic_sep1.5_noise0.01::decision_tree::split202",
+      "prediction_sha256": "c20d9efa6f880a2326a6077666c034d911e9c1a399e8a0ae3eacad9ea75e2673",
+      "duration_s": 0.168
+    },
+    {
+      "cell_key": "synthetic_sep1.5_noise0.01::sgd_log_loss::split202",
+      "prediction_sha256": "c4c873f35da4d3c84568cdff770cd31c067925d31a1bcae43f2ec58e0ed79e2e",
+      "duration_s": 0.106
+    },
+    {
+      "cell_key": "synthetic_sep1.5_noise0.15::decision_tree::split202",
+      "prediction_sha256": "83df73b3b099a4007d48b391d73ed109c0ef3f3e5e4af987b1806ebf1cf578dd",
+      "duration_s": 0.416
+    },
+    {
+      "cell_key": "synthetic_sep1.5_noise0.15::sgd_log_loss::split202",
+      "prediction_sha256": "394a2f4f57e5ff74b89a84fdae83bb7d63057d4d6f4d743a494c447ff9dda7ac",
+      "duration_s": 0.147
+    }
+  ],
+  "checkpoint_table_sha256": "2b66e4b0bb40a12713fbeb062d3073099d9d21284feaf05b3b7cf54c6717ae0e"
+}
