@@ -1,0 +1,31 @@
+name: A03-A05 research source checks
+
+on:
+  push:
+    paths:
+      - "research/a02_reproducibility/r3/**"
+      - ".github/workflows/a03-a05-research.yml"
+  pull_request:
+    paths:
+      - "research/a02_reproducibility/r3/**"
+      - ".github/workflows/a03-a05-research.yml"
+
+jobs:
+  fixed-protocol-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install reproducibility dependencies
+        run: python -m pip install -r research/a02_reproducibility/r3/requirements-R3.txt
+      - name: Unit tests for fixed-budget review and tie handling
+        working-directory: research/a02_reproducibility/r3/code
+        run: python -m pytest -q test_a03.py
+      - name: Validate frozen A03 and A05 protocol syntax
+        working-directory: research/a02_reproducibility/r3/code
+        run: |
+          python -c "import json; a=json.load(open('a03_protocol.json')); assert a['version']==1 and a['audit_seed_count']==30 and a['primary_budget']==0.9"
+          python -c "import json; b=json.load(open('a05_protocol.json')); assert b['audit_fits_per_cell']==100 and b['target']==0.9"
