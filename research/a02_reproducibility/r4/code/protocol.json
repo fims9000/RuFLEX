@@ -1,0 +1,41 @@
+{
+  "id": "A06_R4_EXTERNAL_FROZEN_STREAMING",
+  "version": 1,
+  "status": "LOCALLY_FIXED_BEFORE_A06_EXECUTION; NOT_EXTERNAL_PREREGISTRATION",
+  "hypothesis": "Whether R3's fixed-reference uncertainty/disagreement score maintains value at operationally frozen review thresholds in previously unused benchmark domains",
+  "data": {
+    "sources": "statsmodels 0.14.6 embedded offline datasets",
+    "datasets": ["fair_affair_any", "randhie_doctor_visit_any", "modechoice_alternative_selected", "anes96_reported_vote"],
+    "label_rule_fair": "affairs > 0",
+    "label_rule_randhie": "mdvis > 0",
+    "label_rule_modechoice": "choice == 1",
+    "label_rule_anes96": "vote == 1",
+    "grouping": "modechoice train/validation/test split by individual, other datasets stratified rows",
+    "data_privacy": "standard openly packaged survey datasets; no personal identity features or deployment claims"
+  },
+  "split_seeds": [303, 404],
+  "split_ratio": [0.6, 0.2, 0.2],
+  "models": ["logistic_regression", "decision_tree", "random_forest", "sgd_log_loss"],
+  "reference_seed": 42000,
+  "audit_seed_range": [43000, 43015],
+  "reference_selection": "fixed; no validation accuracy or held-out label based model selection",
+  "preprocessing": "StandardScaler fitted to train only; nonfinite inputs rejected",
+  "target_coverage": 0.90,
+  "scores": {
+    "confidence_only": "1-max(p_ref,1-p_ref)",
+    "combined_fixed": "1-confidence + 0.5*(1-reference agreement fraction)",
+    "dispersion_fixed": "1-confidence + 0.5*std(audit p1)",
+    "disagreement_only": "1-reference agreement fraction",
+    "vote_uncertainty": "min(frac audit vote class1, 1-frac audit vote class1)",
+    "ensemble_entropy": "binary entropy of audit mean p1"
+  },
+  "streaming_operating_point": "threshold and boundary-tie randomization probability derived entirely from validation unlabeled score distribution; one-by-one heldout application; no knowledge of test batch size",
+  "tie_seeds": [1, 2, 3, 4, 5, 6, 7, 8],
+  "point_estimate_tie_seed": 1,
+  "batch_diagnostic": "label-blind exact top-k on heldout scores; comparison only, not streaming guarantee",
+  "inference": "descriptive per-dataset/model/split; no independent-split assumption, no familywise hypothesis claim; group-aware bootstrap reserved for modechoice if implemented",
+  "evaluation": ["realized coverage", "accepted-case risk", "errors captured", "review count", "coverage drift", "batch matched risk", "tie seed sensitivity"],
+  "negative_results": "mandatory; include cases where confidence-only wins and coverage drift undermines comparison",
+  "integrity": "save fixed protocol digest, input hashes and per-case prediction/score evidence",
+  "forbidden": ["modify or overwrite A01/R2/R3", "select score coefficient using heldout labels", "claim universal improvement", "infer independence of PRNG streams without distributional sampling assumption"]
+}
