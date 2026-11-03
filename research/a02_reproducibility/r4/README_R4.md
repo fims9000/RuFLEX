@@ -24,6 +24,14 @@ The separate reference-audit entropy, dispersion, vote-uncertainty and disagreem
 
 For the exact-batch combined-vs-confidence comparison, a conditional 2,500-replicate fixed-mask paired bootstrap was computed per cell. Modechoice uses *individual-group bootstrap* rather than independent rows. Four of 32 unadjusted 95% intervals excluded zero in the beneficial direction. These intervals are not multiplicity-corrected and do not justify a population-wide claim; resplit overlap, model selection from prior R3, and incomplete clustering metadata in RAND HIE further limit inference. No test-label optimization or re-fitting was performed in A06.
 
+## Post-hoc streaming review-cost sensitivity (supplementary)
+
+The operational streaming policies can realize different held-out review fractions, so accepted-case risks alone are insufficient. A separate **post-hoc accounting proxy** avoids this comparison problem by evaluating
+
+`L(lambda) = (number of incorrect accepted decisions + lambda * number reviewed) / number of held-out cases`,
+
+where `lambda` is a hypothetical review workload cost in units of one automated classification error. This is **not** measured human-review utility, and no lambda was selected in advance. It does not assume that reviewed cases would be correctly resolved; it counts automated residual errors plus review effort. For the fixed tie seed, the combined policy was Pareto superior in 5 of 32 cells, Pareto inferior in 1, exactly equal in 8, and involved an error/workload tradeoff in 18. For lambda 0.1 it had 17 lower / 8 equal / 7 higher cost values; at lambda 0.5 the split was 19 / 8 / 5. The unweighted mean cost contrast across lambda 0 through 1 ranged from -0.534 to -0.502 error-equivalents per 100 cases. This is a descriptive sensitivity check on inspected outcomes, not a finding of optimal review policy. Full per-cell results are in `results/analysis/A06_REVIEW_COST_BY_CELL.csv`, the grid summary in `A06_REVIEW_COST_SUMMARY.csv`, and the exact recomputation in `code/a06_review_cost.py`.
+
 ## Reproduce
 
 Tested locally on CPython 3.13.5, numpy 2.3.5, pandas 2.2.3, scipy 1.17.0, scikit-learn 1.8.0, statsmodels 0.14.6, matplotlib 3.10.8, python-docx 1.2.0 and pytest 9.0.2.
@@ -33,6 +41,7 @@ python -m pip install -r requirements-R4.txt
 python -m pytest -q code/test_a06.py
 python code/verify_a06.py --protocol code/protocol.json --results results
 python code/analyze_a06.py --results results --out results/analysis
+python code/a06_review_cost.py --results results --out results/analysis
 python code/make_figures_a06.py
 ```
 
