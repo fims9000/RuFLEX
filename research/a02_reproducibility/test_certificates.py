@@ -1,48 +1,58 @@
-import unittest
+"""Standalone A02 regression and negative tests."""
+import math
+from pathlib import Path
 
-from certificates import (
-    audit_reference, binary_threshold_certificate, exact_one_sided_lower,
-    min_perfect_runs, multiclass_margin_certificate,
-)
+import pytest
 
-
-class ReproducibilityCertificateTests(unittest.TestCase):
-    def test_all_agreeing_lower_bound(self):
-        self.assertAlmostEqual(exact_one_sided_lower(19, 19, .05), .05 ** (1 / 19))
-        self.assertEqual(exact_one_sided_lower(0, 100, .05), 0.0)
-
-    def test_perfect_run_budget(self):
-        self.assertEqual(min_perfect_runs(.95, .05), 59)
-
-    def test_multiclass_margin(self):
-        self.assertTrue(multiclass_margin_certificate([.8, .2], .29))
-        self.assertFalse(multiclass_margin_certificate([.8, .2], .31))
-
-    def test_binary_threshold(self):
-        self.assertTrue(binary_threshold_certificate(.8, .5, .29))
-        self.assertFalse(binary_threshold_certificate(.8, .5, .31))
-
-    def test_fresh_seed_reuse_rejected(self):
-        with self.assertRaises(ValueError):
-            audit_reference({'a': '1'}, {'a': {9: '1'}},
-                            declared_seeds=[9], reference_seed=9)
-
-    def test_missing_audit_run_rejected(self):
-        with self.assertRaises(ValueError):
-            audit_reference({'a': '1'}, {'a': {10: '1'}},
-                            declared_seeds=[10, 11], reference_seed=9)
-
-    def test_familywise_wider_than_pointwise(self):
-        ref = {'a': '1', 'b': '0'}
-        calibration = {k: {s: v for s in range(100)} for k, v in ref.items()}
-        pointwise = audit_reference(ref, calibration, declared_seeds=list(range(100)),
-                                    correction='none', reference_seed=9000)
-        familywise = audit_reference(ref, calibration, declared_seeds=list(range(100)),
-                                     correction='bonferroni', reference_seed=9000)
-        for p, f in zip(pointwise, familywise):
-            self.assertGreaterEqual(p['one_sided_lower_bound'],
-                                    f['one_sided_lower_bound'])
+from certificates import (audit_reference, binary_threshold_certificate,
+    exact_one_sided_lower, min_perfect_runs, multiclass_margin_certificate,
+    read_calibration_csv, read_reference_csv)
 
 
-if __name__ == '__main__':
-    unittest.main()
+def test_exact_all_agree():
+    assert exact_one_sided_lower(19, 19, .05) == pytest.approx(.05 ** (1 / 19))
+    assert min_perfect_runs(.95, .05) == 59
+    assert exact_one_sided_lower(59, 59, .05) >= .95
+    assert exact_one_sided_lower(0, 60, .05) == 0
+    assert exact_one_sided_lower(35, 60, .05) < 35 / 60
+
+
+def test_bound_matches_scipy():
+    from scipy.stats import beta
+    for n in (5, 19, 59, 100):
+        for k in (1, n // 2, n - 1):
+            assert exact_one_sided_lower(k, n, .05) == pytest.approx(beta.ppf(.05, k, n - k + 1), abs=1e-12)
+
+
+def test_deterministic_margin_not_confidence():
+    assert multiclass_margin_certificate([0.9, 0.2, 0.1], .3)
+    assert not multiclass_margin_certificate([0.9, 0.4], .3)
+    assert binary_threshold_certificate(.90, .78, .10)
+    assert not binary_threshold_certificate(.90, .85, .08)
+    with pytest.raises(ValueError):
+        binary_threshold_certificate(.9, .0, .1)
+
+
+def test_audit_independence_and_multiplicity():
+    refs = {"a": "1", "b": "0"}
+    cal = {"a": {s: "1" for s in range(100, 160)},
+           "b": {s: "0" for s in range(100, 160)}}
+    point = audit_reference(refs, cal, declared_seeds=list(range(100, 160)), correction="none", reference_seed=7)
+    joint = audit_reference(refs, cal, declared_seeds=list(range(100, 160)), reference_seed=7)
+    assert point[0]["certified"]
+    assert joint[0]["one_sided_lower_bound"] < point[0]["one_sided_lower_bound"]
+    with pytest.raises(ValueError, match="reference seed"):
+        audit_reference(refs, cal, declared_seeds=list(range(100, 160)), reference_seed=111)
+    with pytest.raises(ValueError, match="missing or extra"):
+        audit_reference(refs, {"a": {100: "1"}, "b": cal["b"]}, declared_seeds=list(range(100, 160)))
+
+
+def test_csv_duplicates_rejected(tmp_path: Path):
+    ref = tmp_path / "ref.csv"
+    ref.write_text("case_id,reference_class,reference_seed\na,1,9000\nb,0,9000\n")
+    got, seed = read_reference_csv(ref)
+    assert got == {"a":"1", "b":"0"} and seed == 9000
+    cal = tmp_path / "cal.csv"
+    cal.write_text("case_id,seed,prediction\na,100,1\na,100,0\n")
+    with pytest.raises(ValueError, match="duplicate"):
+        read_calibration_csv(cal)
