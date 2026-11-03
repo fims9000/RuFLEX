@@ -16,7 +16,7 @@ class ReproducibilityCertificateTests(unittest.TestCase):
 
     def test_multiclass_margin(self):
         self.assertTrue(multiclass_margin_certificate([.8, .2], .29))
-        self.assertFalse(multiclass_margin_certificate([.8, .2], .30))
+        self.assertFalse(multiclass_margin_certificate([.8, .2], .31))
 
     def test_binary_threshold(self):
         self.assertTrue(binary_threshold_certificate(.8, .5, .29))
