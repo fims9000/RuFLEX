@@ -1,0 +1,9 @@
+dataset,model,n,review_only_augmented,review_only_baseline,errors_only_augmented,errors_only_baseline,empirical_gain,lower_gain_confidence,certified_positive,alpha,scope
+sunspots_next_year_rise,logistic_regression,29,0,0,0,0,0.0,-0.16054801060945093,False,0.05,"IID independent certification cases, fixed policies; no distribution shift guarantee"
+sunspots_next_year_rise,decision_tree,29,2,0,0,0,-0.017241379310344827,-0.18919044177022126,False,0.05,"IID independent certification cases, fixed policies; no distribution shift guarantee"
+sunspots_next_year_rise,random_forest,29,2,1,0,0,-0.008620689655172414,-0.23441667225104706,False,0.05,"IID independent certification cases, fixed policies; no distribution shift guarantee"
+sunspots_next_year_rise,sgd_log_loss,29,10,0,6,0,0.1206896551724138,-0.15044698121036754,False,0.05,"IID independent certification cases, fixed policies; no distribution shift guarantee"
+us_macro_next_quarter_unemployment_rise,logistic_regression,19,0,0,0,0,0.0,-0.23441452519649925,False,0.05,"IID independent certification cases, fixed policies; no distribution shift guarantee"
+us_macro_next_quarter_unemployment_rise,decision_tree,19,2,0,1,0,0.02631578947368421,-0.2731680096059587,False,0.05,"IID independent certification cases, fixed policies; no distribution shift guarantee"
+us_macro_next_quarter_unemployment_rise,random_forest,19,0,1,0,0,0.013157894736842105,-0.2979841965766803,False,0.05,"IID independent certification cases, fixed policies; no distribution shift guarantee"
+us_macro_next_quarter_unemployment_rise,sgd_log_loss,19,0,0,0,0,0.0,-0.23441452519649925,False,0.05,"IID independent certification cases, fixed policies; no distribution shift guarantee"
