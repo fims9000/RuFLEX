@@ -1,0 +1,259 @@
+{
+  "protocol_sha256": "b5be179434b89f3827df797463069f18d45dad14a25243678bf17e871d4bf15d",
+  "code_sha256": "bd91c114e39dee1205cd0a05e1657f553c8a5ef7f7844dd7eb0740a2fa30c05b",
+  "statsmodels_version": "0.14.6",
+  "fit_count": 136,
+  "new_independent_real_temporal_sources": 2,
+  "model_cells": 8,
+  "note": "Two separate source data sets, four correlated model families each; historical observations, not current institutional deployments.",
+  "certification_assumption": "IID calibration-to-deployment; NOT established for these time-series, so lower limits are not deployment guarantees.",
+  "cells": [
+    {
+      "cell": "sunspots_next_year_rise/logistic_regression",
+      "dataset_data_sha256": "0b01a7e84fc03a51fba8b9c6dc0d7ef0331f87d7430b273690fe73a4c3cf8d91",
+      "first_train": "1706",
+      "last_train": "1839",
+      "riskfit_range": [
+        "1841",
+        "1899"
+      ],
+      "threshold_range": [
+        "1901",
+        "1929"
+      ],
+      "certification_range": [
+        "1931",
+        "1959"
+      ],
+      "test_range": [
+        "1961",
+        "2007"
+      ],
+      "base_threshold": [
+        0.23238046307887014,
+        1.0
+      ],
+      "aug_threshold": [
+        0.23238046307887014,
+        1.0
+      ]
+    },
+    {
+      "cell": "sunspots_next_year_rise/decision_tree",
+      "dataset_data_sha256": "0b01a7e84fc03a51fba8b9c6dc0d7ef0331f87d7430b273690fe73a4c3cf8d91",
+      "first_train": "1706",
+      "last_train": "1839",
+      "riskfit_range": [
+        "1841",
+        "1899"
+      ],
+      "threshold_range": [
+        "1901",
+        "1929"
+      ],
+      "certification_range": [
+        "1931",
+        "1959"
+      ],
+      "test_range": [
+        "1961",
+        "2007"
+      ],
+      "base_threshold": [
+        0.7153440661296785,
+        0.8571428571428571
+      ],
+      "aug_threshold": [
+        0.48254519195025064,
+        1.0
+      ]
+    },
+    {
+      "cell": "sunspots_next_year_rise/random_forest",
+      "dataset_data_sha256": "0b01a7e84fc03a51fba8b9c6dc0d7ef0331f87d7430b273690fe73a4c3cf8d91",
+      "first_train": "1706",
+      "last_train": "1839",
+      "riskfit_range": [
+        "1841",
+        "1899"
+      ],
+      "threshold_range": [
+        "1901",
+        "1929"
+      ],
+      "certification_range": [
+        "1931",
+        "1959"
+      ],
+      "test_range": [
+        "1961",
+        "2007"
+      ],
+      "base_threshold": [
+        0.34401616685404035,
+        1.0
+      ],
+      "aug_threshold": [
+        0.194681698578925,
+        1.0
+      ]
+    },
+    {
+      "cell": "sunspots_next_year_rise/sgd_log_loss",
+      "dataset_data_sha256": "0b01a7e84fc03a51fba8b9c6dc0d7ef0331f87d7430b273690fe73a4c3cf8d91",
+      "first_train": "1706",
+      "last_train": "1839",
+      "riskfit_range": [
+        "1841",
+        "1899"
+      ],
+      "threshold_range": [
+        "1901",
+        "1929"
+      ],
+      "certification_range": [
+        "1931",
+        "1959"
+      ],
+      "test_range": [
+        "1961",
+        "2007"
+      ],
+      "base_threshold": [
+        0.3338470935017026,
+        1.0
+      ],
+      "aug_threshold": [
+        0.446465295601065,
+        1.0
+      ]
+    },
+    {
+      "cell": "us_macro_next_quarter_unemployment_rise/logistic_regression",
+      "dataset_data_sha256": "317f610f076c35dd7320dcef4b4545a18c9a30803c4feeb2ddafe6fedcf921d5",
+      "first_train": "1959Q4",
+      "last_train": "1981Q2",
+      "riskfit_range": [
+        "1981Q4",
+        "1991Q2"
+      ],
+      "threshold_range": [
+        "1991Q4",
+        "1996Q2"
+      ],
+      "certification_range": [
+        "1996Q4",
+        "2001Q2"
+      ],
+      "test_range": [
+        "2001Q4",
+        "2009Q2"
+      ],
+      "base_threshold": [
+        0.24045873347661895,
+        1.0
+      ],
+      "aug_threshold": [
+        0.2404587334766189,
+        1.0
+      ]
+    },
+    {
+      "cell": "us_macro_next_quarter_unemployment_rise/decision_tree",
+      "dataset_data_sha256": "317f610f076c35dd7320dcef4b4545a18c9a30803c4feeb2ddafe6fedcf921d5",
+      "first_train": "1959Q4",
+      "last_train": "1981Q2",
+      "riskfit_range": [
+        "1981Q4",
+        "1991Q2"
+      ],
+      "threshold_range": [
+        "1991Q4",
+        "1996Q2"
+      ],
+      "certification_range": [
+        "1996Q4",
+        "2001Q2"
+      ],
+      "test_range": [
+        "2001Q4",
+        "2009Q2"
+      ],
+      "base_threshold": [
+        0.2702794673891659,
+        0.2857142857142857
+      ],
+      "aug_threshold": [
+        0.2452110983275792,
+        0.2857142857142857
+      ]
+    },
+    {
+      "cell": "us_macro_next_quarter_unemployment_rise/random_forest",
+      "dataset_data_sha256": "317f610f076c35dd7320dcef4b4545a18c9a30803c4feeb2ddafe6fedcf921d5",
+      "first_train": "1959Q4",
+      "last_train": "1981Q2",
+      "riskfit_range": [
+        "1981Q4",
+        "1991Q2"
+      ],
+      "threshold_range": [
+        "1991Q4",
+        "1996Q2"
+      ],
+      "certification_range": [
+        "1996Q4",
+        "2001Q2"
+      ],
+      "test_range": [
+        "2001Q4",
+        "2009Q2"
+      ],
+      "base_threshold": [
+        0.3182957944429391,
+        1.0
+      ],
+      "aug_threshold": [
+        0.3332989012504336,
+        1.0
+      ]
+    },
+    {
+      "cell": "us_macro_next_quarter_unemployment_rise/sgd_log_loss",
+      "dataset_data_sha256": "317f610f076c35dd7320dcef4b4545a18c9a30803c4feeb2ddafe6fedcf921d5",
+      "first_train": "1959Q4",
+      "last_train": "1981Q2",
+      "riskfit_range": [
+        "1981Q4",
+        "1991Q2"
+      ],
+      "threshold_range": [
+        "1991Q4",
+        "1996Q2"
+      ],
+      "certification_range": [
+        "1996Q4",
+        "2001Q2"
+      ],
+      "test_range": [
+        "2001Q4",
+        "2009Q2"
+      ],
+      "base_threshold": [
+        0.2916447806959327,
+        0.21052631578947367
+      ],
+      "aug_threshold": [
+        0.2555308684694197,
+        0.21052631578947367
+      ]
+    }
+  ],
+  "outputs_sha256": {
+    "R6_TEMPORAL_RESULTS.csv": "9829e0f56488b4c066c6a034d90ac280e5305ebb86f0016f1fa16f03cc075727",
+    "R6_TEMPORAL_CASE_LEVEL.csv": "2db276857318b40ee6fc3e3fe6c6348e5e42d66e46918574027de8d8301628a0",
+    "R6_CERTIFICATION.csv": "6294277bc6b7f6b631a8fb0d3cc4f9943d8af4a51ba0ef2bf47580703d23f6a4",
+    "R6_CERTIFICATION_CASE_LEVEL.csv": "0394474cbe4c3b69a40829309f03cff54276f5f7cca9445767e5d3a60b3640c7",
+    "R6_THRESHOLD_CALIBRATION_SCORES.csv": "42c8899748057e6544efea3f1052025d1365d0ccef142a57d50e0c19646611b4"
+  }
+}
