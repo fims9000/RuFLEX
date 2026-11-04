@@ -1,0 +1,7 @@
+# Responses to ACDSA 2027 reviewers #3 and #4 — new exploratory research trajectory
+
+Reviewer #3 asked for an *a priori* definition of decision reproducibility and conditions ensuring it. Earlier A02 formalized replication probabilities conditional on the training procedure; R6 and R7 go further by distinguishing **predictive repeatability** from **the reliability of policy decisions made using it**. R7 defines the paired value of changed review decisions and spells out exact assumptions for sequential evidence. It also supplies a counterexample under which falsely treating correlated records as separate observations leads to severe false certification. The proof uses known theory and does not resolve the much broader question of unconditional model reproducibility.
+
+Reviewer #4 correctly noted the limited number of public datasets and configurations. R7 adds a previously unused cross-country, multi-year panel, four model families, 64 new fits and controlled simulations. But cross-country observations share global effects, and the e-process was severely underpowered for the six annual monitoring groups. Consequently this is an **exploratory methodology result**, not evidence of broad generalization or practical deployment safety.
+
+The R7 additional simple baselines exposed that the augmented model is not consistently best. We report the negative results and retain both earlier reviewers' concerns as important limits rather than claiming they have been fully settled.
