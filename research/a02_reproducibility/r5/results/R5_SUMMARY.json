@@ -1,0 +1,47 @@
+{
+  "protocol_sha256": "791ee6dd60c84cf09e02cd01571d14c9f646ae46c45f638bd92565aa98804291",
+  "new_training_fits": 248,
+  "new_temporal_cells": 8,
+  "new_heldout_case_model_predictions": 2820,
+  "early_stream_improved_tied_worse": [
+    3,
+    0,
+    1
+  ],
+  "late_stream_improved_tied_worse": [
+    3,
+    1,
+    0
+  ],
+  "late_batch_errors_avoided_per_model": [
+    {
+      "model": "logistic_regression",
+      "avoided": 0
+    },
+    {
+      "model": "decision_tree",
+      "avoided": 2
+    },
+    {
+      "model": "random_forest",
+      "avoided": 6
+    },
+    {
+      "model": "sgd_log_loss",
+      "avoided": 2
+    }
+  ],
+  "all_temporal_heldouts_temporally_correlated": true,
+  "historical_a06_stream_improved_tied_worse": [
+    13,
+    4,
+    15
+  ],
+  "historical_a06_stream_mean_cost_delta": -0.005514535234082909,
+  "historical_a06_batch_improved_tied_worse": [
+    12,
+    9,
+    11
+  ],
+  "historical_a06_batch_mean_cost_delta": -0.006297032154068873
+}
