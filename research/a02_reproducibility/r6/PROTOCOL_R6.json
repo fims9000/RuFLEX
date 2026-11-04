@@ -1,0 +1,43 @@
+{
+  "id": "R6_SWITCH_VALUE_AND_TRANSPORTABILITY_20261104",
+  "status": "PRE_EXECUTION_LOCAL_PROTOCOL_FREEZE_NOT_EXTERNAL_PREREGISTRATION",
+  "source_hypotheses": [
+    "H6.1: review utility is localized to cases for which two frozen policies disagree; non-switch errors cannot explain a paired gain",
+    "H6.2: without restrictions on target conditional label risk, observed confidence and retraining agreement alone cannot determine the sign of target review utility",
+    "H6.3: under a declared uniform conditional-error shift bound epsilon, sign preservation requires a transported expected gain exceeding epsilon times the target switch fraction",
+    "H6.4: an independent switch-set lower confidence bound will often refuse to authorize augmentation with limited labeled calibration data, prioritizing evidential safety over average rank improvement"
+  ],
+  "theoretical_status": "finite-sample bookkeeping, Bayes value of information, binomial confidence bounds and risk-transport inequalities are derived rather than claimed as novel universal mathematical theorems",
+  "historical_data": "A06 and R5 case-level evidence was inspected before H6; always retrospective",
+  "new_temporal_datasets": [
+    {
+      "id": "sunspots_next_year_rise",
+      "source": "statsmodels 0.14.6 packaged sunspots annual 1700-2008",
+      "target": "SUNACTIVITY[t+1] > SUNACTIVITY[t]",
+      "features": "SUNACTIVITY[t] and lags 1/2/3/6, differences, past rolling means, calendar year sin/cos with cycle length 11",
+      "start_lag": 6
+    },
+    {
+      "id": "us_macro_next_quarter_unemployment_rise",
+      "source": "statsmodels 0.14.6 packaged macrodata quarterly 1959-2009",
+      "target": "unemp[t+1] > unemp[t]",
+      "features": "unemp/current and lagged, current inflation, real GDP growth and lags, CPI, treasury bill rate, real interest rate, quarter sin/cos",
+      "start_lag": 3
+    }
+  ],
+  "partition_rule": "chronological disjoint: 45% base fitting; 20% error-risk fitting; 10% unlabeled review-threshold calibration; 10% independent labeled policy certification; 15% untouched final evaluation; integer partition lengths rounded down sequentially, residual assigned to heldout",
+  "purge_gap": "at least 1 target-horizon observation between each partition to prevent overlap of immediately adjacent one-step labels",
+  "models": ["logistic_regression", "decision_tree", "random_forest", "sgd_log_loss"],
+  "reference_fit_seed": 61000,
+  "audit_seeds_start": 61001,
+  "audit_seeds_stop_exclusive": 61017,
+  "preprocessing": "StandardScaler fitted on base train only; fixed model hyperparameters; no test-label tuning",
+  "risk_estimation": "supervised L2 logistic error-risk regression trained only on riskfit labels; confidence-only features 1-confidence and reference class; augmented adds disagreement, audit probability std and interaction (1-confidence)*disagreement",
+  "review_cost_lambda": 0.25,
+  "threshold_calibration_review_fraction": 0.20,
+  "policy_certification": "one-sided 95% switch-set bound using four simultaneous two-sided Clopper-Pearson intervals with Bonferroni; policies fixed before certification set",
+  "safe_deployment_gate": "activate augmented policy only if independent certification lower gain bound > 0; otherwise deploy confidence-only",
+  "secondary_endpoints": ["heldout joint review cost", "accepted errors and review workload", "policy switch fraction", "label drift and calibration generalization", "risk mean squared error", "matched-budget batch descriptive ranking"],
+  "tie_seed": 61042,
+  "reporting_constraints": ["all eight new temporal cells, gains and losses, and abstentions", "no pooled significance across overlapping resplits", "source and test labels may not be used to tune new models after opening", "fixed PRNG seeds do not prove independent retraining", "certification validity requires IID certification and evaluation observations; temporal data violate exact IID premise", "historical A06/R5 numerical results are exploratory and not independent confirmation"]
+}
