@@ -1,0 +1,60 @@
+{
+  "protocol_sha256": "fb047cc115129cf66b00d9ddd9206463d88cd9580beaea8ba1c7fd47932edbac",
+  "fit_count": 64,
+  "model_families": [
+    "logistic_regression",
+    "decision_tree",
+    "random_forest",
+    "extra_trees"
+  ],
+  "auxiliary_per_model": 15,
+  "panel_rows": 7992,
+  "panels_stage": [
+    {
+      "stage": "frozen_future_evaluation",
+      "n": 976,
+      "countries": 196,
+      "positives": 338
+    },
+    {
+      "stage": "labelled_target_monitoring",
+      "n": 1150,
+      "countries": 193,
+      "positives": 519
+    },
+    {
+      "stage": "review_threshold_calibration",
+      "n": 576,
+      "countries": 192,
+      "positives": 344
+    },
+    {
+      "stage": "risk_fit",
+      "n": 1519,
+      "countries": 190,
+      "positives": 887
+    },
+    {
+      "stage": "train",
+      "n": 3771,
+      "countries": 189,
+      "positives": 1797
+    }
+  ],
+  "excluded_non_iso_country_codes": [
+    "CAA",
+    "CHI",
+    "KSV",
+    "LCN",
+    "OED",
+    "OSS",
+    "PSS"
+  ],
+  "result_sha256": {
+    "R7_CASE_LEVEL.csv": "0c8693a7df88cf5a5fac132d3eda630f3011c465d1bbe2943f81fc21cb0c97e6",
+    "R7_POLICY_CELLS.csv": "862358a486ad6094581902d1c9e9c6af1d36d381d08e680677037246f3649b3b",
+    "R7_STAGE_COUNTS.csv": "998cd1f2b38b1e9aa19220491d0c716f17f5591c6b0c870be0dc0216ca1ccfe4",
+    "R7_YEAR_EVIDENCE.csv": "b763525fafa9fe7d42cc705904d87ab3c423891f40556a69292401d979bd0f7b"
+  },
+  "data_source": "statsmodels 0.14.6 fertility dataset, World Bank WDI"
+}
