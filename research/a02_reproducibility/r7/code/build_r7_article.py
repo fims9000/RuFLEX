@@ -33,6 +33,10 @@ for name,size,before,after in [('Title',17,0,9),('Heading 1',12.5,11,5),('Headin
  s.font.size=Pt(size);s.font.bold=True;s.font.color.rgb=RGBColor(22,59,82)
  s.paragraph_format.space_before=Pt(before);s.paragraph_format.space_after=Pt(after)
  s.paragraph_format.keep_with_next=True
+# Remove the Word default Title-style bottom rule for a clean research layout.
+title_ppr=D.styles['Title']._element.pPr
+title_bdr=title_ppr.find(qn('w:pBdr'))
+if title_bdr is not None:title_ppr.remove(title_bdr)
 if 'Caption' not in D.styles:
  s=D.styles.add_style('Caption',WD_STYLE_TYPE.PARAGRAPH)
 else:s=D.styles['Caption']
@@ -149,7 +153,7 @@ table(['Family','Baseline cost','Augmented cost','Δ gain (pp)','Annual max e'],
 txt('On held-out 2006–2012 observations, augmented and baseline costs differ; for Decision Tree the observed paired reduction is 0.0594 per case, or +5.94 percentage points. Extra Trees is slightly worse. These are counterfactual policy evaluations on later historical observations, not realized human review outcomes, and no policy was promoted by the original gate.')
 fig(ROOT/'figures/figure3_future_costs.png','Figure 2. Frozen policy costs in the held-out country–year period. The review-cost multiplier of 0.25 is a hypothetical accounting proxy; the augmented decisions were evaluated counterfactually.',width=6.1)
 subsection('6.1. A fatal power-feasibility finding')
-txt('The frozen monitor has exactly six annual observations. With |X_t|≤1, K_t is increasing in each X_t, so the maximum conceivable capital is attained by setting all six gains equal to +1. Under the declared stake grid this maximum is only 5.3224, below 20. Consequently **zero promotions is a mathematical certainty**: the test could never authorize a policy, irrespective of empirical performance. This was discovered after the protocol freeze and cannot be concealed as a successful conservative deployment decision.')
+txt('The frozen monitor has exactly six annual observations. With |X_t|≤1, K_t is increasing in each X_t, so the maximum conceivable capital is attained by setting all six gains equal to +1. Under the declared stake grid this maximum is only 5.3224, below 20. Consequently zero promotions is a mathematical certainty: the test could never authorize a policy, irrespective of empirical performance. This was discovered after the protocol freeze and cannot be concealed as a successful conservative deployment decision.')
 txt('Even a hypothetical constant annual gain of +0.05 would require 151 annual groups to reach 20 with these stakes. A useful monitoring design must therefore perform an a priori feasibility and plausible-effect power audit at the number of independent groups actually available.')
 fig(ROOT/'figures/figure2_evidence_granularity.png','Figure 3. Maximum mixture e-values on the same monitoring records. Rowwise values are numerically dramatic for Decision Tree but cannot be interpreted as valid evidence under unspecified within-year dependence. Year-level values remain close to one.',width=6.0)
 
