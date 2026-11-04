@@ -1,0 +1,16 @@
+{
+  "years": 6,
+  "threshold": 20.0,
+  "absolute_maximum_mixture_e": 5.3223736828006,
+  "any_alarm_mathematically_possible": false,
+  "minimum_years_to_alarm_under_all_maximum_gains": 10,
+  "minimum_years_to_alarm_under_constant_gains": {
+    "0.05": 151,
+    "0.075": 101,
+    "0.1": 77,
+    "0.25": 32,
+    "0.5": 17
+  },
+  "finding": "original six-year R7 annual gate is structurally unable to cross the threshold, even under all x_t=+1",
+  "status": "power feasibility correction after local protocol freeze; never interpret 0/4 activations as evidence of safety or sufficient monitoring"
+}
