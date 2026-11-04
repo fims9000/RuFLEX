@@ -1,0 +1,10 @@
+{
+  "amendment": "001_SOURCE_KEY_FIX",
+  "discovered_after": "first model trained but before any heldout policy outcome inspected",
+  "defect": "nonexistent key tie_handling_seed; tie seed 55043 appears in fixed protocol tie_handling string",
+  "change": "replace p[tie_handling_seed] with TIE_SEED=55043; no scoring rule, seed, split, or hypothesis changed",
+  "original_impl_sha256": "4fecd43986d2d05ad677e82045955a91d443347e61571d5385a2ecb6d9344c30",
+  "amended_impl_sha256": "4248411b38d708d2f625802a853c5843732b4f492e7f418764ea6821f3c996fc",
+  "protocol_sha256": "791ee6dd60c84cf09e02cd01571d14c9f646ae46c45f638bd92565aa98804291",
+  "made_at_utc": "2026-11-04T10:39:35.318047+00:00"
+}

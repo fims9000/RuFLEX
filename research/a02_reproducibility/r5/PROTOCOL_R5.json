@@ -1,0 +1,39 @@
+{
+  "id": "R5_CONDITIONAL_REPRODUCIBILITY_VALUE",
+  "version": 1,
+  "status": "LOCALLY_FROZEN_BEFORE_NEW_CO2_FITS; A06_REANALYSIS_IS_EXPLORATORY",
+  "hypothesis_primary": "An error-risk ranker using frozen-reference confidence plus independent-retraining disagreement and probability dispersion reduces realized streaming review-cost compared with a separately supervised confidence-only error-risk ranker on the final held-out CO2 time block.",
+  "hypothesis_mechanism": "Disagreement contributes only when the conditional error risk given confidence and reference class crosses the review cost boundary; mere conditional dependence is insufficient for benefit at that cost.",
+  "theory": "r0=P(error|confidence,reference_class); r1=P(error|confidence,reference_class,disagreement); V_lambda=E[(r1-lambda)_+]-E[(r0-lambda)_+] >= 0 for ideal true risks, no guarantee for estimated risks",
+  "new_data": "statsmodels.datasets.co2.load_pandas, original weekly 1958-2001 observed co2 values",
+  "data_task": "binary label 1 if next observed weekly CO2 concentration is strictly higher than current observed weekly value; exclude pairs with raw current or next week missing; features are current/past information only",
+  "features": ["co2_current", "co2_lag1", "co2_lag2", "co2_lag4", "co2_lag8", "delta1", "delta4", "past_mean4", "past_mean8", "season_sin", "season_cos"],
+  "missing_handling": "forward-fill historical CO2 levels only for feature lags, never interpolate targets with future values",
+  "temporal_folds": [
+    {"name":"early_secondary","train_until":"1978-12-31","validation_from":"1979-04-01","validation_until":"1987-12-31","test_from":"1988-04-01","test_until":"1994-12-31"},
+    {"name":"late_primary","train_until":"1986-12-31","validation_from":"1987-04-01","validation_until":"1994-12-31","test_from":"1995-04-01","test_until":"2001-12-29"}
+  ],
+  "gap": "at least 8 weeks between adjacent train/validation/test label windows; dates in gap excluded",
+  "model_families": ["logistic_regression", "decision_tree", "random_forest", "sgd_log_loss"],
+  "reference_fit_seed": 54000,
+  "auxiliary_fit_seeds": {"start":55000,"stop_exclusive":55030},
+  "reference_selection": "fixed, never selected using validation/test labels",
+  "reference_classifier_threshold": 0.5,
+  "candidate_risk_rankers": {
+    "confidence_only_raw": "1 - confidence",
+    "confidence_plus_disagreement_fixed": "1-confidence + 0.5*disagreement",
+    "calibrated_confidence": "L2 logistic regression fitted using validation error labels on [1-confidence, reference_class]",
+    "calibrated_conditional": "L2 logistic regression fitted using validation error labels on [1-confidence, reference_class, disagreement, probability_std, (1-confidence)*disagreement]"
+  },
+  "risk_regression": {"solver":"lbfgs","C":1.0,"max_iter":1000,"train_only_standardization":true,"random_seed":55042},
+  "review_budget": 0.20,
+  "review_cost_lambda": 0.25,
+  "primary_endpoint": "holdout mean [incorrect AND accepted + lambda * reviewed] per case for streaming validation-frozen thresholds; comparator is supervised calibrated_confidence",
+  "secondary_endpoints": ["batch-exact review count risk contrast at review fraction .20", "conditional-risk boundary crossings", "heldout Brier score for error risk", "mean bootstrap cost contrast by moving blocks", "raw confidence and fixed-combined heuristics"],
+  "tie_handling": "validation boundary tie probability frozen; test ties randomized by fixed SHA256 hash of temporal case identity and seed 55043",
+  "bootstrap": {"type":"moving blocks on temporal case order","block_size_weeks":26,"replicates":2000,"seed":55044,"interpretation":"descriptive; does not prove time-series generalization"},
+  "independent_confirmatory_claim": false,
+  "historical_A06": "previously inspected R4 outputs; reanalysis only, no p-value or new confirmation",
+  "stop_rules": "report all four families both folds including ties, adverse effects, and out-of-range review rates; no post-test hyperparameter changes",
+  "forbidden": ["relabelling historical R4 as independent confirmation", "using heldout labels to tune policies", "calling known value of information equation novel", "claiming model reproducibility implies prediction correctness", "claiming PRNG seeds prove IID retraining", "claiming a temporal series is multiple independent datasets"]
+}
