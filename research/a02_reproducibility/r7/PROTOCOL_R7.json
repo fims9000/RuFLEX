@@ -1,0 +1,66 @@
+{
+  "id": "R7_GROUP_RESPECTING_SEQUENTIAL_SWITCH_AUDIT",
+  "version": 1,
+  "date": "2026-11-04",
+  "status": "local_frozen_before_running_new_annual_country_panel_models; not_external_preregistration",
+  "parent": "R6, https://github.com/fims9000/RuFLEX/pull/9",
+  "question": "Can a new supervised reproducibility score be prospectively promoted on labelled target feedback without treating correlated time-series observations as independent evidence?",
+  "source": "statsmodels 0.14.6 fertility, World Bank WDI fertility rate 1960-2013; pycountry ISO3-filtered countries only",
+  "source_url": "https://www.statsmodels.org/stable/datasets/generated/fertility.html",
+  "unit": "one country-year prediction; label requires observed next-year fertility",
+  "label": "1 if fertility(t+1) - fertility(t) <= -0.05 births/woman, 0 otherwise",
+  "features": ["fertility(t)", "fertility(t-1)", "fertility(t-2)", "fertility(t-3)", "fertility(t-5)", "diff(t,t-1)", "diff(t,t-3)", "rolling_3_prior_including_t", "year_centered_at_1985"],
+  "missing": "remove country-years missing any required historical feature, current/next-year target or country code; no interpolation",
+  "country_filter": "pycountry ISO-3166-1 alpha3 country code membership; report excluded codes",
+  "slices_t_inclusive": {
+    "train": [1965, 1984],
+    "risk_fit": [1986, 1993],
+    "review_threshold_calibration": [1995, 1997],
+    "labelled_target_monitoring": [1999, 2004],
+    "frozen_future_evaluation": [2006, 2012]
+  },
+  "train_only_scaling": true,
+  "reference_seed": 71000,
+  "auxiliary_seeds": {"start": 71100, "stop_exclusive": 71115},
+  "model_families": ["logistic_regression", "decision_tree", "random_forest", "extra_trees"],
+  "model_configs": {
+    "logistic_regression": {"C": 1.0, "max_iter": 2000},
+    "decision_tree": {"max_depth": 5, "min_samples_leaf": 15, "splitter": "random"},
+    "random_forest": {"n_estimators": 40, "max_depth": 7, "min_samples_leaf": 5, "max_features": 0.65},
+    "extra_trees": {"n_estimators": 40, "max_depth": 7, "min_samples_leaf": 5, "max_features": 0.65}
+  },
+  "reference_decision_threshold": 0.5,
+  "error_models": {
+    "both": "LogisticRegression(C=1,max_iter=2000) with StandardScaler fit only on risk_fit",
+    "baseline_columns": ["1-reference_confidence", "reference_predicted_class"],
+    "augmented_columns": ["1-reference_confidence", "reference_predicted_class", "auxiliary_disagreement", "auxiliary_probability_std", "(1-reference_confidence)*auxiliary_disagreement"]
+  },
+  "budget": 0.20,
+  "lambda": 0.25,
+  "threshold": "validation-score quantile with fixed deterministic tie hash at hash seed 71250; no held-out labels used",
+  "primary_unit_of_sequential_monitoring": "year mean of per-case frozen paired gains; chronological 1999-2004 years",
+  "secondary_unit": "country-year rows; deliberately INVALID e-process interpretation under within-year shared shocks",
+  "evalue": {
+    "stakes": [0.03, 0.07, 0.15, 0.30, 0.60],
+    "mixture_weights": "uniform",
+    "alpha": 0.05,
+    "positive_null": "E[year_mean_gain_t | history_through_year_t-1] <= 0 for every monitored year",
+    "positive_alarm": "max_t mixture_evalue >= 1/alpha",
+    "negative_null": "E[-year_mean_gain_t | history_through_year_t-1] <= 0",
+    "negative_alarm": "analogous evidence for harm; descriptive, not independent confirmation"
+  },
+  "operational_gate": "activate conditional model on future block only if positive yearwise evidence >=20 during monitoring; otherwise keep supervised confidence-only rule",
+  "future_interpretation": "future block is labelled for descriptive counterfactual evaluation only; no guarantee of future safe benefit from prior labels",
+  "synthetic_negative_control": {
+    "null_world": "within each year all country rows share one fair +/-0.5 gain shock, year shocks independent",
+    "years": 12,
+    "rows_per_year": 200,
+    "replicates": 1000,
+    "seed": 71301,
+    "stake_grid": [0.03, 0.07, 0.15, 0.30, 0.60],
+    "comparison": "false activation treating rows as IID versus aggregation to independent years"
+  },
+  "secondary_check": "positive-benefit world with genuinely independent year shocks; does not represent real time-series prevalence",
+  "report": ["all four model families", "monitor and future per-case cost", "switch fractions", "both evidence processes", "declined activations", "training cost", "per-year and per-country panels", "counterexamples", "assumptions"],
+  "forbidden": ["using future outcomes to tune models or thresholds", "asserting countries independent in the same calendar year", "claiming any-time betting is new", "claiming target-future guarantee under arbitrary drift", "turning a retrospective analysis into a preregistered confirmatory finding", "calling negative results positive"]
+}
