@@ -1,0 +1,5 @@
+{
+  "kind": "nonsemantic_runtime_correction",
+  "before_fits": true,
+  "detail": "Cast World Bank CSV year column names as strings, not integer positional pandas indexing; original code raised IndexError before fitting any model. No dataset, split, hypothesis or outcome changed."
+}
