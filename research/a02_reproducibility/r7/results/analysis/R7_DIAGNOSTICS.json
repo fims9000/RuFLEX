@@ -1,0 +1,111 @@
+{
+  "protocol_stage": "descriptive post-hoc analysis of frozen panel outputs",
+  "model_families": 4,
+  "rows": [
+    {
+      "model": "decision_tree",
+      "monitor_case_n": 1150,
+      "monitor_years": 6,
+      "monitor_gain": 0.07478260869565218,
+      "naive_rowwise_max_e": 3.623599633133552e+16,
+      "naive_rowwise_first_alarm_case": 91,
+      "group_respecting_max_e": 1.111595029444075,
+      "group_respecting_first_alarm_year": null,
+      "future_n": 976,
+      "future_years": 5,
+      "future_gain": 0.05942622950819672,
+      "future_gain_bootstrap_rows_exploratory": [
+        0.04661244877049181,
+        0.07248975409836066
+      ],
+      "future_gain_bootstrap_years_exploratory": [
+        0.055128205128205134,
+        0.0641025641025641
+      ],
+      "future_baseline_reviews": 126,
+      "future_augmented_reviews": 102,
+      "future_baseline_cost": 0.149077868852,
+      "future_augmented_cost": 0.0896516393443,
+      "promoted": false
+    },
+    {
+      "model": "extra_trees",
+      "monitor_case_n": 1150,
+      "monitor_years": 6,
+      "monitor_gain": 0.002391304347826087,
+      "naive_rowwise_max_e": 1.7460689997063592,
+      "naive_rowwise_first_alarm_case": null,
+      "group_respecting_max_e": 1.0032915377881866,
+      "group_respecting_first_alarm_year": null,
+      "future_n": 976,
+      "future_years": 5,
+      "future_gain": -0.0010245901639344263,
+      "future_gain_bootstrap_rows_exploratory": [
+        -0.003586065573770492,
+        0.0015368852459016393
+      ],
+      "future_gain_bootstrap_years_exploratory": [
+        -0.0028205128205128207,
+        0.0010256410256410256
+      ],
+      "future_baseline_reviews": 150,
+      "future_augmented_reviews": 154,
+      "future_baseline_cost": 0.0947745901639,
+      "future_augmented_cost": 0.0957991803279,
+      "promoted": false
+    },
+    {
+      "model": "logistic_regression",
+      "monitor_case_n": 1150,
+      "monitor_years": 6,
+      "monitor_gain": 0.004347826086956522,
+      "naive_rowwise_max_e": 5.100214984116336,
+      "naive_rowwise_first_alarm_case": null,
+      "group_respecting_max_e": 1.0060382317201157,
+      "group_respecting_first_alarm_year": null,
+      "future_n": 976,
+      "future_years": 5,
+      "future_gain": 0.0025614754098360654,
+      "future_gain_bootstrap_rows_exploratory": [
+        -0.00025614754098360657,
+        0.005122950819672131
+      ],
+      "future_gain_bootstrap_years_exploratory": [
+        0.0010256410256410256,
+        0.0041025641025641026
+      ],
+      "future_baseline_reviews": 198,
+      "future_augmented_reviews": 184,
+      "future_baseline_cost": 0.0978483606557,
+      "future_augmented_cost": 0.0952868852459,
+      "promoted": false
+    },
+    {
+      "model": "random_forest",
+      "monitor_case_n": 1150,
+      "monitor_years": 6,
+      "monitor_gain": -0.004565217391304348,
+      "naive_rowwise_max_e": 1.0690591381240864,
+      "naive_rowwise_first_alarm_case": null,
+      "group_respecting_max_e": 1.0003010471204188,
+      "group_respecting_first_alarm_year": null,
+      "future_n": 976,
+      "future_years": 5,
+      "future_gain": 0.0025614754098360654,
+      "future_gain_bootstrap_rows_exploratory": [
+        -0.0030737704918032786,
+        0.008709016393442622
+      ],
+      "future_gain_bootstrap_years_exploratory": [
+        -0.003594976452119309,
+        0.006923076923076923
+      ],
+      "future_baseline_reviews": 148,
+      "future_augmented_reviews": 154,
+      "future_baseline_cost": 0.0717213114754,
+      "future_augmented_cost": 0.0691598360656,
+      "promoted": false
+    }
+  ],
+  "notice": "Naive rowwise e-values are invalid under unknown within-year dependence; year-level inference conditional on null assumptions only; bootstraps descriptive"
+}
