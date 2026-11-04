@@ -1,0 +1,26 @@
+{
+  "impl_source_sha256": "4fecd43986d2d05ad677e82045955a91d443347e61571d5385a2ecb6d9344c30",
+  "randomness": "fixed integer PRNG initialization, IID not asserted",
+  "models": {
+    "logistic_regression": {
+      "max_iter": 700,
+      "solver": "lbfgs"
+    },
+    "decision_tree": {
+      "min_samples_leaf": 2
+    },
+    "random_forest": {
+      "n_estimators": 20,
+      "max_features": "sqrt",
+      "min_samples_leaf": 2,
+      "n_jobs": 1
+    },
+    "sgd_log_loss": {
+      "loss": "log_loss",
+      "alpha": 0.0001,
+      "max_iter": 1000,
+      "tol": 0.001
+    }
+  },
+  "model_parameters_frozen_before_first_fit": true
+}
