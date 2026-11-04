@@ -1,0 +1,55 @@
+name: R7 group-respecting sequential audit
+
+on:
+  push:
+    paths:
+      - "research/a02_reproducibility/r7/**"
+      - ".github/workflows/r7-evidence-units.yml"
+  pull_request:
+    paths:
+      - "research/a02_reproducibility/r7/**"
+      - ".github/workflows/r7-evidence-units.yml"
+
+jobs:
+  audit-replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: research/a02_reproducibility/r7/requirements-R7.txt
+      - name: Install research environment
+        run: python -m pip install -r research/a02_reproducibility/r7/requirements-R7.txt
+      - name: Check original pre-fit protocol hash
+        working-directory: research/a02_reproducibility/r7
+        run: |
+          python -c "import pathlib,hashlib; p=pathlib.Path('PROTOCOL_R7.json'); assert hashlib.sha256(p.read_bytes()).hexdigest()=='fb047cc115129cf66b00d9ddd9206463d88cd9580beaea8ba1c7fd47932edbac'"
+      - name: Run 13 focused tests
+        working-directory: research/a02_reproducibility/r7/code
+        run: python -m pytest -q test_evidence.py test_panel.py
+      - name: Confirm original six-year gate cannot trigger
+        working-directory: research/a02_reproducibility/r7/code
+        run: |
+          python power_audit.py
+          python -c "import json; a=json.load(open('../results/analysis/R7_FEASIBILITY.json')); assert a['years']==6 and a['any_alarm_mathematically_possible']==False"
+      - name: Replay controlled correlated-null simulation
+        working-directory: research/a02_reproducibility/r7/code
+        run: python run_simulations.py --out ../results_ci/simulation
+      - name: Replay all 64 new country-panel models
+        working-directory: research/a02_reproducibility/r7/code
+        run: python run_panel.py --protocol ../PROTOCOL_R7.json --out ../results_ci/panel
+      - name: Verify replay results independently from saved case-level probabilities
+        working-directory: research/a02_reproducibility/r7/code
+        run: python verify_panel.py --results ../results_ci/panel --protocol ../PROTOCOL_R7.json
+      - name: Validate frozen CSV checksums from manifest
+        working-directory: research/a02_reproducibility/r7
+        run: |
+          python -c "import hashlib,json,pathlib; m=json.load(open('results/panel/R7_RECEIPT.json')); root=pathlib.Path('results_ci/panel'); assert m['fit_count']==64 and all(hashlib.sha256((root/k).read_bytes()).hexdigest()==v for k,v in m['result_sha256'].items())"
+      - name: Post-hoc control baselines and diagnostic summaries
+        working-directory: research/a02_reproducibility/r7/code
+        run: |
+          python benchmark_baselines.py --cases ../results_ci/panel/R7_CASE_LEVEL.csv --protocol ../PROTOCOL_R7.json --out ../results_ci/R7_POSTHOC_BASELINES.csv
+          python analyze_panel.py --results ../results_ci/panel --out ../results_ci/analysis
