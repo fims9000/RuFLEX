@@ -1,0 +1,25 @@
+{
+  "simulation": "yearwise IID signs, country outcomes perfectly dependent within year",
+  "replicates": 1000,
+  "groups_per_rep": 12,
+  "countries_per_group": 200,
+  "null": "E[annual mean gain|past years]=0",
+  "naive_rowwise": {
+    "alarms": 769,
+    "rate": 0.769,
+    "wilson95": [
+      0.7418771517803808,
+      0.7940639767801412
+    ]
+  },
+  "year_grouped": {
+    "alarms": 0,
+    "rate": 0.0,
+    "wilson95": [
+      0.0,
+      0.003826898586390522
+    ]
+  },
+  "interpretation": "Naive row-by-row betting violates its conditional null due shared year shock; year means obey it here",
+  "source_sha256": "175f78b513407f0e66fa7d4e838769e3e4e5c1f7b68d590bc43876713a228ff5"
+}
