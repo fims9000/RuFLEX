@@ -1,0 +1,7 @@
+{
+  "status": "INDEPENDENT_CASE_LEVEL_REPLAY_PASS",
+  "cells": 8,
+  "certification_cases": 192,
+  "heldout_cases": 312,
+  "validated": "thresholds, hash ties, masks, labels, cost deltas, certificates, disjoint case ids, manifest hashes"
+}

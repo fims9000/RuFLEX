@@ -1,0 +1,19 @@
+{
+  "protocol_sha256": "b5be179434b89f3827df797463069f18d45dad14a25243678bf17e871d4bf15d",
+  "code_sha256": "0a62260a9be17c81f580122b4368dc9037e1664a5480a40ec1a24166a03c93c4",
+  "worlds": "2x2 mutually exclusive observable classes and disagreement groups, each probability 1/4",
+  "known_error_risks": "explicit 2x2 tables in world()",
+  "replicates": 4000,
+  "scenarios": 5,
+  "certificate_sizes": [
+    100,
+    400,
+    1600,
+    6400
+  ],
+  "output_sha256": {
+    "R6_SIMULATION_REPLICATES.csv": "5bea24dc7e225c85cd5c1998f32f19b141eb8897c9ad3c58de9064d396e9ce7c",
+    "R6_SIMULATION_SUMMARY.csv": "2ec89c995bc760e4521dbc60cc24fd0383a5e368420a1c0e2ef567e5ae1c459a"
+  },
+  "scope": "synthetic mechanism check, not new empirical ML domain"
+}
