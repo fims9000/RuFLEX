@@ -1,0 +1,24 @@
+name: A01 matched-coverage bounds (frozen evidence)
+on:
+  pull_request:
+    paths:
+      - "research/a01_stability_aware_review/scripts/bound_matched_coverage_a01.py"
+      - "research/a01_stability_aware_review/tests/test_matched_coverage_bounds.py"
+      - ".github/workflows/a01-matched-coverage.yml"
+  workflow_dispatch:
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install pytest
+        run: python -m pip install pytest
+      - name: Verify frozen artifact, all A01 cells and sharpness
+        run: python -m pytest -q research/a01_stability_aware_review/tests/test_matched_coverage_bounds.py
